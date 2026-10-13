@@ -1,0 +1,5 @@
+telephone,nom,reference
+(416) 555-0123,Contact fictif A,DEMO-001
++14165550123,Doublon fictif,DEMO-002
+(514) 555-0124,Contact fictif B,DEMO-003
+invalide,Format invalide,DEMO-004

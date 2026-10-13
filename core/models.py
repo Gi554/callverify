@@ -1,0 +1,145 @@
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+
+class AdminUser(AbstractUser):
+    mfa_secret = models.CharField(max_length=512, blank=True)
+    mfa_enabled = models.BooleanField(default=False)
+    last_mfa_step = models.BigIntegerField(default=-1)
+    backup_codes = models.JSONField(default=list)
+    def save(self, *args, **kwargs):
+        from .security import encrypt_secret
+        if self.mfa_secret and not self.mfa_secret.startswith('enc:'):
+            self.mfa_secret = encrypt_secret(self.mfa_secret)
+        super().save(*args, **kwargs)
+
+class Campaign(models.Model):
+    owner = models.ForeignKey(AdminUser, on_delete=models.PROTECT)
+    name = models.CharField(max_length=200)
+    purpose = models.TextField()
+    source = models.CharField(max_length=250)
+    status = models.CharField(max_length=30, default='draft')
+    budget = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    spent = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class PhoneNumber(models.Model):
+    e164 = models.CharField(max_length=16, unique=True)
+    country = models.CharField(max_length=2, blank=True)
+    validity = models.CharField(max_length=20, default='valid')
+    line_status = models.CharField(max_length=20, default='unknown')
+    carrier = models.CharField(max_length=200, blank=True)
+    line_type = models.CharField(max_length=40, blank=True)
+
+class ImportBatch(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='imports')
+    original = models.FileField(upload_to='imports/%Y/%m/')
+    mapping = models.JSONField(default=dict)
+    sheet = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=30, default='preview')
+    report = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Prospect(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='prospects')
+    phone = models.ForeignKey(PhoneNumber, null=True, on_delete=models.PROTECT)
+    name = models.CharField(max_length=250, blank=True)
+    reference = models.CharField(max_length=250, blank=True)
+    raw_phone = models.CharField(max_length=250)
+    validity = models.CharField(max_length=20, default='indeterminate')
+    reason = models.TextField(blank=True)
+    compliance = models.CharField(max_length=20, default='review')
+    compliance_reason = models.TextField(blank=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['campaign','phone'], name='unique_campaign_phone')]
+
+class ImportRow(models.Model):
+    batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name='rows')
+    prospect = models.ForeignKey(Prospect, null=True, on_delete=models.SET_NULL)
+    line = models.PositiveIntegerField()
+    source = models.JSONField(default=dict)
+    duplicate = models.BooleanField(default=False)
+    error = models.TextField(blank=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['batch','line'], name='unique_import_line')]
+
+class LookupCheck(models.Model):
+    phone = models.ForeignKey(PhoneNumber, on_delete=models.CASCADE, related_name='checks')
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, default='pending')
+    response = models.JSONField(default=dict)
+    error = models.TextField(blank=True)
+    cost = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    actual_cost = models.DecimalField(max_digits=12, decimal_places=4, null=True)
+    packages = models.CharField(max_length=250, blank=True)
+    provider_code = models.CharField(max_length=40, blank=True)
+    checked_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class ConsentEvidence(models.Model):
+    prospect = models.ForeignKey(Prospect, on_delete=models.CASCADE, related_name='consents')
+    basis = models.CharField(max_length=200)
+    evidence = models.TextField()
+    recorded_by = models.ForeignKey(AdminUser, on_delete=models.PROTECT)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Suppression(models.Model):
+    e164 = models.CharField(max_length=16, unique=True)
+    reason = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class CallCampaign(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='call_campaigns')
+    status = models.CharField(max_length=30, default='draft')
+    compliance_approved = models.BooleanField(default=False)
+    configuration = models.JSONField(default=dict)
+
+class CallAttempt(models.Model):
+    call_campaign = models.ForeignKey(CallCampaign, on_delete=models.CASCADE)
+    prospect = models.ForeignKey(Prospect, on_delete=models.PROTECT)
+    sid = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=30, default='queued')
+    duration = models.PositiveIntegerField(default=0)
+    amd = models.CharField(max_length=30, default='unknown')
+
+class WebhookEvent(models.Model):
+    fingerprint = models.CharField(max_length=64, unique=True)
+    payload = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class ExportJob(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE)
+    author = models.ForeignKey(AdminUser, on_delete=models.PROTECT)
+    format = models.CharField(max_length=4, default='csv')
+    filters = models.JSONField(default=dict)
+    columns = models.JSONField(default=list)
+    status = models.CharField(max_length=20, default='pending')
+    file = models.FileField(upload_to='exports/%Y/%m/', blank=True)
+    expires_at = models.DateTimeField()
+    error = models.TextField(blank=True)
+
+class AuditEvent(models.Model):
+    actor = models.ForeignKey(AdminUser, null=True, on_delete=models.SET_NULL)
+    action = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=100, blank=True)
+    metadata = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class PlatformSettings(models.Model):
+    lookup_cache_hours = models.PositiveIntegerField(default=168)
+    lookup_rate = models.PositiveIntegerField(default=5)
+    export_hours = models.PositiveIntegerField(default=24)
+    import_retention_days = models.PositiveIntegerField(default=90)
+    currency = models.CharField(max_length=3, default='CAD')
+
+class TaskDelivery(models.Model):
+    kind = models.CharField(max_length=20)
+    object_id = models.PositiveBigIntegerField()
+    status = models.CharField(max_length=20, default='pending', db_index=True)
+    attempts = models.PositiveIntegerField(default=0)
+    available_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    error = models.CharField(max_length=120, blank=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['kind','object_id'],name='unique_task_delivery')]

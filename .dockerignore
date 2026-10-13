@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+private-media
+db.sqlite3
+__pycache__
+**/node_modules
+frontend/dist
+.test-media
+output

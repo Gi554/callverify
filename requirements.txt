@@ -1,0 +1,13 @@
+Django>=6.0,<6.2
+djangorestframework>=3.16,<3.19
+celery>=5.6,<5.7
+redis>=6,<9
+phonenumbers>=9,<10
+twilio>=9,<10
+openpyxl>=3.1,<4
+psycopg[binary]>=3.2,<4
+django-cors-headers>=4.9,<5
+django-storages>=1.14,<2
+boto3>=1.40,<2
+cryptography>=44,<47
+qrcode>=8,<9
