@@ -243,6 +243,8 @@ class ProspectViewSet(OwnedViewSet, viewsets.ReadOnlyModelViewSet):
         checks = LookupCheck.objects.filter(phone=prospect.phone, campaign=prospect.campaign).order_by('-created_at') if prospect.phone else []
         audit(request.user, 'prospect.history', prospect)
         return Response({'lookup':LookupSerializer(checks,many=True).data,
+            'voice':list(CallAttempt.objects.filter(prospect=prospect).order_by('-created_at','-pk').values()),
+            'voice_events':list(WebhookEvent.objects.filter(payload__CallSid__in=CallAttempt.objects.filter(prospect=prospect).values_list('sid',flat=True)).order_by('-created_at').values('payload','created_at')),
             'consents':ConsentSerializer(prospect.consents.all(),many=True).data,
             'sources':list(prospect.importrow_set.values('batch_id','line','duplicate','error')),
             'suppressed':bool(prospect.phone and Suppression.objects.filter(e164=prospect.phone.e164).exists())})
@@ -368,15 +370,20 @@ class CallCampaignViewSet(OwnedViewSet, viewsets.ReadOnlyModelViewSet):
             'decisions':decisions,'voice_enabled':False})
     @action(detail=True, methods=['post'])
     def start(self, request, pk=None):
-        self.get_object()
-        return Response({'detail':'Appels réels désactivés : configuration fournisseur et recette de conformité requises'},status=409)
+        obj = self.get_object()
+        from .voice import DISABLED_REASON
+        return Response({'detail':DISABLED_REASON}, status=409)
+    @action(detail=True, methods=['get'])
+    def attempts(self, request, pk=None):
+        obj = self.get_object()
+        return Response(list(CallAttempt.objects.filter(call_campaign=obj).values('id','prospect_id','sid','status','duration')))
     @action(detail=True, methods=['post'])
     def stop(self, request, pk=None):
         obj = self.get_object()
-        obj.status = 'stopped'
-        obj.save(update_fields=['status'])
+        from .voice import stop_pilot
+        obj, failures = stop_pilot(obj.pk)
         audit(request.user, 'voice.stopped', obj)
-        return Response(self.get_serializer(obj).data)
+        return Response({**self.get_serializer(obj).data, 'cancellation_errors':failures})
 
 class AuditViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditEvent.objects.order_by('-created_at')
@@ -401,6 +408,12 @@ def dashboard(request):
         'unique_numbers':prospects.filter(phone__isnull=False).values('phone').distinct().count(),
         'validity':[{'validity':key,'count':value} for key,value in validity.items()],
         'lookup':list(checks.values('status').annotate(count=Count('phone',distinct=True))),
+        'voice':{
+            'attempts':CallAttempt.objects.filter(call_campaign__campaign__in=campaigns).count(),
+            'rang':CallAttempt.objects.filter(call_campaign__campaign__in=campaigns,rang_at__isnull=False).count(),
+            'answered':CallAttempt.objects.filter(call_campaign__campaign__in=campaigns,answered_at__isnull=False).count(),
+            'statuses':list(CallAttempt.objects.filter(call_campaign__campaign__in=campaigns).values('status').annotate(count=Count('id'))),
+            'amd':list(CallAttempt.objects.filter(call_campaign__campaign__in=campaigns,amd_requested=True).values('amd').annotate(count=Count('id')))},
         'reserved_cost':campaigns.aggregate(total=Sum('spent'))['total'] or 0})
 
 @api_view(['GET','POST','PATCH'])
@@ -500,21 +513,36 @@ def voice_webhook(request):
         return Response(status=403)
     sid = payload.get('CallSid','')
     event_status = payload.get('CallStatus','')
+    from .voice import AMD_VALUES
+    answered_by = payload.get('AnsweredBy', '')
     allowed = {'queued','initiated','ringing','in-progress','completed','busy','no-answer','failed','canceled'}
-    if event_status not in allowed:
+    if (event_status and event_status not in allowed) or (answered_by and answered_by not in AMD_VALUES) or not (event_status or answered_by):
         return Response(status=400)
-    fingerprint = hashlib.sha256(f"{sid}:{event_status}:{payload.get('SequenceNumber','')}".encode()).hexdigest()
+    if payload.get('AccountSid') and payload['AccountSid'] != settings.TWILIO_ACCOUNT_SID:
+        return Response(status=403)
+    fingerprint = hashlib.sha256(f"{sid}:{event_status}:{answered_by}:{payload.get('SequenceNumber','')}:{payload.get('ErrorCode','')}".encode()).hexdigest()
     with transaction.atomic():
         attempt = CallAttempt.objects.select_for_update().filter(sid=sid).first()
         if not attempt:
             return Response(status=404)
         _, created = WebhookEvent.objects.get_or_create(fingerprint=fingerprint, defaults={'payload':payload})
         if created:
+            if event_status == 'ringing' and not attempt.rang_at:
+                attempt.rang_at = timezone.now()
+            if event_status in {'in-progress','completed'} and not attempt.answered_at:
+                attempt.answered_at = timezone.now()
+            if answered_by and attempt.amd_requested:
+                if not attempt.amd_checked_at or attempt.amd == 'unknown':
+                    attempt.amd = answered_by
+                    attempt.amd_checked_at = timezone.now()
+            code = payload.get('ErrorCode', '')
+            if code.isdigit():
+                attempt.error_code = code[:40]
             terminal = {'completed','busy','no-answer','failed','canceled'}
             ranks = {'queued':0,'initiated':1,'ringing':2,'in-progress':3}
-            if attempt.status not in terminal and (event_status in terminal or ranks.get(event_status,0)>=ranks.get(attempt.status,0)):
+            if event_status and attempt.status not in terminal and (event_status in terminal or ranks.get(event_status,0)>=ranks.get(attempt.status,0)):
                 attempt.status = event_status
                 if payload.get('CallDuration','').isdigit():
                     attempt.duration = int(payload['CallDuration'])
-                attempt.save(update_fields=['status','duration'])
+            attempt.save(update_fields=['status','duration','rang_at','answered_at','amd','amd_checked_at','error_code','updated_at'])
     return Response(status=204)

@@ -201,6 +201,7 @@ def schedule_lookup(campaign, force=False):
     return {'scheduled':len(ids), 'cached':cached, 'cost_type':'reserved_estimate'}
 
 EXPORT_COLUMNS = ['name','reference','raw_phone','e164','validity','line_status','carrier','line_type','compliance','compliance_reason','reason','checked_at']
+EXPORT_COLUMNS += ['lookup_classification','lookup_line_status','lookup_error','lookup_checked_at','voice_status','voice_rang','voice_answered','voice_amd','voice_error_code','voice_checked_at']
 FILTERS = {'validity', 'compliance', 'phone__line_status'}
 
 def filtered_prospects(campaign, filters):
@@ -231,7 +232,9 @@ def build_export(job_id):
                 line_status=prospect.phone.line_status if prospect.phone else 'unknown',
                 carrier=prospect.phone.carrier if prospect.phone else '',line_type=prospect.phone.line_type if prospect.phone else '',
                 checked_at=(check.checked_at or check.created_at).isoformat() if check else '')
-            rows.append([str(values.get(column) or '') for column in columns])
+            from .qualification import technical_results
+            values.update(technical_results(prospect))
+            rows.append([str(values.get(column, '')) if values.get(column) is not None else '' for column in columns])
         if job.format == 'xlsx':
             book = Workbook()
             sheet = book.active

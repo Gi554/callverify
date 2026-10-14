@@ -19,6 +19,10 @@ class CampaignSerializer(serializers.ModelSerializer):
         return value
 
 class ProspectSerializer(serializers.ModelSerializer):
+    technical_results = serializers.SerializerMethodField()
+    def get_technical_results(self, obj):
+        from .qualification import technical_results
+        return technical_results(obj)
     e164 = serializers.CharField(source='phone.e164', read_only=True, default=None)
     line_status = serializers.CharField(source='phone.line_status', read_only=True, default='unknown')
     carrier = serializers.CharField(source='phone.carrier', read_only=True, default='')

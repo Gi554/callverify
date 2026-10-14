@@ -10,7 +10,8 @@ def execute_delivery(self,pk):
     if row.status == 'completed':
         return
     try:
-        {'import':import_task,'lookup':lookup_task,'export':export_task}[row.kind](row.object_id)
+        from .voice import submit_attempt
+        {'import':import_task,'lookup':lookup_task,'export':export_task,'voice':submit_attempt}[row.kind](row.object_id)
         row.status = 'completed'
         row.error = ''
     except RateLimited as error:

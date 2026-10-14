@@ -102,6 +102,13 @@ class CallAttempt(models.Model):
     status = models.CharField(max_length=30, default='queued')
     duration = models.PositiveIntegerField(default=0)
     amd = models.CharField(max_length=30, default='unknown')
+    rang_at = models.DateTimeField(null=True)
+    answered_at = models.DateTimeField(null=True)
+    amd_checked_at = models.DateTimeField(null=True)
+    amd_requested = models.BooleanField(default=False)
+    error_code = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 class WebhookEvent(models.Model):
     fingerprint = models.CharField(max_length=64, unique=True)
