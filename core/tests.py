@@ -397,3 +397,75 @@ class BackendTests(TestCase):
         result=self.client.get('/api/dashboard/').data
         self.assertEqual(result['unique_numbers'],1)
         self.assertEqual(next(r['count'] for r in result['validity'] if r['validity']=='valid'),1)
+
+
+    def voice_observation(self, amd=False):
+        prospect=self.imported()
+        obj=CallCampaign.objects.create(campaign=self.campaign)
+        attempt=CallAttempt.objects.create(call_campaign=obj,prospect=prospect,sid='CA-observation',amd_requested=amd)
+        return prospect, attempt
+    def post_voice_event(self, payload, amd=False):
+        url='/api/webhooks/twilio/amd/' if amd else '/api/webhooks/twilio/voice/'
+        signature=RequestValidator('test-secret').compute_signature('http://testserver'+url,payload)
+        return self.client.post(url,payload,HTTP_X_TWILIO_SIGNATURE=signature)
+    @override_settings(VOICE_ENABLED=True)
+    def test_voice_start_disabled_even_when_overridden(self):
+        obj=CallCampaign.objects.create(campaign=self.campaign)
+        self.assertEqual(self.client.post(f'/api/calls/{obj.pk}/start/',{'confirm_test':True,'prospects':[1]},format='json').status_code,409)
+    @patch('twilio.rest.Client')
+    def test_old_voice_delivery_cannot_emit(self, provider):
+        from .voice import submit_attempt
+        _, attempt=self.voice_observation()
+        attempt.status='pending';attempt.save()
+        submit_attempt(attempt.pk)
+        provider.assert_not_called()
+        attempt.refresh_from_db();self.assertEqual(attempt.status,'blocked')
+    @override_settings(TWILIO_AUTH_TOKEN='test-secret')
+    def test_ringing_and_answered_are_distinct(self):
+        prospect,attempt=self.voice_observation()
+        self.assertEqual(self.post_voice_event({'CallSid':attempt.sid,'CallStatus':'ringing','SequenceNumber':'1'}).status_code,204)
+        attempt.refresh_from_db();self.assertIsNotNone(attempt.rang_at);self.assertIsNone(attempt.answered_at)
+        self.post_voice_event({'CallSid':attempt.sid,'CallStatus':'completed','SequenceNumber':'2'})
+        attempt.refresh_from_db();self.assertIsNotNone(attempt.answered_at)
+        self.assertEqual(attempt.amd,'unknown')
+        from .qualification import technical_results
+        self.assertEqual(technical_results(prospect)['voice_amd'],'not_requested')
+    @override_settings(TWILIO_AUTH_TOKEN='test-secret')
+    def test_async_amd_without_call_status_is_idempotent(self):
+        prospect,attempt=self.voice_observation(amd=True)
+        payload={'CallSid':attempt.sid,'AnsweredBy':'machine_start'}
+        self.assertEqual(self.post_voice_event(payload,amd=True).status_code,204)
+        self.post_voice_event(payload,amd=True)
+        attempt.refresh_from_db();self.assertEqual(attempt.amd,'machine_start')
+        self.assertEqual(attempt.status,'queued')
+        self.assertEqual(WebhookEvent.objects.count(),1)
+        self.assertIsNone(attempt.answered_at)
+    @override_settings(TWILIO_AUTH_TOKEN='test-secret')
+    def test_voice_provider_error_and_history_are_saved(self):
+        prospect,attempt=self.voice_observation()
+        self.post_voice_event({'CallSid':attempt.sid,'CallStatus':'failed','ErrorCode':'21217'})
+        attempt.refresh_from_db();self.assertEqual(attempt.error_code,'21217')
+        result=self.client.get(f'/api/prospects/{prospect.pk}/history/').data
+        self.assertEqual(result['voice'][0]['status'],'failed')
+        self.assertEqual(len(result['voice_events']),1)
+    def test_lookup_active_does_not_imply_reachability(self):
+        from .qualification import technical_results
+        prospect=self.imported()
+        check=LookupCheck.objects.create(campaign=self.campaign,phone=prospect.phone,status='completed',response={'valid':True,'line_status':{'status':'Active'}})
+        result=technical_results(prospect)
+        self.assertEqual(result['lookup_classification'],'valid')
+        self.assertFalse(result['voice_answered'])
+        check.response={'valid':True,'line_status':{'status':'reachable'}};check.save()
+        self.assertEqual(technical_results(prospect)['lookup_classification'],'potentially_reachable')
+    def test_export_keeps_lookup_and_voice_separate(self):
+        prospect,attempt=self.voice_observation()
+        attempt.status='busy';attempt.save()
+        job=ExportJob.objects.create(campaign=self.campaign,author=self.admin,format='csv',
+            columns=['lookup_classification','voice_status','voice_rang','voice_answered','voice_amd'],expires_at=timezone.now()+timedelta(hours=1))
+        build_export(job.pk);job.refresh_from_db()
+        with job.file.open('rb') as stream: content=stream.read().decode('utf-8-sig')
+        self.assertIn('not_checked,busy,False,False,not_requested',content)
+    def test_amd_options_are_optional(self):
+        from .voice import amd_parameters
+        self.assertEqual(amd_parameters(False,''),{})
+        self.assertEqual(amd_parameters(True,'https://example.invalid/api/webhooks/twilio/amd/')['machine_detection'],'Enable')

@@ -26,10 +26,10 @@ def dispatch(pk):
             available_at=timezone.now()+timedelta(seconds=min(300,2**min(delivery.attempts,8))),error=type(error).__name__)
 
 def dispatch_pending():
-    from .models import ImportBatch, ExportJob, LookupCheck
+    from .models import ImportBatch, ExportJob, LookupCheck, CallAttempt
     stale = timezone.now()-timedelta(minutes=35)
     for row in TaskDelivery.objects.filter(status='dispatched',updated_at__lt=stale):
-        model = {'import':ImportBatch,'export':ExportJob,'lookup':LookupCheck}[row.kind]
+        model = {'import':ImportBatch,'export':ExportJob,'lookup':LookupCheck,'voice':CallAttempt}[row.kind]
         obj = model.objects.filter(pk=row.object_id).first()
         if obj and obj.status in ('pending','queued'):
             row.status='pending'

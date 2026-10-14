@@ -65,6 +65,9 @@ MAX_IMPORT_BYTES = 20 * 1024 * 1024
 MAX_IMPORT_ROWS = 100000
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID','')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN','')
+VOICE_ENABLED = False  # No environment flag can enable outbound calls yet.
+TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
+VOICE_CALLBACK_URL = os.getenv('VOICE_CALLBACK_URL', '')
 LOOKUP_ENABLED = os.getenv('LOOKUP_ENABLED','false').lower() == 'true'
 LOOKUP_CACHE_HOURS = 168
 LOOKUP_UNIT_COST = os.getenv('LOOKUP_UNIT_COST','0.01')
