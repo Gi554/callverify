@@ -34,6 +34,7 @@ def sign_in(request):
 def session_payload(user):
     memberships=list(Membership.objects.filter(user=user,active=True).values('workspace','role'))
     return Response({'username':user.username,'workspaces':memberships,
+        'admin_workspaces':[row['workspace'] for row in memberships if row['role']=='administrator'],
         'landing':memberships[0]['workspace'] if len(memberships)==1 else None})
 
 @api_view(['GET','POST'])
