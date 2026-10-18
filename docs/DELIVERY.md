@@ -112,6 +112,14 @@ L’export administrateur comprend tous les setters de la période, indépendamm
 
 Douze tests ciblés statistiques/exports réussis, dont confidentialité, complétude au-delà de 25 lignes, lecture réelle du XLSX et neutralisation des formules ; suites complètes SQLite/PostgreSQL en CI, TypeScript/build. Aucune migration nécessaire. Revue esthétique reportée à la fin ; statistiques ventes/Phonetico/Isolation non incluses.
 
+## Fonctionnalité 14 — champs personnalisables des fiches Assurance
+
+L’administration définit jusqu’à 30 champs internes : texte (2 000 caractères), case à cocher, date ou liste de choix. Clé unique et stable, libellé, obligation et état actif configurables ; type et choix sont immuables une fois créés. L’archivage désactive la saisie tout en conservant les anciennes valeurs. Les mises à jour de configuration exigent une révision courante et un motif ; elles sont auditées.
+
+Les setters et administrateurs renseignent les champs sur une fiche prise en charge, avec contrôle du jeton, de l’expiration, de la version de fiche et de configuration. Les champs obligatoires s’appliquent à l’enregistrement explicite de l’ensemble des champs métier actifs, sans bloquer les imports bruts ni la correction des coordonnées. Les dates, types, choix et clés sont validés côté serveur ; une case obligatoire exige une valeur booléenne renseignée et accepte Non. Les valeurs archivées sont conservées même lors d’une nouvelle saisie. Les modifications avant/après sont consultables dans le journal administrateur de la fiche.
+
+Aucun schéma ni valeur personnalisée n’est exposé au conseiller ou aux exports existants. La saisie métier possède un enregistrement explicite distinct de la sauvegarde automatique des coordonnées ; une modification concurrente exige de recharger avant de reprendre. Import/mapping des champs personnalisés, partage sélectif conseiller et changements de type ne font pas partie de ce lot. Sept tests ciblés, concurrence PostgreSQL, TypeScript/build et migration locale. Revue visuelle reportée à la fin.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.

@@ -14,6 +14,7 @@ class ContactImport(models.Model):
     mapping=models.JSONField(default=dict)
 
 class Contact(models.Model):
+    custom_values=models.JSONField(default=dict)
     import_batch=models.ForeignKey(ContactImport,null=True,blank=True,on_delete=models.SET_NULL,related_name='contacts')
     source_row=models.PositiveIntegerField(null=True,blank=True)
     source_values=models.JSONField(default=list)
@@ -122,3 +123,10 @@ class ContactNote(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         indexes=[models.Index(fields=['contact','channel','author_id'])]
+
+class ContactFieldSchema(models.Model):
+    id=models.PositiveSmallIntegerField(primary_key=True,default=1,editable=False)
+    fields=models.JSONField(default=list)
+    revision=models.PositiveIntegerField(default=0)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_contact_field_schema')]

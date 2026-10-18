@@ -1093,3 +1093,82 @@ class StatisticsExportTests(TestCase):
     def test_invalid_export_and_dates_are_refused(self):
         self.assertEqual(self.client.get(self.url+'&export=pdf').status_code,400)
         self.assertEqual(self.client.get('/api/assurance/statistics/?from=bad&export=xlsx').status_code,400)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class CustomFieldTests(TestCase):
+    def setUp(self):
+        self.client=APIClient();self.auth(99,'administrator')
+        self.url='/api/assurance/contact-fields/'
+        self.contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21,assigned_advisor_id=31)
+        self.values_url=f'/api/assurance/contacts/{self.contact.pk}/custom_fields/'
+        self.fields=[{'key':'city','label':'Ville','type':'text','required':True,'active':True,'choices':[]},
+            {'key':'consent','label':'Accord','type':'boolean','required':True,'active':True,'choices':[]},
+            {'key':'date','label':'Date','type':'date','required':False,'active':True,'choices':[]},
+            {'key':'kind','label':'Type','type':'choice','required':False,'active':True,'choices':['A','B']}]
+        self.assertEqual(self.configure().status_code,200)
+        self.auth(21,'setter');self.token=self.client.post(f'/api/assurance/contacts/{self.contact.pk}/lease/',{},format='json').data['token']
+    def auth(self,pk,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+    def configure(self,**changes):return self.client.post(self.url,{'revision':0,'fields':self.fields,'reason':'Configuration',**changes},format='json')
+    def save(self,**changes):return self.client.post(self.values_url,{'revision':0,'schema_revision':1,'token':self.token,'values':{'city':'Montréal','consent':False,'date':'2026-10-20','kind':'A'},**changes},format='json')
+    def test_types_false_boolean_and_audit(self):
+        from .models import BusinessAudit
+        response=self.save();self.assertEqual(response.status_code,200,response.data)
+        self.assertFalse(response.data['values']['consent']);self.assertEqual(response.data['revision'],1)
+        audit=BusinessAudit.objects.get(action='contact.custom_fields_changed')
+        self.assertEqual(audit.metadata['after']['city'],'Montréal')
+    def test_required_unknown_and_invalid_types_are_rejected(self):
+        for values in ({'city':'','consent':True},{'city':'X','consent':'yes'},{'city':'X','consent':False,'date':'2026-02-30'},
+                       {'city':'X','consent':False,'kind':'C'},{'city':'X','consent':False,'secret':'x'}):
+            self.assertEqual(self.save(values=values).status_code,400,values)
+        self.contact.refresh_from_db();self.assertEqual(self.contact.custom_values,{})
+    def test_requires_owned_lease_and_matching_contact_and_schema_versions(self):
+        from uuid import uuid4
+        self.assertEqual(self.save(token=str(uuid4())).status_code,409)
+        self.assertEqual(self.save(revision=99).status_code,409)
+        self.assertEqual(self.save(schema_revision=0).status_code,409)
+        self.save();self.assertEqual(self.save().status_code,409)
+    def test_advisor_has_no_values_schema_or_public_metadata(self):
+        self.save();self.auth(31,'advisor')
+        self.assertEqual(self.client.get(self.values_url).status_code,403)
+        self.assertEqual(self.save().status_code,403)
+        self.assertEqual(self.client.get(self.url).status_code,403)
+        self.assertNotIn('custom_values',self.client.get(f'/api/assurance/contacts/{self.contact.pk}/').data)
+    def test_schema_admin_only_immutable_types_and_archive_preserves_values(self):
+        self.assertEqual(self.configure().status_code,403)
+        self.save();self.auth(99,'administrator')
+        self.assertEqual(self.configure(revision=1,fields=[]).status_code,400)
+        changed=[{**row,'type':'date'} if row['key']=='city' else row for row in self.fields]
+        self.assertEqual(self.configure(revision=1,fields=changed).status_code,400)
+        archived=[{**row,'active':False} if row['key']=='city' else row for row in self.fields]
+        self.assertEqual(self.configure(revision=1,fields=archived).status_code,200)
+        self.auth(21,'setter')
+        self.assertEqual(self.save(revision=1,schema_revision=2,values={'consent':True}).status_code,200)
+        self.contact.refresh_from_db();self.assertEqual(self.contact.custom_values['city'],'Montréal')
+    def test_configuration_duplicate_keys_and_stale_revision(self):
+        self.auth(99,'administrator')
+        self.assertEqual(self.configure().status_code,409)
+        self.assertEqual(self.configure(revision=1,fields=self.fields+self.fields).status_code,400)
+    def test_audit_failure_rolls_back_value_change(self):
+        from unittest.mock import patch
+        with patch('apps.assurance.backend.crm.custom_fields.BusinessAudit.objects.create',side_effect=RuntimeError('audit')):
+            with self.assertRaises(RuntimeError):self.save()
+        self.contact.refresh_from_db();self.assertEqual(self.contact.custom_values,{})
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentCustomFieldTests(TransactionTestCase):
+    def test_simultaneous_values_do_not_overwrite_current_revision(self):
+        from django.db import connection,connections
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        if connection.vendor!='postgresql':self.skipTest('Concurrence vérifiée dans la CI PostgreSQL')
+        fixture=CustomFieldTests(methodName='test_types_false_boolean_and_audit');fixture.setUp();barrier=Barrier(2)
+        def save(city):
+            try:
+                api=APIClient();api.credentials(HTTP_AUTHORIZATION='Bearer '+issue(21,'assurance','setter'))
+                barrier.wait(timeout=10)
+                return api.post(fixture.values_url,{'revision':0,'schema_revision':1,'token':fixture.token,'values':{'city':city,'consent':False}},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(save,['Montréal','Québec']))
+        self.assertEqual(sorted(results),[200,409]);fixture.contact.refresh_from_db();self.assertEqual(fixture.contact.revision,1)
