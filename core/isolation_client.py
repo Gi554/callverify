@@ -7,7 +7,7 @@ from rest_framework.exceptions import PermissionDenied,ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .isolation_work import VisitAuthentication,Pager,Conflict
-from .models import IsolationVisit,IsolationVisitResult,Prospect,AuditEvent
+from .models import IsolationVisit,IsolationVisitResult,IsolationVisitSupplement,Prospect,AuditEvent
 
 OUTCOMES={'completed':'Effectuée','follow_up':'Suivi nécessaire','interested':'Intéressé','not_interested':'Non intéressé','not_performed':'Non effectuée'}
 
@@ -23,7 +23,40 @@ class ResultInput(serializers.Serializer):
 
 def result_output(row):return {'performed':row.performed,'outcome':row.outcome,'note':row.note,'created_at':row.created_at}
 
+class SupplementInput(serializers.Serializer):
+    request_id=serializers.UUIDField()
+    note=serializers.CharField(max_length=3000)
+    def validate(self,data):
+        if set(self.initial_data)-set(self.fields):raise ValidationError('Champs non autorisés')
+        return data
+
+def supplement_output(row):return {'id':row.pk,'note':row.note,'created_at':row.created_at,'author_client_id':row.author_client_id}
+
 class ResultMixin:
+    @action(detail=True,methods=['get','post'])
+    def supplements(self,request,pk=None):
+        if request.method=='POST' and request.user.role!='client':raise PermissionDenied('Complément réservé au client de la visite')
+        original=self.get_object()
+        if request.method=='GET':
+            qs=IsolationVisitSupplement.objects.filter(visit=original).order_by('-pk')
+            response=self.get_paginated_response([supplement_output(row) for row in self.paginate_queryset(qs)])
+            response['Cache-Control']='no-store'
+            return response
+        serializer=SupplementInput(data=request.data);serializer.is_valid(raise_exception=True);data=serializer.validated_data
+        def replay(row):
+            if (row.visit_id,row.author_client_id,row.note)!=(original.pk,request.user.pk,data['note']):raise Conflict('Identifiant de complément déjà utilisé')
+            return Response(supplement_output(row))
+        with transaction.atomic():
+            if not IsolationVisit.objects.filter(pk=original.pk,client_id=request.user.pk).update(revision=F('revision')):raise PermissionDenied('Visite non autorisée')
+            existing=IsolationVisitSupplement.objects.filter(request_id=data['request_id']).first()
+            if existing:return replay(existing)
+            if not IsolationVisitResult.objects.filter(visit=original).exists():raise Conflict('Renseignez le résultat initial avant un complément')
+            row,created=IsolationVisitSupplement.objects.get_or_create(request_id=data['request_id'],defaults={
+                'visit':original,'author_client_id':request.user.pk,'note':data['note']})
+            if not created:return replay(row)
+            AuditEvent.objects.create(action='isolation.visit.supplement_added',object_id=str(original.pk),metadata={
+                'actor_portal_id':request.user.pk,'supplement_id':row.pk})
+        return Response(supplement_output(row),status=201)
     @action(detail=True,methods=['get','post'])
     def result(self,request,pk=None):
         if request.method=='POST' and request.user.role!='client':raise PermissionDenied('Résultat à renseigner par le client de la visite')
