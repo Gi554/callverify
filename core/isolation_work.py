@@ -13,6 +13,8 @@ from rest_framework.response import Response
 from packages.access.tickets import verify
 from packages.access.isolation import verify_owner
 from .models import Prospect,AuditEvent
+from .isolation_activity import ActivityMixin,STATUSES
+from django.utils import timezone
 
 @dataclass(frozen=True)
 class Identity:
@@ -55,9 +57,10 @@ def output(row):
         'line_status':row.phone.line_status if row.phone_id else 'unknown',
         'campaign':{'id':row.campaign_id,'name':row.campaign.name},
         'assigned_setter':None if row.assigned_setter_id is None else {'id':row.assigned_setter_id,'name':row.assigned_setter_name},
-        'revision':row.assignment_revision}
+        'revision':row.assignment_revision,'commercial_status':row.commercial_status,'commercial_label':STATUSES.get(row.commercial_status,row.commercial_status),
+        'callback_at':row.callback_at,'callback_due':row.callback_at is not None and row.callback_at<=timezone.now()}
 
-class WorkViewSet(viewsets.GenericViewSet):
+class WorkViewSet(ActivityMixin,viewsets.GenericViewSet):
     authentication_classes=[WorkAuthentication]
     permission_classes=[IsAuthenticated]
     pagination_class=Pager
@@ -72,6 +75,11 @@ class WorkViewSet(viewsets.GenericViewSet):
             if owner=='unassigned':qs=qs.filter(assigned_setter_id__isnull=True)
             elif owner.isdigit():qs=qs.filter(assigned_setter_id=int(owner))
             else:raise ValidationError('Filtre de responsable invalide')
+        status=self.request.query_params.get('commercial_status','')
+        if status:
+            if status not in STATUSES:raise ValidationError('Statut commercial invalide')
+            qs=qs.filter(commercial_status=status)
+        if self.request.query_params.get('due')=='true':qs=qs.filter(callback_at__lte=timezone.now()).order_by('callback_at','pk')
         return qs
     def list(self,request):return self.get_paginated_response([output(row) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(output(self.get_object()))
@@ -109,4 +117,5 @@ class WorkViewSet(viewsets.GenericViewSet):
 @permission_classes([IsAuthenticated])
 def dashboard(request):
     qs=visible(request.user)
-    return Response({'role':request.user.role,'prospects':qs.count(),'unassigned':qs.filter(assigned_setter_id__isnull=True).count()})
+    return Response({'role':request.user.role,'prospects':qs.count(),'unassigned':qs.filter(assigned_setter_id__isnull=True).count(),
+        'callbacks_due':qs.filter(callback_at__lte=timezone.now()).count()})

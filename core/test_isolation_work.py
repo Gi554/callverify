@@ -72,7 +72,8 @@ class IsolationWorkTests(TestCase):
         self.assertEqual(self.client.get('/api/work-queue/?search=secret&owner=22').data['count'],0)
         row=self.client.get(self.base).data
         self.assertEqual(row['line_status'],'unknown')
-        self.assertEqual(set(row),{'id','name','reference','raw_phone','phone','validity','line_status','campaign','assigned_setter','revision'})
+        self.assertEqual(set(row),{'id','name','reference','raw_phone','phone','validity','line_status','campaign','assigned_setter','revision',
+            'commercial_status','commercial_label','callback_at','callback_due'})
         self.assertEqual(self.client.patch(self.base,{'name':'changed'},format='json').status_code,405)
     def test_audit_failure_rolls_back_owner(self):
         with patch('core.isolation_work.AuditEvent.objects.create',side_effect=RuntimeError('audit')):
