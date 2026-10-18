@@ -7,6 +7,7 @@ from core import settings_api
 from core.isolation_work import WorkViewSet,dashboard as workspace_dashboard
 from core.isolation_visits import IsolationVisitViewSet
 from core.isolation_client import ClientProspects,client_dashboard
+from core.isolation_statistics import statistics as isolation_statistics
 
 router = DefaultRouter()
 router.register('work-queue',WorkViewSet,basename='isolation-work')
@@ -27,3 +28,4 @@ urlpatterns += [path('api/settings/',settings_api.platform_settings),path('api/n
 urlpatterns += [path('api/webhooks/twilio/amd/',views.voice_webhook)]
 urlpatterns += [path('api/workspace-dashboard/',workspace_dashboard)]
 urlpatterns += [path('api/client-dashboard/',client_dashboard)]
+urlpatterns += [path('api/workspace-statistics/',isolation_statistics)]
