@@ -400,6 +400,14 @@ def dashboard(request):
     campaigns = Campaign.objects.all() if request.user.is_superuser else Campaign.objects.filter(owner=request.user)
     prospects = Prospect.objects.filter(campaign__in=campaigns)
     checks = LookupCheck.objects.filter(campaign__in=campaigns)
+    from .qualification import line_state
+    latest_lines = {}
+    for check in checks.filter(packages__contains='line_status').order_by('-created_at','-pk').iterator():
+        if check.phone_id not in latest_lines:
+            latest_lines[check.phone_id] = line_state(check.response, check.error) if check.status == 'completed' else 'unknown'
+    states = {key:0 for key in ('active','inactive','reachable','unreachable','unknown')}
+    for phone_id in prospects.filter(phone__isnull=False).values_list('phone_id',flat=True).distinct():
+        states[latest_lines.get(phone_id,'unknown')] += 1
     validity={row['validity']:row['count'] for row in PhoneNumber.objects.filter(prospect__campaign__in=campaigns)
         .values('validity').annotate(count=Count('id',distinct=True))}
     for row in prospects.filter(phone__isnull=True).values('validity').annotate(count=Count('id')):
@@ -407,6 +415,7 @@ def dashboard(request):
     return Response({'campaigns':campaigns.count(), 'imports':ImportBatch.objects.filter(campaign__in=campaigns).count(),
         'unique_numbers':prospects.filter(phone__isnull=False).values('phone').distinct().count(),
         'validity':[{'validity':key,'count':value} for key,value in validity.items()],
+        'line_states':[{'state':key,'count':value} for key,value in states.items()],
         'lookup':list(checks.values('status').annotate(count=Count('phone',distinct=True))),
         'voice':{
             'attempts':CallAttempt.objects.filter(call_campaign__campaign__in=campaigns).count(),
