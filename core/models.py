@@ -41,6 +41,9 @@ class ImportBatch(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Prospect(models.Model):
+    assigned_setter_id=models.PositiveBigIntegerField(null=True,blank=True,db_index=True)
+    assigned_setter_name=models.CharField(max_length=150,blank=True)
+    assignment_revision=models.PositiveIntegerField(default=0)
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='prospects')
     phone = models.ForeignKey(PhoneNumber, null=True, on_delete=models.PROTECT)
     name = models.CharField(max_length=250, blank=True)
