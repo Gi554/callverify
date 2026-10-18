@@ -1,0 +1,64 @@
+# Merge with compose.yaml. Databases and credentials are isolated by service.
+services:
+  portal-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${PORTAL_DB_NAME:-amx_portal}
+      POSTGRES_USER: ${PORTAL_DB_USER:-amx_portal}
+      POSTGRES_PASSWORD: ${PORTAL_DB_PASSWORD:?Set PORTAL_DB_PASSWORD}
+    volumes: [portal_postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}"']
+      interval: 5s
+      retries: 10
+  assurance-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${ASSURANCE_DB_NAME:-amx_assurance}
+      POSTGRES_USER: ${ASSURANCE_DB_USER:-amx_assurance}
+      POSTGRES_PASSWORD: ${ASSURANCE_DB_PASSWORD:?Set ASSURANCE_DB_PASSWORD}
+    volumes: [assurance_postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}"']
+      interval: 5s
+      retries: 10
+  portal:
+    build: .
+    # Explicit allowlist: no Twilio or Phonetico credentials in Assurance/portal.
+    environment:
+      DEBUG: ${DEBUG:-false}
+      PORTAL_SECRET_KEY: ${PORTAL_SECRET_KEY:?Set PORTAL_SECRET_KEY}
+      ASSURANCE_ACCESS_KEY: ${ASSURANCE_ACCESS_KEY:?Set ASSURANCE_ACCESS_KEY}
+      ISOLATION_ACCESS_KEY: ${ISOLATION_ACCESS_KEY:?Set ISOLATION_ACCESS_KEY}
+      PORTAL_DB_HOST: portal-db
+      PORTAL_DB_NAME: ${PORTAL_DB_NAME:-amx_portal}
+      PORTAL_DB_USER: ${PORTAL_DB_USER:-amx_portal}
+      PORTAL_DB_PASSWORD: ${PORTAL_DB_PASSWORD:?Set PORTAL_DB_PASSWORD}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:8080}
+      TRUST_PROXY: "true"
+    command: gunicorn portal.backend.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    depends_on:
+      portal-db:
+        condition: service_healthy
+  assurance:
+    build: .
+    environment:
+      DEBUG: ${DEBUG:-false}
+      ASSURANCE_SECRET_KEY: ${ASSURANCE_SECRET_KEY:?Set ASSURANCE_SECRET_KEY}
+      ASSURANCE_ACCESS_KEY: ${ASSURANCE_ACCESS_KEY:?Set ASSURANCE_ACCESS_KEY}
+      ASSURANCE_DB_HOST: assurance-db
+      ASSURANCE_DB_NAME: ${ASSURANCE_DB_NAME:-amx_assurance}
+      ASSURANCE_DB_USER: ${ASSURANCE_DB_USER:-amx_assurance}
+      ASSURANCE_DB_PASSWORD: ${ASSURANCE_DB_PASSWORD:?Set ASSURANCE_DB_PASSWORD}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+    command: gunicorn apps.assurance.backend.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    depends_on:
+      assurance-db:
+        condition: service_healthy
+  api:
+    environment:
+      ISOLATION_ACCESS_KEY: ${ISOLATION_ACCESS_KEY:?Set ISOLATION_ACCESS_KEY}
+volumes:
+  portal_postgres:
+  assurance_postgres:

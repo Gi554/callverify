@@ -38,7 +38,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_ROOT = BASE_DIR / 'private-media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':['rest_framework.authentication.SessionAuthentication'],
+REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':['core.workspace_access.WorkspaceAuthentication','rest_framework.authentication.SessionAuthentication'],
     'DEFAULT_FILTER_BACKENDS':['rest_framework.filters.SearchFilter'],
     'DEFAULT_PERMISSION_CLASSES':['core.permissions.AdminOnly'],
     'DEFAULT_PAGINATION_CLASS':'core.pagination.Pagination','PAGE_SIZE':25,
