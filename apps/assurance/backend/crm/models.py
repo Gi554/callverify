@@ -142,3 +142,10 @@ class ContactDocument(models.Model):
     sha256=models.CharField(max_length=64)
     content=models.BinaryField()
     created_at=models.DateTimeField(auto_now_add=True)
+
+class ContactPipeline(models.Model):
+    id=models.PositiveSmallIntegerField(primary_key=True,default=1,editable=False)
+    stages=models.JSONField(default=list)
+    revision=models.PositiveIntegerField(default=0)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_contact_pipeline')]
