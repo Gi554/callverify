@@ -184,10 +184,20 @@ Le setter consulte et gère uniquement les visites des prospects actuellement at
 
 Calendrier strictement interne (calendar=internal) : ni disponibilités ni synchronisation Google/Microsoft/Calendly garanties, aucun e-mail envoyé. La réservation ne change pas automatiquement le résultat commercial ou le rappel du prospect. Le portail client et les résultats des visites restent à livrer ; une visite passée reste planifiée en l’absence de résultat, jamais déclarée effectuée par déduction. Les tickets/attestations déjà délivrés peuvent subsister deux minutes après révocation. Dix tests fonctionnels, trois tests PostgreSQL de concurrence et quatre tests portail ajoutés ; suites Isolation/portail, CI Assurance, typage/build. Migration 0009 appliquée localement. Revue esthétique différée.
 
+## Fonctionnalité 22 — portail client Isolation et résultats des visites
+
+Le compte client Isolation entre dans son espace depuis /crm avec sa session centrale. Il consulte uniquement les visites portant son identifiant client et les dossiers liés à ces visites, avec recherche/pagination et une liste explicite de coordonnées. Le nom et l’identifiant du setter d’origine restent visibles sur la visite, conformément à la confidentialité propre à Isolation. Les visites et dossiers d’un autre client restent inaccessibles, même par URL directe ; aucun accès aux imports, Lookup, exports administratifs, file setter ou journal interne n’est ouvert au client.
+
+Le tableau de bord affiche les visites à venir, résultats enregistrés et résultats encore attendus après la fin d’une visite non annulée. Le filtre « résultats à renseigner » et le compteur persistent après consultation. Le client concerné renseigne Oui/Non, un résultat cohérent (effectuée, suivi nécessaire, intéressé, non intéressé, non effectuée) et un commentaire obligatoire. Une absence de réponse reste un résultat manquant, jamais un Non déduit automatiquement. L’administration et le setter actuellement responsable du prospect peuvent consulter le résultat, mais ne le remplissent pas à la place du client.
+
+Le premier résultat est conservé avec identifiant client et date ; une répétition identique est idempotente, une réponse différente ne remplace pas l’historique. Une révision de visite et un verrou transactionnel empêchent les réponses concurrentes de s’écraser. Une visite future, annulée ou modifiée entre-temps ne peut pas recevoir un résultat ; une visite déjà renseignée ne peut plus être reportée/annulée pour effacer son issue. Audit, résultat et incrément de version sont atomiques. Un transfert du prospect change le périmètre setter sans réécrire le setter d’origine ni retirer au client son résultat.
+
+Limites : calendrier externe, statistiques détaillées par setter, partage de notes commerciales/historique interne, compléments/corrections des résultats et suivi automatique restent à livrer. Les dossiers liés à des visites annulées restent consultables dans l’historique client ; les durées de conservation doivent être cadrées avant production. Aucun résultat de visite ne modifie les états techniques des numéros ou ne crée automatiquement un contrat. Dix tests fonctionnels et deux tests PostgreSQL ajoutés ; 107 tests Isolation locaux dont huit réservés à PostgreSQL, typage/build et CI complète. Migration 0010 appliquée localement. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
-2. Portail client, résultats des visites Isolation et affectations en masse (file setter, qualification, notes, rappel courant et planification interne des visites livrés).
+2. Statistiques et suivi métier Isolation, partage autorisé des interactions et affectations en masse (portail client, résultats, file setter, qualification, notes, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).

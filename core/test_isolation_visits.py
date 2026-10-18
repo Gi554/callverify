@@ -88,7 +88,8 @@ class IsolationVisitTests(TestCase):
         self.assertEqual(self.client.get(f'{self.url}{row["id"]}/').status_code,404)
         self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(21,'assurance','setter'))
         self.assertEqual(self.client.get(self.url).status_code,401)
-        self.auth(72,'client');self.assertEqual(self.client.get(self.url).status_code,403)
+        self.auth(72,'client');self.assertEqual(self.client.get(self.url).data['count'],1)
+        self.auth(73,'client');self.assertEqual(self.client.get(self.url).data['count'],0)
     def test_audit_failure_rolls_back_visit_and_prospect_revision(self):
         with patch('core.isolation_visits.AuditEvent.objects.create',side_effect=RuntimeError('audit')):
             with self.assertRaises(RuntimeError):self.book()

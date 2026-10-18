@@ -189,3 +189,11 @@ class IsolationVisit(models.Model):
 class IsolationVisitCalendar(models.Model):
     client_id=models.PositiveBigIntegerField(primary_key=True)
     version=models.PositiveIntegerField(default=0)
+
+class IsolationVisitResult(models.Model):
+    visit=models.OneToOneField(IsolationVisit,on_delete=models.PROTECT,related_name='result')
+    author_client_id=models.PositiveBigIntegerField()
+    performed=models.BooleanField()
+    outcome=models.CharField(max_length=30)
+    note=models.TextField()
+    created_at=models.DateTimeField(auto_now_add=True)

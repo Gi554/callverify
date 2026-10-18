@@ -13,8 +13,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from packages.access.isolation_visits import verify_booking
-from .models import Prospect,IsolationVisit,IsolationVisitCalendar,AuditEvent
-from .isolation_work import WorkAuthentication,Pager,Conflict,visible
+from .models import Prospect,IsolationVisit,IsolationVisitCalendar,IsolationVisitResult,AuditEvent
+from .isolation_work import VisitAuthentication,Pager,Conflict,visible
+from .isolation_client import ResultMixin,result_output
 
 class SlotInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -70,21 +71,26 @@ def available(prospect,client,data,exclude=None):
     if rows.exists():raise Conflict('Créneau déjà réservé pour le client ou le prospect')
 
 def output(row):
+    try:result=result_output(row.result)
+    except IsolationVisitResult.DoesNotExist:result=None
     return {'id':row.pk,'prospect':{'id':row.prospect_id,'name':row.prospect.name,'phone':row.prospect.raw_phone},
         'client':{'id':row.client_id,'name':row.client_name},'original_setter':{'id':row.setter_id,'name':row.setter_name},
-        'starts_at':row.starts_at,'ends_at':row.ends_at,'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal'}
+        'starts_at':row.starts_at,'ends_at':row.ends_at,'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal',
+        'result':result,'result_due':row.status=='scheduled' and row.ends_at<=timezone.now() and result is None}
 
 def snapshot(row):return {key:(getattr(row,key).isoformat() if key in ('starts_at','ends_at') else getattr(row,key)) for key in ('starts_at','ends_at','timezone','status','revision')}
 
-class IsolationVisitViewSet(viewsets.GenericViewSet):
-    authentication_classes=[WorkAuthentication]
+class IsolationVisitViewSet(ResultMixin,viewsets.GenericViewSet):
+    authentication_classes=[VisitAuthentication]
     permission_classes=[IsAuthenticated]
     serializer_class=BookingInput
     pagination_class=Pager
     http_method_names=['get','post','head','options']
     def get_queryset(self):
-        qs=IsolationVisit.objects.select_related('prospect').order_by('starts_at','pk')
+        qs=IsolationVisit.objects.select_related('prospect','result').order_by('starts_at','pk')
         if self.request.user.role=='setter':qs=qs.filter(prospect__assigned_setter_id=self.request.user.pk)
+        if self.request.user.role=='client':qs=qs.filter(client_id=self.request.user.pk)
+        if self.request.query_params.get('result_due')=='true':qs=qs.filter(status='scheduled',ends_at__lte=timezone.now(),result__isnull=True)
         prospect=self.request.query_params.get('prospect_id','')
         if prospect:
             if not prospect.isdigit():raise ValidationError('Prospect invalide')
@@ -93,6 +99,7 @@ class IsolationVisitViewSet(viewsets.GenericViewSet):
     def list(self,request):return self.get_paginated_response([output(row) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(output(self.get_object()))
     def create(self,request):
+        if request.user.role=='client':raise PermissionDenied('Réservation réservée aux setters et administrateurs')
         serializer=BookingInput(data=request.data);serializer.is_valid(raise_exception=True);data=serializer.validated_data
         prospect=get_object_or_404(visible(request.user),pk=data['prospect_id'])
         claims=proof(data,request.user,prospect)
@@ -123,13 +130,14 @@ class IsolationVisitViewSet(viewsets.GenericViewSet):
                 'prospect_id':prospect.pk,'setter_id':row.setter_id,'client_id':row.client_id,'after':snapshot(row)})
         return Response(output(row),status=201)
     def modify(self,request,cancel=False):
+        if request.user.role=='client':raise PermissionDenied('Modification réservée aux setters et administrateurs')
         original=self.get_object();serializer=(CancelInput if cancel else RescheduleInput)(data=request.data)
         serializer.is_valid(raise_exception=True);data=serializer.validated_data
         with transaction.atomic():
             prospect=lock_prospect(original.prospect,request.user)
             calendar(original.client_id)
             row=IsolationVisit.objects.get(pk=original.pk)
-            if row.revision!=data['revision'] or row.status!='scheduled' or row.starts_at<=timezone.now():raise Conflict('Visite modifiée, annulée ou déjà commencée')
+            if row.revision!=data['revision'] or row.status!='scheduled' or row.starts_at<=timezone.now() or IsolationVisitResult.objects.filter(visit=row).exists():raise Conflict('Visite modifiée, annulée, renseignée ou déjà commencée')
             before=snapshot(row)
             if cancel:row.status='cancelled'
             else:
