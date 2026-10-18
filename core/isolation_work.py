@@ -23,6 +23,7 @@ class Identity:
     is_authenticated:bool=True
 
 class WorkAuthentication(BaseAuthentication):
+    roles=('administrator','setter')
     def authenticate_header(self,request):return 'Bearer'
     def authenticate(self,request):
         header=get_authorization_header(request).split()
@@ -30,8 +31,11 @@ class WorkAuthentication(BaseAuthentication):
         if len(header)!=2 or header[0].lower()!=b'bearer':raise AuthenticationFailed('Jeton Isolation requis')
         try:claims=verify(header[1].decode(),'isolation')
         except (signing.BadSignature,UnicodeDecodeError,ValueError,TypeError):raise AuthenticationFailed('Accès Isolation invalide ou expiré')
-        if claims['role'] not in ('administrator','setter'):raise PermissionDenied('File réservée aux administrateurs et setters Isolation')
+        if claims['role'] not in self.roles:raise PermissionDenied('Rôle non autorisé pour cette ressource Isolation')
         return Identity(int(claims['sub']),claims['role']),claims
+
+class VisitAuthentication(WorkAuthentication):
+    roles=('administrator','setter','client')
 
 class Conflict(APIException):
     status_code=409
