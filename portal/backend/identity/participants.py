@@ -33,3 +33,23 @@ def participants(request):
     AccessAudit.objects.create(user=request.user,action='assignment.attested',workspace='assurance',
         metadata={'setter_id':setter.user_id,'advisor_id':advisor.user_id})
     return Response({'proof':issue_assignment(request.user.pk,setter.user_id,setter.user.username,advisor.user_id,advisor.user.username),'expires_in':120})
+
+@api_view(['POST'])
+def booking_proof(request):
+    from rest_framework.exceptions import PermissionDenied
+    from packages.access.assignments import issue_booking
+    actor=Membership.objects.filter(user=request.user,workspace='assurance',active=True).first()
+    if not actor or actor.role not in ('setter','administrator'):
+        raise PermissionDenied('Réservation non autorisée')
+    submitted=request.data.copy()
+    if actor.role=='setter' and 'setter_id' not in submitted:submitted['setter_id']=request.user.pk
+    data=PairInput(data=submitted);data.is_valid(raise_exception=True)
+    values=data.validated_data
+    if actor.role=='setter' and values['setter_id']!=request.user.pk:
+        raise PermissionDenied('Réservation limitée à vos propres attributions')
+    active=Membership.objects.filter(workspace='assurance',active=True,user__is_active=True).select_related('user')
+    pair={role:active.filter(role=role,user_id=values[role+'_id']).first() for role in ('setter','advisor')}
+    if not all(pair.values()):raise ValidationError('Comptes indisponibles pour une réservation Assurance')
+    setter,advisor=pair['setter'],pair['advisor']
+    AccessAudit.objects.create(user=request.user,action='booking.attested',workspace='assurance',metadata=values)
+    return Response({'proof':issue_booking(request.user.pk,setter.user_id,setter.user.username,advisor.user_id,advisor.user.username),'expires_in':120})

@@ -48,13 +48,25 @@ Les noms stockés sont des instantanés actualisés à la réactivation. Une ass
 
 Vérifications : tests du portail (annuaire, rôles, révocation, CSRF et attestation), tests Assurance (périmètres, multiples conseillers, doublons, historique, réactivation et rollback), plus création et modification concurrentes sur PostgreSQL dans la CI. TypeScript/build et migration locale ; aucune retouche esthétique ni création de comptes de démonstration pour ce lot.
 
+## Fonctionnalité 6 — rendez-vous Assurance internes
+
+Réservation depuis une fiche prise en charge, avec une attribution active et une confirmation centrale récente des rôles. Un setter réserve pour ses propres attributions ; un administrateur peut réserver pour un setter attribué, en conservant séparément le responsable initial et l’auteur réel de l’opération. Un identifiant de requête rend les nouvelles tentatives de la même réservation idempotentes. Chaque rendez-vous conserve prospect, attribution, conseiller, setter responsable, auteur interne, créneau UTC, fuseau IANA, statut et révision.
+
+Un verrou transactionnel par conseiller et un verrou sur la fiche prospect empêchent les chevauchements internes, y compris entre setters différents ou conseillers différents pour le même prospect. Deux créneaux adjacents sont acceptés. Les dates exigent un décalage explicite cohérent avec le fuseau IANA ; les heures locales inexistantes au changement d’heure sont refusées. Le report et l’annulation exigent un motif interne et une révision courante. Les créneaux précédents, états et auteurs restent dans le journal administrateur. Une attribution suspendue bloque réservation et report, mais autorise encore l’annulation d’un rendez-vous existant.
+
+Liste paginée filtrée par prospect, période et statut : l’administrateur voit tous les rendez-vous, le setter uniquement les siens, le conseiller uniquement ceux qui le concernent. Le conseiller accède aux dossiers liés à ses rendez-vous sans recevoir attribution, identité de setter, auteur, motif libre ou historique interne. Un rendez-vous annulé reste dans son historique et maintient le lien au dossier ; la durée de conservation et la visibilité post-contrat restent à valider avec le client. Les anciennes affectations explicites des dossiers Assurance restent reconnues pendant la transition.
+
+Limite explicite : calendrier interne seulement. Google/Microsoft/Calendly ne sont ni consultés ni synchronisés et aucune disponibilité externe n’est garantie. Les réponses portent calendar=internal. Les comptes rendus Oui/Non, incidents, tâches et notifications seront livrés ensuite ; un rendez-vous passé ne devient jamais automatiquement effectué ou non effectué. Les noms des participants sont conservés à la réservation et l’attestation centrale déjà émise peut rester valable deux minutes après révocation.
+
+Vérifications : tests du portail et Assurance pour les permissions, fuseaux, confidentialité, reports, annulations, idempotence et rollback ; CI PostgreSQL pour les courses réservation/réservation, réservation/report, reprise d’une même requête et conflits sur un prospect entre conseillers. TypeScript/build et migrations. La revue des interfaces reste reportée à la fin ; les commandes du lot sont utilisables sans identifiants d’agenda externe.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
 2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
-5. Agendas et rendez-vous, puis comptes rendus, incidents, tâches et alertes persistantes.
+5. Connecteurs agendas externes, comptes rendus, incidents, tâches et alertes persistantes (rendez-vous internes livrés).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.

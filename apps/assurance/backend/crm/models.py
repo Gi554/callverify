@@ -48,3 +48,29 @@ class BusinessAudit(models.Model):
     object_id=models.PositiveBigIntegerField()
     metadata=models.JSONField(default=dict)
     created_at=models.DateTimeField(auto_now_add=True)
+
+class AdvisorSchedule(models.Model):
+    # Serializes slot changes for the same advisor across all of their setters.
+    advisor_id=models.PositiveBigIntegerField(primary_key=True)
+    version=models.PositiveIntegerField(default=0)
+
+class Appointment(models.Model):
+    request_id=models.UUIDField(unique=True)
+    fingerprint=models.CharField(max_length=64)
+    contact=models.ForeignKey(Contact,on_delete=models.PROTECT,related_name='appointments')
+    assignment=models.ForeignKey(AdvisorAssignment,on_delete=models.PROTECT,related_name='appointments')
+    setter_id=models.PositiveBigIntegerField()
+    setter_name=models.CharField(max_length=150)
+    advisor_id=models.PositiveBigIntegerField(db_index=True)
+    advisor_name=models.CharField(max_length=150)
+    booked_by_id=models.PositiveBigIntegerField()
+    starts_at=models.DateTimeField()
+    ends_at=models.DateTimeField()
+    timezone=models.CharField(max_length=100)
+    status=models.CharField(max_length=20,default='scheduled',choices=[('scheduled','Planifié'),('cancelled','Annulé')])
+    revision=models.PositiveIntegerField(default=0)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=models.Q(ends_at__gt=models.F('starts_at')),name='appointment_positive_interval')]
+        indexes=[models.Index(fields=['advisor_id','status','starts_at']),models.Index(fields=['setter_id','starts_at'])]

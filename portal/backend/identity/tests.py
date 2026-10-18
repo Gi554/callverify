@@ -151,3 +151,44 @@ class ParticipantTests(TestCase):
     def test_attestation_session_requires_csrf(self):
         client=APIClient(enforce_csrf_checks=True);client.force_login(self.actor)
         self.assertEqual(client.post(self.url,{'setter_id':self.setter.pk,'advisor_id':self.advisor.pk},format='json').status_code,403)
+
+@override_settings(DEBUG=True,PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+@skipUnless(settings.ROOT_URLCONF=='portal.backend.urls','Service portail indépendant')
+class BookingProofTests(TestCase):
+    def setUp(self):
+        self.setter=get_user_model().objects.create_user('booking-setter')
+        self.advisor=get_user_model().objects.create_user('booking-advisor')
+        self.manager=get_user_model().objects.create_user('booking-manager')
+        Membership.objects.create(user=self.setter,workspace='assurance',role='setter')
+        self.advisor_access=Membership.objects.create(user=self.advisor,workspace='assurance',role='advisor')
+        Membership.objects.create(user=self.manager,workspace='assurance',role='administrator')
+        self.client=APIClient();self.client.force_authenticate(self.setter)
+        self.url='/api/portal/assurance/booking-proof/'
+    def test_setter_can_attest_only_self_without_disclosing_other_setters(self):
+        from packages.access.assignments import verify_booking
+        response=self.client.post(self.url,{'advisor_id':self.advisor.pk},format='json')
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(verify_booking(response.data['proof'],self.setter.pk)['setter']['id'],self.setter.pk)
+        response=self.client.post(self.url,{'advisor_id':self.advisor.pk,'setter_id':self.manager.pk},format='json')
+        self.assertEqual(response.status_code,403)
+    def test_admin_can_attest_on_behalf_and_proof_is_not_an_assignment_proof(self):
+        from packages.access.assignments import verify_booking,verify_assignment
+        self.client.force_authenticate(self.manager)
+        response=self.client.post(self.url,{'setter_id':self.setter.pk,'advisor_id':self.advisor.pk},format='json')
+        self.assertEqual(response.status_code,200,response.data)
+        proof=response.data['proof'];self.assertEqual(verify_booking(proof,self.manager.pk)['advisor']['id'],self.advisor.pk)
+        with self.assertRaises(signing.BadSignature):verify_assignment(proof,self.manager.pk)
+    def test_advisor_and_other_workspace_roles_cannot_attest(self):
+        self.client.force_authenticate(self.advisor)
+        self.assertEqual(self.client.post(self.url,{'advisor_id':self.advisor.pk},format='json').status_code,403)
+        Membership.objects.filter(user=self.setter).update(workspace='isolation')
+        self.client.force_authenticate(self.setter)
+        self.assertEqual(self.client.post(self.url,{'advisor_id':self.advisor.pk},format='json').status_code,403)
+    def test_revoked_or_wrong_role_advisor_is_refused_before_booking(self):
+        self.advisor_access.active=False;self.advisor_access.save()
+        self.assertEqual(self.client.post(self.url,{'advisor_id':self.advisor.pk},format='json').status_code,400)
+        self.advisor_access.active=True;self.advisor_access.role='setter';self.advisor_access.save()
+        self.assertEqual(self.client.post(self.url,{'advisor_id':self.advisor.pk},format='json').status_code,400)
+    def test_booking_proof_requires_session_csrf(self):
+        client=APIClient(enforce_csrf_checks=True);client.force_login(self.setter)
+        self.assertEqual(client.post(self.url,{'advisor_id':self.advisor.pk},format='json').status_code,403)
