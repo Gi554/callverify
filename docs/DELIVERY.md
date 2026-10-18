@@ -194,6 +194,14 @@ Le premier résultat est conservé avec identifiant client et date ; une répét
 
 Limites : calendrier externe, statistiques détaillées par setter, partage de notes commerciales/historique interne, compléments/corrections des résultats et suivi automatique restent à livrer. Les dossiers liés à des visites annulées restent consultables dans l’historique client ; les durées de conservation doivent être cadrées avant production. Aucun résultat de visite ne modifie les états techniques des numéros ou ne crée automatiquement un contrat. Dix tests fonctionnels et deux tests PostgreSQL ajoutés ; 107 tests Isolation locaux dont huit réservés à PostgreSQL, typage/build et CI complète. Migration 0010 appliquée localement. Revue esthétique différée.
 
+## Fonctionnalité 23 — statistiques des visites Isolation
+
+Statistiques consultables dans les espaces administrateur, setter et client Isolation, sur une période de 366 jours maximum selon le début actuel des visites en UTC. Compteurs : visites réservées, prospects distincts liés à ces visites, annulations, visites à venir, résultats renseignés, Oui, Non, résultats manquants, intéressés, non intéressés et suivi nécessaire. Le taux effectué est Oui / résultats renseignés ; le taux d’intérêt est intéressés / visites effectuées. Sans dénominateur les taux restent non calculables ; un résultat manquant ne devient pas Non.
+
+L’administration dispose des totaux et d’une ventilation paginée par setter d’origine. Le client voit uniquement ses visites, totaux et ventilation ; les noms de setters sont tirés de ses seules visites autorisées. Le setter reçoit uniquement les totaux de ses réservations dont il conserve actuellement le prospect : un transfert retire les visites de son périmètre statistique, sans réécrire leur origine dans les statistiques administrateur/client. Cette limite protège les dossiers retirés ; ces chiffres ne sont pas un classement historique exhaustif du setter. Les noms sont les derniers instantanés de réservation du périmètre autorisé. Les prospects distincts par groupe ne s’additionnent pas nécessairement au total global.
+
+Les filtres de permissions s’appliquent avant chaque agrégat et avant la recherche du nom ; aucun téléphone, note, résultat libre ou dossier individuel n’est exposé dans les statistiques. Réponses non mises en cache. Un report déplace une visite entre périodes et les résultats reflètent l’état actuel, pas une photographie historique. Appels Phonetico, ventes, contrats, contacts sans visite, exports et statistiques d’activité commerciale restent hors de ce lot. Sept tests ciblés, suite Isolation et CI PostgreSQL, typage et build ; aucune migration nécessaire. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
