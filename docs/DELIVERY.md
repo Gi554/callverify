@@ -154,10 +154,20 @@ La révision attendue et une écriture conditionnelle protègent transferts/clô
 
 Huit tests métier, quatre tests du portail et deux tests de concurrence PostgreSQL ajoutés ; suites Assurance/portail, typage et compilation. Aucune migration nécessaire, revue esthétique différée.
 
+## Fonctionnalité 19 — affectations et file de prospects Isolation
+
+Depuis le portail /crm, l’administrateur Isolation consulte les prospects existants de toutes les campagnes, recherche par nom/téléphone/référence et filtre par responsable ou absence d’affectation. Il attribue un prospect à un setter, le transfère ou retire son affectation avec motif obligatoire. L’annuaire central est paginé et limité aux setters Isolation actifs. Une attestation signée, liée à l’administrateur, au prospect et au setter cible, expire sous deux minutes. Les noms sont des instantanés de l’attestation ; la révocation centrale empêche les nouvelles attestations/tickets, mais ceux déjà émis peuvent rester valables deux minutes.
+
+Le setter arrive directement dans sa file, paginée et recherchable, et ne consulte que ses prospects actuellement attribués, y compris par accès direct à l’API. Un transfert ou retrait coupe son accès au prochain chargement. La fiche de consultation expose une liste de champs explicite : coordonnées disponibles, campagne, validité de format, état technique déjà stocké et responsable. Aucun appel, Lookup ni normalisation supplémentaire n’est déclenché. Aucune identité locale d’administrateur n’est créée pour les setters : les identifiants centraux restent distincts des comptes historiques.
+
+Les nouvelles routes de travail ont leur propre authentification par ticket Isolation et leurs contrôles serveur. Les anciens endpoints d’administration, imports, Lookup, appels et exports restent interdits aux setters. Le rôle client n’accède pas encore à cette file. Révision attendue et mise à jour conditionnelle empêchent deux affectations concurrentes de s’écraser ; audit et affectation sont atomiques. L’administration consulte l’historique avec acteur central, valeurs avant/après et motif. Aucune modification des imports, doublons techniques ou résultats Lookup existants.
+
+Limites : affectations unitaires, consultation uniquement côté setter. Qualification commerciale, notes, rappels, appels Phonetico, visites, portail client et affectations en masse restent à livrer. L’interface historique conserve sa session distincte pour l’administration des imports/Twilio. Six tests métier et un test de concurrence PostgreSQL ajoutés, quatre tests du portail, suites Isolation/portail et CI Assurance, TypeScript/build. Migration Isolation 0007 appliquée localement ; CI PostgreSQL étendue à la concurrence Isolation. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
-2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
+2. Qualification, notes, rappels et visites Isolation, portail client et affectations en masse (affectations unitaires et file de consultation setter livrées).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).

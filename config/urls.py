@@ -4,8 +4,10 @@ from rest_framework.routers import DefaultRouter
 from core import views
 from core import recovery
 from core import settings_api
+from core.isolation_work import WorkViewSet,dashboard as workspace_dashboard
 
 router = DefaultRouter()
+router.register('work-queue',WorkViewSet,basename='isolation-work')
 for prefix, view, name in [('campaigns',views.CampaignViewSet,'campaign'),('imports',views.ImportViewSet,'import'),
     ('prospects',views.ProspectViewSet,'prospect'),('lookups',views.LookupViewSet,'lookup'),
     ('exports',views.ExportViewSet,'export'),('consents',views.ConsentViewSet,'consent'),
@@ -19,3 +21,4 @@ urlpatterns = [path('api/',include(router.urls)), path('api/auth/csrf/',views.cs
 urlpatterns += [path('api/auth/reset/request/',recovery.reset_request),path('api/auth/reset/confirm/',recovery.reset_confirm)]
 urlpatterns += [path('api/settings/',settings_api.platform_settings),path('api/notifications/',settings_api.notifications),path('api/health/',settings_api.health)]
 urlpatterns += [path('api/webhooks/twilio/amd/',views.voice_webhook)]
+urlpatterns += [path('api/workspace-dashboard/',workspace_dashboard)]
