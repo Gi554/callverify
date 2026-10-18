@@ -10,7 +10,7 @@ Une fonctionnalité est terminée après vérification, commit, push, PR et fusi
 
 Livrable du présent lot : portail de développement /crm, connexion et déconnexion centrales, droits explicites par espace, entrée directe pour un seul espace et sélection pour les comptes multi-espaces. Les tickets sont signés, limités à deux minutes et propres à chaque audience. Les services Assurance et Isolation possèdent des bases séparées et vérifient leurs droits côté API. Assurance ne propose aucune route Twilio.
 
-Les quelques routes de lecture Assurance servent à vérifier le périmètre conseiller ; elles excluent les identifiants internes du setter. La création et l'édition de dossiers par les utilisateurs restent bloquées jusqu'à leur propre fonctionnalité. L’administration des accès initiale était assurée par des commandes serveur ; voir la fonctionnalité 2 pour l’interface livrée ensuite.
+Les quelques routes de lecture Assurance servent à vérifier le périmètre conseiller ; elles excluent les identifiants internes du setter. Le socle initial était en lecture seule ; la fonctionnalité 3 ajoute l’import. L’édition reste bloquée jusqu’au verrouillage. L’administration des accès initiale était assurée par des commandes serveur ; voir la fonctionnalité 2 pour l’interface livrée ensuite.
 
 Limites de ce lot : l'interface CallVerify historique conserve sa session propre ; la navigation commune vers ses parcours complets n'est pas encore migrée. Les rôles setter/client Isolation n'ont pas encore de routes métier. MFA, invitations et récupération de mot de passe centrales restent à intégrer avant production. Les tickets émis avant une révocation peuvent rester valides jusqu'à deux minutes.
 
@@ -20,11 +20,21 @@ Le portail /crm propose aux administrateurs une liste paginée et une recherche 
 
 Vérification : 15 tests du portail, contrôle TypeScript, build Vite et lecture de l’écran local. Les invitations par e-mail, la récupération, le MFA et l’intégration complète de la session Isolation restent à réaliser. Les tickets déjà délivrés expirent sous deux minutes.
 
+## Fonctionnalité 3 — import brut et consultation des contacts Assurance
+
+Depuis /crm → Assurance, l’administrateur importe un CSV (UTF-8 ou Windows-1252 ; séparateur détecté virgule, point-virgule ou tabulation) ou un XLSX (première feuille). L’aperçu et l’option en-tête précèdent une correspondance explicite téléphone/nom/e-mail. Aucun numéro n’est normalisé, dédoublonné ni envoyé à Twilio. Les textes sont conservés tels que lus, y compris un format de téléphone inhabituel ou un e-mail non validé ; la mise en forme Excel ne constitue pas une valeur et n’est pas reprise. Les formules sont conservées comme texte, jamais calculées.
+
+Limites : 5 Mo, 10 000 lignes, 100 colonnes, 10 000 caractères par cellule. Le téléphone doit être présent ; nom/téléphone limités à 250 caractères et e-mail à 254. Les lignes entièrement vides sont ignorées, les autres rejets indiquent le numéro de ligne physique et le motif. Rapport et historique persistants, réservés aux administrateurs ; rejets téléchargeables en CSV. Colonnes sources et correspondance conservées en interne. Une confirmation rejouée avec le même identifiant et contenu n’insère pas de doublons ; un nouvel import volontaire conserve les doublons métier.
+
+Liste commune paginée et recherche pour les setters, périmètre affecté pour les conseillers, fiche en lecture seule et aucune métadonnée du setter dans les réponses publiques. Les contacts importés ne sont pas affectés, initialement invisibles aux conseillers. Vérification : 18 tests Assurance (dont 5 000 lignes et rollback), TypeScript/build, parcours réel sur fichier fictif et téléchargement du rapport. Deux contacts de démonstration sont présents dans la base locale Assurance ; aucune donnée Isolation modifiée.
+
+La fiche métier complète (champs configurables, notes, interactions, documents), la modification sous verrou et l’affectation des conseillers restent à réaliser.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
 2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
-3. Dossiers Assurance et import brut, verrouillage temporaire, affectations multi-conseillers.
+3. Fiches métier Assurance complètes, verrouillage temporaire et affectations multi-conseillers (import brut livré).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Agendas et rendez-vous, puis comptes rendus, incidents, tâches et alertes persistantes.
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
