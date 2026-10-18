@@ -1,6 +1,7 @@
 from rest_framework import serializers,viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from .visibility import visible_contacts
 from .models import Contact
 from .leases import ContactLeaseMixin
 from django.db.models import Q
@@ -21,15 +22,13 @@ class ContactViewSet(ContactLeaseMixin,viewsets.ReadOnlyModelViewSet):
     serializer_class=PublicContactSerializer
     http_method_names=['get','head','options','post','patch','delete']
     def get_queryset(self):
-        qs=Contact.objects.order_by('-pk')
-        if self.request.user.role=='advisor':qs=qs.filter(assigned_advisor_id=self.request.user.pk)
+        qs=visible_contacts(self.request.user).order_by('-pk')
         term=self.request.query_params.get('search','').strip()[:250]
         if term:qs=qs.filter(Q(name__icontains=term)|Q(phone__icontains=term)|Q(email__icontains=term))
         return qs
 
 @api_view(['GET'])
 def dashboard(request):
-    qs=Contact.objects.all()
-    if request.user.role=='advisor':qs=qs.filter(assigned_advisor_id=request.user.pk)
+    qs=visible_contacts(request.user)
     return Response({'workspace':'assurance','role':request.user.role,'contacts':qs.count(),
-        'stage':'contacts_import','available':['contacts','imports','locking','assignments'],'pending':['phonetico','appointments','tasks','calendars']})
+        'stage':'contacts_import','available':['contacts','imports','locking','assignments','appointments'],'pending':['phonetico','tasks','calendars']})

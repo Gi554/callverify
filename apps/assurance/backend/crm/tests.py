@@ -378,3 +378,199 @@ class ConcurrentAssignmentTests(TransactionTestCase):
         self.assertEqual(sorted(results),[200,409])
         row.refresh_from_db();self.assertEqual(row.revision,1)
         self.assertEqual(BusinessAudit.objects.filter(action='assignment.updated').count(),1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class AppointmentTests(TestCase):
+    def setUp(self):
+        from .models import AdvisorAssignment
+        from django.utils import timezone
+        from datetime import timedelta
+        self.client=APIClient();self.authorize(21)
+        self.contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21)
+        self.assignment=AdvisorAssignment.objects.create(setter_id=21,setter_name='SECRET SETTER',advisor_id=31,advisor_name='Advisor')
+        self.token=self.client.post(f'/api/assurance/contacts/{self.contact.pk}/lease/',{},format='json').data['token']
+        self.start=(timezone.now()+timedelta(days=10)).replace(hour=10,minute=0,second=0,microsecond=0)
+        self.end=self.start+timedelta(minutes=30)
+        self.url='/api/assurance/appointments/'
+    def authorize(self,subject,role='setter'):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(subject,'assurance',role))
+    def proof(self,actor=21,setter=21,advisor=31):
+        from packages.access.assignments import issue_booking
+        return issue_booking(actor,setter,'SECRET SETTER',advisor,'Advisor')
+    def payload(self,**changes):
+        from uuid import uuid4
+        return {'contact_id':self.contact.pk,'assignment_id':self.assignment.pk,'request_id':str(uuid4()),'token':self.token,'proof':self.proof(),
+                'starts_at':self.start.isoformat(),'ends_at':self.end.isoformat(),'timezone':'UTC',**changes}
+    def book(self,**changes):return self.client.post(self.url,self.payload(**changes),format='json')
+    def reschedule_payload(self,**changes):
+        from datetime import timedelta
+        return {'revision':0,'proof':self.proof(),'starts_at':(self.start+timedelta(days=1)).isoformat(),
+                'ends_at':(self.end+timedelta(days=1)).isoformat(),'timezone':'UTC','reason':'Internal SECRET SETTER note',**changes}
+    def test_booking_is_idempotent_and_keeps_one_responsible_setter(self):
+        from .models import Appointment,BusinessAudit
+        data=self.payload();first=self.client.post(self.url,data,format='json');retry=self.client.post(self.url,data,format='json')
+        self.assertEqual(first.status_code,201,first.data);self.assertEqual(retry.status_code,200,retry.data)
+        self.assertEqual(first.data['id'],retry.data['id']);self.assertEqual(Appointment.objects.count(),1)
+        row=Appointment.objects.get();self.assertEqual(row.setter_id,21);self.assertEqual(row.booked_by_id,21)
+        self.assertEqual(BusinessAudit.objects.filter(action='appointment.booked').count(),1)
+    def test_booking_requires_owned_live_lease_active_assignment_and_correct_proof(self):
+        from uuid import uuid4
+        from packages.access.assignments import issue_assignment
+        for changes in ({'token':str(uuid4())},{'proof':self.proof(actor=99)},{'proof':issue_assignment(21,21,'Setter',31,'Advisor')}):
+            self.assertIn(self.book(**changes).status_code,(400,409))
+        self.assignment.active=False;self.assignment.save()
+        self.assertEqual(self.book().status_code,409)
+    def test_other_setter_cannot_use_someone_elses_assignment(self):
+        self.authorize(22)
+        self.assertEqual(self.book(proof=self.proof(actor=22)).status_code,403)
+    def test_invalid_intervals_naive_times_and_wrong_dst_offsets_are_rejected(self):
+        for changes in ({'ends_at':self.start.isoformat()},{'starts_at':self.start.replace(tzinfo=None).isoformat()},
+                        {'timezone':'Unknown/Zone'},{'starts_at':'2027-03-14T02:30:00-05:00','ends_at':'2027-03-14T04:00:00-04:00','timezone':'America/Toronto'}):
+            self.assertEqual(self.book(**changes).status_code,400,changes)
+    def test_overlap_is_blocked_but_adjacent_slot_is_allowed(self):
+        self.assertEqual(self.book().status_code,201)
+        self.assertEqual(self.book().status_code,409)
+        from datetime import timedelta
+        self.assertEqual(self.book(starts_at=self.end.isoformat(),ends_at=(self.end+timedelta(minutes=30)).isoformat()).status_code,201)
+    def test_same_prospect_cannot_overlap_with_another_advisor(self):
+        from .models import AdvisorAssignment
+        self.book()
+        second=AdvisorAssignment.objects.create(setter_id=21,setter_name='Setter',advisor_id=32,advisor_name='Other')
+        self.assertEqual(self.book(assignment_id=second.pk,proof=self.proof(advisor=32)).status_code,409)
+    def test_reschedule_preserves_history_author_and_rejects_stale_revision(self):
+        from .models import Appointment,BusinessAudit
+        row=self.book().data;url=self.url+str(row['id'])+'/reschedule/'
+        response=self.client.post(url,self.reschedule_payload(),format='json')
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(self.client.post(url,self.reschedule_payload(),format='json').status_code,409)
+        event=BusinessAudit.objects.get(action='appointment.rescheduled')
+        self.assertEqual(event.metadata['before']['starts_at'],self.start.isoformat())
+        self.assertEqual(event.metadata['reason'],'Internal SECRET SETTER note')
+        appointment=Appointment.objects.get();self.assertEqual(appointment.setter_id,21);self.assertEqual(appointment.booked_by_id,21)
+    def test_cancel_frees_slot_even_if_assignment_has_been_suspended(self):
+        row=self.book().data;self.assignment.active=False;self.assignment.save()
+        url=self.url+str(row['id'])+'/cancel/'
+        self.assertEqual(self.client.post(url,{'revision':0,'reason':'Cancelled'},format='json').status_code,200)
+        self.assignment.active=True;self.assignment.save()
+        self.assertEqual(self.book().status_code,201)
+        self.assertEqual(self.client.get(self.url+'?status=cancelled').data['count'],1)
+    def test_advisor_only_sees_own_appointment_and_linked_prospect_without_setter_metadata(self):
+        row=self.book().data;self.authorize(31,'advisor')
+        response=self.client.get(self.url)
+        self.assertEqual(response.data['count'],1)
+        public=response.data['results'][0]
+        self.assertEqual(set(public),{'id','contact','advisor','starts_at','ends_at','timezone','status','revision','calendar'})
+        self.assertNotIn('SECRET SETTER',str(public));self.assertNotIn('setter',str(public))
+        self.assertEqual(self.client.get('/api/assurance/contacts/').data['count'],1)
+        self.assertEqual(self.client.get('/api/assurance/dashboard/').data['contacts'],1)
+        for suffix in ('cancel/','reschedule/'):
+            self.assertEqual(self.client.post(self.url+str(row['id'])+'/'+suffix,{},format='json').status_code,403)
+        self.assertEqual(self.client.get(self.url+str(row['id'])+'/history/').status_code,403)
+        self.authorize(32,'advisor');self.assertEqual(self.client.get(self.url).data['count'],0)
+        self.assertEqual(self.client.get('/api/assurance/contacts/').data['count'],0)
+    def test_other_setter_cannot_view_or_change_an_appointment(self):
+        row=self.book().data;self.authorize(22)
+        url=self.url+str(row['id'])+'/'
+        self.assertEqual(self.client.get(url).status_code,404)
+        self.assertEqual(self.client.post(url+'cancel/',{'revision':0,'reason':'x'},format='json').status_code,404)
+    def test_admin_history_contains_internal_author_but_not_other_appointments(self):
+        row=self.book().data;self.authorize(10,'administrator')
+        response=self.client.get(self.url+str(row['id'])+'/history/')
+        self.assertEqual(response.data['count'],1)
+        self.assertEqual(response.data['results'][0]['actor_id'],21)
+        self.assertEqual(self.client.get(self.url).data['results'][0]['setter']['id'],21)
+    def test_admin_booking_keeps_original_responsible_setter_separate_from_actor(self):
+        from .models import Appointment
+        self.client.delete(f'/api/assurance/contacts/{self.contact.pk}/lease/',{'token':self.token},format='json')
+        self.authorize(10,'administrator')
+        self.token=self.client.post(f'/api/assurance/contacts/{self.contact.pk}/lease/',{},format='json').data['token']
+        response=self.book(proof=self.proof(actor=10))
+        self.assertEqual(response.status_code,201,response.data)
+        self.assertEqual(response.data['setter']['id'],21)
+        row=Appointment.objects.get();self.assertEqual(row.booked_by_id,10);self.assertEqual(row.setter_id,21)
+        changed=self.client.post(self.url+str(row.pk)+'/reschedule/',self.reschedule_payload(proof=self.proof(actor=10)),format='json')
+        self.assertEqual(changed.status_code,200,changed.data)
+        row.refresh_from_db();self.assertEqual(row.booked_by_id,10);self.assertEqual(row.setter_id,21)
+    def test_audit_failure_rolls_back_booking(self):
+        from unittest.mock import patch
+        from .models import Appointment
+        with patch('apps.assurance.backend.crm.appointments.BusinessAudit.objects.create',side_effect=RuntimeError('audit failure')):
+            with self.assertRaises(RuntimeError):self.book()
+        self.assertFalse(Appointment.objects.exists())
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentAppointmentTests(TransactionTestCase):
+    def setUp(self):
+        from django.db import connection
+        from .models import AdvisorAssignment
+        from django.utils import timezone
+        from datetime import timedelta
+        if connection.vendor!='postgresql':self.skipTest('Concurrence réelle vérifiée dans la CI PostgreSQL')
+        self.contacts=[];self.assignments=[];self.tokens=[]
+        self.start=(timezone.now()+timedelta(days=10)).replace(hour=10,minute=0,second=0,microsecond=0)
+        self.end=self.start+timedelta(minutes=30)
+        for subject in (21,22):
+            contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=subject)
+            assignment=AdvisorAssignment.objects.create(setter_id=subject,setter_name='Setter',advisor_id=31,advisor_name='Advisor')
+            client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(subject,'assurance','setter'))
+            token=client.post(f'/api/assurance/contacts/{contact.pk}/lease/',{},format='json').data['token']
+            self.contacts.append(contact);self.assignments.append(assignment);self.tokens.append(token)
+    def payload(self,index):
+        from uuid import uuid4
+        from packages.access.assignments import issue_booking
+        subject=21+index
+        return {'contact_id':self.contacts[index].pk,'assignment_id':self.assignments[index].pk,'token':self.tokens[index],
+            'request_id':str(uuid4()),'proof':issue_booking(subject,subject,'Setter',31,'Advisor'),
+            'starts_at':self.start.isoformat(),'ends_at':self.end.isoformat(),'timezone':'UTC'}
+    def race(self,operations):
+        from django.db import connections
+        from threading import Barrier
+        from concurrent.futures import ThreadPoolExecutor
+        barrier=Barrier(2)
+        def execute(index):
+            try:
+                actor,operation=operations[index]
+                client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(actor,'assurance','setter'))
+                barrier.wait(timeout=10)
+                return operation(client).status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:return list(pool.map(execute,[0,1]))
+    def test_different_setters_cannot_double_book_the_same_advisor(self):
+        from .models import Appointment
+        first,second=self.payload(0),self.payload(1)
+        results=self.race([(21,lambda api:api.post('/api/assurance/appointments/',first,format='json')),
+                           (22,lambda api:api.post('/api/assurance/appointments/',second,format='json'))])
+        self.assertEqual(sorted(results),[201,409]);self.assertEqual(Appointment.objects.count(),1)
+    def test_simultaneous_retry_of_one_request_creates_only_one_appointment(self):
+        from .models import Appointment,BusinessAudit
+        payload=self.payload(0)
+        operation=lambda api:api.post('/api/assurance/appointments/',payload,format='json')
+        results=self.race([(21,operation),(21,operation)])
+        self.assertEqual(sorted(results),[200,201]);self.assertEqual(Appointment.objects.count(),1)
+        self.assertEqual(BusinessAudit.objects.filter(action='appointment.booked').count(),1)
+    def test_rescheduling_and_new_booking_for_same_slot_have_only_one_winner(self):
+        from .models import Appointment
+        from packages.access.assignments import issue_booking
+        from datetime import timedelta
+        client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(21,'assurance','setter'))
+        created=client.post('/api/assurance/appointments/',self.payload(0),format='json').data
+        start=self.start+timedelta(hours=2);end=self.end+timedelta(hours=2)
+        change={'starts_at':start.isoformat(),'ends_at':end.isoformat(),'timezone':'UTC','revision':0,'reason':'Report',
+                'proof':issue_booking(21,21,'Setter',31,'Advisor')}
+        other={**self.payload(1),'starts_at':start.isoformat(),'ends_at':end.isoformat()}
+        results=self.race([(21,lambda api:api.post(f'/api/assurance/appointments/{created["id"]}/reschedule/',change,format='json')),
+                           (22,lambda api:api.post('/api/assurance/appointments/',other,format='json'))])
+        self.assertEqual(results.count(409),1);self.assertIn(results[0],(200,409));self.assertIn(results[1],(201,409))
+        self.assertEqual(Appointment.objects.filter(status='scheduled',starts_at=start).count(),1)
+    def test_same_contact_cannot_be_booked_with_two_advisors_simultaneously(self):
+        from .models import AdvisorAssignment,Appointment
+        from packages.access.assignments import issue_booking
+        from uuid import uuid4
+        first=self.payload(0)
+        other_assignment=AdvisorAssignment.objects.create(setter_id=21,setter_name='Setter',advisor_id=32,advisor_name='Other')
+        second={**first,'assignment_id':other_assignment.pk,'request_id':str(uuid4()),'proof':issue_booking(21,21,'Setter',32,'Other')}
+        results=self.race([(21,lambda api:api.post('/api/assurance/appointments/',first,format='json')),
+                           (21,lambda api:api.post('/api/assurance/appointments/',second,format='json'))])
+        self.assertEqual(sorted(results),[201,409]);self.assertEqual(Appointment.objects.count(),1)
