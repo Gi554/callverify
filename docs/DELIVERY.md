@@ -30,11 +30,19 @@ Liste commune paginée et recherche pour les setters, périmètre affecté pour 
 
 La fiche métier complète (champs configurables, notes, interactions, documents), la modification sous verrou et l’affectation des conseillers restent à réaliser.
 
+## Fonctionnalité 4 — prise en charge et modification sous verrou Assurance
+
+Les setters et administrateurs prennent une fiche en charge pendant trois minutes. La consultation par les autres setters reste possible. Chaque acquisition possède un jeton distinct ; renouvellement, sauvegarde et libération exigent le bon utilisateur, le bon jeton et un verrou encore valide. L’expiration permet une nouvelle acquisition. Une version attendue empêche une ancienne sauvegarde d’écraser un changement plus récent, même depuis deux requêtes du même compte. Acquisition et écritures utilisent une mise à jour conditionnelle transactionnelle ; aucune décision de concurrence ne repose sur le navigateur.
+
+Le parcours fonctionnel permet de modifier nom, téléphone et e-mail sans normalisation. Sauvegarde automatique après 1,2 seconde sans saisie, commande d’enregistrement immédiat et libération à la fermeture. Le renouvellement s’effectue toutes les 30 secondes pendant l’activité visible ; après deux minutes sans interaction, il s’arrête et le verrou expire. La fermeture de l’application ou une perte réseau peuvent laisser le verrou jusqu’à son expiration ; un brouillon non sauvegardé reste local à la fiche ouverte. Le déverrouillage forcé est réservé à l’administrateur, avec motif obligatoire. Les prises en charge, libérations, modifications avant/après et interventions administrateur sont auditées ; le journal paginé est réservé aux administrateurs. Les conseillers ne reçoivent aucun identifiant de verrou ni auteur interne et n’ont aucun accès à ces actions.
+
+Vérifications : 27 tests Assurance exécutés sur SQLite ; deux tests supplémentaires de concurrence (acquisitions et sauvegardes simultanées) s’exécutent dans la CI PostgreSQL dédiée. Contrôle TypeScript, build et migration locale. La revue visuelle est reportée à la fin à la demande de l’utilisateur. Statuts métier, champs configurables, notes/documents et affectation multi-conseillers restent dans les lots suivants.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
 2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
-3. Fiches métier Assurance complètes, verrouillage temporaire et affectations multi-conseillers (import brut livré).
+3. Fiches métier Assurance complètes et affectations multi-conseillers (import brut et verrouillage livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Agendas et rendez-vous, puis comptes rendus, incidents, tâches et alertes persistantes.
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
