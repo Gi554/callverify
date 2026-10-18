@@ -632,11 +632,11 @@ class ReportTests(TestCase):
         self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],1)
         self.client.get(url)
         self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],1)
-        self.assertEqual(self.client.post(url+'close/',{'resolution':' '},format='json').status_code,400)
-        self.assertEqual(self.client.post(url+'close/',{'resolution':'Prospect rappelé, rendez-vous à reprendre'},format='json').status_code,200)
+        self.assertEqual(self.client.post(url+'close/',{'revision':0,'resolution':' '},format='json').status_code,400)
+        self.assertEqual(self.client.post(url+'close/',{'revision':0,'resolution':'Prospect rappelé, rendez-vous à reprendre'},format='json').status_code,200)
         self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],0)
         self.assertEqual(self.client.get('/api/assurance/follow-ups/?state=closed').data['count'],1)
-        self.assertEqual(self.client.post(url+'close/',{'resolution':'Again'},format='json').status_code,404)
+        self.assertEqual(self.client.post(url+'close/',{'revision':0,'resolution':'Again'},format='json').status_code,404)
     def test_reported_appointment_cannot_be_cancelled_to_erase_outcome(self):
         self.report();self.auth(21,'setter')
         self.assertEqual(self.client.post(f'/api/assurance/appointments/{self.appointment.pk}/cancel/',{'revision':0,'reason':'Erase'},format='json').status_code,409)
@@ -703,7 +703,7 @@ class TaskPlanTests(TestCase):
             self.assertEqual(self.client.post(self.url+'plan/',self.payload(),format='json').status_code,403)
             self.assertEqual(self.client.get(self.url+'history/').status_code,403)
     def test_closed_task_cannot_be_replanned(self):
-        self.client.post(self.url+'close/',{'resolution':'Terminé'},format='json')
+        self.client.post(self.url+'close/',{'revision':0,'resolution':'Terminé'},format='json')
         self.assertEqual(self.client.post(self.url+'plan/?state=all',self.payload(revision=1),format='json').status_code,409)
     def test_overdue_indicator_does_not_close_or_hide_task(self):
         from django.utils import timezone
@@ -737,3 +737,91 @@ class ConcurrentTaskPlanTests(TransactionTestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(submit,['high','urgent']))
         self.assertEqual(sorted(results),[200,409])
         fixture.task.refresh_from_db();self.assertEqual(fixture.task.revision,1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class IncidentTests(TestCase):
+    def setUp(self):
+        fixture=ReportTests(methodName='test_negative_report_creates_one_task_for_original_setter_and_retry_is_idempotent');fixture.setUp()
+        self.client=fixture.client;self.appointment=fixture.appointment;self.report=fixture.report
+        self.url=f'/api/assurance/appointments/{self.appointment.pk}/incidents/'
+    def signal(self,**changes):
+        from uuid import uuid4
+        return self.client.post(self.url,{'request_id':str(uuid4()),'note':'Problème ultérieur',**changes},format='json')
+    def test_requires_initial_report_and_does_not_modify_it(self):
+        from .models import AppointmentReport,FollowUpTask
+        self.assertEqual(self.signal().status_code,409)
+        self.report(performed=True,note='Initial')
+        self.assertEqual(self.signal().status_code,201)
+        self.assertTrue(AppointmentReport.objects.get().performed)
+        self.assertEqual(AppointmentReport.objects.get().note,'Initial')
+        self.assertEqual(FollowUpTask.objects.get().setter_id,21)
+    def test_retry_is_idempotent_and_changed_content_conflicts(self):
+        from uuid import uuid4
+        from .models import AppointmentIncident,FollowUpTask
+        self.report();key=str(uuid4())
+        self.assertEqual(self.signal(request_id=key).status_code,201)
+        self.assertEqual(self.signal(request_id=key).status_code,200)
+        self.assertEqual(self.signal(request_id=key,note='Different').status_code,409)
+        self.assertEqual(AppointmentIncident.objects.count(),1);self.assertEqual(FollowUpTask.objects.count(),1)
+    def test_closed_task_is_reopened_with_old_resolution_in_audit(self):
+        from .models import FollowUpTask,BusinessAudit
+        self.report();task=FollowUpTask.objects.get()
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(21,'assurance','setter'))
+        self.client.post(f'/api/assurance/follow-ups/{task.pk}/close/',{'revision':0,'resolution':'Ancienne clôture'},format='json')
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(31,'assurance','advisor'))
+        self.assertEqual(self.signal().status_code,201)
+        task.refresh_from_db();self.assertIsNone(task.closed_at);self.assertEqual(task.revision,2)
+        self.assertEqual(BusinessAudit.objects.get(action='appointment.follow_up_incident').metadata['before']['resolution'],'Ancienne clôture')
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(21,'assurance','setter'))
+        self.assertEqual(self.client.post(f'/api/assurance/follow-ups/{task.pk}/close/',{'revision':1,'resolution':'Stale'},format='json').status_code,409)
+        self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],1)
+    def test_other_roles_or_advisor_cannot_submit_or_discover_setter(self):
+        self.report();self.signal()
+        public=self.client.get(self.url).data['results'][0]
+        self.assertEqual(set(public),{'id','note','created_at'})
+        self.assertNotIn('SECRET',str(public))
+        for pk,role,expected in ((32,'advisor',404),(21,'setter',403),(99,'administrator',403)):
+            self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+            self.assertEqual(self.signal().status_code,expected)
+    def test_multiple_incidents_keep_one_task_and_are_visible_in_admin_history(self):
+        from .models import FollowUpTask
+        self.report();self.signal();self.signal(note='Second problème')
+        self.assertEqual(FollowUpTask.objects.count(),1)
+        self.assertEqual(self.client.get(self.url).data['count'],2)
+        task=FollowUpTask.objects.get();self.assertEqual(task.revision,2)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(99,'assurance','administrator'))
+        history=self.client.get(f'/api/assurance/follow-ups/{task.pk}/history/').data
+        self.assertEqual(sum(row['action']=='appointment.incident_reported' for row in history['results']),2)
+    def test_audit_failure_rolls_back_incident_and_reopening(self):
+        from unittest.mock import patch
+        from .models import AppointmentIncident,FollowUpTask
+        self.report()
+        with patch('apps.assurance.backend.crm.reports.BusinessAudit.objects.create',side_effect=RuntimeError('audit')):
+            with self.assertRaises(RuntimeError):self.signal()
+        self.assertFalse(AppointmentIncident.objects.exists());self.assertEqual(FollowUpTask.objects.get().revision,0)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentIncidentTests(TransactionTestCase):
+    def test_simultaneous_retries_reopen_only_once(self):
+        from django.db import connection,connections
+        from .models import FollowUpTask,AppointmentIncident
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from uuid import uuid4
+        if connection.vendor!='postgresql':self.skipTest('Concurrence vérifiée dans la CI PostgreSQL')
+        fixture=IncidentTests(methodName='test_requires_initial_report_and_does_not_modify_it');fixture.setUp();fixture.report()
+        task=FollowUpTask.objects.get()
+        from django.utils import timezone
+        FollowUpTask.objects.filter(pk=task.pk).update(closed_at=timezone.now(),resolution='Ancienne clôture')
+        key=str(uuid4());barrier=Barrier(2)
+        def signal(_):
+            try:
+                api=APIClient();api.credentials(HTTP_AUTHORIZATION='Bearer '+issue(31,'assurance','advisor'))
+                barrier.wait(timeout=10)
+                return api.post(fixture.url,{'request_id':key,'note':'Nouveau problème'},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(signal,[0,1]))
+        self.assertEqual(sorted(results),[200,201]);self.assertEqual(AppointmentIncident.objects.count(),1)
+        task.refresh_from_db();self.assertIsNone(task.closed_at);self.assertEqual(task.revision,1)

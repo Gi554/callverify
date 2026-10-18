@@ -74,13 +74,21 @@ L’administrateur peut replanifier une tâche ouverte : priorité basse/normale
 
 L’échéance initiale reste 24 heures et la priorité normale ; la règle automatique globale, les escalades et notifications e-mail restent à livrer. Six tests fonctionnels supplémentaires et un test PostgreSQL de modifications concurrentes, TypeScript/build et migration locale. Revue esthétique reportée à la fin.
 
+## Fonctionnalité 9 — signalements ultérieurs et reprise du suivi
+
+Après son compte rendu initial, le conseiller du rendez-vous peut ajouter des signalements horodatés distincts. Le compte rendu reste inchangé. Une même requête rejouée est idempotente ; un identifiant réutilisé avec un autre contenu est refusé. Les signalements sont paginés, limités au périmètre du rendez-vous et ne contiennent aucun auteur/setter interne dans leurs réponses publiques.
+
+Chaque rendez-vous conserve au maximum une tâche de suivi. Un nouveau signalement crée cette tâche si nécessaire, conserve la tâche ouverte existante ou rouvre une tâche clôturée avec une nouvelle échéance à 24 heures. Ancienne clôture, résolution et révision sont conservées dans l’audit. Le setter voit le dernier signalement sur sa tâche ; l’administration dispose de l’historique complet. La clôture exige désormais la révision courante afin qu’un ancien formulaire ne puisse clôturer un nouveau signalement par inadvertance. Priorité et échéance existantes sont conservées quand la tâche était déjà ouverte ; priorité conservée à la réouverture.
+
+Vérifications : tests de permissions, conservation du compte rendu, idempotence, réouverture, clôture périmée, audit/rollback et concurrence PostgreSQL. TypeScript/build et migration locale. Les notifications e-mail et règles automatiques d’escalade restent à livrer ; la revue visuelle reste reportée à la fin.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
 2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
-5. Connecteurs agendas externes, signalements ultérieurs, notifications e-mail et règles de relance (comptes rendus initiaux et tâches persistantes livrés).
+5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.
