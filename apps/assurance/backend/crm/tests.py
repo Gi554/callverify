@@ -212,7 +212,7 @@ class ContactLeaseTests(TestCase):
         self.claim();self.authorize(8,'advisor')
         response=self.client.get(self.url)
         self.assertEqual(response.status_code,200)
-        self.assertEqual(set(response.data),{'id','name','phone','email','status','updated_at','revision'})
+        self.assertEqual(set(response.data),{'id','name','phone','email','status','status_label','updated_at','revision'})
         for suffix in ('lease/','history/'):
             self.assertEqual(self.client.get(self.url+suffix).status_code,403)
         self.assertEqual(self.client.patch(self.url,{},format='json').status_code,403)

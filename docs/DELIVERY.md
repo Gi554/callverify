@@ -128,6 +128,14 @@ Le dépôt interne exige une prise en charge valide. Un identifiant de requête 
 
 La vérification porte sur extension, signature et taille ; elle ne constitue pas une analyse antivirus ni une validation complète des fichiers. Le stockage binaire augmente le volume de la base et de ses sauvegardes ; quotas par dossier, antivirus, suppression/rétention réglementaire, partage sélectif et stockage objet restent à définir avant déploiement à grande échelle. Cinq tests couvrent permissions, téléchargements, idempotence, refus des fichiers et annulation transactionnelle si l’audit échoue ; suites complètes et CI PostgreSQL, typage et compilation. Migration 0013. Revue esthétique différée.
 
+## Fonctionnalité 16 — pipeline commercial Assurance
+
+Statuts configurables depuis « Statuts et champs métier » : clés stables, libellés, ordre et archivage, jusqu’à 30 étapes. Les onze étapes initiales reprennent le cahier des charges : à contacter, en cours, à rappeler, intéressé, RDV réservé, RDV effectué, incident, suivi, mandat, contrat, clôturé. Le statut initial to_contact reste actif pour les imports. Les clés existantes ne peuvent pas être supprimées ; l’archivage conserve les fiches concernées et les rend filtrables dans la liste. Le paramétrage exige un administrateur, une révision courante et un motif, avec audit avant/après.
+
+Depuis une fiche prise en charge, setter ou administrateur choisit explicitement un statut actif et renseigne un motif. Jeton, expiration, version de fiche et version du pipeline sont vérifiés dans une transaction ; les changements concurrents ne peuvent pas s’écraser. Le journal administrateur conserve auteur, date, ancien/nouveau statut, libellé et justification. Le conseiller consulte seulement le statut/libellé de ses dossiers autorisés, sans auteur ni motif interne, et ne peut pas les modifier. La liste permet la recherche combinée au filtre de statut.
+
+Les statuts sont commerciaux et manuels : aucune création automatique de compte rendu, tâche, mandat ou contrat, aucune déduction d’un résultat de rendez-vous. Les changements entre étapes actives sont libres sous verrou ; clôturer ne supprime pas une fiche et ne bloque pas sa reprise autorisée. Le cycle contractuel, règles de transition conditionnelles, automatisations et vue Kanban ne sont pas livrés dans ce lot. Six tests fonctionnels et un test de concurrence PostgreSQL, suite Assurance complète, typage/build et migration 0014. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
