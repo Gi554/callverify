@@ -88,6 +88,14 @@ L’administrateur Assurance configure le délai initial des nouvelles tâches, 
 
 Les tâches ouvertes conservent leur planification et leur priorité, même après changement de règle. La réouverture utilise le délai configuré au moment du signalement tout en conservant la priorité de la tâche. Chaque tâche conserve en interne la révision de la règle appliquée. Tests des droits, bornes, anciennes versions, absence de modification rétroactive, création/réouverture et rollback ; concurrence PostgreSQL testée en CI, TypeScript/build et migration locale. Notifications e-mail et escalades restent à livrer ; aucun envoi n’est activé.
 
+## Fonctionnalité 11 — notes horodatées des fiches Assurance
+
+Ajout de notes conservées chronologiquement, paginées et liées au prospect. Le canal est choisi côté serveur : notes internes pour setters/administrateurs et notes conseiller pour ce rôle. L’administrateur consulte toutes les notes avec leurs auteurs internes ; les setters consultent les notes internes communes, chaque conseiller seulement ses propres notes sur ses dossiers autorisés. Aucun auteur de note interne ni contenu interne n’est transmis au conseiller.
+
+Les notes internes nécessitent une prise en charge valide ; les notes du conseiller sont des ajouts indépendants qui ne modifient pas la fiche partagée. Les notes sont limitées à 5 000 caractères, conservées sans modification ou suppression par API ; un complément ou une correction s’ajoute sous forme de nouvelle note. Un identifiant de requête rend les reprises idempotentes. L’ajout est audité transactionnellement ; aucune donnée ne reste créée si l’audit échoue. La politique de partage avec les setters est volontairement restrictive pour les notes conseiller et pourra être précisée lors de la recette métier.
+
+Vérifications : permissions, confidentialité entre canaux et conseillers, idempotence, limites, conservation et rollback ; test PostgreSQL de soumissions simultanées, TypeScript/build et migration locale. Champs configurables, documents, messagerie et revue finale des interfaces restent à réaliser.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.

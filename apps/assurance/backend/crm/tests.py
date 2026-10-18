@@ -896,3 +896,80 @@ class ConcurrentPolicyTests(TransactionTestCase):
             finally:connections.close_all()
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(update,[12,48]))
         self.assertEqual(sorted(results),[200,409]);self.assertEqual(FollowUpPolicy.objects.get().revision,1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ContactNoteTests(TestCase):
+    def setUp(self):
+        self.client=APIClient();self.auth(21,'setter')
+        self.contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21,assigned_advisor_id=31)
+        self.url=f'/api/assurance/contacts/{self.contact.pk}/notes/'
+        self.token=self.client.post(f'/api/assurance/contacts/{self.contact.pk}/lease/',{},format='json').data['token']
+    def auth(self,pk,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+    def add(self,**changes):
+        from uuid import uuid4
+        return self.client.post(self.url,{'request_id':str(uuid4()),'body':'Note interne SECRET SETTER','token':self.token,**changes},format='json')
+    def test_internal_note_requires_current_lease_and_is_hidden_from_advisor(self):
+        self.assertEqual(self.add().status_code,201)
+        self.auth(22,'setter');self.assertEqual(self.add().status_code,409)
+        self.assertEqual(self.client.get(self.url).data['count'],1)
+        self.auth(31,'advisor');self.assertEqual(self.client.get(self.url).data['count'],0)
+        self.assertNotIn('SECRET',str(self.client.get(self.url).data))
+    def test_advisor_notes_are_self_and_admin_only(self):
+        from .models import ContactNote
+        self.auth(31,'advisor');response=self.add(body='Ma note personnelle')
+        self.assertEqual(response.status_code,201,response.data)
+        self.assertEqual(set(response.data),{'id','body','created_at','channel'})
+        ContactNote.objects.create(contact=self.contact,request_id=__import__('uuid').uuid4(),author_id=32,channel='advisor',body='Other advisor')
+        self.assertEqual(self.client.get(self.url).data['count'],1)
+        self.auth(21,'setter');self.assertEqual(self.client.get(self.url).data['count'],0)
+        self.auth(99,'administrator');self.assertEqual(self.client.get(self.url).data['count'],2)
+        self.assertIn('author_id',self.client.get(self.url).data['results'][0])
+    def test_idempotent_retry_and_conflicting_content(self):
+        from uuid import uuid4
+        from .models import ContactNote
+        key=str(uuid4())
+        self.assertEqual(self.add(request_id=key).status_code,201)
+        self.assertEqual(self.add(request_id=key).status_code,200)
+        self.assertEqual(self.add(request_id=key,body='Other').status_code,409)
+        self.assertEqual(ContactNote.objects.count(),1)
+    def test_body_bounds_unknown_visibility_and_append_only_routes(self):
+        self.assertEqual(self.add(body=' ').status_code,400)
+        self.assertEqual(self.add(body='x'*5001).status_code,400)
+        self.assertEqual(self.add(channel='advisor').status_code,400)
+        self.assertEqual(self.add(author_id=99).status_code,400)
+        self.add();self.add(body='Correction ajoutée')
+        self.assertEqual(self.client.get(self.url).data['count'],2)
+        self.assertEqual(self.client.patch(self.url,{'body':'Overwrite'},format='json').status_code,405)
+        self.assertEqual(self.client.delete(self.url).status_code,405)
+    def test_unassigned_advisor_cannot_access_notes(self):
+        self.auth(32,'advisor')
+        self.assertEqual(self.client.get(self.url).status_code,404)
+        self.assertEqual(self.add().status_code,404)
+    def test_audit_failure_rolls_back_note(self):
+        from unittest.mock import patch
+        from .models import ContactNote
+        with patch('apps.assurance.backend.crm.notes.BusinessAudit.objects.create',side_effect=RuntimeError('audit')):
+            with self.assertRaises(RuntimeError):self.add()
+        self.assertFalse(ContactNote.objects.exists())
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentContactNoteTests(TransactionTestCase):
+    def test_simultaneous_advisor_retries_keep_one_note(self):
+        from django.db import connection,connections
+        from .models import ContactNote
+        from uuid import uuid4
+        from threading import Barrier
+        from concurrent.futures import ThreadPoolExecutor
+        if connection.vendor!='postgresql':self.skipTest('Concurrence vérifiée dans la CI PostgreSQL')
+        row=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21,assigned_advisor_id=31)
+        key=str(uuid4());barrier=Barrier(2)
+        def add(_):
+            try:
+                api=APIClient();api.credentials(HTTP_AUTHORIZATION='Bearer '+issue(31,'assurance','advisor'))
+                barrier.wait(timeout=10)
+                return api.post(f'/api/assurance/contacts/{row.pk}/notes/',{'request_id':key,'body':'Ma note'},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(add,[0,1]))
+        self.assertEqual(sorted(results),[200,201]);self.assertEqual(ContactNote.objects.count(),1)
