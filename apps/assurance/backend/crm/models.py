@@ -130,3 +130,15 @@ class ContactFieldSchema(models.Model):
     revision=models.PositiveIntegerField(default=0)
     class Meta:
         constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_contact_field_schema')]
+
+class ContactDocument(models.Model):
+    contact=models.ForeignKey(Contact,on_delete=models.PROTECT,related_name='documents')
+    request_id=models.UUIDField(unique=True)
+    author_id=models.PositiveBigIntegerField()
+    channel=models.CharField(max_length=20,choices=[('internal','Interne'),('advisor','Conseiller')])
+    filename=models.CharField(max_length=180)
+    content_type=models.CharField(max_length=50)
+    size=models.PositiveIntegerField()
+    sha256=models.CharField(max_length=64)
+    content=models.BinaryField()
+    created_at=models.DateTimeField(auto_now_add=True)
