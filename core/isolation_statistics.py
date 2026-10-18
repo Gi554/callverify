@@ -9,7 +9,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .isolation_work import VisitAuthentication
-from .models import IsolationVisit
+from .models import IsolationVisit,AuditEvent
+from .isolation_statistics_export import response as export_response
 
 def metrics(now):
     return {'visits':Count('pk',distinct=True),'prospects':Count('prospect_id',distinct=True),
@@ -33,7 +34,8 @@ def finish(row):
 @permission_classes([IsAuthenticated])
 def statistics(request):
     now=timezone.now();today=now.date()
-    if 'export' in request.query_params:raise ValidationError('Export statistique non disponible dans ce lot')
+    kind=request.query_params.get('export','')
+    if kind not in ('','csv','xlsx'):raise ValidationError('Export CSV ou XLSX uniquement')
     try:
         start=parse_date(request.query_params.get('from',(today-timedelta(days=29)).isoformat()))
         end=parse_date(request.query_params.get('to',today.isoformat()))
@@ -45,12 +47,22 @@ def statistics(request):
     if request.user.role=='setter':qs=qs.filter(setter_id=request.user.pk,prospect__assigned_setter_id=request.user.pk)
     result={'from':start,'to':end,'timezone':'UTC','as_of':now,'totals':finish(qs.aggregate(**metrics(now))),
         'definition':'Période selon le début actuel de la visite en UTC. Attribution au setter d’origine. Client : ses visites uniquement. Setter : ses réservations dont il conserve le prospect. Un transfert retire donc les visites du périmètre de l’ancien setter. Taux effectué = Oui / résultats renseignés ; taux d’intérêt = intéressés / visites effectuées. Un résultat absent n’est pas Non. Les prospects sont distincts dans chaque groupe et ne sont pas additionnables entre setters.'}
+    exported_groups=[]
     if request.user.role in ('administrator','client'):
         names=qs.filter(setter_id=OuterRef('setter_id')).order_by('-created_at','-pk').values('setter_name')[:1]
         groups=qs.order_by().values('setter_id').annotate(**metrics(now),setter_name=Subquery(names)).order_by('setter_id')
-        pager=PageNumberPagination();pager.page_size=25
-        rows=pager.paginate_queryset(groups,request)
-        result['setters']={'count':pager.page.paginator.count,'next':pager.get_next_link(),'previous':pager.get_previous_link(),
-            'results':[finish(row) for row in rows]}
+        if kind:
+            if groups.count()>5000:raise ValidationError('Export limité à 5 000 setters ; réduisez la période')
+            exported_groups=[finish(row) for row in groups]
+        else:
+            pager=PageNumberPagination();pager.page_size=25
+            rows=pager.paginate_queryset(groups,request)
+            result['setters']={'count':pager.page.paginator.count,'next':pager.get_next_link(),'previous':pager.get_previous_link(),
+                'results':[finish(row) for row in rows]}
+    if kind:
+        response=export_response(result,exported_groups,kind)
+        AuditEvent.objects.create(action='isolation.statistics.exported',metadata={'actor_portal_id':request.user.pk,
+            'scope':request.user.role,'from':str(start),'to':str(end),'format':kind})
+        return response
     response=Response(result);response['Cache-Control']='no-store'
     return response

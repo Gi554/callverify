@@ -52,7 +52,7 @@ class IsolationStatisticsTests(TestCase):
         tomorrow=(self.day.date()+timedelta(days=1)).isoformat()
         self.assertEqual(self.client.get(self.url,{'from':tomorrow,'to':tomorrow}).data['totals']['visits'],0)
         for args in ({'from':'bad'},{'from':'2026-02-30'},{'from':'2026-01-02','to':'2026-01-01'},
-            {'from':'2020-01-01','to':'2026-01-01'},{'from':'9999-12-31','to':'9999-12-31'},{'export':'csv'}):
+            {'from':'2020-01-01','to':'2026-01-01'},{'from':'9999-12-31','to':'9999-12-31'},{'export':'pdf'}):
             self.assertEqual(self.client.get(self.url,args).status_code,400,args)
     def test_group_pagination_keeps_complete_totals(self):
         for index in range(27):self.visit(setter=100+index)

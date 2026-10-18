@@ -202,6 +202,14 @@ L’administration dispose des totaux et d’une ventilation paginée par setter
 
 Les filtres de permissions s’appliquent avant chaque agrégat et avant la recherche du nom ; aucun téléphone, note, résultat libre ou dossier individuel n’est exposé dans les statistiques. Réponses non mises en cache. Un report déplace une visite entre périodes et les résultats reflètent l’état actuel, pas une photographie historique. Appels Phonetico, ventes, contrats, contacts sans visite, exports et statistiques d’activité commerciale restent hors de ce lot. Sept tests ciblés, suite Isolation et CI PostgreSQL, typage et build ; aucune migration nécessaire. Revue esthétique différée.
 
+## Fonctionnalité 24 — exports Excel et CSV des statistiques Isolation
+
+Téléchargement des statistiques selon les dates saisies et les mêmes périmètres serveur que l’affichage. L’administration exporte les totaux et tous les setters ; le client uniquement les agrégats de ses visites et leurs setters d’origine ; le setter uniquement sa synthèse autorisée, sans liste d’autres setters. La pagination affichée ne limite pas les exports. Plafond explicite de 5 000 setters par export, à réduire en restreignant la période si nécessaire.
+
+Le classeur Excel comprend une synthèse avec libellés français, période UTC, date de calcul et définition des indicateurs, puis un onglet filtrable par setter lorsqu’il existe des groupes autorisés. CSV UTF-8 avec BOM, séparateur point-virgule et en-têtes français. Les taux sans dénominateur restent « Non calculable ». Les noms pouvant devenir des formules sont neutralisés en CSV et forcés en texte en Excel. Aucun téléphone, dossier individuel ni note libre n’est exporté.
+
+Les téléchargements sont audités avec acteur central, période, format et rôle ; réponses sans cache, en pièce jointe et nosniff. Les chiffres sont recalculés à chaque téléchargement : un report ou une réattribution peut changer le résultat depuis la dernière consultation. Les définitions et limites de la fonctionnalité 23 restent valables, notamment le périmètre du setter après transfert et les prospects distincts non additionnables entre groupes. Cinq tests dédiés avec lecture réelle des CSV/XLSX, confidentialité, complétude sur 27 setters, neutralisation des formules et refus d’accès ; suite Isolation/CI PostgreSQL et typage/build. Aucune migration nécessaire, revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
