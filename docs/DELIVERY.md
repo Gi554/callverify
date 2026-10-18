@@ -210,6 +210,14 @@ Le classeur Excel comprend une synthèse avec libellés français, période UTC,
 
 Les téléchargements sont audités avec acteur central, période, format et rôle ; réponses sans cache, en pièce jointe et nosniff. Les chiffres sont recalculés à chaque téléchargement : un report ou une réattribution peut changer le résultat depuis la dernière consultation. Les définitions et limites de la fonctionnalité 23 restent valables, notamment le périmètre du setter après transfert et les prospects distincts non additionnables entre groupes. Cinq tests dédiés avec lecture réelle des CSV/XLSX, confidentialité, complétude sur 27 setters, neutralisation des formules et refus d’accès ; suite Isolation/CI PostgreSQL et typage/build. Aucune migration nécessaire, revue esthétique différée.
 
+## Fonctionnalité 25 — compléments aux résultats des visites Isolation
+
+Le client concerné peut ajouter des précisions après le résultat initial d’une visite. Les compléments sont distincts, horodatés, paginés et conservés avec l’identifiant client ; aucun ne modifie ou ne supprime le résultat initial, son issue commerciale ou les statistiques. La lecture est autorisée au client de la visite, au setter actuellement responsable du prospect et à l’administration, avec les mêmes contrôles par URL que les visites. Un transfert retire la lecture à l’ancien setter sans effacer les contributions.
+
+Chaque ajout exige un texte de 3 000 caractères maximum et un identifiant de requête unique. Une reprise identique retourne le complément existant ; la réutilisation avec un autre contenu ou une autre visite est refusée. Le verrou de visite sérialise les ajouts simultanés ; complément et audit sont transactionnels. Le journal administrateur conserve l’auteur central et la référence du complément. Aucun résultat absent ne peut recevoir de complément, ni setter ou administrateur écrire à la place du client.
+
+Cinq tests fonctionnels et un test de concurrence PostgreSQL ajoutés : permissions, idempotence, historique/pagination, résultat conservé et annulation si l’audit échoue. Suite Isolation, typage/build et CI complète ; migration 0011 appliquée localement. Limites : précisions textuelles uniquement, aucune correction structurée du résultat, notification ou tâche automatique ; revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.

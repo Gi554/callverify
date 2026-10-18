@@ -197,3 +197,10 @@ class IsolationVisitResult(models.Model):
     outcome=models.CharField(max_length=30)
     note=models.TextField()
     created_at=models.DateTimeField(auto_now_add=True)
+
+class IsolationVisitSupplement(models.Model):
+    visit=models.ForeignKey(IsolationVisit,on_delete=models.PROTECT,related_name='supplements')
+    request_id=models.UUIDField(unique=True)
+    author_client_id=models.PositiveBigIntegerField()
+    note=models.TextField()
+    created_at=models.DateTimeField(auto_now_add=True)
