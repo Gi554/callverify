@@ -96,6 +96,14 @@ Les notes internes nécessitent une prise en charge valide ; les notes du consei
 
 Vérifications : permissions, confidentialité entre canaux et conseillers, idempotence, limites, conservation et rollback ; test PostgreSQL de soumissions simultanées, TypeScript/build et migration locale. Champs configurables, documents, messagerie et revue finale des interfaces restent à réaliser.
 
+## Fonctionnalité 12 — statistiques opérationnelles Assurance
+
+Statistiques filtrées sur une période de 366 jours maximum, selon le début actuel du rendez-vous en UTC (bornes de dates incluses). Valeurs globales pour l’administrateur et ventilation paginée par setter responsable initial ; le setter ne voit que ses propres totaux, sans annuaire ni identités d’autres setters. Les conseillers n’ont pas accès à ce rapport interne.
+
+Compteurs : rendez-vous, annulations, rendez-vous à venir, comptes rendus, Oui, Non, comptes rendus manquants après échéance, comptes rendus avec problème, signalements ultérieurs, tâches ouvertes/en retard/clôturées. Les agrégats distincts empêchent les signalements multiples de multiplier les rendez-vous ou tâches. Le taux effectué est Oui / comptes rendus renseignés ; il reste non calculable en l’absence de réponses, et n’est ni un taux de conversion contrat ni une déduction de présence. Une absence de compte rendu n’est jamais assimilée à Non.
+
+Les tâches reflètent leur état actuel sur les rendez-vous de la période. Un report peut déplacer un rendez-vous vers une autre période ; il ne s’agit pas d’un journal historique figé. Les noms de setters sont le dernier instantané de réservation disponible. Appels Phonetico, contrats, ventes, exports statistiques et rapports Isolation ne sont pas comptabilisés dans ce lot. Six tests ciblés, suites SQLite/PostgreSQL en CI, TypeScript/build ; aucune migration nécessaire, revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
