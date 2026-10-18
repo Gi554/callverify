@@ -166,3 +166,26 @@ class ProspectActivity(models.Model):
     body=models.TextField()
     changes=models.JSONField(default=dict)
     created_at=models.DateTimeField(auto_now_add=True)
+
+class IsolationVisit(models.Model):
+    prospect=models.ForeignKey(Prospect,on_delete=models.PROTECT,related_name='visits')
+    request_id=models.UUIDField(unique=True)
+    fingerprint=models.CharField(max_length=64)
+    client_id=models.PositiveBigIntegerField(db_index=True)
+    client_name=models.CharField(max_length=150)
+    setter_id=models.PositiveBigIntegerField()
+    setter_name=models.CharField(max_length=150)
+    booked_by_id=models.PositiveBigIntegerField()
+    starts_at=models.DateTimeField()
+    ends_at=models.DateTimeField()
+    timezone=models.CharField(max_length=100)
+    status=models.CharField(max_length=20,default='scheduled')
+    revision=models.PositiveIntegerField(default=0)
+    created_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=models.Q(ends_at__gt=models.F('starts_at')),name='isolation_visit_positive_interval')]
+        indexes=[models.Index(fields=['client_id','status','starts_at'])]
+
+class IsolationVisitCalendar(models.Model):
+    client_id=models.PositiveBigIntegerField(primary_key=True)
+    version=models.PositiveIntegerField(default=0)

@@ -5,9 +5,11 @@ from core import views
 from core import recovery
 from core import settings_api
 from core.isolation_work import WorkViewSet,dashboard as workspace_dashboard
+from core.isolation_visits import IsolationVisitViewSet
 
 router = DefaultRouter()
 router.register('work-queue',WorkViewSet,basename='isolation-work')
+router.register('visits',IsolationVisitViewSet,basename='isolation-visit')
 for prefix, view, name in [('campaigns',views.CampaignViewSet,'campaign'),('imports',views.ImportViewSet,'import'),
     ('prospects',views.ProspectViewSet,'prospect'),('lookups',views.LookupViewSet,'lookup'),
     ('exports',views.ExportViewSet,'export'),('consents',views.ConsentViewSet,'consent'),
