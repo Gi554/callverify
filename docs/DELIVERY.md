@@ -174,10 +174,20 @@ Une version commune protège observations et affectations ; chaque sauvegarde re
 
 Limites : un seul rappel courant par prospect, statuts initiaux fixes, pas de planification de plusieurs tâches, de notification e-mail, d’appel ni de visite. L’identité de l’auteur est conservée par identifiant central et rôle ; aucun compte administrateur local n’est créé pour représenter un setter. Huit tests fonctionnels et deux tests PostgreSQL ajoutés ; 82 tests Isolation locaux dont trois réservés à PostgreSQL, CI complète, typage et compilation. Migration 0008 appliquée localement. Revue esthétique différée.
 
+## Fonctionnalité 21 — réservation et suivi des visites Isolation internes
+
+Réservation depuis un prospect attribué à un setter, liste paginée globale ou par prospect, consultation, report et annulation justifiés. Le portail revalide le setter actif et exige exactement un client Isolation actif, conformément au lancement mono-client. L’attestation signée est propre à la réservation, liée au prospect et à l’acteur, valable deux minutes ; le setter ne peut en obtenir que pour lui-même. L’administrateur peut réserver pour le responsable du prospect, en conservant distinctement l’auteur réel et le setter d’origine.
+
+Les visites conservent prospect, client et setter d’origine avec instantanés de noms, auteur de réservation, dates UTC, fuseau IANA, statut et révision. L’identifiant de requête rend les reprises de réservation idempotentes. Les dates exigent un décalage cohérent avec le fuseau, y compris aux changements d’heure. Le calendrier interne réserve une seule visite simultanée par client ; il empêche aussi les chevauchements pour un même prospect, tout en acceptant des créneaux adjacents. Un verrou transactionnel par client et une écriture sur le prospect protègent réservations et reports concurrents.
+
+Le setter consulte et gère uniquement les visites des prospects actuellement attribués. Un transfert déplace ce périmètre sans réécrire le setter d’origine de la visite. Le report revalide les participants et conserve le client ; l’annulation reste possible par l’administration même après retrait de l’affectation. Toute modification incrémente la version commune du prospect. Les révisions de visite empêchent les reports/annulations périmés ; les visites commencées ne sont plus réécrites par ces commandes. L’historique administrateur conserve chaque créneau, motif, statut et acteur. Audit et mutations sont atomiques.
+
+Calendrier strictement interne (calendar=internal) : ni disponibilités ni synchronisation Google/Microsoft/Calendly garanties, aucun e-mail envoyé. La réservation ne change pas automatiquement le résultat commercial ou le rappel du prospect. Le portail client et les résultats des visites restent à livrer ; une visite passée reste planifiée en l’absence de résultat, jamais déclarée effectuée par déduction. Les tickets/attestations déjà délivrés peuvent subsister deux minutes après révocation. Dix tests fonctionnels, trois tests PostgreSQL de concurrence et quatre tests portail ajoutés ; suites Isolation/portail, CI Assurance, typage/build. Migration 0009 appliquée localement. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
-2. Visites Isolation, portail client et affectations en masse (affectations unitaires, file setter, qualification, notes et rappel courant livrés).
+2. Portail client, résultats des visites Isolation et affectations en masse (file setter, qualification, notes, rappel courant et planification interne des visites livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).
