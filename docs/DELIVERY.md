@@ -82,6 +82,12 @@ Chaque rendez-vous conserve au maximum une tâche de suivi. Un nouveau signaleme
 
 Vérifications : tests de permissions, conservation du compte rendu, idempotence, réouverture, clôture périmée, audit/rollback et concurrence PostgreSQL. TypeScript/build et migration locale. Les notifications e-mail et règles automatiques d’escalade restent à livrer ; la revue visuelle reste reportée à la fin.
 
+## Fonctionnalité 10 — règles de suivi configurables
+
+L’administrateur Assurance configure le délai initial des nouvelles tâches, la priorité initiale et le délai de réouverture, avec motif obligatoire et contrôle de version. Délais bornés de 1 à 720 heures écoulées ; pas de calcul en jours ouvrés. Les valeurs initiales restent 24 heures et priorité normale tant qu’aucune règle n’est enregistrée. Les modifications sont auditées dans un historique paginé réservé à l’administration.
+
+Les tâches ouvertes conservent leur planification et leur priorité, même après changement de règle. La réouverture utilise le délai configuré au moment du signalement tout en conservant la priorité de la tâche. Chaque tâche conserve en interne la révision de la règle appliquée. Tests des droits, bornes, anciennes versions, absence de modification rétroactive, création/réouverture et rollback ; concurrence PostgreSQL testée en CI, TypeScript/build et migration locale. Notifications e-mail et escalades restent à livrer ; aucun envoi n’est activé.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
