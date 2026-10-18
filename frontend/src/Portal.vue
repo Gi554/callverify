@@ -15,10 +15,10 @@ async function portal(path:string,body?:any,method?:string){
  if(!response.ok){const result=await response.json().catch(()=>({}));throw new Error(result.detail||Object.entries(result).map(([key,value])=>key+': '+String(value)).join(' · ')||'Accès indisponible')}
  return response.status===204?null:response.json()
 }
-async function business(path:string,body?:any){
+async function business(path:string,body?:any,method?:string){
  const grant=await portal('access/'+workspace.value+'/',{})
- const response=await fetch('/api/'+workspace.value+'/'+path,{method:body!==undefined?'POST':'GET',headers:{Authorization:'Bearer '+grant.token,...(body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body!==undefined?{body:body instanceof FormData?body:JSON.stringify(body)}:{})})
- if(!response.ok){const result=await response.json().catch(()=>({}));throw new Error(result.detail||(Array.isArray(result)?result.join(' · '):Object.values(result).join(' · '))||'Service métier indisponible')}
+ const response=await fetch('/api/'+workspace.value+'/'+path,{method:method||(body!==undefined?'POST':'GET'),headers:{Authorization:'Bearer '+grant.token,...(body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body!==undefined?{body:body instanceof FormData?body:JSON.stringify(body)}:{})})
+ if(!response.ok){const result=await response.json().catch(()=>({}));const failure=new Error(result.detail||(Array.isArray(result)?result.join(' · '):Object.values(result).join(' · '))||'Service métier indisponible') as Error & {status:number};failure.status=response.status;throw failure}
  return response.json()
 }
 async function enter(value:string){

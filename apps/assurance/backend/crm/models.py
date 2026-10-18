@@ -24,9 +24,14 @@ class Contact(models.Model):
     assigned_advisor_id=models.PositiveBigIntegerField(null=True,blank=True)
     created_by_id=models.PositiveBigIntegerField()
     updated_at=models.DateTimeField(auto_now=True)
+    revision=models.PositiveIntegerField(default=0)
+    lease_owner_id=models.PositiveBigIntegerField(null=True,blank=True)
+    lease_token=models.UUIDField(null=True,blank=True)
+    lease_expires_at=models.DateTimeField(null=True,blank=True)
 
 class BusinessAudit(models.Model):
     actor_id=models.PositiveBigIntegerField()
     action=models.CharField(max_length=80)
     object_id=models.PositiveBigIntegerField()
+    metadata=models.JSONField(default=dict)
     created_at=models.DateTimeField(auto_now_add=True)

@@ -143,3 +143,131 @@ class RawImportTests(TestCase):
         with patch('apps.assurance.backend.crm.imports.BusinessAudit.objects.create',side_effect=RuntimeError('audit unavailable')):
             with self.assertRaises(RuntimeError):self.confirm()
         self.assertFalse(Contact.objects.exists());self.assertFalse(ContactImport.objects.exists())
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ContactLeaseTests(TestCase):
+    def setUp(self):
+        self.contact=Contact.objects.create(name='Original',phone='raw',email='unchanged',created_by_id=17,assigned_advisor_id=8)
+        self.client=APIClient();self.authorize(1)
+        self.url=f'/api/assurance/contacts/{self.contact.pk}/'
+    def authorize(self,subject,role='setter'):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(subject,'assurance',role))
+    def claim(self):
+        response=self.client.post(self.url+'lease/',{},format='json')
+        self.assertEqual(response.status_code,201,response.data)
+        return response.data['token']
+    def save(self,token,**values):
+        return self.client.patch(self.url,{'token':token,'revision':0,'name':'Changed',**values},format='json')
+    def test_second_setter_reads_but_cannot_claim_or_edit(self):
+        token=self.claim();self.authorize(2)
+        self.assertEqual(self.client.get(self.url).status_code,200)
+        self.assertEqual(self.client.post(self.url+'lease/',{},format='json').status_code,409)
+        self.assertEqual(self.save(token).status_code,409)
+        self.contact.refresh_from_db();self.assertEqual(self.contact.name,'Original')
+    def test_renew_release_and_reclaim(self):
+        token=self.claim()
+        self.assertEqual(self.client.patch(self.url+'lease/',{'token':token},format='json').status_code,200)
+        self.assertEqual(self.client.delete(self.url+'lease/',{'token':token},format='json').status_code,204)
+        fresh=self.claim();self.assertNotEqual(fresh,token)
+        self.assertEqual(self.save(token).status_code,409)
+        self.assertEqual(self.save(fresh).status_code,200)
+    def test_expiry_denies_save_renew_and_allows_another_setter(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        token=self.claim()
+        Contact.objects.filter(pk=self.contact.pk).update(lease_expires_at=timezone.now()-timedelta(seconds=1))
+        self.assertEqual(self.save(token).status_code,409)
+        self.assertEqual(self.client.patch(self.url+'lease/',{'token':token},format='json').status_code,409)
+        self.authorize(2);self.claim()
+    def test_save_preserves_raw_values_and_appends_audit_with_revision(self):
+        from .models import BusinessAudit
+        token=self.claim()
+        response=self.save(token,phone=' 001 weird ',email='not-validated')
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(response.data['phone'],' 001 weird ');self.assertEqual(response.data['revision'],1)
+        entry=BusinessAudit.objects.get(action='contact.updated')
+        self.assertEqual(entry.actor_id,1);self.assertEqual(entry.metadata['before']['name'],'Original')
+        self.assertEqual(self.save(token,name='Stale').status_code,409)
+        self.assertEqual(self.save(token,revision=1,name='Next').status_code,200)
+        self.assertEqual(BusinessAudit.objects.filter(action='contact.updated').count(),2)
+    def test_edit_requires_valid_token_and_rejects_protected_fields(self):
+        token=self.claim()
+        self.assertEqual(self.save('bad').status_code,400)
+        self.assertEqual(self.save(token,phone='   ').status_code,400)
+        for field in ('created_by_id','assigned_advisor_id','status','source_values','lease_owner_id'):
+            self.assertEqual(self.save(token,**{field:99}).status_code,400)
+    def test_admin_override_is_justified_audited_and_fences_old_token(self):
+        from .models import BusinessAudit
+        token=self.claim()
+        self.assertEqual(self.client.post(self.url+'unlock/',{'reason':'test'},format='json').status_code,403)
+        self.authorize(10,'administrator')
+        self.assertEqual(self.client.post(self.url+'unlock/',{},format='json').status_code,400)
+        self.assertEqual(self.client.post(self.url+'unlock/',{'reason':'Reprise après absence'},format='json').status_code,204)
+        fresh=self.claim();self.assertNotEqual(fresh,token)
+        self.authorize(1);self.assertEqual(self.save(token).status_code,409)
+        entry=BusinessAudit.objects.get(action='contact.force_unlocked')
+        self.assertEqual(entry.metadata['reason'],'Reprise après absence')
+    def test_advisor_never_sees_setter_or_lease_metadata_and_cannot_edit(self):
+        self.claim();self.authorize(8,'advisor')
+        response=self.client.get(self.url)
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(set(response.data),{'id','name','phone','email','status','updated_at','revision'})
+        for suffix in ('lease/','history/'):
+            self.assertEqual(self.client.get(self.url+suffix).status_code,403)
+        self.assertEqual(self.client.patch(self.url,{},format='json').status_code,403)
+        self.assertEqual(self.client.post(self.url+'lease/',{},format='json').status_code,403)
+    def test_history_is_admin_only_and_scoped_to_contact(self):
+        from .models import BusinessAudit
+        token=self.claim();self.save(token)
+        BusinessAudit.objects.create(actor_id=1,object_id=self.contact.pk+100,action='contact.updated')
+        self.assertEqual(self.client.get(self.url+'history/').status_code,403)
+        self.authorize(10,'administrator');response=self.client.get(self.url+'history/')
+        self.assertEqual(response.data['count'],2)
+        self.assertEqual(response.data['results'][0]['action'],'contact.updated')
+    def test_audit_failure_rolls_back_the_edit(self):
+        from unittest.mock import patch
+        token=self.claim()
+        with patch('apps.assurance.backend.crm.leases.BusinessAudit.objects.create',side_effect=RuntimeError('audit failure')):
+            with self.assertRaises(RuntimeError):self.save(token)
+        self.contact.refresh_from_db();self.assertEqual(self.contact.revision,0);self.assertEqual(self.contact.name,'Original')
+
+from django.test import TransactionTestCase
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentLeaseTests(TransactionTestCase):
+    def test_simultaneous_claims_have_only_one_winner_on_postgres(self):
+        from django.db import connection,connections
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        if connection.vendor!='postgresql':self.skipTest('Concurrence réelle vérifiée sur PostgreSQL dans la CI dédiée')
+        contact=Contact.objects.create(name='Concurrent',phone='raw',created_by_id=17)
+        barrier=Barrier(2)
+        def claim(subject):
+            try:
+                client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(subject,'assurance','setter'))
+                barrier.wait(timeout=10)
+                return client.post(f'/api/assurance/contacts/{contact.pk}/lease/',{},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(claim,[41,42]))
+        self.assertEqual(sorted(results),[201,409])
+    def test_simultaneous_saves_do_not_overwrite_each_other_on_postgres(self):
+        from django.db import connection,connections
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        if connection.vendor!='postgresql':self.skipTest('Concurrence réelle vérifiée sur PostgreSQL dans la CI dédiée')
+        contact=Contact.objects.create(name='Concurrent',phone='raw',created_by_id=17)
+        client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(41,'assurance','setter'))
+        token=client.post(f'/api/assurance/contacts/{contact.pk}/lease/',{},format='json').data['token']
+        barrier=Barrier(2)
+        def save(name):
+            try:
+                api=APIClient();api.credentials(HTTP_AUTHORIZATION='Bearer '+issue(41,'assurance','setter'))
+                barrier.wait(timeout=10)
+                return api.patch(f'/api/assurance/contacts/{contact.pk}/',{'name':name,'revision':0,'token':token},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(save,['First','Second']))
+        self.assertEqual(sorted(results),[200,409])
+        contact.refresh_from_db();self.assertEqual(contact.revision,1)
