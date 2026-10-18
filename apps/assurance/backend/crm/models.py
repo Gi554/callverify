@@ -84,6 +84,7 @@ class AppointmentReport(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
 
 class FollowUpTask(models.Model):
+    revision=models.PositiveIntegerField(default=0)
     appointment=models.OneToOneField(Appointment,on_delete=models.PROTECT,related_name='follow_up')
     setter_id=models.PositiveBigIntegerField(db_index=True)
     reason=models.TextField()

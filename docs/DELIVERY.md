@@ -68,6 +68,12 @@ Les setters consultent uniquement leurs tâches, les administrateurs toutes les 
 
 Limites : le signalement est actuellement inclus dans le compte rendu initial ; correction et signalement ultérieur distinct restent à livrer. Pas d’e-mail envoyé, de relance planifiée, de personnalisation de priorité/échéance ou d’escalade dans ce lot. Les notifications e-mail minimales seront intégrées séparément. La revue esthétique reste reportée à la fin. Tests de permissions, idempotence, rollback, alertes et clôture justifiée ; concurrence de soumission testée sur PostgreSQL dans la CI.
 
+## Fonctionnalité 8 — priorité et échéance des tâches
+
+L’administrateur peut replanifier une tâche ouverte : priorité basse/normale/haute/urgente, échéance future avec décalage ISO 8601 explicite et motif obligatoire. Une révision attendue protège les modifications simultanées ; une tâche clôturée ne peut plus être replanifiée. L’historique paginé, réservé à l’administration, conserve les valeurs avant/après, le motif et l’auteur. Les setters voient les nouvelles priorités/échéances de leurs tâches sans pouvoir les changer. Un indicateur signale les tâches en retard sans les clôturer ni retirer les alertes.
+
+L’échéance initiale reste 24 heures et la priorité normale ; la règle automatique globale, les escalades et notifications e-mail restent à livrer. Six tests fonctionnels supplémentaires et un test PostgreSQL de modifications concurrentes, TypeScript/build et migration locale. Revue esthétique reportée à la fin.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.

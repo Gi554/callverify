@@ -671,3 +671,69 @@ class ConcurrentReportTests(TransactionTestCase):
             finally:connections.close_all()
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(submit,[0,1]))
         self.assertEqual(sorted(results),[200,201]);self.assertEqual(AppointmentReport.objects.count(),1);self.assertEqual(FollowUpTask.objects.count(),1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class TaskPlanTests(TestCase):
+    def setUp(self):
+        fixture=ReportTests(methodName='test_negative_report_creates_one_task_for_original_setter_and_retry_is_idempotent')
+        fixture.setUp();fixture.report()
+        from .models import FollowUpTask
+        self.client=fixture.client;self.task=FollowUpTask.objects.get()
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(99,'assurance','administrator'))
+        self.url=f'/api/assurance/follow-ups/{self.task.pk}/'
+    def payload(self,**changes):
+        from django.utils import timezone
+        from datetime import timedelta
+        return {'revision':0,'priority':'urgent','due_at':(timezone.now()+timedelta(days=2)).isoformat(),'reason':'Client à rappeler rapidement',**changes}
+    def test_plan_updates_revision_and_audits_before_after(self):
+        data=self.payload();response=self.client.post(self.url+'plan/',data,format='json')
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(response.data['priority'],'urgent');self.assertEqual(response.data['revision'],1)
+        history=self.client.get(self.url+'history/').data
+        self.assertEqual(history['count'],1);self.assertEqual(history['results'][0]['metadata']['before']['priority'],'normal')
+        self.assertEqual(self.client.post(self.url+'plan/',data,format='json').status_code,409)
+    def test_invalid_priority_date_and_reason_leave_task_unchanged(self):
+        for changes in ({'priority':'unknown'},{'due_at':'2020-01-01T00:00:00Z'},{'due_at':'2030-01-01T00:00:00'},{'reason':' '},{'setter_id':100}):
+            self.assertEqual(self.client.post(self.url+'plan/',self.payload(**changes),format='json').status_code,400)
+        self.task.refresh_from_db();self.assertEqual(self.task.revision,0)
+    def test_setter_and_advisor_cannot_plan_or_read_audit(self):
+        for pk,role in ((21,'setter'),(31,'advisor')):
+            self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+            self.assertEqual(self.client.post(self.url+'plan/',self.payload(),format='json').status_code,403)
+            self.assertEqual(self.client.get(self.url+'history/').status_code,403)
+    def test_closed_task_cannot_be_replanned(self):
+        self.client.post(self.url+'close/',{'resolution':'Terminé'},format='json')
+        self.assertEqual(self.client.post(self.url+'plan/?state=all',self.payload(revision=1),format='json').status_code,409)
+    def test_overdue_indicator_does_not_close_or_hide_task(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import FollowUpTask
+        FollowUpTask.objects.filter(pk=self.task.pk).update(due_at=timezone.now()-timedelta(hours=1))
+        row=self.client.get(self.url).data
+        self.assertTrue(row['overdue']);self.assertIsNone(row['closed_at'])
+    def test_audit_failure_rolls_back_plan(self):
+        from unittest.mock import patch
+        with patch('apps.assurance.backend.crm.reports.BusinessAudit.objects.create',side_effect=RuntimeError('audit')):
+            with self.assertRaises(RuntimeError):self.client.post(self.url+'plan/',self.payload(),format='json')
+        self.task.refresh_from_db();self.assertEqual(self.task.revision,0);self.assertEqual(self.task.priority,'normal')
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentTaskPlanTests(TransactionTestCase):
+    def test_simultaneous_plans_have_one_winner(self):
+        from django.db import connection,connections
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        if connection.vendor!='postgresql':self.skipTest('Concurrence vérifiée dans la CI PostgreSQL')
+        fixture=TaskPlanTests(methodName='test_plan_updates_revision_and_audits_before_after');fixture.setUp()
+        payload=fixture.payload();url=fixture.url;barrier=Barrier(2)
+        def submit(priority):
+            try:
+                api=APIClient();api.credentials(HTTP_AUTHORIZATION='Bearer '+issue(99,'assurance','administrator'))
+                barrier.wait(timeout=10)
+                return api.post(url+'plan/',{**payload,'priority':priority},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(submit,['high','urgent']))
+        self.assertEqual(sorted(results),[200,409])
+        fixture.task.refresh_from_db();self.assertEqual(fixture.task.revision,1)
