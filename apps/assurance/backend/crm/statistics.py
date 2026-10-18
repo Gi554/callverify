@@ -7,7 +7,8 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied,ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from .models import Appointment
+from .models import Appointment,BusinessAudit
+from .statistics_export import response as export_response
 
 
 def metrics(now):
@@ -33,6 +34,8 @@ def finish(values):
 @api_view(['GET'])
 def statistics(request):
     if request.user.role not in ('administrator','setter'):raise PermissionDenied('Statistiques internes Assurance uniquement')
+    kind=request.query_params.get('export','')
+    if kind not in ('','csv','xlsx'):raise ValidationError('Export CSV ou XLSX uniquement')
     today=timezone.now().date()
     try:
         start=parse_date(request.query_params.get('from',(today-timedelta(days=29)).isoformat()))
@@ -49,11 +52,20 @@ def statistics(request):
     totals=finish(qs.aggregate(**metrics(now)))
     result={'from':start,'to':end,'timezone':'UTC','as_of':now,'totals':totals,
             'definition':'Période selon le début actuel du rendez-vous (UTC). Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue.'}
+    groups=[]
     if request.user.role=='administrator':
         names=Appointment.objects.filter(setter_id=OuterRef('setter_id')).order_by('-created_at','-pk').values('setter_name')[:1]
         grouped=qs.order_by().values('setter_id').annotate(**metrics(now),setter_name=Subquery(names)).order_by('setter_id')
-        pager=PageNumberPagination();pager.page_size=25
-        page=pager.paginate_queryset(grouped,request)
-        result['setters']={'count':pager.page.paginator.count,'next':pager.get_next_link(),'previous':pager.get_previous_link(),
-                           'results':[finish(row) for row in page]}
+        if kind:
+            if grouped.count()>5000:raise ValidationError('Export limité à 5 000 setters. Réduisez la période.')
+            groups=[finish(row) for row in grouped]
+        if not kind:
+            pager=PageNumberPagination();pager.page_size=25
+            page=pager.paginate_queryset(grouped,request)
+            result['setters']={'count':pager.page.paginator.count,'next':pager.get_next_link(),'previous':pager.get_previous_link(),
+                               'results':[finish(row) for row in page]}
+    if kind:
+        BusinessAudit.objects.create(actor_id=request.user.pk,object_id=0,action='statistics.exported',
+            metadata={'from':str(start),'to':str(end),'format':kind,'scope':request.user.role})
+        return export_response(result,groups,kind)
     return Response(result)
