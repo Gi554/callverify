@@ -60,13 +60,21 @@ Limite explicite : calendrier interne seulement. Google/Microsoft/Calendly ne so
 
 Vérifications : tests du portail et Assurance pour les permissions, fuseaux, confidentialité, reports, annulations, idempotence et rollback ; CI PostgreSQL pour les courses réservation/réservation, réservation/report, reprise d’une même requête et conflits sur un prospect entre conseillers. TypeScript/build et migrations. La revue des interfaces reste reportée à la fin ; les commandes du lot sont utilisables sans identifiants d’agenda externe.
 
+## Fonctionnalité 7 — comptes rendus et tâches de suivi Assurance
+
+Le conseiller du rendez-vous renseigne Oui/Non après sa fin et peut signaler un problème dans ce compte rendu. Non ou Problème impose un motif et crée exactement une tâche liée au rendez-vous et au setter initial, indépendamment de l’administrateur qui a réservé. Une répétition identique est idempotente ; une réponse différente ne remplace pas un compte rendu déjà enregistré. Le compte rendu ne peut être saisi pour un rendez-vous futur ou annulé. Une fois renseigné, le rendez-vous ne peut plus être annulé ni reporté pour effacer son résultat.
+
+Les setters consultent uniquement leurs tâches, les administrateurs toutes les tâches, et les conseillers aucune tâche interne. Le tableau de bord compte les tâches ouvertes à chaque chargement : consulter une tâche ne supprime pas l’alerte. La clôture exige une justification et conserve date, auteur et audit. Les tâches comportent motif, priorité normale et échéance initiale à 24 heures, valeur provisoire à valider avec le client. Les listes ouvertes/clôturées sont paginées. L’absence de compte rendu reste un compte rendu à fournir, jamais un résultat Non automatique.
+
+Limites : le signalement est actuellement inclus dans le compte rendu initial ; correction et signalement ultérieur distinct restent à livrer. Pas d’e-mail envoyé, de relance planifiée, de personnalisation de priorité/échéance ou d’escalade dans ce lot. Les notifications e-mail minimales seront intégrées séparément. La revue esthétique reste reportée à la fin. Tests de permissions, idempotence, rollback, alertes et clôture justifiée ; concurrence de soumission testée sur PostgreSQL dans la CI.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
 2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
-5. Connecteurs agendas externes, comptes rendus, incidents, tâches et alertes persistantes (rendez-vous internes livrés).
+5. Connecteurs agendas externes, signalements ultérieurs, notifications e-mail et règles de relance (comptes rendus initiaux et tâches persistantes livrés).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.

@@ -2,7 +2,8 @@ from rest_framework import serializers,viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .visibility import visible_contacts
-from .models import Contact
+from .models import Contact,Appointment,FollowUpTask
+from django.utils import timezone
 from .leases import ContactLeaseMixin
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
@@ -30,5 +31,9 @@ class ContactViewSet(ContactLeaseMixin,viewsets.ReadOnlyModelViewSet):
 @api_view(['GET'])
 def dashboard(request):
     qs=visible_contacts(request.user)
+    tasks=FollowUpTask.objects.filter(closed_at__isnull=True)
+    if request.user.role=='setter':tasks=tasks.filter(setter_id=request.user.pk)
+    if request.user.role=='advisor':tasks=tasks.none()
+    pending=Appointment.objects.filter(advisor_id=request.user.pk,status='scheduled',ends_at__lte=timezone.now(),report__isnull=True).count() if request.user.role=='advisor' else 0
     return Response({'workspace':'assurance','role':request.user.role,'contacts':qs.count(),
-        'stage':'contacts_import','available':['contacts','imports','locking','assignments','appointments'],'pending':['phonetico','tasks','calendars']})
+        'open_follow_ups':tasks.count(),'reports_due':pending,'stage':'contacts_import','available':['contacts','imports','locking','assignments','appointments'],'pending':['phonetico','calendars']})
