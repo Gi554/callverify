@@ -3,6 +3,9 @@
 .env
 private-media
 db.sqlite3
+portal.sqlite3
+assurance.sqlite3
+*.sqlite3-journal
 __pycache__
 **/node_modules
 frontend/dist

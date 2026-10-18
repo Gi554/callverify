@@ -504,3 +504,14 @@ class BackendTests(TestCase):
         self.assertEqual(technical_results(prospect)['line_state'],'unknown')
         LookupCheck.objects.create(campaign=self.campaign,phone=prospect.phone,status='completed',packages='line_status',error='Package indisponible: 60600',response={'valid':True,'line_status':{'status':None,'error_code':60600}})
         self.assertEqual(technical_results(prospect)['line_state'],'unknown')
+
+    @override_settings(DEBUG=True)
+    def test_isolation_rejects_assurance_ticket(self):
+        from packages.access.tickets import issue
+        client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(1,'assurance','administrator'))
+        self.assertIn(client.get('/api/dashboard/').status_code,[401,403])
+    @override_settings(DEBUG=True)
+    def test_isolation_rejects_setter_ticket_on_admin_routes(self):
+        from packages.access.tickets import issue
+        client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(1,'isolation','setter'))
+        self.assertIn(client.get('/api/campaigns/').status_code,[401,403])

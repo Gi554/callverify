@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 .env
 db.sqlite3
+portal.sqlite3
+assurance.sqlite3
+*.sqlite3-journal
 private-media/
 .coverage
 .test-media/

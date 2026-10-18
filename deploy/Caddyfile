@@ -1,4 +1,14 @@
 {$CALLVERIFY_DOMAIN} {
+    handle /api/portal/* {
+        reverse_proxy portal:8000
+    }
+    handle /api/assurance/* {
+        reverse_proxy assurance:8000
+    }
+    handle_path /api/isolation/* {
+        rewrite * /api{uri}
+        reverse_proxy api:8000
+    }
     handle /api/* {
         reverse_proxy api:8000
     }
