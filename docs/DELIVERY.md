@@ -136,6 +136,14 @@ Depuis une fiche prise en charge, setter ou administrateur choisit explicitement
 
 Les statuts sont commerciaux et manuels : aucune création automatique de compte rendu, tâche, mandat ou contrat, aucune déduction d’un résultat de rendez-vous. Les changements entre étapes actives sont libres sous verrou ; clôturer ne supprime pas une fiche et ne bloque pas sa reprise autorisée. Le cycle contractuel, règles de transition conditionnelles, automatisations et vue Kanban ne sont pas livrés dans ce lot. Six tests fonctionnels et un test de concurrence PostgreSQL, suite Assurance complète, typage/build et migration 0014. Revue esthétique différée.
 
+## Fonctionnalité 17 — réouverture administrative des tâches Assurance
+
+L’administrateur peut rouvrir une tâche clôturée depuis les listes « Clôturées » ou « Toutes ». Un motif, une priorité et une échéance future avec décalage ISO 8601 explicite sont obligatoires. La même tâche reste liée au rendez-vous et au setter responsable ; aucun doublon ni changement du compte rendu n’est créé. La réouverture efface les champs de clôture courants, incrémente la révision et rétablit la tâche dans la liste ouverte et le compteur d’alertes au prochain chargement.
+
+Le journal administrateur conserve l’auteur et le motif de réouverture, l’ancienne date/auteur/justification de clôture et les valeurs avant/après. Les historiques antérieurs restent intacts, même après une nouvelle clôture. Une révision attendue et une écriture conditionnelle empêchent deux administrateurs de rouvrir simultanément la même version, ou un ancien formulaire de clôturer la tâche réouverte. Échec d’audit et modification sont annulés ensemble. Ni setter ni conseiller ne peuvent rouvrir une tâche ou lire cet historique interne.
+
+Réouverture manuelle uniquement : la priorité et l’échéance explicites remplacent celles de la tâche, sans réappliquer automatiquement la politique globale. La réattribution à un autre setter, les e-mails et rappels planifiés restent à livrer. Six tests fonctionnels et un test PostgreSQL de réouvertures concurrentes, suite Assurance, TypeScript/build ; aucune migration nécessaire. La revue esthétique reste différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.

@@ -140,6 +140,22 @@ class FollowUpViewSet(viewsets.GenericViewSet):
     def list(self,request):return self.get_paginated_response([task_output(row) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(task_output(self.get_object()))
     @action(detail=True,methods=['post'])
+    def reopen(self,request,pk=None):
+        if request.user.role!='administrator':raise PermissionDenied('Réouverture réservée aux administrateurs')
+        row=self.get_object();serializer=TaskPlanInput(data=request.data);serializer.is_valid(raise_exception=True)
+        data=serializer.validated_data
+        before={'closed_at':row.closed_at.isoformat() if row.closed_at else None,'closed_by_id':row.closed_by_id,
+            'resolution':row.resolution,'priority':row.priority,'due_at':row.due_at.isoformat(),
+            'revision':row.revision,'policy_revision':row.policy_revision}
+        with transaction.atomic():
+            if row.revision!=data['revision'] or not FollowUpTask.objects.filter(pk=row.pk,revision=data['revision'],closed_at__isnull=False).update(
+                closed_at=None,closed_by_id=None,resolution='',priority=data['priority'],due_at=data['due_at'],
+                revision=F('revision')+1):raise Conflict('Tâche modifiée ou déjà ouverte : actualisez')
+            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id,action='appointment.follow_up_reopened',
+                metadata={'task_id':row.pk,'before':before,'after':{'closed_at':None,'closed_by_id':None,'resolution':'',
+                    'priority':data['priority'],'due_at':data['due_at'].isoformat(),'revision':data['revision']+1},'reason':data['reason']})
+        row.refresh_from_db();return Response(task_output(row))
+    @action(detail=True,methods=['post'])
     def plan(self,request,pk=None):
         if request.user.role!='administrator':raise PermissionDenied('Planification réservée aux administrateurs')
         row=self.get_object();serializer=TaskPlanInput(data=request.data);serializer.is_valid(raise_exception=True)
@@ -156,7 +172,7 @@ class FollowUpViewSet(viewsets.GenericViewSet):
         if request.user.role!='administrator':raise PermissionDenied('Historique réservé aux administrateurs')
         row=self.get_object()
         entries=self.paginate_queryset(BusinessAudit.objects.filter(object_id=row.appointment_id,
-            action__in=['appointment.follow_up_planned','appointment.follow_up_closed','appointment.follow_up_incident','appointment.incident_reported'],metadata__task_id=row.pk).order_by('-pk'))
+            action__in=['appointment.follow_up_planned','appointment.follow_up_closed','appointment.follow_up_reopened','appointment.follow_up_incident','appointment.incident_reported'],metadata__task_id=row.pk).order_by('-pk'))
         return self.get_paginated_response([{'id':item.pk,'action':item.action,'actor_id':item.actor_id,'created_at':item.created_at,'metadata':item.metadata} for item in entries])
     @action(detail=True,methods=['post'])
     def close(self,request,pk=None):
