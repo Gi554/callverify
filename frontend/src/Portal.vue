@@ -23,6 +23,7 @@ async function business(path:string,body?:any,method?:string,target=workspace.va
  const grant=await portal('access/'+target+'/',{})
  const response=await fetch('/api/'+target+'/'+path,{method:method||(body!==undefined?'POST':'GET'),headers:{Authorization:'Bearer '+grant.token,...(body instanceof FormData?{}:{'Content-Type':'application/json'})},...(body!==undefined?{body:body instanceof FormData?body:JSON.stringify(body)}:{})})
  if(!response.ok){const result=await response.json().catch(()=>({}));const failure=new Error(result.detail||(Array.isArray(result)?result.join(' · '):Object.values(result).join(' · '))||'Service métier indisponible') as Error & {status:number};failure.status=response.status;throw failure}
+ if(response.headers.get('Content-Disposition')?.includes('attachment'))return response.blob()
  return response.status===204?null:response.json()
 }
 function assurance(path:string,body?:any,method?:string){return business(path,body,method,'assurance')}

@@ -1037,3 +1037,59 @@ class StatisticsTests(TestCase):
         data=self.client.get(self.query()).data['totals']
         self.assertEqual(data['cancelled'],1);self.assertEqual(data['reports_due'],0)
         self.assertEqual(data['reported'],2);self.assertEqual(data['performed_rate'],50)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class StatisticsExportTests(TestCase):
+    def setUp(self):
+        fixture=StatisticsTests(methodName='test_missing_report_is_not_counted_as_no_and_zero_rate_is_unknown');fixture.setUp()
+        self.client=fixture.client;self.row=fixture.row;self.base=fixture.base;self.url=fixture.query()
+    def test_csv_bom_readable_headers_and_audit(self):
+        import csv,io
+        from .models import BusinessAudit
+        response=self.client.get(self.url+'&export=csv')
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(response.content.startswith(b'\xef\xbb\xbf'))
+        rows=list(csv.reader(io.StringIO(response.content.decode('utf-8-sig')),delimiter=';'))
+        self.assertEqual(rows[0][0],'Périmètre');self.assertEqual(rows[1][0],'Total autorisé')
+        self.assertIn('Non calculable',rows[1]);self.assertEqual(rows[2][2],'Setter secret')
+        self.assertEqual(response['Cache-Control'],'no-store')
+        self.assertEqual(BusinessAudit.objects.filter(action='statistics.exported').count(),1)
+    def test_xlsx_has_summary_filters_and_formula_names_are_text(self):
+        from openpyxl import load_workbook
+        from io import BytesIO
+        self.row.setter_name='=HYPERLINK("bad")';self.row.save()
+        response=self.client.get(self.url+'&export=xlsx')
+        self.assertEqual(response.status_code,200)
+        book=load_workbook(BytesIO(response.content),data_only=False)
+        self.assertEqual(book.sheetnames,['Synthèse','Par setter'])
+        self.assertEqual(book['Par setter']['C2'].data_type,'s')
+        self.assertEqual(book['Par setter']['C2'].value,'=HYPERLINK("bad")')
+        self.assertEqual(book['Synthèse'].freeze_panes,'A2')
+        self.assertTrue(book['Par setter'].auto_filter.ref)
+    def test_csv_formula_name_is_neutralized(self):
+        self.row.setter_name='  =1+1';self.row.save()
+        response=self.client.get(self.url+'&export=csv')
+        self.assertIn("'  =1+1",response.content.decode('utf-8-sig'))
+    def test_setter_export_does_not_contain_other_setter_or_identity_columns_data(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(21,'assurance','setter'))
+        response=self.client.get(self.url+'&export=csv')
+        self.assertEqual(response.status_code,200)
+        self.assertNotIn('Setter secret',response.content.decode('utf-8-sig'))
+        from openpyxl import load_workbook
+        from io import BytesIO
+        book=load_workbook(BytesIO(self.client.get(self.url+'&export=xlsx').content))
+        self.assertEqual(book.sheetnames,['Synthèse'])
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(31,'assurance','advisor'))
+        self.assertEqual(self.client.get(self.url+'&export=csv').status_code,403)
+    def test_admin_export_contains_every_setter_beyond_page_one(self):
+        from .models import Appointment
+        from uuid import uuid4
+        for i in range(26):Appointment.objects.create(**{**self.base,'setter_id':100+i,'setter_name':f'Setter {i}'},request_id=uuid4(),starts_at=self.row.starts_at,ends_at=self.row.ends_at)
+        self.assertEqual(len(self.client.get(self.url).data['setters']['results']),25)
+        import csv,io
+        rows=list(csv.reader(io.StringIO(self.client.get(self.url+'&export=csv').content.decode('utf-8-sig')),delimiter=';'))
+        self.assertEqual(len(rows),29)
+    def test_invalid_export_and_dates_are_refused(self):
+        self.assertEqual(self.client.get(self.url+'&export=pdf').status_code,400)
+        self.assertEqual(self.client.get('/api/assurance/statistics/?from=bad&export=xlsx').status_code,400)

@@ -104,6 +104,14 @@ Compteurs : rendez-vous, annulations, rendez-vous à venir, comptes rendus, Oui,
 
 Les tâches reflètent leur état actuel sur les rendez-vous de la période. Un report peut déplacer un rendez-vous vers une autre période ; il ne s’agit pas d’un journal historique figé. Les noms de setters sont le dernier instantané de réservation disponible. Appels Phonetico, contrats, ventes, exports statistiques et rapports Isolation ne sont pas comptabilisés dans ce lot. Six tests ciblés, suites SQLite/PostgreSQL en CI, TypeScript/build ; aucune migration nécessaire, revue esthétique différée.
 
+## Fonctionnalité 13 — exports Excel et CSV des statistiques Assurance
+
+Téléchargement depuis les statistiques avec les dates saisies et les mêmes autorisations serveur. Le classeur Excel propose une synthèse lisible et un onglet détaillé pour l’administration ; le setter ne reçoit que sa propre synthèse. CSV UTF-8 avec BOM, séparateur point-virgule et en-têtes français. Période UTC, date de calcul et définition du taux accompagnent les exports. Les valeurs non calculables restent explicitement indiquées, sans faux zéro.
+
+L’export administrateur comprend tous les setters de la période, indépendamment de la page affichée, avec plafond explicite de 5 000 setters. Les noms dangereux sont neutralisés en CSV et stockés comme texte en Excel pour éviter les formules exécutables. Aucun prospect, coordonnée, note ou auteur d’interaction n’est exporté. Chaque export est audité, réponse non mise en cache. Les chiffres sont recalculés au moment du téléchargement et peuvent évoluer depuis l’affichage.
+
+Douze tests ciblés statistiques/exports réussis, dont confidentialité, complétude au-delà de 25 lignes, lecture réelle du XLSX et neutralisation des formules ; suites complètes SQLite/PostgreSQL en CI, TypeScript/build. Aucune migration nécessaire. Revue esthétique reportée à la fin ; statistiques ventes/Phonetico/Isolation non incluses.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
