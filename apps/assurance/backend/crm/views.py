@@ -7,6 +7,7 @@ from django.utils import timezone
 from .leases import ContactLeaseMixin
 from .notes import ContactNoteMixin
 from .custom_fields import CustomValuesMixin
+from .documents import ContactDocumentMixin
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
 
@@ -20,7 +21,7 @@ class PublicContactSerializer(serializers.ModelSerializer):
         fields=['id','name','phone','email','status','updated_at','revision']
         read_only_fields=['status','updated_at','revision']
 
-class ContactViewSet(CustomValuesMixin,ContactNoteMixin,ContactLeaseMixin,viewsets.ReadOnlyModelViewSet):
+class ContactViewSet(ContactDocumentMixin,CustomValuesMixin,ContactNoteMixin,ContactLeaseMixin,viewsets.ReadOnlyModelViewSet):
     pagination_class=ContactPagination
     serializer_class=PublicContactSerializer
     http_method_names=['get','head','options','post','patch','delete']

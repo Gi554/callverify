@@ -120,6 +120,14 @@ Les setters et administrateurs renseignent les champs sur une fiche prise en cha
 
 Aucun schéma ni valeur personnalisée n’est exposé au conseiller ou aux exports existants. La saisie métier possède un enregistrement explicite distinct de la sauvegarde automatique des coordonnées ; une modification concurrente exige de recharger avant de reprendre. Import/mapping des champs personnalisés, partage sélectif conseiller et changements de type ne font pas partie de ce lot. Sept tests ciblés, concurrence PostgreSQL, TypeScript/build et migration locale. Revue visuelle reportée à la fin.
 
+## Fonctionnalité 15 — documents privés des fiches Assurance
+
+Dépôt, liste paginée et téléchargement de PDF, PNG et JPEG de 5 Mo maximum par fichier. Les documents internes sont accessibles aux setters et à l’administration ; les conseillers ne voient que leurs propres documents sur leurs dossiers autorisés. L’administration peut consulter les deux canaux. Le serveur impose ces permissions sur la liste comme sur chaque téléchargement, sans URL publique ni métadonnées internes exposées au conseiller.
+
+Le dépôt interne exige une prise en charge valide. Un identifiant de requête et une empreinte SHA-256 rendent les nouvelles tentatives idempotentes et refusent la réutilisation avec un autre contenu. Documents append-only, téléchargements audités, réponses privées non mises en cache et téléchargement forcé avec protection nosniff. Les octets, métadonnées et audit sont enregistrés dans une même transaction de la base Assurance ; aucune pièce n’est placée dans Git ou servie comme fichier statique.
+
+La vérification porte sur extension, signature et taille ; elle ne constitue pas une analyse antivirus ni une validation complète des fichiers. Le stockage binaire augmente le volume de la base et de ses sauvegardes ; quotas par dossier, antivirus, suppression/rétention réglementaire, partage sélectif et stockage objet restent à définir avant déploiement à grande échelle. Cinq tests couvrent permissions, téléchargements, idempotence, refus des fichiers et annulation transactionnelle si l’audit échoue ; suites complètes et CI PostgreSQL, typage et compilation. Migration 0013. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.

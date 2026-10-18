@@ -2,6 +2,7 @@
 import {computed,ref,onMounted,onBeforeUnmount} from 'vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import AssuranceContactNotes from './AssuranceContactNotes.vue'
+import AssuranceContactDocuments from './AssuranceContactDocuments.vue'
 import AssuranceCustomValues from './AssuranceCustomValues.vue'
 const props=defineProps<{contact:any;role:string;portal:(path:string,body?:any)=>Promise<any>;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
 const emit=defineEmits<{close:[];changed:[]}>()
@@ -44,6 +45,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <button v-if="!token&&dirty" class="secondary" @click="emit('close')">Fermer sans enregistrer les changements locaux</button><template v-if="role==='administrator'"><form class="unlock-form" @submit.prevent="unlock"><label>Motif du déverrouillage forcé<input v-model="reason" maxlength="1000" required></label><button class="secondary" :disabled="busy||saving||!!token||!reason.trim()">Déverrouiller la fiche</button></form><button class="secondary" @click="historyPage=1;loadHistory()">Consulter l’historique administrateur</button><div v-if="showHistory"><p v-if="!history.length">Aucune modification enregistrée.</p><article v-for="entry in history" :key="entry.id"><strong>{{entry.action}}</strong><small>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur interne {{entry.actor_id}}</small><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><div class="history-pages"><button class="secondary" :disabled="historyPage===1" @click="historyPage--;loadHistory()">Précédent</button><span>Page {{historyPage}}</span><button class="secondary" :disabled="historyPage*25>=historyCount" @click="historyPage++;loadHistory()">Suivant</button></div></div></template>
 <AssuranceCustomValues v-if="canWrite" :contact-id="current.id" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 <AssuranceContactNotes :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
+<AssuranceContactDocuments :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
 <AssuranceAppointments :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/>
 </section>
 </template>
