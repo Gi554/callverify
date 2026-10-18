@@ -94,3 +94,10 @@ class FollowUpTask(models.Model):
     closed_by_id=models.PositiveBigIntegerField(null=True,blank=True)
     resolution=models.TextField(blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
+
+class AppointmentIncident(models.Model):
+    appointment=models.ForeignKey(Appointment,on_delete=models.PROTECT,related_name='incidents')
+    request_id=models.UUIDField(unique=True)
+    author_id=models.PositiveBigIntegerField()
+    note=models.TextField()
+    created_at=models.DateTimeField(auto_now_add=True)
