@@ -8,6 +8,7 @@ from rest_framework.exceptions import PermissionDenied,ValidationError
 from rest_framework.response import Response
 from .models import Appointment,AppointmentReport,FollowUpTask,BusinessAudit,AppointmentIncident
 from .leases import Conflict
+from .policies import policy
 from rest_framework.pagination import PageNumberPagination
 
 class AppointmentPagination(PageNumberPagination):
@@ -52,15 +53,17 @@ class ReportMixin:
             if not created:raise Conflict('Identifiant de signalement déjà utilisé')
             task=FollowUpTask.objects.filter(appointment=appointment).first()
             if task is None:
-                task=FollowUpTask.objects.create(appointment=appointment,setter_id=appointment.setter_id,reason=data['note'],due_at=timezone.now()+timedelta(days=1))
+                rules=policy()
+                task=FollowUpTask.objects.create(appointment=appointment,setter_id=appointment.setter_id,reason=data['note'],due_at=timezone.now()+timedelta(hours=rules.initial_hours),priority=rules.default_priority,policy_revision=rules.revision)
             else:
                 # Conditional write serializes reopening with planning and closure.
                 FollowUpTask.objects.filter(pk=task.pk).update(revision=F('revision'))
                 task.refresh_from_db()
                 before={'closed_at':task.closed_at.isoformat() if task.closed_at else None,'resolution':task.resolution,'revision':task.revision}
                 if task.closed_at:
-                    task.closed_at=None;task.closed_by_id=None;task.resolution='';task.due_at=timezone.now()+timedelta(days=1)
-                task.revision+=1;task.save(update_fields=['closed_at','closed_by_id','resolution','due_at','revision'])
+                    rules=policy()
+                    task.closed_at=None;task.closed_by_id=None;task.resolution='';task.due_at=timezone.now()+timedelta(hours=rules.reopen_hours);task.policy_revision=rules.revision
+                task.revision+=1;task.save(update_fields=['closed_at','closed_by_id','resolution','due_at','revision','policy_revision'])
                 BusinessAudit.objects.create(actor_id=request.user.pk,object_id=appointment.pk,action='appointment.follow_up_incident',
                     metadata={'task_id':task.pk,'incident_id':incident.pk,'before':before,'revision':task.revision})
             BusinessAudit.objects.create(actor_id=request.user.pk,object_id=appointment.pk,action='appointment.incident_reported',
@@ -87,8 +90,9 @@ class ReportMixin:
             row=AppointmentReport.objects.create(appointment=appointment,author_id=request.user.pk,
                 **{key:data[key] for key in ('performed','problem','note')})
             if not row.performed or row.problem:
+                rules=policy()
                 FollowUpTask.objects.create(appointment=appointment,setter_id=appointment.setter_id,reason=row.note,
-                    due_at=timezone.now()+timedelta(days=1))
+                    due_at=timezone.now()+timedelta(hours=rules.initial_hours),priority=rules.default_priority,policy_revision=rules.revision)
             BusinessAudit.objects.create(actor_id=request.user.pk,object_id=appointment.pk,action='appointment.reported',
                 metadata={'performed':row.performed,'problem':row.problem})
         return Response({'recorded':True},status=201)

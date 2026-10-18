@@ -84,6 +84,7 @@ class AppointmentReport(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
 
 class FollowUpTask(models.Model):
+    policy_revision=models.PositiveIntegerField(default=0)
     revision=models.PositiveIntegerField(default=0)
     appointment=models.OneToOneField(Appointment,on_delete=models.PROTECT,related_name='follow_up')
     setter_id=models.PositiveBigIntegerField(db_index=True)
@@ -101,3 +102,13 @@ class AppointmentIncident(models.Model):
     author_id=models.PositiveBigIntegerField()
     note=models.TextField()
     created_at=models.DateTimeField(auto_now_add=True)
+
+class FollowUpPolicy(models.Model):
+    id=models.PositiveSmallIntegerField(primary_key=True,default=1,editable=False)
+    initial_hours=models.PositiveIntegerField(default=24)
+    reopen_hours=models.PositiveIntegerField(default=24)
+    default_priority=models.CharField(max_length=20,default='normal')
+    revision=models.PositiveIntegerField(default=0)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_follow_up_policy')]

@@ -825,3 +825,74 @@ class ConcurrentIncidentTests(TransactionTestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(signal,[0,1]))
         self.assertEqual(sorted(results),[200,201]);self.assertEqual(AppointmentIncident.objects.count(),1)
         task.refresh_from_db();self.assertIsNone(task.closed_at);self.assertEqual(task.revision,1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class FollowUpPolicyTests(TestCase):
+    def setUp(self):
+        self.client=APIClient();self.auth(99,'administrator');self.url='/api/assurance/follow-up-policy/'
+    def auth(self,pk,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+    def payload(self,**changes):return {'initial_hours':48,'reopen_hours':6,'default_priority':'high','revision':0,'reason':'SLA client',**changes}
+    def test_defaults_update_history_and_stale_write(self):
+        self.assertEqual(self.client.get(self.url).data['initial_hours'],24)
+        data=self.payload();response=self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,200,response.data);self.assertEqual(response.data['revision'],1)
+        self.assertEqual(self.client.post(self.url,data,format='json').status_code,409)
+        history=self.client.get(self.url+'history/').data
+        self.assertEqual(history['count'],1);self.assertEqual(history['results'][0]['metadata']['before']['initial_hours'],24)
+    def test_roles_and_invalid_configuration(self):
+        for changes in ({'initial_hours':0},{'reopen_hours':721},{'default_priority':'bad'},{'reason':' '},{'unexpected':True}):
+            self.assertEqual(self.client.post(self.url,self.payload(**changes),format='json').status_code,400)
+        for pk,role in ((21,'setter'),(31,'advisor')):
+            self.auth(pk,role)
+            self.assertEqual(self.client.get(self.url).status_code,403)
+            self.assertEqual(self.client.get(self.url+'history/').status_code,403)
+            self.assertEqual(self.client.post(self.url,self.payload(),format='json').status_code,403)
+    def test_new_tasks_use_policy_without_replanning_existing_tasks(self):
+        from .models import FollowUpTask
+        from django.utils import timezone
+        fixture=ReportTests(methodName='test_negative_report_creates_one_task_for_original_setter_and_retry_is_idempotent');fixture.setUp();fixture.report()
+        task=FollowUpTask.objects.get();old_due=task.due_at
+        self.assertEqual(self.client.post(self.url,self.payload(),format='json').status_code,200)
+        task.refresh_from_db();self.assertEqual(task.due_at,old_due);self.assertEqual(task.priority,'normal')
+        from .models import Appointment
+        from uuid import uuid4
+        row=Appointment.objects.get();row.pk=None;row.request_id=uuid4();row.save()
+        fixture.url=f'/api/assurance/appointments/{row.pk}/report/';fixture.report()
+        latest=FollowUpTask.objects.order_by('-pk').first()
+        self.assertEqual(latest.priority,'high');self.assertEqual(latest.policy_revision,1)
+        self.assertAlmostEqual((latest.due_at-timezone.now()).total_seconds()/3600,48,places=2)
+    def test_reopening_uses_new_delay_and_preserves_existing_priority(self):
+        from .models import FollowUpTask
+        from django.utils import timezone
+        from uuid import uuid4
+        fixture=IncidentTests(methodName='test_requires_initial_report_and_does_not_modify_it');fixture.setUp();fixture.report()
+        task=FollowUpTask.objects.get();FollowUpTask.objects.filter(pk=task.pk).update(closed_at=timezone.now(),resolution='Done',priority='urgent')
+        self.client.post(self.url,self.payload(),format='json')
+        fixture.signal(request_id=str(uuid4()))
+        task.refresh_from_db();self.assertIsNone(task.closed_at);self.assertEqual(task.priority,'urgent');self.assertEqual(task.policy_revision,1)
+        self.assertAlmostEqual((task.due_at-timezone.now()).total_seconds()/3600,6,places=2)
+    def test_audit_failure_rolls_back_rules(self):
+        from unittest.mock import patch
+        with patch('apps.assurance.backend.crm.policies.BusinessAudit.objects.create',side_effect=RuntimeError('audit')):
+            with self.assertRaises(RuntimeError):self.client.post(self.url,self.payload(),format='json')
+        self.assertEqual(self.client.get(self.url).data['revision'],0)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentPolicyTests(TransactionTestCase):
+    def test_simultaneous_rule_updates_have_one_winner(self):
+        from django.db import connection,connections
+        from .models import FollowUpPolicy
+        from threading import Barrier
+        from concurrent.futures import ThreadPoolExecutor
+        if connection.vendor!='postgresql':self.skipTest('Concurrence vérifiée dans la CI PostgreSQL')
+        FollowUpPolicy.objects.create(pk=1);barrier=Barrier(2)
+        def update(hours):
+            try:
+                api=APIClient();api.credentials(HTTP_AUTHORIZATION='Bearer '+issue(99,'assurance','administrator'))
+                barrier.wait(timeout=10)
+                return api.post('/api/assurance/follow-up-policy/',{'initial_hours':hours,'reopen_hours':6,'default_priority':'high','revision':0,'reason':'New rule'},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(update,[12,48]))
+        self.assertEqual(sorted(results),[200,409]);self.assertEqual(FollowUpPolicy.objects.get().revision,1)
