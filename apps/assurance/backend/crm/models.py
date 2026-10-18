@@ -112,3 +112,13 @@ class FollowUpPolicy(models.Model):
     updated_at=models.DateTimeField(auto_now=True)
     class Meta:
         constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_follow_up_policy')]
+
+class ContactNote(models.Model):
+    contact=models.ForeignKey(Contact,on_delete=models.PROTECT,related_name='notes')
+    request_id=models.UUIDField(unique=True)
+    author_id=models.PositiveBigIntegerField()
+    channel=models.CharField(max_length=20,choices=[('internal','Interne'),('advisor','Conseiller')])
+    body=models.TextField()
+    created_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        indexes=[models.Index(fields=['contact','channel','author_id'])]
