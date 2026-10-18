@@ -1,0 +1,59 @@
+"""Operational counts over an appointment-start cohort, with explicit denominators."""
+from datetime import datetime,time,timedelta,timezone as dt_timezone
+from django.db.models import Count,Q,Subquery,OuterRef
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from rest_framework.decorators import api_view
+from rest_framework.exceptions import PermissionDenied,ValidationError
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+from .models import Appointment
+
+
+def metrics(now):
+    return {
+        'appointments':Count('pk',distinct=True),
+        'cancelled':Count('pk',filter=Q(status='cancelled'),distinct=True),
+        'upcoming':Count('pk',filter=Q(status='scheduled',ends_at__gt=now),distinct=True),
+        'reported':Count('pk',filter=Q(report__isnull=False),distinct=True),
+        'performed':Count('pk',filter=Q(report__performed=True),distinct=True),
+        'not_performed':Count('pk',filter=Q(report__performed=False),distinct=True),
+        'reports_due':Count('pk',filter=Q(status='scheduled',ends_at__lte=now,report__isnull=True),distinct=True),
+        'problem_reports':Count('pk',filter=Q(report__problem=True),distinct=True),
+        'incidents':Count('incidents',distinct=True),
+        'open_tasks':Count('follow_up',filter=Q(follow_up__closed_at__isnull=True),distinct=True),
+        'overdue_tasks':Count('follow_up',filter=Q(follow_up__closed_at__isnull=True,follow_up__due_at__lt=now),distinct=True),
+        'closed_tasks':Count('follow_up',filter=Q(follow_up__closed_at__isnull=False),distinct=True),
+    }
+
+def finish(values):
+    values['performed_rate']=round(100*values['performed']/values['reported'],2) if values['reported'] else None
+    return values
+
+@api_view(['GET'])
+def statistics(request):
+    if request.user.role not in ('administrator','setter'):raise PermissionDenied('Statistiques internes Assurance uniquement')
+    today=timezone.now().date()
+    try:
+        start=parse_date(request.query_params.get('from',(today-timedelta(days=29)).isoformat()))
+        end=parse_date(request.query_params.get('to',today.isoformat()))
+    except ValueError:raise ValidationError('Dates au format AAAA-MM-JJ requises')
+    if start is None or end is None or end<start or (end-start).days>365:
+        raise ValidationError('Période valide de 366 jours maximum requise')
+    try:exclusive=end+timedelta(days=1)
+    except OverflowError:raise ValidationError('Date de fin hors limites')
+    now=timezone.now()
+    qs=Appointment.objects.filter(starts_at__gte=datetime.combine(start,time.min,dt_timezone.utc),
+                                   starts_at__lt=datetime.combine(exclusive,time.min,dt_timezone.utc))
+    if request.user.role=='setter':qs=qs.filter(setter_id=request.user.pk)
+    totals=finish(qs.aggregate(**metrics(now)))
+    result={'from':start,'to':end,'timezone':'UTC','as_of':now,'totals':totals,
+            'definition':'Période selon le début actuel du rendez-vous (UTC). Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue.'}
+    if request.user.role=='administrator':
+        names=Appointment.objects.filter(setter_id=OuterRef('setter_id')).order_by('-created_at','-pk').values('setter_name')[:1]
+        grouped=qs.order_by().values('setter_id').annotate(**metrics(now),setter_name=Subquery(names)).order_by('setter_id')
+        pager=PageNumberPagination();pager.page_size=25
+        page=pager.paginate_queryset(grouped,request)
+        result['setters']={'count':pager.page.paginator.count,'next':pager.get_next_link(),'previous':pager.get_previous_link(),
+                           'results':[finish(row) for row in page]}
+    return Response(result)

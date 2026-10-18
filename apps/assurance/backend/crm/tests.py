@@ -973,3 +973,67 @@ class ConcurrentContactNoteTests(TransactionTestCase):
             finally:connections.close_all()
         with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(add,[0,1]))
         self.assertEqual(sorted(results),[200,201]);self.assertEqual(ContactNote.objects.count(),1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class StatisticsTests(TestCase):
+    def setUp(self):
+        from .models import Appointment,AdvisorAssignment
+        from django.utils import timezone
+        from datetime import timedelta
+        from uuid import uuid4
+        self.client=APIClient();self.auth(99,'administrator')
+        self.now=timezone.now();self.url='/api/assurance/statistics/'
+        contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21)
+        assignment=AdvisorAssignment.objects.create(setter_id=21,setter_name='Setter secret',advisor_id=31,advisor_name='Advisor')
+        self.base={'contact':contact,'assignment':assignment,'setter_id':21,'setter_name':'Setter secret','advisor_id':31,'advisor_name':'Advisor','booked_by_id':99,'timezone':'UTC','fingerprint':'x'}
+        self.row=Appointment.objects.create(**self.base,request_id=uuid4(),starts_at=self.now-timedelta(hours=2),ends_at=self.now-timedelta(hours=1))
+    def auth(self,pk,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+    def query(self):
+        from datetime import timedelta
+        return self.url+f'?from={(self.now-timedelta(days=1)).date()}&to={(self.now+timedelta(days=1)).date()}'
+    def test_missing_report_is_not_counted_as_no_and_zero_rate_is_unknown(self):
+        data=self.client.get(self.query()).data['totals']
+        self.assertEqual(data['appointments'],1);self.assertEqual(data['reports_due'],1)
+        self.assertEqual(data['not_performed'],0);self.assertIsNone(data['performed_rate'])
+        self.assertEqual(data['open_tasks'],0)
+    def test_multiple_incidents_do_not_multiply_appointments_reports_or_tasks(self):
+        from .models import AppointmentReport,AppointmentIncident,FollowUpTask
+        from uuid import uuid4
+        from datetime import timedelta
+        AppointmentReport.objects.create(appointment=self.row,performed=True,problem=True,author_id=31)
+        for _ in range(3):AppointmentIncident.objects.create(appointment=self.row,request_id=uuid4(),author_id=31,note='Problem')
+        FollowUpTask.objects.create(appointment=self.row,setter_id=21,reason='Problem',due_at=self.now-timedelta(hours=1))
+        response=self.client.get(self.query());self.assertEqual(response.status_code,200,response.data)
+        data=response.data['totals']
+        self.assertEqual(data['appointments'],1);self.assertEqual(data['performed'],1);self.assertEqual(data['incidents'],3)
+        self.assertEqual(data['open_tasks'],1);self.assertEqual(data['overdue_tasks'],1);self.assertEqual(data['performed_rate'],100)
+        self.assertEqual(response.data['setters']['results'][0]['appointments'],1)
+    def test_setter_scope_has_no_other_setters_or_identity_metadata(self):
+        from .models import Appointment
+        from uuid import uuid4
+        Appointment.objects.create(**{**self.base,'setter_id':22,'setter_name':'Hidden setter'},request_id=uuid4(),starts_at=self.row.starts_at,ends_at=self.row.ends_at)
+        self.auth(21,'setter');data=self.client.get(self.query()).data
+        self.assertEqual(data['totals']['appointments'],1);self.assertNotIn('setters',data)
+        self.assertNotIn('Hidden setter',str(data));self.assertNotIn('Setter secret',str(data))
+        self.auth(23,'setter');self.assertEqual(self.client.get(self.query()).data['totals']['appointments'],0)
+    def test_advisor_anonymous_and_other_workspace_are_denied(self):
+        self.auth(31,'advisor');self.assertEqual(self.client.get(self.url).status_code,403)
+        self.client.credentials();self.assertEqual(self.client.get(self.url).status_code,401)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(99,'isolation','administrator'))
+        self.assertEqual(self.client.get(self.url).status_code,401)
+    def test_date_validation_and_excluded_appointments(self):
+        for query in ('?from=bad','?from=2026-02-30','?from=2026-10-20&to=2026-10-01','?from=2020-01-01&to=2026-01-01','?from=9999-12-31&to=9999-12-31'):
+            self.assertEqual(self.client.get(self.url+query).status_code,400)
+        self.assertEqual(self.client.get(self.url+'?from=2000-01-01&to=2000-01-02').data['totals']['appointments'],0)
+    def test_cancelled_is_not_missing_report_and_rates_use_reports_only(self):
+        from .models import Appointment,AppointmentReport
+        from uuid import uuid4
+        self.row.status='cancelled';self.row.save()
+        yes=Appointment.objects.create(**self.base,request_id=uuid4(),starts_at=self.row.starts_at,ends_at=self.row.ends_at)
+        no=Appointment.objects.create(**self.base,request_id=uuid4(),starts_at=self.row.starts_at,ends_at=self.row.ends_at)
+        AppointmentReport.objects.create(appointment=yes,performed=True,author_id=31)
+        AppointmentReport.objects.create(appointment=no,performed=False,author_id=31)
+        data=self.client.get(self.query()).data['totals']
+        self.assertEqual(data['cancelled'],1);self.assertEqual(data['reports_due'],0)
+        self.assertEqual(data['reported'],2);self.assertEqual(data['performed_rate'],50)
