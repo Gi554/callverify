@@ -51,7 +51,7 @@ def statistics(request):
     if request.user.role=='setter':qs=qs.filter(setter_id=request.user.pk)
     totals=finish(qs.aggregate(**metrics(now)))
     result={'from':start,'to':end,'timezone':'UTC','as_of':now,'totals':totals,
-            'definition':'Période selon le début actuel du rendez-vous (UTC). Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue.'}
+            'definition':'Période selon le début actuel du rendez-vous (UTC). Attribution statistique au setter d’origine du rendez-vous, même si le suivi est réattribué. Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue.'}
     groups=[]
     if request.user.role=='administrator':
         names=Appointment.objects.filter(setter_id=OuterRef('setter_id')).order_by('-created_at','-pk').values('setter_name')[:1]

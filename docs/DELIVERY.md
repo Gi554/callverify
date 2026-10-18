@@ -144,6 +144,16 @@ Le journal administrateur conserve l’auteur et le motif de réouverture, l’a
 
 Réouverture manuelle uniquement : la priorité et l’échéance explicites remplacent celles de la tâche, sans réappliquer automatiquement la politique globale. La réattribution à un autre setter, les e-mails et rappels planifiés restent à livrer. Six tests fonctionnels et un test PostgreSQL de réouvertures concurrentes, suite Assurance, TypeScript/build ; aucune migration nécessaire. La revue esthétique reste différée.
 
+## Fonctionnalité 18 — réattribution des tâches Assurance
+
+L’administrateur choisit un setter Assurance actif dans l’annuaire central paginé et justifie le transfert d’une tâche ouverte. Le portail vérifie le compte et son rôle, puis émet une attestation de deux minutes liée au setter cible, à l’administrateur et à la tâche. Assurance vérifie sa signature, sa finalité et sa durée sans consulter la base du portail. Comptes suspendus, autres rôles, preuves altérées/périmées ou liées à un autre acteur/dossier de tâche sont refusés. Une attestation déjà délivrée peut rester valide jusqu’à deux minutes après révocation.
+
+Seule la responsabilité actuelle de la tâche change ; priorité, échéance, rendez-vous et setter d’origine sont conservés. La tâche sort du périmètre de l’ancien responsable et entre dans celui du nouveau, avec le compteur d’alertes recalculé au chargement. Le nouveau responsable peut la clôturer ; un ancien formulaire, même avec une révision devinée, ne peut plus écrire après transfert. Les réouvertures et nouveaux signalements conservent le responsable actuel. Transférer une tâche ne donne pas accès aux autres rendez-vous du setter d’origine.
+
+La révision attendue et une écriture conditionnelle protègent transferts/clôtures concurrents. L’audit administrateur conserve avant/après, origine, nom cible attesté, acteur et motif, sans exposition aux conseillers. Les statistiques restent regroupées selon le setter d’origine du rendez-vous ; elles ne constituent pas une mesure de la charge actuelle des tâches, distinction indiquée dans la définition et les exports. Une tâche clôturée doit être rouverte avant transfert. Aucun e-mail ni transfert en masse dans ce lot.
+
+Huit tests métier, quatre tests du portail et deux tests de concurrence PostgreSQL ajoutés ; suites Assurance/portail, typage et compilation. Aucune migration nécessaire, revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
