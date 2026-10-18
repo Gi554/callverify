@@ -41,6 +41,8 @@ class ImportBatch(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Prospect(models.Model):
+    commercial_status=models.CharField(max_length=30,default='to_contact')
+    callback_at=models.DateTimeField(null=True,blank=True,db_index=True)
     assigned_setter_id=models.PositiveBigIntegerField(null=True,blank=True,db_index=True)
     assigned_setter_name=models.CharField(max_length=150,blank=True)
     assignment_revision=models.PositiveIntegerField(default=0)
@@ -153,3 +155,14 @@ class TaskDelivery(models.Model):
     error = models.CharField(max_length=120, blank=True)
     class Meta:
         constraints = [models.UniqueConstraint(fields=['kind','object_id'],name='unique_task_delivery')]
+
+class ProspectActivity(models.Model):
+    prospect=models.ForeignKey(Prospect,on_delete=models.PROTECT,related_name='activities')
+    request_id=models.UUIDField(unique=True)
+    fingerprint=models.CharField(max_length=64)
+    author_portal_id=models.PositiveBigIntegerField()
+    author_role=models.CharField(max_length=20)
+    kind=models.CharField(max_length=20)
+    body=models.TextField()
+    changes=models.JSONField(default=dict)
+    created_at=models.DateTimeField(auto_now_add=True)

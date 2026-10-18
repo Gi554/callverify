@@ -164,10 +164,20 @@ Les nouvelles routes de travail ont leur propre authentification par ticket Isol
 
 Limites : affectations unitaires, consultation uniquement côté setter. Qualification commerciale, notes, rappels, appels Phonetico, visites, portail client et affectations en masse restent à livrer. L’interface historique conserve sa session distincte pour l’administration des imports/Twilio. Six tests métier et un test de concurrence PostgreSQL ajoutés, quatre tests du portail, suites Isolation/portail et CI Assurance, TypeScript/build. Migration Isolation 0007 appliquée localement ; CI PostgreSQL étendue à la concurrence Isolation. Revue esthétique différée.
 
+## Fonctionnalité 20 — observations commerciales et rappels Isolation
+
+Le setter sur ses prospects attribués, ou l’administrateur Isolation sur tout prospect, ajoute une note ou un résultat commercial : à contacter, en cours, à rappeler, intéressé, non intéressé, non joint. Chaque observation exige un texte et reste dans un historique paginé avec date, identifiant central et rôle de l’auteur. Les résultats commerciaux sont distincts de la validité de format, de l’état de ligne et des résultats Lookup/Voice : non joint ne signifie pas numéro invalide et aucune vérification ni appel réel n’est déclenché.
+
+Le résultat À rappeler exige une date future avec décalage ISO 8601 explicite. Les rappels à échéance possèdent un compteur persistant recalculé au chargement et un filtre de file ordonné du plus ancien au plus récent. Leur consultation ne les efface pas. Une note laisse le rappel inchangé ; une qualification peut le reprogrammer ou le retirer en choisissant un autre résultat, avec ancienne date et état conservés dans l’historique. Le transfert d’un prospect transfère aussi son rappel courant au nouveau responsable.
+
+Une version commune protège observations et affectations ; chaque sauvegarde revérifie le responsable dans l’écriture conditionnelle, même si le transfert intervient après la lecture initiale. L’identifiant de requête et une empreinte rendent les nouvelles tentatives identiques idempotentes et empêchent les doublons. Une tentative concurrente avec une version dépassée peut demander un rechargement ; les observations enregistrées ne sont jamais remplacées. En cas d’échec d’audit, qualification, rappel, note et version sont annulés ensemble. L’ancien setter perd aussi l’accès aux historiques après réattribution. Les administrateurs et les prochains clients autorisés Isolation pourront retracer les auteurs ; le portail client n’est pas livré dans ce lot.
+
+Limites : un seul rappel courant par prospect, statuts initiaux fixes, pas de planification de plusieurs tâches, de notification e-mail, d’appel ni de visite. L’identité de l’auteur est conservée par identifiant central et rôle ; aucun compte administrateur local n’est créé pour représenter un setter. Huit tests fonctionnels et deux tests PostgreSQL ajoutés ; 82 tests Isolation locaux dont trois réservés à PostgreSQL, CI complète, typage et compilation. Migration 0008 appliquée localement. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
-2. Qualification, notes, rappels et visites Isolation, portail client et affectations en masse (affectations unitaires et file de consultation setter livrées).
+2. Visites Isolation, portail client et affectations en masse (affectations unitaires, file setter, qualification, notes et rappel courant livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).
