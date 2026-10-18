@@ -32,4 +32,4 @@ def dashboard(request):
     qs=Contact.objects.all()
     if request.user.role=='advisor':qs=qs.filter(assigned_advisor_id=request.user.pk)
     return Response({'workspace':'assurance','role':request.user.role,'contacts':qs.count(),
-        'stage':'contacts_import','available':['contacts','imports','locking'],'pending':['phonetico','appointments','tasks','calendars']})
+        'stage':'contacts_import','available':['contacts','imports','locking','assignments'],'pending':['phonetico','appointments','tasks','calendars']})

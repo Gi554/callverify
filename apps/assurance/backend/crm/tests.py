@@ -271,3 +271,110 @@ class ConcurrentLeaseTests(TransactionTestCase):
             results=list(pool.map(save,['First','Second']))
         self.assertEqual(sorted(results),[200,409])
         contact.refresh_from_db();self.assertEqual(contact.revision,1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class AssignmentTests(TestCase):
+    def setUp(self):
+        self.client=APIClient();self.authorize(10,'administrator');self.url='/api/assurance/assignments/'
+    def authorize(self,subject,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(subject,'assurance',role))
+    def proof(self,setter=21,advisor=31,actor=10):
+        from packages.access.assignments import issue_assignment
+        return issue_assignment(actor,setter,'Setter '+str(setter),advisor,'Advisor '+str(advisor))
+    def create(self,**kwargs):return self.client.post(self.url,{'proof':self.proof(**kwargs)},format='json')
+    def test_multiple_advisors_per_setter_and_duplicate_pair_conflict(self):
+        from .models import AdvisorAssignment
+        self.assertEqual(self.create().status_code,201)
+        self.assertEqual(self.create(advisor=32).status_code,201)
+        self.assertEqual(self.create().status_code,409)
+        self.assertEqual(AdvisorAssignment.objects.count(),2)
+    def test_create_does_not_trust_unsigned_ids_or_wrong_actor(self):
+        self.assertEqual(self.client.post(self.url,{'setter_id':21,'advisor_id':31},format='json').status_code,400)
+        self.assertEqual(self.create(actor=11).status_code,400)
+        self.assertEqual(self.client.post(self.url,{'proof':issue(10,'assurance','administrator')},format='json').status_code,400)
+    def test_expired_or_tampered_attestation_is_rejected(self):
+        from unittest.mock import patch
+        with patch('django.core.signing.time.time',return_value=1000):expired=self.proof()
+        for proof in (expired,self.proof()+'x'):
+            self.assertEqual(self.client.post(self.url,{'proof':proof},format='json').status_code,400)
+    def test_setter_only_reads_own_active_advisors_without_setter_metadata(self):
+        first=self.create().data
+        self.create(setter=22,advisor=32)
+        suspended=self.create(advisor=33).data
+        self.client.patch(self.url+str(suspended['id'])+'/',{'active':False,'revision':0},format='json')
+        self.authorize(21,'setter');response=self.client.get(self.url)
+        self.assertEqual(response.data['count'],1)
+        self.assertEqual(response.data['results'],[{'id':first['id'],'advisor':{'id':31,'name':'Advisor 31'},'active':True}])
+        self.assertEqual(self.client.get(self.url+str(suspended['id'])+'/').status_code,404)
+        self.assertEqual(self.client.get(self.url+str(first['id'])+'/history/').status_code,403)
+        self.assertEqual(self.create().status_code,403)
+        self.assertEqual(self.client.patch(self.url+str(first['id'])+'/',{'active':False,'revision':0},format='json').status_code,403)
+    def test_advisor_cannot_discover_setters_via_collection_detail_or_history(self):
+        row=self.create().data;self.authorize(31,'advisor')
+        for path in (self.url,self.url+str(row['id'])+'/',self.url+str(row['id'])+'/history/'):
+            self.assertEqual(self.client.get(path).status_code,403)
+        self.assertEqual(self.create().status_code,403)
+    def test_reactivation_needs_fresh_proof_for_exact_pair_and_keeps_history(self):
+        row=self.create().data;url=self.url+str(row['id'])+'/'
+        self.assertEqual(self.client.patch(url,{'active':False,'revision':0},format='json').status_code,200)
+        self.assertEqual(self.client.patch(url,{'active':True,'revision':1},format='json').status_code,400)
+        self.assertEqual(self.client.patch(url,{'active':True,'revision':1,'proof':self.proof(advisor=99)},format='json').status_code,400)
+        self.assertEqual(self.client.patch(url,{'active':True,'revision':1,'proof':self.proof()},format='json').status_code,200)
+        history=self.client.get(url+'history/').data
+        self.assertEqual(history['count'],3)
+        self.assertEqual(history['results'][0]['metadata']['before']['active'],False)
+    def test_stale_revision_does_not_overwrite_latest_state(self):
+        row=self.create().data;url=self.url+str(row['id'])+'/'
+        self.assertEqual(self.client.patch(url,{'active':False,'revision':0},format='json').status_code,200)
+        self.assertEqual(self.client.patch(url,{'active':True,'revision':0,'proof':self.proof()},format='json').status_code,409)
+        self.assertFalse(self.client.get(url).data['active'])
+    def test_filter_and_paginated_admin_history_are_scoped(self):
+        row=self.create().data;self.create(setter=22,advisor=32)
+        self.assertEqual(self.client.get(self.url+'?search=Setter+21').data['count'],1)
+        self.assertEqual(self.client.get(self.url+'?active=false').data['count'],0)
+        self.assertEqual(self.client.get(self.url+str(row['id'])+'/history/').data['count'],1)
+    def test_audit_failure_rolls_back_association(self):
+        from unittest.mock import patch
+        from .models import AdvisorAssignment
+        with patch('apps.assurance.backend.crm.assignments.BusinessAudit.objects.create',side_effect=RuntimeError('audit failure')):
+            with self.assertRaises(RuntimeError):self.create()
+        self.assertFalse(AdvisorAssignment.objects.exists())
+    def test_association_does_not_grant_access_to_unassigned_prospects(self):
+        Contact.objects.create(name='Private prospect',phone='raw',created_by_id=21)
+        self.assertEqual(self.create().status_code,201)
+        self.authorize(31,'advisor')
+        self.assertEqual(self.client.get('/api/assurance/contacts/').data['count'],0)
+    def test_missing_or_wrong_workspace_ticket_is_denied(self):
+        self.client.credentials();self.assertEqual(self.client.get(self.url).status_code,401)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(10,'isolation','administrator'))
+        self.assertEqual(self.client.get(self.url).status_code,401)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentAssignmentTests(TransactionTestCase):
+    def race(self,operation):
+        from django.db import connection,connections
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        if connection.vendor!='postgresql':self.skipTest('Concurrence réelle vérifiée dans la CI PostgreSQL')
+        barrier=Barrier(2)
+        def execute(_):
+            try:
+                client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(10,'assurance','administrator'))
+                barrier.wait(timeout=10)
+                return operation(client).status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:return list(pool.map(execute,[0,1]))
+    def test_duplicate_simultaneous_creates_have_one_winner(self):
+        from packages.access.assignments import issue_assignment
+        from .models import AdvisorAssignment
+        proof=issue_assignment(10,21,'Setter',31,'Advisor')
+        results=self.race(lambda client:client.post('/api/assurance/assignments/',{'proof':proof},format='json'))
+        self.assertEqual(sorted(results),[201,409]);self.assertEqual(AdvisorAssignment.objects.count(),1)
+    def test_simultaneous_changes_cannot_overwrite_a_new_revision(self):
+        from .models import AdvisorAssignment,BusinessAudit
+        row=AdvisorAssignment.objects.create(setter_id=21,setter_name='Setter',advisor_id=31,advisor_name='Advisor')
+        results=self.race(lambda client:client.patch(f'/api/assurance/assignments/{row.pk}/',{'active':False,'revision':0},format='json'))
+        self.assertEqual(sorted(results),[200,409])
+        row.refresh_from_db();self.assertEqual(row.revision,1)
+        self.assertEqual(BusinessAudit.objects.filter(action='assignment.updated').count(),1)
