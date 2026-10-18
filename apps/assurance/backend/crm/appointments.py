@@ -97,7 +97,9 @@ def output(row,user):
     if user.role=='administrator':result.update(setter={'id':row.setter_id,'name':row.setter_name},booked_by_id=row.booked_by_id)
     return result
 
-class AppointmentViewSet(viewsets.GenericViewSet):
+from .reports import ReportMixin
+
+class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
     serializer_class=BookingInput
     pagination_class=AppointmentPagination
     http_method_names=['get','post','head','options']
@@ -170,7 +172,7 @@ class AppointmentViewSet(viewsets.GenericViewSet):
             active_assignment(original.assignment_id)
             calendar_lock(original.advisor_id)
             row=Appointment.objects.select_related('contact').get(pk=original.pk)
-            if row.revision!=data['revision'] or row.status!='scheduled':raise Conflict('Rendez-vous modifié ou déjà annulé')
+            if row.revision!=data['revision'] or row.status!='scheduled' or hasattr(row,'report'):raise Conflict('Rendez-vous modifié, annulé ou déjà renseigné')
             if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
             prevent_overlap(row.contact_id,row.advisor_id,data['starts_at'],data['ends_at'],row.pk)
             before=snapshot(row)
@@ -186,7 +188,7 @@ class AppointmentViewSet(viewsets.GenericViewSet):
             Contact.objects.filter(pk=original.contact_id).update(revision=F('revision'))
             calendar_lock(original.advisor_id)
             row=Appointment.objects.select_related('contact').get(pk=original.pk)
-            if row.revision!=data['revision'] or row.status!='scheduled':raise Conflict('Rendez-vous modifié ou déjà annulé')
+            if row.revision!=data['revision'] or row.status!='scheduled' or hasattr(row,'report'):raise Conflict('Rendez-vous modifié, annulé ou déjà renseigné')
             before=snapshot(row);row.status='cancelled';row.revision+=1;row.save(update_fields=['status','revision','updated_at'])
             audit(request.user,row,'appointment.cancelled',before,data['reason'])
         return Response(output(row,request.user))

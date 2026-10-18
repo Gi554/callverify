@@ -74,3 +74,22 @@ class Appointment(models.Model):
     class Meta:
         constraints=[models.CheckConstraint(condition=models.Q(ends_at__gt=models.F('starts_at')),name='appointment_positive_interval')]
         indexes=[models.Index(fields=['advisor_id','status','starts_at']),models.Index(fields=['setter_id','starts_at'])]
+
+class AppointmentReport(models.Model):
+    appointment=models.OneToOneField(Appointment,on_delete=models.PROTECT,related_name='report')
+    performed=models.BooleanField()
+    problem=models.BooleanField(default=False)
+    note=models.TextField(blank=True)
+    author_id=models.PositiveBigIntegerField()
+    created_at=models.DateTimeField(auto_now_add=True)
+
+class FollowUpTask(models.Model):
+    appointment=models.OneToOneField(Appointment,on_delete=models.PROTECT,related_name='follow_up')
+    setter_id=models.PositiveBigIntegerField(db_index=True)
+    reason=models.TextField()
+    priority=models.CharField(max_length=20,default='normal')
+    due_at=models.DateTimeField()
+    closed_at=models.DateTimeField(null=True,blank=True)
+    closed_by_id=models.PositiveBigIntegerField(null=True,blank=True)
+    resolution=models.TextField(blank=True)
+    created_at=models.DateTimeField(auto_now_add=True)

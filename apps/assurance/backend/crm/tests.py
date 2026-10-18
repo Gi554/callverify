@@ -574,3 +574,100 @@ class ConcurrentAppointmentTests(TransactionTestCase):
         results=self.race([(21,lambda api:api.post('/api/assurance/appointments/',first,format='json')),
                            (21,lambda api:api.post('/api/assurance/appointments/',second,format='json'))])
         self.assertEqual(sorted(results),[201,409]);self.assertEqual(Appointment.objects.count(),1)
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ReportTests(TestCase):
+    def setUp(self):
+        from .models import Appointment,AdvisorAssignment
+        from django.utils import timezone
+        from datetime import timedelta
+        from uuid import uuid4
+        self.client=APIClient();self.auth(31,'advisor')
+        contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21)
+        assignment=AdvisorAssignment.objects.create(setter_id=21,setter_name='SECRET',advisor_id=31,advisor_name='Advisor')
+        self.appointment=Appointment.objects.create(request_id=uuid4(),fingerprint='x',contact=contact,assignment=assignment,setter_id=21,setter_name='SECRET',advisor_id=31,advisor_name='Advisor',booked_by_id=99,starts_at=timezone.now()-timedelta(hours=2),ends_at=timezone.now()-timedelta(hours=1),timezone='UTC')
+        self.url=f'/api/assurance/appointments/{self.appointment.pk}/report/'
+    def auth(self,pk,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'assurance',role))
+    def report(self,**values):return self.client.post(self.url,{'revision':0,'performed':False,'problem':False,'note':'No show',**values},format='json')
+    def test_negative_report_creates_one_task_for_original_setter_and_retry_is_idempotent(self):
+        from .models import FollowUpTask
+        self.assertEqual(self.report().status_code,201)
+        self.assertEqual(self.report().status_code,200)
+        task=FollowUpTask.objects.get();self.assertEqual(task.setter_id,21)
+        self.assertEqual(task.appointment_id,self.appointment.pk)
+        self.assertNotIn('SECRET',str(self.client.get(self.url).data))
+    def test_positive_report_has_no_task_unless_problem(self):
+        from .models import FollowUpTask
+        self.assertEqual(self.report(performed=True,problem=True).status_code,201)
+        self.assertEqual(FollowUpTask.objects.count(),1)
+    def test_yes_without_problem_has_no_task_and_cannot_be_overwritten(self):
+        from .models import FollowUpTask
+        self.assertEqual(self.report(performed=True,note='').status_code,201)
+        self.assertFalse(FollowUpTask.objects.exists())
+        self.assertEqual(self.report().status_code,409)
+    def test_missing_report_is_pending_not_a_negative_report(self):
+        from .models import FollowUpTask
+        data=self.client.get('/api/assurance/dashboard/').data
+        self.assertEqual(data['reports_due'],1);self.assertFalse(FollowUpTask.objects.exists())
+        self.report();self.assertEqual(self.client.get('/api/assurance/dashboard/').data['reports_due'],0)
+    def test_other_advisor_and_setter_cannot_submit(self):
+        self.auth(32,'advisor');self.assertEqual(self.report().status_code,404)
+        self.auth(21,'setter');self.assertEqual(self.report().status_code,403)
+        self.auth(99,'administrator');self.assertEqual(self.report().status_code,403)
+    def test_future_cancelled_stale_and_missing_reason_are_rejected(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        self.assertEqual(self.report(note='').status_code,400)
+        self.assertEqual(self.report(revision=99).status_code,409)
+        self.appointment.ends_at=timezone.now()+timedelta(hours=1);self.appointment.save()
+        self.assertEqual(self.report().status_code,409)
+        self.appointment.status='cancelled';self.appointment.save();self.assertEqual(self.report().status_code,409)
+    def test_task_scope_alert_persistence_and_justified_close(self):
+        from .models import FollowUpTask
+        self.report();task=FollowUpTask.objects.get();url=f'/api/assurance/follow-ups/{task.pk}/'
+        self.assertEqual(self.client.get('/api/assurance/follow-ups/').status_code,403)
+        self.auth(22,'setter');self.assertEqual(self.client.get(url).status_code,404)
+        self.auth(21,'setter')
+        self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],1)
+        self.client.get(url)
+        self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],1)
+        self.assertEqual(self.client.post(url+'close/',{'resolution':' '},format='json').status_code,400)
+        self.assertEqual(self.client.post(url+'close/',{'resolution':'Prospect rappelé, rendez-vous à reprendre'},format='json').status_code,200)
+        self.assertEqual(self.client.get('/api/assurance/dashboard/').data['open_follow_ups'],0)
+        self.assertEqual(self.client.get('/api/assurance/follow-ups/?state=closed').data['count'],1)
+        self.assertEqual(self.client.post(url+'close/',{'resolution':'Again'},format='json').status_code,404)
+    def test_reported_appointment_cannot_be_cancelled_to_erase_outcome(self):
+        self.report();self.auth(21,'setter')
+        self.assertEqual(self.client.post(f'/api/assurance/appointments/{self.appointment.pk}/cancel/',{'revision':0,'reason':'Erase'},format='json').status_code,409)
+    def test_audit_failure_rolls_back_report_and_task(self):
+        from unittest.mock import patch
+        from .models import AppointmentReport,FollowUpTask
+        with patch('apps.assurance.backend.crm.reports.BusinessAudit.objects.create',side_effect=RuntimeError('audit')):
+            with self.assertRaises(RuntimeError):self.report()
+        self.assertFalse(AppointmentReport.objects.exists());self.assertFalse(FollowUpTask.objects.exists())
+
+@override_settings(DEBUG=True)
+@skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
+class ConcurrentReportTests(TransactionTestCase):
+    def test_simultaneous_reports_create_only_one_task(self):
+        from django.db import connection,connections
+        from .models import Appointment,AdvisorAssignment,AppointmentReport,FollowUpTask
+        from django.utils import timezone
+        from datetime import timedelta
+        from uuid import uuid4
+        from threading import Barrier
+        from concurrent.futures import ThreadPoolExecutor
+        if connection.vendor!='postgresql':self.skipTest('Concurrence vérifiée dans la CI PostgreSQL')
+        contact=Contact.objects.create(name='Prospect',phone='raw',created_by_id=21)
+        assignment=AdvisorAssignment.objects.create(setter_id=21,setter_name='Setter',advisor_id=31,advisor_name='Advisor')
+        row=Appointment.objects.create(request_id=uuid4(),fingerprint='x',contact=contact,assignment=assignment,setter_id=21,setter_name='Setter',advisor_id=31,advisor_name='Advisor',booked_by_id=21,starts_at=timezone.now()-timedelta(hours=2),ends_at=timezone.now()-timedelta(hours=1),timezone='UTC')
+        barrier=Barrier(2)
+        def submit(_):
+            try:
+                client=APIClient();client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(31,'assurance','advisor'))
+                barrier.wait(timeout=10)
+                return client.post(f'/api/assurance/appointments/{row.pk}/report/',{'revision':0,'performed':False,'problem':True,'note':'Problème'},format='json').status_code
+            finally:connections.close_all()
+        with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(submit,[0,1]))
+        self.assertEqual(sorted(results),[200,201]);self.assertEqual(AppointmentReport.objects.count(),1);self.assertEqual(FollowUpTask.objects.count(),1)
