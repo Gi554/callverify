@@ -13,6 +13,23 @@ class PairInput(serializers.Serializer):
     setter_id=serializers.IntegerField(min_value=1)
     advisor_id=serializers.IntegerField(min_value=1)
 
+class TaskOwnerInput(serializers.Serializer):
+    task_id=serializers.IntegerField(min_value=1)
+    setter_id=serializers.IntegerField(min_value=1)
+    def validate(self,data):
+        if set(self.initial_data)-set(self.fields):raise ValidationError('Champs non autorisés')
+        return data
+
+@api_view(['POST'])
+def task_owner_proof(request):
+    from packages.access.followups import issue_owner
+    require_admin(request.user,'assurance')
+    serializer=TaskOwnerInput(data=request.data);serializer.is_valid(raise_exception=True);data=serializer.validated_data
+    target=Membership.objects.filter(workspace='assurance',role='setter',active=True,user__is_active=True,user_id=data['setter_id']).select_related('user').first()
+    if target is None:raise ValidationError('Setter Assurance actif requis')
+    AccessAudit.objects.create(user=request.user,action='follow_up.owner_attested',workspace='assurance',metadata=data)
+    return Response({'proof':issue_owner(request.user.pk,data['task_id'],target.user_id,target.user.username),'expires_in':120})
+
 @api_view(['GET','POST'])
 def participants(request):
     require_admin(request.user,'assurance')
