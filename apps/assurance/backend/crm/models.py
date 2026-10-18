@@ -29,6 +29,19 @@ class Contact(models.Model):
     lease_token=models.UUIDField(null=True,blank=True)
     lease_expires_at=models.DateTimeField(null=True,blank=True)
 
+class AdvisorAssignment(models.Model):
+    setter_id=models.PositiveBigIntegerField()
+    setter_name=models.CharField(max_length=150)
+    advisor_id=models.PositiveBigIntegerField()
+    advisor_name=models.CharField(max_length=150)
+    active=models.BooleanField(default=True)
+    revision=models.PositiveIntegerField(default=0)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['setter_id','advisor_id'],name='unique_assurance_assignment')]
+
 class BusinessAudit(models.Model):
     actor_id=models.PositiveBigIntegerField()
     action=models.CharField(max_length=80)

@@ -38,11 +38,21 @@ Le parcours fonctionnel permet de modifier nom, téléphone et e-mail sans norma
 
 Vérifications : 27 tests Assurance exécutés sur SQLite ; deux tests supplémentaires de concurrence (acquisitions et sauvegardes simultanées) s’exécutent dans la CI PostgreSQL dédiée. Contrôle TypeScript, build et migration locale. La revue visuelle est reportée à la fin à la demande de l’utilisateur. Statuts métier, champs configurables, notes/documents et affectation multi-conseillers restent dans les lots suivants.
 
+## Fonctionnalité 5 — affectations multi-conseillers Assurance
+
+L’administrateur associe plusieurs conseillers à un setter, consulte les associations avec recherche/pagination, suspend ou réactive une association et consulte son historique. Le couple setter/conseiller est unique. La suspension conserve l’association et ses événements ; une révision attendue interdit d’écraser une modification concurrente. Les setters consultent uniquement leurs propres associations actives. Les conseillers n’ont accès ni à la collection, ni aux détails, ni aux historiques des associations.
+
+Le portail expose aux seuls administrateurs Assurance un annuaire filtré des setters/conseillers actifs. Avant une création ou une réactivation, il vérifie l’état du compte et le rôle Assurance, puis signe une attestation de deux minutes pour ce couple et cet administrateur. Assurance la vérifie avec une finalité distincte des tickets de connexion ; les identifiants transmis sans preuve, preuves altérées, périmées ou émises pour un autre acteur sont refusés. Les bases restent indépendantes et aucun secret de compte n’est transmis. Les suspensions ne requièrent pas de nouvelle attestation, afin de permettre le retrait d’une ancienne association même si un compte a été désactivé.
+
+Les noms stockés sont des instantanés actualisés à la réactivation. Une association active ne constitue pas une preuve permanente qu’un compte central conserve son rôle ; la réservation devra revalider les accès avant d’accepter un conseiller. Une attestation émise juste avant une révocation peut rester valable deux minutes, comme les tickets métier existants. L’affectation ne donne pas à elle seule accès à un dossier prospect : les rendez-vous et leurs droits seront livrés séparément.
+
+Vérifications : tests du portail (annuaire, rôles, révocation, CSRF et attestation), tests Assurance (périmètres, multiples conseillers, doublons, historique, réactivation et rollback), plus création et modification concurrentes sur PostgreSQL dans la CI. TypeScript/build et migration locale ; aucune retouche esthétique ni création de comptes de démonstration pour ce lot.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
 2. Dossiers Isolation, affectations des setters, travail des prospects et suivi des visites.
-3. Fiches métier Assurance complètes et affectations multi-conseillers (import brut et verrouillage livrés).
+3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Agendas et rendez-vous, puis comptes rendus, incidents, tâches et alertes persistantes.
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.

@@ -95,3 +95,59 @@ class AccessManagementTests(TestCase):
     def test_session_mutation_requires_csrf(self):
         client=APIClient(enforce_csrf_checks=True);client.force_login(self.actor)
         self.assertEqual(client.patch(self.url+str(self.target.pk)+'/',{'active':False},format='json').status_code,403)
+
+@override_settings(DEBUG=True,PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+@skipUnless(settings.ROOT_URLCONF=='portal.backend.urls','Service portail indépendant')
+class ParticipantTests(TestCase):
+    def setUp(self):
+        self.actor=get_user_model().objects.create_user('assign-manager')
+        Membership.objects.create(user=self.actor,workspace='assurance',role='administrator')
+        self.setter=get_user_model().objects.create_user('setter-one')
+        self.advisor=get_user_model().objects.create_user('advisor-one')
+        self.setter_access=Membership.objects.create(user=self.setter,workspace='assurance',role='setter')
+        self.advisor_access=Membership.objects.create(user=self.advisor,workspace='assurance',role='advisor')
+        self.client=APIClient();self.client.force_authenticate(self.actor)
+        self.url='/api/portal/assurance/participants/'
+    def pair(self):return self.client.post(self.url,{'setter_id':self.setter.pk,'advisor_id':self.advisor.pk},format='json')
+    def test_directory_lists_only_active_assurance_role_and_no_secrets(self):
+        other=get_user_model().objects.create_user('isolation-setter')
+        Membership.objects.create(user=other,workspace='isolation',role='setter')
+        result=self.client.get(self.url+'?role=setter').data
+        self.assertEqual(result['count'],1)
+        self.assertEqual(result['results'],[{'id':self.setter.pk,'name':'setter-one','role':'setter'}])
+        self.assertEqual(self.client.get(self.url+'?role=setter&search=advisor').data['count'],0)
+        self.assertEqual(self.client.get(self.url+'?role=administrator').status_code,400)
+    def test_proof_is_bound_to_actor_pair_and_separate_from_login(self):
+        from packages.access.assignments import verify_assignment
+        response=self.pair();self.assertEqual(response.status_code,200,response.data)
+        token=response.data['proof'];claims=verify_assignment(token,self.actor.pk)
+        self.assertEqual(claims['setter']['id'],self.setter.pk)
+        with self.assertRaises(signing.BadSignature):verify_assignment(token,self.actor.pk+100)
+        with self.assertRaises(signing.BadSignature):verify(token,'assurance')
+        with self.assertRaises(signing.BadSignature):verify_assignment(issue(self.actor.pk,'assurance','administrator'),self.actor.pk)
+    def test_inactive_membership_or_account_cannot_be_attested(self):
+        self.advisor_access.active=False;self.advisor_access.save()
+        self.assertEqual(self.pair().status_code,400)
+        self.advisor_access.active=True;self.advisor_access.save()
+        self.advisor.is_active=False;self.advisor.save()
+        self.assertEqual(self.pair().status_code,400)
+        self.assertEqual(self.client.get(self.url+'?role=advisor').data['count'],0)
+    def test_role_change_prevents_new_attestation(self):
+        self.advisor_access.role='setter';self.advisor_access.save()
+        self.assertEqual(self.pair().status_code,400)
+    def test_other_roles_and_other_workspace_admin_have_no_directory(self):
+        for user in (self.setter,self.advisor):
+            self.client.force_authenticate(user)
+            self.assertEqual(self.client.get(self.url+'?role=setter').status_code,403)
+            self.assertEqual(self.pair().status_code,403)
+        Membership.objects.filter(user=self.actor).update(workspace='isolation')
+        self.client.force_authenticate(self.actor)
+        self.assertEqual(self.pair().status_code,403)
+    def test_proof_expires_after_two_minutes(self):
+        from packages.access.assignments import verify_assignment
+        from unittest.mock import patch
+        with patch('django.core.signing.time.time',return_value=1000):token=self.pair().data['proof']
+        with self.assertRaises(signing.SignatureExpired):verify_assignment(token,self.actor.pk)
+    def test_attestation_session_requires_csrf(self):
+        client=APIClient(enforce_csrf_checks=True);client.force_login(self.actor)
+        self.assertEqual(client.post(self.url,{'setter_id':self.setter.pk,'advisor_id':self.advisor.pk},format='json').status_code,403)
