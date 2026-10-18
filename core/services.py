@@ -1,5 +1,7 @@
 import csv
 import io
+import re
+from itertools import chain
 import zipfile
 from decimal import Decimal
 from datetime import timedelta
@@ -15,8 +17,13 @@ from twilio.http.http_client import TwilioHttpClient
 from .models import Campaign, PhoneNumber, Prospect, ImportBatch, ImportRow, LookupCheck, ExportJob, PlatformSettings
 
 def normalize(value):
+    # Excel numeric phone cells may arrive as an integral float or decimal text.
+    text = str(value).strip()
+    match = re.fullmatch(r'(\+?\d{10,15})\.0+', text)
+    if match:
+        text = match.group(1)
     try:
-        number = phonenumbers.parse(str(value), 'CA')
+        number = phonenumbers.parse(text, 'CA')
         if not phonenumbers.is_valid_number(number):
             return None, '', 'Numéro invalide selon libphonenumber'
         country = phonenumbers.region_code_for_number(number) or ''
@@ -39,7 +46,13 @@ def read_table(batch):
         try:
             worksheet = workbook[batch.sheet] if batch.sheet else workbook.active
             iterator = worksheet.iter_rows(values_only=True)
-            headers = [str(v or '').strip() for v in next(iterator)]
+            first_row = next(iterator)
+            if first_row and normalize(first_row[0])[0]:
+                # A headerless phone list must keep its first number as data.
+                headers = ['phone'] + [f'column_{i+1}' for i in range(1,len(first_row))]
+                iterator = chain([first_row], iterator)
+            else:
+                headers = [str(v or '').strip() for v in first_row]
             rows = []
             for values in iterator:
                 if len(rows) >= settings.MAX_IMPORT_ROWS:
@@ -172,6 +185,8 @@ def schedule_lookup(campaign, force=False):
         if campaign.status == 'archived':
             raise ValueError('Campagne archivée')
         phones = PhoneNumber.objects.filter(prospect__campaign=campaign).distinct()
+        if not phones.exists():
+            raise ValueError('Aucun numéro importé au format valide : consultez le rapport d’import avant de lancer Lookup')
         config,_=PlatformSettings.objects.get_or_create(pk=1)
         unit_cost = Decimal(settings.LOOKUP_UNIT_COST)
         if unit_cost < 0:
@@ -202,6 +217,7 @@ def schedule_lookup(campaign, force=False):
 
 EXPORT_COLUMNS = ['name','reference','raw_phone','e164','validity','line_status','carrier','line_type','compliance','compliance_reason','reason','checked_at']
 EXPORT_COLUMNS += ['lookup_classification','lookup_line_status','lookup_error','lookup_checked_at','voice_status','voice_rang','voice_answered','voice_amd','voice_error_code','voice_checked_at']
+EXPORT_COLUMNS += ['line_state','line_error','line_checked_at']
 FILTERS = {'validity', 'compliance', 'phone__line_status'}
 
 def filtered_prospects(campaign, filters):

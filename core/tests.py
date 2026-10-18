@@ -469,3 +469,38 @@ class BackendTests(TestCase):
         from .voice import amd_parameters
         self.assertEqual(amd_parameters(False,''),{})
         self.assertEqual(amd_parameters(True,'https://example.invalid/api/webhooks/twilio/amd/')['machine_detection'],'Enable')
+
+    def test_excel_integral_decimal_phone_is_normalized(self):
+        self.assertEqual(normalize('15144325221.0')[0], '+15144325221')
+        self.assertEqual(normalize(15144325221.0)[0], '+15144325221')
+        self.assertIsNone(normalize('15144325221.5')[0])
+    def test_headerless_excel_keeps_first_phone(self):
+        book=Workbook();sheet=book.active
+        sheet.append([15813079131.0]);sheet.append([15144325221.0])
+        data=io.BytesIO();book.save(data)
+        batch=ImportBatch.objects.create(campaign=self.campaign,original=SimpleUploadedFile('phones.xlsx',data.getvalue()),mapping={'phone':'phone'})
+        report=process_import(batch.pk)
+        self.assertEqual(report['total'],2)
+        self.assertEqual(report['valid'],2)
+    @override_settings(LOOKUP_ENABLED=True,TWILIO_ACCOUNT_SID='test',TWILIO_AUTH_TOKEN='test')
+    def test_empty_campaign_cannot_schedule_lookup(self):
+        with self.assertRaisesMessage(ValueError,'Aucun numéro importé'):
+            schedule_lookup(self.campaign)
+
+    def test_line_state_is_independent_of_newer_basic_validation(self):
+        from .qualification import technical_results
+        prospect=self.imported()
+        LookupCheck.objects.create(campaign=self.campaign,phone=prospect.phone,status='completed',packages='line_status',response={'valid':True,'line_status':{'status':'inactive','error_code':None}})
+        LookupCheck.objects.create(campaign=self.campaign,phone=prospect.phone,status='completed',packages='',response={'valid':True})
+        result=technical_results(prospect)
+        self.assertEqual(result['line_state'],'inactive')
+        self.assertEqual(result['lookup_classification'],'valid')
+        dashboard=self.client.get('/api/dashboard/').data
+        self.assertEqual(next(r['count'] for r in dashboard['line_states'] if r['state']=='inactive'),1)
+    def test_basic_valid_and_60600_do_not_confirm_line(self):
+        from .qualification import technical_results
+        prospect=self.imported()
+        LookupCheck.objects.create(campaign=self.campaign,phone=prospect.phone,status='completed',packages='',response={'valid':True})
+        self.assertEqual(technical_results(prospect)['line_state'],'unknown')
+        LookupCheck.objects.create(campaign=self.campaign,phone=prospect.phone,status='completed',packages='line_status',error='Package indisponible: 60600',response={'valid':True,'line_status':{'status':None,'error_code':60600}})
+        self.assertEqual(technical_results(prospect)['line_state'],'unknown')
