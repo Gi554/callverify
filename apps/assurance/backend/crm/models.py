@@ -154,6 +154,9 @@ class ContactDocument(models.Model):
     size=models.PositiveIntegerField()
     sha256=models.CharField(max_length=64)
     content=models.BinaryField()
+    advisor_visible=models.BooleanField(default=False)
+    advisor_filename=models.CharField(max_length=180,blank=True)
+    sharing_revision=models.PositiveIntegerField(default=0)
     created_at=models.DateTimeField(auto_now_add=True)
 
 class ContactPipeline(models.Model):

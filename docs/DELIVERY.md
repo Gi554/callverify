@@ -374,6 +374,18 @@ Sept tests ajoutés : cinq sources, confidentialité inter-conseillers/setters/c
 
 Limites : chronologie des enregistrements existants, pas un journal exhaustif des modifications. Un rendez-vous apparaît à sa date de création avec son état actuel ; reports, annulations détaillées, changements commerciaux et interventions administrateur restent dans leurs journaux dédiés. Aucune identité interne résolue. Appels Phonetico, cycles des mandats/contrats, champs métier définitifs et règles de visibilité complémentaires restent à livrer/valider. La présence de cette chronologie ne signifie pas que toutes les fiches métier sont terminées. Revue esthétique différée.
 
+## Fonctionnalité 43 — partage explicite des documents internes Assurance
+
+**Préparation isolée sur partage-documents-assurance, non fusionnée.** L’utilisateur a autorisé la poursuite pendant l’incident Actions ; le lot 42 reste séparé sur staging et doit être validé/fusionné avant intégration de ce lot.
+
+L’administration peut publier un document interne existant vers tous les conseillers ayant accès au dossier. Nom de fichier public distinct obligatoire, extension conservée, motif et confirmation de vérification du contenu/métadonnées exigés. Aucun document existant ou nouvel envoi n’est partagé par défaut. Le fichier original reste immuable, attribué à son auteur et accessible dans le parcours interne ; publication/retrait modifient seulement une autorisation et un nom public avec révision attendue et audit atomique avant/après. Les documents personnels des conseillers ne peuvent pas être publiés par cette commande.
+
+Liste, téléchargement et chronologie utilisent la même autorisation : le conseiller voit ses propres documents et les documents internes publiés de ses seuls dossiers. Sur un partage, le nom interne et l’identité de l’auteur ne sont jamais renvoyés automatiquement ; l’en-tête de téléchargement et la chronologie utilisent le nom public. Le retrait coupe les prochaines requêtes sans supprimer le fichier interne. L’administration contrôle la publication depuis la liste des documents de la fiche, sans nécessiter de verrou de saisie puisque le contenu du document n’est pas modifié.
+
+Huit tests fonctionnels et une concurrence PostgreSQL ajoutés : privé par défaut, publication/listes/chronologie/téléchargement, nom public et confidentialité des métadonnées applicatives, retrait, rôles/périmètres, séparation des fichiers personnels, révision, validation de la revue, audit et rollback. Migration Assurance 0020 ajoutant les trois attributs de partage avec valeurs privées par défaut. Tests fournisseurs inexistants : aucun service externe sollicité. Typage/build et suite Assurance vérifiés avant publication de la PR.
+
+Limites : partage du fichier intégral à tous les conseillers autorisés du dossier, sans destinataire individuel ni expiration. La confirmation de revue est humaine : pas de suppression automatique des métadonnées embarquées, de caviardage ou d’analyse du contenu binaire. Pour un fichier contenant des informations internes, ne pas le publier ; préparer et déposer une version expurgée avant de l’autoriser. Révocation effective aux prochaines requêtes, sans récupération des copies déjà téléchargées ni rafraîchissement automatique des écrans. Notes internes non partagées par ce lot. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
