@@ -28,6 +28,8 @@ def sign_in(request):
     if not user or not user.is_active:
         return Response({'detail':'Identifiants incorrects'},status=400)
     login(request,user)
+    from .authentication import SESSION_KEY,generation
+    request.session[SESSION_KEY]=generation(user)
     AccessAudit.objects.create(user=user,action='session.login')
     return session_payload(user)
 
