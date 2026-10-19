@@ -376,7 +376,7 @@ Limites : chronologie des enregistrements existants, pas un journal exhaustif de
 
 ## Fonctionnalité 42 — partage sélectif des champs métier au conseiller Assurance
 
-**Livraison en cours : PR #46 ouverte, non fusionnée.** Vérifications locales réussies ; CI en file d’attente pendant l’incident GitHub Actions du 19 octobre 2026. Ne pas démarrer le lot suivant avant validation et fusion.
+**Suivi de livraison : [PR #46](https://github.com/Gi554/callverify/pull/46).** Vérifications locales réussies ; validation CI et fusion consultables sur la PR. L’incident GitHub Actions du 19 octobre 2026 a retardé la validation. L’utilisateur a autorisé la préparation isolée du lot suivant pendant cette attente, sans inverser les fusions.
 
 L’administration coche « Visible au conseiller » dans Statuts et champs métier pour publier le libellé, le type et la valeur actuelle d’un champ sur les dossiers autorisés du conseiller. Tous les champs existants et nouveaux restent internes par défaut ; aucune donnée existante n’est publiée par le déploiement. Option globale par champ et non par prospect/conseiller. Le setter voit la mention de partage au moment de sa saisie. Le conseiller consulte une section en lecture seule de sa fiche et peut l’actualiser ; aucun accès au schéma complet ou aux commandes de saisie internes n’est ajouté.
 
