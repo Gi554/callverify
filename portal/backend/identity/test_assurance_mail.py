@@ -102,6 +102,48 @@ class AssuranceMailTests(TestCase):
             self.assertTrue(eligible(1,self.user.pk,stream='reminders'))
             verify(get.call_args.kwargs['headers']['Authorization'][7:],'reminder_eligible',event=1,user=self.user.pk)
             self.assertIn('/reminder-mail-events/',get.call_args.args[0])
+    def escalation_feed(self):return {'events':[{'id':1,'recipient_id':0,'role':'administrator','created_at':timezone.now().isoformat()}]}
+    def admins(self):
+        users=[]
+        for name in ('admin-a','admin-b'):
+            user=get_user_model().objects.create_user(name,email=name+'@example.test')
+            Membership.objects.create(user=user,workspace='assurance',role='administrator');users.append(user)
+        return users
+    def test_escalation_fans_out_only_to_explicit_assurance_administrators(self):
+        admins=self.admins()
+        other=get_user_model().objects.create_user('isolation-admin',email='isolation@example.test')
+        Membership.objects.create(user=other,workspace='isolation',role='administrator')
+        get_user_model().objects.create_user('super',email='super@example.test',is_superuser=True,is_staff=True)
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=self.escalation_feed()):
+            self.assertEqual(sync('escalations')['queued'],2);self.assertEqual(sync('escalations')['already_queued'],2)
+        self.assertEqual(AssuranceMailCursor.objects.get().pk,3)
+        with patch('portal.backend.identity.assurance_mail.eligible',return_value=True) as source:
+            self.assertEqual(dispatch()['sent'],2)
+            self.assertEqual(source.call_count,2)
+            self.assertTrue(all(call.kwargs=={'stream':'escalations'} for call in source.call_args_list))
+        self.assertEqual({message.to[0] for message in mail.outbox},{user.email for user in admins})
+        self.assertTrue(all('setter' not in message.body and 'prospect' not in message.body for message in mail.outbox))
+    def test_escalation_rechecks_admin_grant_before_smtp(self):
+        admins=self.admins()
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=self.escalation_feed()):sync('escalations')
+        Membership.objects.filter(user=admins[0],workspace='assurance').update(active=False)
+        with patch('portal.backend.identity.assurance_mail.eligible',return_value=True):
+            result=dispatch();self.assertEqual(result['expired'],1);self.assertEqual(result['sent'],1)
+        self.assertEqual(mail.outbox[0].to,[admins[1].email])
+    def test_escalation_cannot_be_injected_into_reminder_stream_or_target_a_user(self):
+        feed=self.escalation_feed()
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=feed):
+            with self.assertRaises(ValueError):sync('reminders')
+        feed['events'][0]['recipient_id']=self.user.pk
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=feed):
+            with self.assertRaises(ValueError):sync('escalations')
+        self.assertFalse(PortalMail.objects.exists())
+    def test_escalation_eligibility_uses_own_signed_operation(self):
+        from .assurance_mail import eligible
+        with patch('portal.backend.identity.assurance_mail.requests.get',return_value=Mock(status_code=200,json=lambda:{'eligible':True})) as get:
+            self.assertTrue(eligible(1,self.user.pk,stream='escalations'))
+            verify(get.call_args.kwargs['headers']['Authorization'][7:],'escalation_eligible',event=1,user=self.user.pk)
+            self.assertIn('/escalation-mail-events/',get.call_args.args[0])
 
 from unittest import skipUnless
 from concurrent.futures import ThreadPoolExecutor

@@ -296,13 +296,23 @@ Le relais e-mail accepte un flux de rappels distinct des incidents, avec curseur
 
 Dix tests fonctionnels Assurance et une concurrence PostgreSQL ajoutés, plus quatre tests portail des flux et rôles ; suites de 170 tests Assurance (20 réservés à PostgreSQL) et 84 tests portail (trois réservés à PostgreSQL), typage/build et contrôles des migrations. Migrations Assurance 0017/0018 et portail 0007 appliquées localement. Limites : exploitation des trois workers et SMTP réel à valider, pas d’escalade administrateur, jours ouvrés, quota journalier par utilisateur ou réglage individuel. Le balayage est complet et en flux, sa capacité doit être mesurée à grande échelle. Revue esthétique différée.
 
+## Fonctionnalité 34 — escalades administrateurs Assurance
+
+Les règles de rappel proposent une escalade facultative, désactivée initialement, pour les tâches durablement en retard et les comptes rendus toujours manquants. Seuils initiaux : 72 heures après l’échéance de tâche, ou 72 heures supplémentaires après le délai normal de compte rendu ; répétition toutes les 24 heures. Seuils réglables de 1 à 2160 heures et répétition de 1 à 720 heures, avec révision et motif audités. Le type de rappel parent doit rester activé. Heures UTC écoulées, sans jours ouvrés.
+
+Les administrateurs Assurance disposent d’un compteur et d’un filtre réservé aux escalades dans les rappels actifs. Aucune réaffectation, clôture ou réponse négative automatique. Un transfert de tâche conserve la supervision administrative sans recréer l’escalade de la même période. Résolution, compte rendu, report, nouvelle échéance, désactivation ou changement de règle invalident les événements concernés. Génération transactionnelle et idempotente, limitée à la période courante après une panne ; historique conservé en base, sans écran exhaustif ni acquittement dédié.
+
+Un troisième flux du relais central adresse un message neutre à chaque administrateur disposant explicitement d’un accès Assurance actif, avec compte actif et adresse valide non ambiguë. Les administrateurs Isolation et les superutilisateurs sans cet accès sont exclus. Assurance ne reçoit aucun annuaire central : il expose une référence de diffusion administrative signée, sans donnée de prospect. Registre de déduplication par événement/destinataire et recontrôle du rôle et de la situation avant chaque tentative SMTP. Les workers existants suffisent ; configuration dans docs/PORTAL_MAIL.md.
+
+Huit tests fonctionnels et une concurrence PostgreSQL ajoutés côté Assurance, quatre tests portail supplémentaires. Suites : 179 tests Assurance (21 réservés à PostgreSQL), 88 tests portail (trois réservés à PostgreSQL), contrôles des migrations et typage/build. Migration Assurance 0019 appliquée localement. Aucun e-mail réel envoyé : SMTP en mémoire pour les tests. Limites : diffusion à tous les administrateurs Assurance actifs, pas de choix individuel ou de quotas ; capacité de balayage et de diffusion à mesurer. SMTP réel et exploitation des workers restent à valider ; doublon possible après arrêt entre SMTP et confirmation, réception non prouvée. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA et navigation unifiée avec Isolation.
 2. Statistiques et suivi métier Isolation, partage autorisé des interactions et répartition automatique (portail client, résultats, file setter, qualification, notes, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
-5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).
+5. Connecteurs agendas externes et règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.
