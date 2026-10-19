@@ -226,6 +226,14 @@ Une écriture transactionnelle sérialise les changements sur le compte avant de
 
 Huit tests supplémentaires avec de vraies sessions/CSRF : ancien mot de passe, règles de validation, confirmation, cible interdite, limitation des tentatives, reprise de connexion, invalidation de l’autre session et rollback si l’audit échoue. Suite portail complète, typage/build et CI. Aucune migration nécessaire. Limites : récupération de mot de passe oublié, invitations, MFA et limitation distribuée avant production restent à livrer ; revue esthétique différée.
 
+## Fonctionnalité 27 — récupération du mot de passe central
+
+Commande « Mot de passe oublié » depuis la connexion AMX, demande par adresse e-mail et saisie d’un nouveau mot de passe confirmé. La réponse publique reste identique pour un compte connu ou inconnu, suspendu, sans mot de passe utilisable ou une adresse ambiguë associée à plusieurs comptes. Les erreurs SMTP ne dévoilent ni destinataire ni état du compte ; l’échec est enregistré dans l’audit sans détail technique sensible. Demandes limitées à cinq par heure par adresse IP, confirmations à dix ; CSRF requis sur les deux opérations.
+
+Lien signé Django de 30 minutes, lié au compte et invalidé après changement du mot de passe ou de l’adresse e-mail. Le serveur utilise exclusivement PORTAL_PUBLIC_URL configuré, jamais l’hôte envoyé par le navigateur ; HTTPS requis pour le lien hors DEBUG. Le jeton est placé dans le fragment de l’URL, retiré de la barre d’adresse à l’ouverture et transmis uniquement dans le corps de confirmation. Il n’est renvoyé dans aucune réponse API ni conservé dans l’audit. Nouveau mot de passe validé côté serveur, écrit atomiquement avec son audit ; anciennes sessions rejetées à leur prochaine requête, sans connexion automatique du demandeur. Les tickets métier déjà émis expirent au maximum sous deux minutes.
+
+Transport portail distinct : PORTAL_EMAIL_* et PORTAL_FROM_EMAIL. En développement, les e-mails vont par défaut dans private-media/portal-mail, hors Git ; les tests utilisent une boîte en mémoire. Docker configure un SMTP explicite, à renseigner et tester avant envoi réel. Le service traite l’envoi de façon synchrone avec délai réseau maximal de dix secondes : file persistante, reprise d’envoi, protection distribuée et réduction des écarts de temps de réponse restent à renforcer avant production. Les adresses des comptes doivent être renseignées et non ambiguës ; récupération sans adresse impossible. Sept tests dédiés, suite portail, TypeScript/build et CI ; aucune migration. Aucun e-mail réel envoyé pendant ce lot.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
