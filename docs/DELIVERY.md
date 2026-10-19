@@ -376,6 +376,8 @@ Limites : chronologie des enregistrements existants, pas un journal exhaustif de
 
 ## Fonctionnalité 42 — partage sélectif des champs métier au conseiller Assurance
 
+**Livraison en cours : PR #46 ouverte, non fusionnée.** Vérifications locales réussies ; CI en file d’attente pendant l’incident GitHub Actions du 19 octobre 2026. Ne pas démarrer le lot suivant avant validation et fusion.
+
 L’administration coche « Visible au conseiller » dans Statuts et champs métier pour publier le libellé, le type et la valeur actuelle d’un champ sur les dossiers autorisés du conseiller. Tous les champs existants et nouveaux restent internes par défaut ; aucune donnée existante n’est publiée par le déploiement. Option globale par champ et non par prospect/conseiller. Le setter voit la mention de partage au moment de sa saisie. Le conseiller consulte une section en lecture seule de sa fiche et peut l’actualiser ; aucun accès au schéma complet ou aux commandes de saisie internes n’est ajouté.
 
 Route dédiée avec contrôle du rôle et du périmètre contact existant (affectation directe ou rendez-vous du conseiller). Seuls les champs actifs dont l’option est le booléen vrai sont retournés, via une liste de propriétés explicite. Champs inconnus, internes, archivés, configuration des obligations/choix et métadonnées d’auteur/setter restent exclus. Une valeur fausse reste Non et une valeur absente reste Non renseigné. Le retrait du partage ou l’archivage s’applique aux requêtes suivantes sans effacer les valeurs conservées. La modification de visibilité réutilise la révision de schéma, le motif obligatoire, le verrou et l’audit atomique de configuration ; la saisie interne reste protégée par prise en charge et révisions.
