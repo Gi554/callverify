@@ -16,6 +16,7 @@ class FieldDefinition(serializers.Serializer):
     type=serializers.ChoiceField(choices=['text','boolean','date','choice'])
     required=serializers.BooleanField(default=False)
     active=serializers.BooleanField(default=True)
+    advisor_visible=serializers.BooleanField(default=False)
     choices=serializers.ListField(child=serializers.CharField(max_length=100),max_length=50,default=list)
     def to_internal_value(self,data):
         if isinstance(data,dict) and set(data)-set(self.fields):raise ValidationError('Propriété de champ inconnue')
@@ -91,6 +92,14 @@ def validate_values(values,fields):
         if kind=='text' and item['required'] and not value.strip():raise ValidationError({key:'Champ obligatoire'})
 
 class CustomValuesMixin:
+    @action(detail=True,methods=['get'])
+    def shared_fields(self,request,pk=None):
+        if request.user.role!='advisor':raise PermissionDenied('Consultation réservée au conseiller du dossier')
+        contact=self.get_object()
+        fields=[{'key':item['key'],'label':item['label'],'type':item['type'],'value':contact.custom_values.get(item['key'])}
+            for item in schema().fields if item.get('active') is True and item.get('advisor_visible') is True]
+        response=Response({'fields':fields});response['Cache-Control']='no-store';return response
+
     @action(detail=True,methods=['get','post'])
     def custom_fields(self,request,pk=None):
         internal(request.user);contact=self.get_object()
