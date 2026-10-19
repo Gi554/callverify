@@ -1,5 +1,5 @@
 """Read-only contact chronology; visibility is applied before SQL union/pagination."""
-from django.db.models import F,Value,CharField,TextField,Case,When
+from django.db.models import F,Value,CharField,TextField,Case,When,Q
 from django.db.models.functions import Cast
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
@@ -41,7 +41,7 @@ class ContactInteractionMixin:
         appointments=Appointment.objects.filter(contact=contact)
         if user.role=='advisor':
             notes=notes.filter(channel='advisor',author_id=user.pk)
-            documents=documents.filter(channel='advisor',author_id=user.pk)
+            documents=documents.filter(Q(channel='advisor',author_id=user.pk)|Q(channel='internal',advisor_visible=True))
             appointments=appointments.filter(advisor_id=user.pk)
         elif user.role=='setter':
             notes=notes.filter(channel='internal');documents=documents.filter(channel='internal')
@@ -50,7 +50,7 @@ class ContactInteractionMixin:
         incidents=AppointmentIncident.objects.filter(appointment__in=appointments.values('pk'))
         sources={
             'note':(notes,F('body'),F('channel'),F('pk')),
-            'document':(documents,F('filename'),F('channel'),F('pk')),
+            'document':(documents,Case(When(channel='internal',then=F('advisor_filename')),default=F('filename'),output_field=CharField()) if user.role=='advisor' else F('filename'),Case(When(channel='internal',then=Value('shared')),default=F('channel'),output_field=CharField()) if user.role=='advisor' else F('channel'),F('pk')),
             'appointment':(appointments,Value(''),F('status'),F('pk')),
             'report':(reports,F('note'),Case(When(performed=True,then=Value('performed')),default=Value('not_performed'),output_field=CharField()),F('appointment_id')),
             'incident':(incidents,F('note'),Value('reported'),F('appointment_id')),
