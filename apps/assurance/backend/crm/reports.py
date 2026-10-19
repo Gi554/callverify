@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from .models import Appointment,AppointmentReport,FollowUpTask,BusinessAudit,AppointmentIncident
 from .leases import Conflict
 from .policies import policy
+from .notifications import notify
 from rest_framework.pagination import PageNumberPagination
 
 class AppointmentPagination(PageNumberPagination):
@@ -68,6 +69,7 @@ class ReportMixin:
                     metadata={'task_id':task.pk,'incident_id':incident.pk,'before':before,'revision':task.revision})
             BusinessAudit.objects.create(actor_id=request.user.pk,object_id=appointment.pk,action='appointment.incident_reported',
                 metadata={'task_id':task.pk,'incident_id':incident.pk,'note':data['note']})
+            notify(task,'incident',f'incident:{incident.pk}')
         return Response({'recorded':True},status=201)
 
     @action(detail=True,methods=['get','post'])
@@ -91,8 +93,9 @@ class ReportMixin:
                 **{key:data[key] for key in ('performed','problem','note')})
             if not row.performed or row.problem:
                 rules=policy()
-                FollowUpTask.objects.create(appointment=appointment,setter_id=appointment.setter_id,reason=row.note,
+                task=FollowUpTask.objects.create(appointment=appointment,setter_id=appointment.setter_id,reason=row.note,
                     due_at=timezone.now()+timedelta(hours=rules.initial_hours),priority=rules.default_priority,policy_revision=rules.revision)
+                notify(task,'report',f'report:{row.pk}')
             BusinessAudit.objects.create(actor_id=request.user.pk,object_id=appointment.pk,action='appointment.reported',
                 metadata={'performed':row.performed,'problem':row.problem})
         return Response({'recorded':True},status=201)
@@ -200,7 +203,7 @@ class FollowUpViewSet(viewsets.GenericViewSet):
         if request.user.role!='administrator':raise PermissionDenied('Historique réservé aux administrateurs')
         row=self.get_object()
         entries=self.paginate_queryset(BusinessAudit.objects.filter(object_id=row.appointment_id,
-            action__in=['appointment.follow_up_planned','appointment.follow_up_closed','appointment.follow_up_reopened','appointment.follow_up_reassigned','appointment.follow_up_incident','appointment.incident_reported'],metadata__task_id=row.pk).order_by('-pk'))
+            action__in=['appointment.notification_read','appointment.follow_up_planned','appointment.follow_up_closed','appointment.follow_up_reopened','appointment.follow_up_reassigned','appointment.follow_up_incident','appointment.incident_reported'],metadata__task_id=row.pk).order_by('-pk'))
         return self.get_paginated_response([{'id':item.pk,'action':item.action,'actor_id':item.actor_id,'created_at':item.created_at,'metadata':item.metadata} for item in entries])
     @action(detail=True,methods=['post'])
     def close(self,request,pk=None):
