@@ -30,6 +30,12 @@ def enqueue(*,user,workspace='',subject,body,recipient,guard,expires_at):
     return row
 
 def eligible(guard,recipient):
+    if guard['kind']=='assurance_follow_up':
+        from .assurance_mail import eligible as source_eligible
+        user=get_user_model().objects.filter(pk=guard['user'],is_active=True,email=recipient).first()
+        if not user or not Membership.objects.filter(user=user,workspace='assurance',role='setter',active=True).exists():return False
+        if get_user_model().objects.filter(email__iexact=recipient,is_active=True).count()!=1:return False
+        return source_eligible(guard['event'],user.pk)
     if guard['kind']=='invitation':
         row=Invitation.objects.select_related('issuer').filter(pk=guard['id']).first()
         return bool(row and not row.accepted_at and not row.revoked_at and row.expires_at>timezone.now()

@@ -33,3 +33,22 @@ Le worker réserve un message pendant 60 secondes par mise à jour conditionnell
 Chaque envoi recontrôle l’expiration et la validité du lien : invitation révoquée/remplacée/acceptée, droits retirés à l’émetteur, récupération invalidée par changement du compte. Les contenus sont effacés après envoi, expiration ou échec définitif. Une révocation concurrente juste après ce contrôle peut laisser partir un ancien e-mail, mais son lien reste refusé à l’acceptation.
 
 SMTP fournit ici une livraison « au moins une fois » : si le processus s’arrête après acceptation SMTP mais avant enregistrement du succès, un doublon peut être émis. Le message reçu ne prouve pas sa lecture. Pas encore de retour de rebond, notification métier rendez-vous, tableau de supervision, alerte externe, politique de conservation ou déploiement SMTP validé. La file doit être surveillée et le worker maintenu actif ; un serveur web seul n’envoie plus ces e-mails.
+
+## Notifications métier Assurance
+
+Un relais serveur récupère les notifications `report` et `incident` des sept derniers jours dont la tâche reste ouverte. Les notifications de reprise historique ne déclenchent pas d’e-mail. Aucun accès direct à la base Assurance : deux routes HTTP internes, protégées par des signatures de 60 secondes avec une clé dédiée `ASSURANCE_MAIL_BRIDGE_KEY`, distincte des accès utilisateurs et à partager uniquement entre Assurance et le portail. Ne jamais exposer cette clé au navigateur. Configurer `ASSURANCE_INTERNAL_URL` vers le service Assurance de confiance (réseau Docker privé par défaut en production, `http://127.0.0.1:8091` en développement). Utiliser HTTPS si la connexion traverse un réseau non fiable ; les redirections sont refusées et le délai HTTP est de cinq secondes.
+
+Avec le même environnement que le portail :
+
+```powershell
+./.venv/Scripts/python.exe manage.py relay_assurance_mail --settings=portal.backend.settings
+./.venv/Scripts/python.exe manage.py relay_assurance_mail --settings=portal.backend.settings --loop --interval 30
+```
+
+Le relais ne transmet aucun e-mail lui-même. Il ajoute les messages à la file chiffrée, que `dispatch_portal_mail` traite séparément. Docker fournit `assurance-mail-relay`, en plus de `portal-mail`. Migrations portail à appliquer avant démarrage. Un passage récupère au maximum 100 événements avec un curseur persistant ; après la fin du parcours, le relais recommence pour reprendre les réattributions ou les comptes corrigés. Le registre évite de remettre en file le même événement pour le même compte, même avec deux relais concurrents. Les compteurs de commande n’affichent aucune adresse ou signature.
+
+Le portail résout le compte central du setter : compte actif, accès Assurance actif avec rôle setter, adresse valide et non partagée avec un autre compte actif. Sinon l’événement est ignoré pour ce passage, puis réévalué lors d’un prochain parcours pendant sa fenêtre de sept jours. Le message contient seulement un avis de suivi et le lien du portail, nécessitant une connexion normale ; aucun lien de connexion automatique, nom, téléphone, note, identifiant de prospect ou identité de setter. L’e-mail ne prouve pas sa lecture et ne résout pas la tâche.
+
+Avant SMTP, les droits et l’adresse sont revérifiés ainsi que le responsable et l’ouverture de la tâche via Assurance. Une tâche clôturée, réattribuée ou sortie de la fenêtre expire dans la file. Une panne du service déclenche une reprise, jamais un envoi sans vérification. Après transfert, un prochain parcours peut mettre en file pour le nouveau responsable. Une modification entre le dernier contrôle et SMTP reste possible ; le texte minimal ne révèle aucune donnée de dossier.
+
+Limites : pas de rappel périodique pour le même incident, de notification d’une réouverture administrative ou d’escalade. Les e-mails expirent sept jours après l’événement ; une panne prolongée peut donc entraîner une absence d’e-mail, sans effacer l’alerte interne. Après un échec définitif ou une adresse changée après mise en file, le même événement/compte n’est pas remis automatiquement en file ; la boîte interne reste la référence. Les limites SMTP et de surveillance ci-dessus s’appliquent. Ne pas annoncer la réception d’un e-mail sur la seule mise en file. Aucun transport SMTP réel n’a été validé dans ce lot.
