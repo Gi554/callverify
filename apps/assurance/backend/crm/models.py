@@ -162,3 +162,29 @@ class ContactPipeline(models.Model):
     revision=models.PositiveIntegerField(default=0)
     class Meta:
         constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_contact_pipeline')]
+
+class ReminderPolicy(models.Model):
+    id=models.PositiveSmallIntegerField(primary_key=True,default=1)
+    tasks_enabled=models.BooleanField(default=True)
+    reports_enabled=models.BooleanField(default=True)
+    task_interval_hours=models.PositiveIntegerField(default=24)
+    report_grace_hours=models.PositiveIntegerField(default=24)
+    report_interval_hours=models.PositiveIntegerField(default=24)
+    revision=models.PositiveIntegerField(default=0)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_reminder_policy')]
+
+class ReminderEvent(models.Model):
+    event_key=models.CharField(max_length=64,unique=True)
+    kind=models.CharField(max_length=30)
+    appointment=models.ForeignKey(Appointment,on_delete=models.PROTECT,related_name='reminders')
+    task=models.ForeignKey(FollowUpTask,on_delete=models.PROTECT,null=True,related_name='reminders')
+    recipient_id=models.PositiveBigIntegerField()
+    recipient_role=models.CharField(max_length=20)
+    anchor_at=models.DateTimeField()
+    policy_revision=models.PositiveIntegerField()
+    valid_until=models.DateTimeField()
+    created_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=(models.Q(kind='task_overdue',task__isnull=False,recipient_role='setter')|models.Q(kind='report_missing',task__isnull=True,recipient_role='advisor')),name='reminder_kind_target')]
+        indexes=[models.Index(fields=['recipient_id','recipient_role','valid_until'],name='reminder_active_recipient')]

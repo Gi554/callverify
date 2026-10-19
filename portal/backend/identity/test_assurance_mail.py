@@ -74,6 +74,34 @@ class AssuranceMailTests(TestCase):
         with patch('portal.backend.identity.management.commands.relay_assurance_mail.sync',side_effect=RuntimeError('secret')):
             with self.assertRaises(CommandError) as error:call_command('relay_assurance_mail')
         self.assertNotIn('secret',str(error.exception))
+    def test_advisor_reminder_uses_own_stream_and_role(self):
+        self.grant.role='advisor';self.grant.save()
+        events={'events':[{'id':1,'recipient_id':self.user.pk,'role':'advisor','created_at':timezone.now().isoformat()}]}
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=events):
+            self.assertEqual(sync('reminders')['queued'],1);self.assertEqual(sync('reminders')['already_queued'],1)
+        self.assertEqual(AssuranceMailRelay.objects.get().stream,'reminders')
+        with patch('portal.backend.identity.assurance_mail.eligible',return_value=True) as source:
+            self.assertEqual(dispatch()['sent'],1);source.assert_called_once_with(1,self.user.pk,stream='reminders')
+        self.assertNotIn('setter',mail.outbox[0].body);self.assertNotIn(self.user.email,mail.outbox[0].body)
+        self.assertIn('http://localhost:5173/crm',mail.outbox[0].body)
+    def test_incident_and_reminder_ids_do_not_collide(self):
+        self.sync()
+        events={'events':[{'id':1,'recipient_id':self.user.pk,'role':'setter','created_at':timezone.now().isoformat()}]}
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=events):self.assertEqual(sync('reminders')['queued'],1)
+        self.assertEqual(PortalMail.objects.count(),2);self.assertEqual(AssuranceMailCursor.objects.count(),2)
+    def test_reminder_wrong_role_or_resolved_source_is_not_sent(self):
+        events={'events':[{'id':1,'recipient_id':self.user.pk,'role':'advisor','created_at':timezone.now().isoformat()}]}
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=events):self.assertEqual(sync('reminders')['skipped'],1)
+        self.grant.role='advisor';self.grant.save()
+        with patch('portal.backend.identity.assurance_mail.fetch',return_value=events):self.assertEqual(sync('reminders')['queued'],1)
+        with patch('portal.backend.identity.assurance_mail.eligible',return_value=False):self.assertEqual(dispatch()['expired'],1)
+        self.assertEqual(len(mail.outbox),0)
+    def test_reminder_stream_http_operation_is_separate(self):
+        from .assurance_mail import eligible
+        with patch('portal.backend.identity.assurance_mail.requests.get',return_value=Mock(status_code=200,json=lambda:{'eligible':True})) as get:
+            self.assertTrue(eligible(1,self.user.pk,stream='reminders'))
+            verify(get.call_args.kwargs['headers']['Authorization'][7:],'reminder_eligible',event=1,user=self.user.pk)
+            self.assertIn('/reminder-mail-events/',get.call_args.args[0])
 
 from unittest import skipUnless
 from concurrent.futures import ThreadPoolExecutor

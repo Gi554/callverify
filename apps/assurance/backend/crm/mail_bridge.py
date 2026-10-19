@@ -37,3 +37,25 @@ def eligible(request,pk,user_id):
     authorize(request,'eligible',event=pk,user=user_id)
     response=Response({'eligible':candidates().filter(pk=pk,task__setter_id=user_id).exists()})
     response['Cache-Control']='no-store';return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def reminder_events(request):
+    from .reminders import active
+    try:after=int(request.query_params.get('after','0'))
+    except (ValueError,TypeError):raise ValidationError('Curseur invalide')
+    if not 0<=after<=9223372036854775807:raise ValidationError('Curseur invalide')
+    authorize(request,'reminder_events',after=after)
+    rows=active().filter(pk__gt=after).order_by('pk').values('id','created_at','recipient_id','recipient_role')[:100]
+    response=Response({'events':[{'id':row['id'],'created_at':row['created_at'],'recipient_id':row['recipient_id'],'role':row['recipient_role']} for row in rows]})
+    response['Cache-Control']='no-store';return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def reminder_eligible(request,pk,user_id):
+    from .reminders import active
+    authorize(request,'reminder_eligible',event=pk,user=user_id)
+    response=Response({'eligible':active().filter(pk=pk,recipient_id=user_id).exists()})
+    response['Cache-Control']='no-store';return response
