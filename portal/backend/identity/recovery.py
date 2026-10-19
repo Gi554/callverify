@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import send_mail
+from .mail_queue import enqueue
+from datetime import timedelta
+from django.utils import timezone
 from django.db import transaction
 from django.db.models import F
 from django.utils.encoding import force_bytes
@@ -62,17 +64,13 @@ def request_reset(request):
     users=list(get_user_model().objects.filter(email__iexact=serializer.validated_data['email'],is_active=True)[:2])
     if len(users)!=1 or not users[0].has_usable_password():return reply()
     user=users[0]
-    try:
+    with transaction.atomic():
         uid=urlsafe_base64_encode(force_bytes(user.pk));token=default_token_generator.make_token(user)
         link=f'{public_url()}/crm#reset={uid}:{token}'
-        sent=send_mail('AMX — Réinitialiser votre mot de passe',
-            f'Une récupération du mot de passe AMX a été demandée.\n\n{link}\n\nCe lien expire dans 30 minutes et ne peut être utilisé qu’une fois. Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail.',
-            settings.DEFAULT_FROM_EMAIL,[user.email],fail_silently=False)
-    except Exception:
-        # Never log the exception: SMTP failures can contain recipient/token data.
-        AccessAudit.objects.create(user=user,action='account.recovery_mail_failed',metadata={})
-    else:
-        AccessAudit.objects.create(user=user,action='account.recovery_requested' if sent else 'account.recovery_mail_failed',metadata={})
+        enqueue(user=user,subject='AMX — Réinitialiser votre mot de passe',
+            body=f'Une récupération du mot de passe AMX a été demandée.\n\n{link}\n\nCe lien expire dans 30 minutes et ne peut être utilisé qu’une fois. Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail.',
+            recipient=user.email,guard={'kind':'recovery','user':user.pk,'token':token},expires_at=timezone.now()+timedelta(seconds=settings.PASSWORD_RESET_TIMEOUT))
+        AccessAudit.objects.create(user=user,action='account.recovery_requested',metadata={})
     return reply()
 
 @api_view(['POST'])

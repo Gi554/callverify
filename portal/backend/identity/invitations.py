@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import send_mail
+from .mail_queue import enqueue
 from django.db import transaction,IntegrityError
 from django.db.models import Q,F
 from django.utils import timezone
@@ -41,14 +41,10 @@ def available(username,email):
         raise ValidationError('Compte déjà présent : utilisez l’association d’un compte existant')
 
 def deliver(row,token):
-    try:
-        sent=send_mail('AMX — Invitation à votre espace',
-            f'Vous êtes invité dans l’espace {row.workspace}, avec le rôle {row.role}.\nIdentifiant : {row.username}\n\n{public_url()}/crm#invite={row.pk}:{token}\n\nChoisissez votre mot de passe pour accepter. Ce lien expire dans 24 heures. Ignorez-le si cette invitation ne vous concerne pas.',
-            settings.DEFAULT_FROM_EMAIL,[row.email],fail_silently=False)
-    except Exception:sent=0
-    AccessAudit.objects.create(user=row.issuer,workspace=row.workspace,
-        action='invitation.mail_sent' if sent else 'invitation.mail_failed',metadata={'invitation':str(row.pk)})
-    return bool(sent)
+    enqueue(user=row.issuer,workspace=row.workspace,subject='AMX — Invitation à votre espace',
+        body=f'Vous êtes invité dans l’espace {row.workspace}, avec le rôle {row.role}.\nIdentifiant : {row.username}\n\n{public_url()}/crm#invite={row.pk}:{token}\n\nChoisissez votre mot de passe pour accepter. Ce lien expire dans 24 heures.',
+        recipient=row.email,guard={'kind':'invitation','id':str(row.pk),'hash':row.token_hash},expires_at=row.expires_at)
+    return True
 
 @api_view(['GET','POST'])
 def invitations(request,workspace):
@@ -64,9 +60,9 @@ def invitations(request,workspace):
             if Invitation.objects.filter(username__iexact=values['username']).exists():raise ValidationError('Identifiant déjà invité ; renvoyez ou révoquez l’invitation existante')
             row=Invitation.objects.create(**values,workspace=workspace,issuer=request.user,token_hash=digest(token),expires_at=timezone.now()+timedelta(hours=24))
             AccessAudit.objects.create(user=request.user,workspace=workspace,action='invitation.created',metadata={'invitation':str(row.pk),'role':row.role})
+            deliver(row,token)
     except IntegrityError:raise ValidationError('Identifiant déjà utilisé')
-    sent=deliver(row,token)
-    return Response({**output(row),'mail_sent':sent},status=201)
+    return Response({**output(row),'mail_queued':True},status=201)
 
 @api_view(['POST'])
 def invitation_action(request,workspace,pk):
@@ -83,7 +79,8 @@ def invitation_action(request,workspace,pk):
             available(row.username,row.email);row.issuer=request.user;row.token_hash=digest(token);row.expires_at=timezone.now()+timedelta(hours=24)
         row.save()
         AccessAudit.objects.create(user=request.user,workspace=workspace,action='invitation.'+request.data['action'],metadata={'invitation':str(row.pk)})
-    return Response({**output(row),'mail_sent':deliver(row,token) if request.data['action']=='resend' else False})
+        if request.data['action']=='resend':deliver(row,token)
+    return Response({**output(row),'mail_queued':request.data['action']=='resend'})
 
 class AcceptInput(serializers.Serializer):
     id=serializers.UUIDField()

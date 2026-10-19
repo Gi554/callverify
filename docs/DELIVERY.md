@@ -244,6 +244,16 @@ Transport synchrone partagé avec la récupération : fichiers privés en dével
 
 Sept tests fonctionnels et un test de double acceptation PostgreSQL ; suite portail de 62 tests (concurrence réservée à PostgreSQL), typage/build. La CI vérifie désormais aussi le portail sur PostgreSQL. Migrations 0003 et 0004 appliquées localement. Revue esthétique différée.
 
+## Fonctionnalité 29 — file persistante des e-mails du portail
+
+Invitations et récupérations ne dépendent plus d’un envoi SMTP dans la requête web. Le message est chiffré Fernet dans la base centrale, avec expiration, état, nombre d’essais et réservation de traitement ; création de la demande, mise en file et audit sont transactionnels. Le navigateur indique « mis en file », sans annoncer une livraison réussie. Un worker traite les messages via dispatch_portal_mail (lot, boucle ou état agrégé sans envoi) ; le service Docker portal-mail est fourni. Commandes et configuration dans docs/PORTAL_MAIL.md.
+
+Réservation atomique de 60 secondes, reprise après arrêt du worker, cinq tentatives SMTP maximum et délais croissants. Contrôle avant envoi des liens expirés, remplacés, acceptés, révoqués ou invalidés par le compte/droits ; aucun envoi dans ces cas. Destinataire, corps et jetons ne sont ni en clair dans la table ni dans les audits. Contenu effacé après succès, expiration ou échec définitif ; traces d’état conservées. Clé PORTAL_MAIL_KEY obligatoire en production, à sauvegarder séparément et à partager entre serveur et worker. Transport fichier privé en développement, mémoire pendant les tests. Aucun e-mail réel envoyé.
+
+Limites explicites : livraison SMTP au moins une fois (doublon possible après arrêt entre envoi et confirmation), réception/lecture/rebonds non prouvés, supervision avancée et conservation à définir. Une rotation de clé rend la file précédente illisible sans ancienne clé. Pas encore de notifications métier ou rappels automatiques ; ce lot fiabilise uniquement les e-mails de comptes existants. SMTP réel non configuré et worker à maintenir actif ; le serveur web seul n’envoie plus ces messages. Les limites d’administration/invitations du lot 28 restent valables.
+
+Sept tests de file et un test de réservation concurrente PostgreSQL ajoutés ; suites de récupération/invitation adaptées à la livraison différée, 70 tests portail (deux réservés à PostgreSQL), typage/build et CI complète. Migration 0005 appliquée localement. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA et navigation unifiée avec Isolation.

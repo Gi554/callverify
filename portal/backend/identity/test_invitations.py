@@ -7,7 +7,8 @@ from django.core.cache import cache
 from django.test import TestCase,override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
-from .models import Invitation,Membership,AccessAudit
+from .models import Invitation,Membership,AccessAudit,PortalMail
+from .mail_queue import dispatch
 
 @override_settings(DEBUG=True,EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',PORTAL_PUBLIC_URL='http://localhost:5173',PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
 class InvitationTests(TestCase):
@@ -21,12 +22,15 @@ class InvitationTests(TestCase):
         self.base='/api/portal/workspaces/assurance/invitations/'
         self.accept_url='/api/portal/invitations/accept/'
     def create(self,**changes):
-        return self.client.post(self.base,{'username':'newperson','email':'new@example.test','role':'advisor',**changes},format='json',HTTP_X_CSRFTOKEN=self.csrf)
+        response=self.client.post(self.base,{'username':'newperson','email':'new@example.test','role':'advisor',**changes},format='json',HTTP_X_CSRFTOKEN=self.csrf)
+        dispatch();return response
     def payload(self):
         match=re.search(r'#invite=([a-f0-9-]+):([A-Za-z0-9_-]+)',mail.outbox[-1].body)
         return {'id':match[1],'token':match[2],'password':'Invitation-Password!4628','confirmation':'Invitation-Password!4628'}
     def accept(self,body):return self.public.post(self.accept_url,body,format='json',HTTP_X_CSRFTOKEN=self.public_csrf)
-    def action(self,action):return self.client.post(self.base+str(Invitation.objects.get().pk)+'/',{'action':action},format='json',HTTP_X_CSRFTOKEN=self.csrf)
+    def action(self,action):
+        response=self.client.post(self.base+str(Invitation.objects.get().pk)+'/',{'action':action},format='json',HTTP_X_CSRFTOKEN=self.csrf)
+        dispatch();return response
     def test_accept_creates_only_the_invited_membership_and_is_single_use(self):
         response=self.create();self.assertEqual(response.status_code,201);body=self.payload()
         self.assertFalse(get_user_model().objects.filter(username='newperson').exists())
@@ -74,10 +78,10 @@ class InvitationTests(TestCase):
         for _ in range(10):self.assertEqual(self.accept({**body,'token':'invalid'}).status_code,400)
         self.assertEqual(self.accept(body).status_code,429)
     def test_mail_failure_is_reported_without_secrets_and_can_be_retried(self):
-        with patch('portal.backend.identity.invitations.send_mail',side_effect=RuntimeError('secret')):
+        with patch('portal.backend.identity.mail_queue.send_mail',side_effect=RuntimeError('secret')):
             response=self.create()
-        self.assertEqual(response.status_code,201);self.assertFalse(response.data['mail_sent'])
-        self.assertNotIn('secret',str(response.data));self.assertTrue(AccessAudit.objects.filter(action='invitation.mail_failed').exists())
+        self.assertEqual(response.status_code,201);self.assertTrue(response.data['mail_queued'])
+        self.assertNotIn('secret',str(response.data));self.assertTrue(AccessAudit.objects.filter(action='mail.retry').exists())
         self.assertEqual(self.action('resend').status_code,200);self.assertEqual(self.accept(self.payload()).status_code,204)
     def test_accept_audit_failure_rolls_back_account_and_access(self):
         self.create();body=self.payload()
