@@ -24,3 +24,21 @@ class AccessAudit(models.Model):
     workspace = models.CharField(max_length=20,blank=True)
     metadata = models.JSONField(default=dict,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Invitation(models.Model):
+    import uuid
+    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    username = models.CharField(max_length=150,unique=True)
+    email = models.EmailField()
+    workspace = models.CharField(max_length=20)
+    role = models.CharField(max_length=30)
+    issuer = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    token_hash = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True)
+    revoked_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints = [models.UniqueConstraint(models.functions.Lower('username'),name='invitation_username_ci'),
+            models.UniqueConstraint(models.functions.Lower('email'),name='invitation_email_ci')]

@@ -1,6 +1,7 @@
 from django.urls import path
 from .identity import views
 from .identity import management_api
+from .identity import invitations
 from .identity.passwords import change_password
 from .identity.recovery import request_reset,confirm_reset
 from .identity.isolation import setters as isolation_setters,visit_proof
@@ -16,3 +17,6 @@ urlpatterns += [path('api/portal/isolation/setters/',isolation_setters)]
 urlpatterns += [path('api/portal/isolation/visit-proof/',visit_proof)]
 urlpatterns += [path('api/portal/password/change/',change_password)]
 urlpatterns += [path('api/portal/password/reset/request/',request_reset),path('api/portal/password/reset/confirm/',confirm_reset)]
+urlpatterns += [path('api/portal/workspaces/<str:workspace>/invitations/',invitations.invitations),
+    path('api/portal/workspaces/<str:workspace>/invitations/<uuid:pk>/',invitations.invitation_action),
+    path('api/portal/invitations/accept/',invitations.accept)]
