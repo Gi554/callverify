@@ -284,6 +284,18 @@ Deux commandes distinctes et services Docker : relay_assurance_mail met en file,
 
 Cinq tests Assurance et neuf tests portail ajoutés, plus une concurrence PostgreSQL de déduplication du relais ; suites de 159 tests Assurance et 80 tests portail (respectivement 19 et trois réservés à PostgreSQL), contrôles des migrations et CI. Migration portail 0006 appliquée localement. Tests SMTP en mémoire seulement, aucun message externe envoyé. Limites : exploitation des deux workers et SMTP réel à configurer/valider ; pas de rappels périodiques, escalades, renvoi automatique d’un même événement après échec définitif/changement d’adresse, ni notification dédiée de réouverture. Fenêtre de sept jours ; l’alerte interne reste la référence au-delà. Revue esthétique différée.
 
+## Fonctionnalité 33 — rappels des tâches en retard et comptes rendus manquants
+
+Politique globale Assurance administrable : activation par type, intervalle de tâche, délai après fin de rendez-vous et intervalle des comptes rendus. Par défaut actifs, intervalles de 24 heures et délai de compte rendu de 24 heures ; heures écoulées UTC, sans jours ouvrés. Motif, révision et audit atomique des changements. Ces règles n’altèrent ni les échéances des tâches ni les résultats des rendez-vous.
+
+Le worker Assurance produit un événement pour la seule période courante par tâche dépassée/setter actuel ou rendez-vous sans compte rendu/conseiller concerné. Déduplication par objet, ancrage temporel, destinataire, règle et période, avec verrouillage transactionnel et contrainte unique ; pas de rafale rétroactive après arrêt du worker. Les événements constituent la trace automatique de génération, sans inventer un auteur humain. Aucun résultat Non ou incident déduit d’un compte rendu manquant.
+
+Liste de rappels actifs paginée dans le CRM, compteurs, commandes vers les tâches et rendez-vous et réglage administrateur. Les conseillers ne voient que leurs rappels de compte rendu, sans aucune donnée de setter ; les setters voient seulement leurs rappels de tâches courantes. Clôture, réponse, annulation, report, nouvelle échéance, transfert, désactivation ou fin de période invalident immédiatement l’éligibilité serveur ; la liste visible se rafraîchit manuellement ou toutes les 60 secondes. Les lectures ne résolvent rien. L’historique est conservé en base, sans écran d’historique exhaustif dans ce lot.
+
+Le relais e-mail accepte un flux de rappels distinct des incidents, avec curseur et registre événement/destinataire propres. Résolution centrale du rôle setter/conseiller et adresse, message neutre et contrôle de l’état métier avant SMTP ; les rappels devenus obsolètes ne sont pas envoyés après contrôle. Un changement de règle invalide les anciens événements et peut recréer un rappel courant au prochain passage. Services Docker, commandes et limites dans docs/PORTAL_MAIL.md. Aucun e-mail réel envoyé ; SMTP en mémoire pendant les tests.
+
+Dix tests fonctionnels Assurance et une concurrence PostgreSQL ajoutés, plus quatre tests portail des flux et rôles ; suites de 170 tests Assurance (20 réservés à PostgreSQL) et 84 tests portail (trois réservés à PostgreSQL), typage/build et contrôles des migrations. Migrations Assurance 0017/0018 et portail 0007 appliquées localement. Limites : exploitation des trois workers et SMTP réel à valider, pas d’escalade administrateur, jours ouvrés, quota journalier par utilisateur ou réglage individuel. Le balayage est complet et en flux, sa capacité doit être mesurée à grande échelle. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA et navigation unifiée avec Isolation.

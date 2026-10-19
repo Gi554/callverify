@@ -61,12 +61,13 @@ class PortalMail(models.Model):
         indexes=[models.Index(fields=['status','next_attempt_at'],name='portal_mail_due')]
 
 class AssuranceMailRelay(models.Model):
+    stream=models.CharField(max_length=20,default='incidents')
     event_id=models.PositiveBigIntegerField()
     recipient_id=models.PositiveBigIntegerField()
     mail=models.OneToOneField(PortalMail,null=True,on_delete=models.PROTECT)
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
-        constraints=[models.UniqueConstraint(fields=['event_id','recipient_id'],name='unique_assurance_mail_event_recipient')]
+        constraints=[models.UniqueConstraint(fields=['stream','event_id','recipient_id'],name='unique_assurance_mail_stream_event_recipient')]
 
 class AssuranceMailCursor(models.Model):
     id=models.PositiveSmallIntegerField(primary_key=True,default=1)

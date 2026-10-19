@@ -72,7 +72,7 @@ services:
         condition: service_started
   assurance:
     build: .
-    environment:
+    environment: &assurance-environment
       DEBUG: ${DEBUG:-false}
       ASSURANCE_MAIL_BRIDGE_KEY: ${ASSURANCE_MAIL_BRIDGE_KEY:?Set a dedicated mail bridge key}
       ASSURANCE_SECRET_KEY: ${ASSURANCE_SECRET_KEY:?Set ASSURANCE_SECRET_KEY}
@@ -83,6 +83,14 @@ services:
       ASSURANCE_DB_PASSWORD: ${ASSURANCE_DB_PASSWORD:?Set ASSURANCE_DB_PASSWORD}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
     command: gunicorn apps.assurance.backend.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    depends_on:
+      assurance-db:
+        condition: service_healthy
+  assurance-reminders:
+    build: .
+    environment: *assurance-environment
+    command: python manage.py generate_assurance_reminders --settings=apps.assurance.backend.settings --loop --interval 60
+    restart: unless-stopped
     depends_on:
       assurance-db:
         condition: service_healthy

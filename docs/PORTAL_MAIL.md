@@ -52,3 +52,24 @@ Le portail résout le compte central du setter : compte actif, accès Assurance 
 Avant SMTP, les droits et l’adresse sont revérifiés ainsi que le responsable et l’ouverture de la tâche via Assurance. Une tâche clôturée, réattribuée ou sortie de la fenêtre expire dans la file. Une panne du service déclenche une reprise, jamais un envoi sans vérification. Après transfert, un prochain parcours peut mettre en file pour le nouveau responsable. Une modification entre le dernier contrôle et SMTP reste possible ; le texte minimal ne révèle aucune donnée de dossier.
 
 Limites : pas de rappel périodique pour le même incident, de notification d’une réouverture administrative ou d’escalade. Les e-mails expirent sept jours après l’événement ; une panne prolongée peut donc entraîner une absence d’e-mail, sans effacer l’alerte interne. Après un échec définitif ou une adresse changée après mise en file, le même événement/compte n’est pas remis automatiquement en file ; la boîte interne reste la référence. Les limites SMTP et de surveillance ci-dessus s’appliquent. Ne pas annoncer la réception d’un e-mail sur la seule mise en file. Aucun transport SMTP réel n’a été validé dans ce lot.
+
+## Rappels périodiques Assurance
+
+Un troisième worker, dans le service Assurance et sa propre base, génère les rappels :
+
+```powershell
+./.venv/Scripts/python.exe manage.py generate_assurance_reminders --settings=apps.assurance.backend.settings
+./.venv/Scripts/python.exe manage.py generate_assurance_reminders --settings=apps.assurance.backend.settings --loop --interval 60
+```
+
+Le service Docker `assurance-reminders` lance cette boucle. Migrations Assurance 0017/0018 et portail 0007 à appliquer avant démarrage. Le relais portail traite désormais les flux `incidents` et `reminders` par défaut ; `--stream incidents` ou `--stream reminders` permet de les isoler pour exploitation. Leurs curseurs et clés de déduplication sont distincts, afin que des identifiants égaux ne se confondent pas.
+
+L’administrateur règle les rappels depuis Assurance → Rappels actifs → Régler les rappels : activation séparée des tâches et des comptes rendus, intervalle de 1 à 720 heures pour chaque type, délai de 0 à 720 heures après la fin d’un rendez-vous avant premier rappel de compte rendu. Valeurs initiales : actifs, intervalle de 24 heures et délai de compte rendu de 24 heures. Ce sont des heures écoulées UTC, sans calendrier de jours ouvrés. Les modifications exigent la révision actuelle et un motif, avec audit atomique.
+
+Chaque tâche dépassée revient à son setter actuel ; un compte rendu manquant revient au seul conseiller du rendez-vous. Une absence de compte rendu ne devient jamais Non et ne crée pas de tâche d’incident. Les périodes partent de l’échéance de tâche ou de la fin du rendez-vous augmentée du délai. Un seul événement par objet, destinataire, échéance, règle et période ; après une panne, seul le rappel courant est créé. Le worker parcourt les candidats en flux par blocs de 200 et valide chaque objet dans sa propre transaction, avec verrous et unicité. Il ne représente pas un journal des périodes manquées. Une modification des règles invalide les anciens rappels et peut créer immédiatement un rappel de la nouvelle règle au prochain passage.
+
+Les rappels actifs sont consultables dans le CRM avec pagination, lien vers les tâches/rendez-vous et rafraîchissement toutes les 60 secondes lorsque la page est visible. Ils disparaissent du périmètre actif après clôture, compte rendu, annulation, report, changement d’échéance, désactivation de la règle ou expiration de la période. Un transfert retire le rappel au précédent setter ; le worker peut en créer un pour le nouveau dans la période courante. Les événements antérieurs restent dans la base, sans accès utilisateur à un historique complet dans ce lot. Lire l’écran ou l’e-mail ne résout rien.
+
+Avant SMTP, le portail revérifie le rôle attendu (setter ou conseiller) et Assurance recontrôle l’état actuel du rappel. Le message est neutre, sans identité de setter ni donnée de prospect. Les e-mails en attente restent soumis à leur durée maximale de sept jours et aux reprises SMTP existantes ; un ancien rappel dont la période est terminée est écarté, même si l’e-mail n’a pas encore atteint sept jours. Une période future peut fournir un nouveau rappel après un échec du précédent. Aucun message réel envoyé pendant la validation ; SMTP réel et exploitation des trois workers restent à valider avant production. Les limites de contrôle juste avant SMTP, de doublons après crash et de non-preuve de réception demeurent.
+
+Pas encore d’escalade vers un administrateur, de jours ouvrés, de quotas journaliers par utilisateur ou de politiques par conseiller/setter. Les paramètres sont globaux pour Assurance. Sur de grands volumes, mesurer la durée de balayage et la capacité du relais avant de choisir une cadence courte.

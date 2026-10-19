@@ -7,11 +7,13 @@ class Command(BaseCommand):
     def add_arguments(self,parser):
         parser.add_argument('--loop',action='store_true')
         parser.add_argument('--interval',type=int,default=30)
+        parser.add_argument('--stream',choices=['all','incidents','reminders'],default='all')
     def handle(self,*args,**options):
         if not 5<=options['interval']<=60:raise CommandError('interval 5..60')
         try:
             while True:
-                try:self.stdout.write(str(sync()))
+                try:
+                    for stream in (['incidents','reminders'] if options['stream']=='all' else [options['stream']]):self.stdout.write(str({'stream':stream,**sync(stream)}))
                 except Exception:
                     # No exception text: network errors may contain signed credentials.
                     if not options['loop']:raise CommandError('Mail relay failed; verify service, key and configuration') from None
