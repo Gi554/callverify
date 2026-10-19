@@ -30,13 +30,16 @@ def enqueue(*,user,workspace='',subject,body,recipient,guard,expires_at):
     return row
 
 def eligible(guard,recipient):
-    if guard['kind'] in ('assurance_follow_up','assurance_reminder'):
+    if guard['kind'] in ('assurance_follow_up','assurance_reminder','assurance_escalation'):
         from .assurance_mail import eligible as source_eligible
         user=get_user_model().objects.filter(pk=guard['user'],is_active=True,email=recipient).first()
         role=guard.get('role','setter') if guard['kind']=='assurance_reminder' else 'setter'
-        if role not in ('setter','advisor'):return False
+        if guard['kind']=='assurance_escalation':role='administrator'
+        if role not in ('setter','advisor','administrator'):return False
+        if guard['kind']=='assurance_reminder' and role=='administrator':return False
         if not user or not Membership.objects.filter(user=user,workspace='assurance',role=role,active=True).exists():return False
         if get_user_model().objects.filter(email__iexact=recipient,is_active=True).count()!=1:return False
+        if guard['kind']=='assurance_escalation':return source_eligible(guard['event'],user.pk,stream='escalations')
         return source_eligible(guard['event'],user.pk,stream='reminders') if guard['kind']=='assurance_reminder' else source_eligible(guard['event'],user.pk)
     if guard['kind']=='invitation':
         row=Invitation.objects.select_related('issuer').filter(pk=guard['id']).first()

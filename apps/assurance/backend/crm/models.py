@@ -170,6 +170,10 @@ class ReminderPolicy(models.Model):
     task_interval_hours=models.PositiveIntegerField(default=24)
     report_grace_hours=models.PositiveIntegerField(default=24)
     report_interval_hours=models.PositiveIntegerField(default=24)
+    escalations_enabled=models.BooleanField(default=False)
+    task_escalation_hours=models.PositiveIntegerField(default=72)
+    report_escalation_hours=models.PositiveIntegerField(default=72)
+    escalation_interval_hours=models.PositiveIntegerField(default=24)
     revision=models.PositiveIntegerField(default=0)
     class Meta:
         constraints=[models.CheckConstraint(condition=models.Q(pk=1),name='single_reminder_policy')]
@@ -186,5 +190,6 @@ class ReminderEvent(models.Model):
     valid_until=models.DateTimeField()
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
-        constraints=[models.CheckConstraint(condition=(models.Q(kind='task_overdue',task__isnull=False,recipient_role='setter')|models.Q(kind='report_missing',task__isnull=True,recipient_role='advisor')),name='reminder_kind_target')]
+        constraints=[models.CheckConstraint(condition=(models.Q(kind='task_overdue',task__isnull=False,recipient_role='setter')|models.Q(kind='report_missing',task__isnull=True,recipient_role='advisor')|
+            models.Q(kind='task_escalation',task__isnull=False,recipient_role='administrator',recipient_id=0)|models.Q(kind='report_escalation',task__isnull=True,recipient_role='administrator',recipient_id=0)),name='reminder_kind_target')]
         indexes=[models.Index(fields=['recipient_id','recipient_role','valid_until'],name='reminder_active_recipient')]
