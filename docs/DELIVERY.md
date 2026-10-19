@@ -442,6 +442,14 @@ CSV strict de huit colonnes, neuvième vide finale tolérée, poste exact et cor
 
 Sept tests ajoutés : confidentialité, poste côté serveur, fonctions arbitraires refusées, désactivation, configuration, rôles/espaces/périmètre, suspension, CSRF, format/corrélation/limites et transport 244 uniquement. Tests fournisseur simulés, aucune requête NEWT réelle ni appel lancé. Pas de migration, configuration et limites dans docs/PHONETICO.md. Interprétation fournisseur réelle, journaux 511, historique et rapprochement CRM non livrés. Fonctions de composition/raccrochage/DTMF absentes. Revue esthétique différée.
 
+## Fonctionnalité 49 — diagnostic du format des journaux NEWT 511
+
+Première étape technique du futur historique Phonetico : consultation manuelle des en-têtes du rapport 511, empreinte de schéma et nombre de lignes, sur une période explicite de sept dates maximum non futures. Le PDF ne spécifie pas les noms de colonnes ni le sens des résultats, donc aucune correspondance ou interprétation n’est inventée. Aucun appel détaillé renvoyé ou persisté, aucune attribution à un setter ou une fiche. L’interface indique explicitement que l’historique métier n’est pas encore livré.
+
+Hôte HTTPS et fonction 511 fixes, dates validées et formatées côté serveur, direction B, corrélation hexadécimale. Activation indépendante désactivée par défaut. Droits administrateurs des deux espaces, session/CSRF, quota partagé, verrou singleton commun aux lectures NEWT. Réponse bornée et CSV strict, refus des lignes partielles, en-têtes vides/dupliqués ou formats inconnus. Audit de période, nombre de lignes et empreinte seulement. Tests fournisseur simulés, aucune requête NEWT réelle et strictement aucun appel lancé.
+
+Huit tests fonctionnels/adaptateurs ajoutés : listes de champs, absence des données d’appels, dates et fenêtres invalides, rôles et CSRF, configuration, paramètres arbitraires interdits, erreurs, limites et transport 511 seul. Suite portail, typage/build et contrôle des migrations ; aucune migration. Limites : schéma réel, fuseau PBX et sémantique des bornes/statuts restent à confirmer avant ingestion et rapprochement. Zéro ligne ne prouve pas l’absence d’activité. Aucun export brut ni historique CRM livré par cette base technique. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
