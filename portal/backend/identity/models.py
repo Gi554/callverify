@@ -117,3 +117,11 @@ class AssuranceMailRelay(models.Model):
 class AssuranceMailCursor(models.Model):
     id=models.PositiveSmallIntegerField(primary_key=True,default=1)
     after_id=models.PositiveBigIntegerField(default=0)
+
+
+class PhoneExtension(models.Model):
+    # One PBX for this deployment; same user may use the same post in both workspaces.
+    user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    extension=models.CharField(max_length=10,unique=True,null=True)
+    revision=models.PositiveIntegerField(default=0)
+    updated_at=models.DateTimeField(auto_now=True)
