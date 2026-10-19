@@ -344,13 +344,23 @@ Sept tests fonctionnels et une concurrence PostgreSQL ajoutés ; suite portail d
 
 Limites : révocation des sessions centrales seulement, sans liste d’appareils ni nombre de sessions actives. La session historique Isolation reste indépendante. Les tickets métier déjà émis peuvent rester valables deux minutes et une requête déjà authentifiée n’est pas interrompue. Les anciennes lignes de session expirent selon les mécanismes Django habituels ; cette action ne les efface pas toutes immédiatement. Une perte de réponse après révocation peut imposer une reconnexion sur l’appareil courant ; le compteur reste la référence. Pas de MFA ou de révocation immédiate des tickets métiers dans ce lot. Revue esthétique différée.
 
+## Fonctionnalité 39 — connexion et disponibilité Google/Microsoft
+
+Conseiller Assurance et client Isolation connectent leur propre agenda principal depuis Mon compte et mes sessions. Un fournisseur Google ou Microsoft par espace ; remplacement explicite par un nouveau consentement, déconnexion avec révision et consultation des seules périodes occupées sur une fenêtre maximale de 31 jours. Calendly exclu à la demande de l’utilisateur. Les boutons indiquent la configuration manquante côté serveur.
+
+OAuth serveur avec PKCE, état aléatoire haché, tentative liée à la session/espace/fournisseur et consommée une fois sous dix minutes ; secrets et jetons chiffrés avec clé dédiée. Callback relayé par le frontend avec session/CSRF, code retiré de l’URL ; cookies Strict conservés et referrer supprimé. Access/refresh tokens jamais exposés au navigateur. Les renouvellements sont sérialisés et persistés, y compris rotation du refresh token Microsoft ; une déconnexion empêche un ancien callback de reconnecter. Rôles vérifiés à chaque usage, aucune action pour un autre propriétaire. Audits minimaux sans secret, erreurs fournisseur neutralisées.
+
+Google utilise freeBusy ; Microsoft calendarView (occurrences développées, pages contrôlées). Aucun intitulé, participant ou organisateur privé retourné. Les erreurs, pages excessives ou réponses partielles ne donnent jamais un agenda libre. Treize tests fonctionnels/adaptateurs et deux concurrences PostgreSQL ajoutés ; suite portail de 118 tests (six réservés à PostgreSQL), tests ciblés, migrations et typage/build. Migration portail 0009 appliquée localement. Configuration et limites dans docs/CALENDARS.md.
+
+Limites : première étape connexion/disponibilité seulement ; création, report, annulation et réconciliation des rendez-vous externes restent à livrer séparément, les rendez-vous CRM restant internes. Agenda principal uniquement, aucune réservation par une lecture ; contrôles de disponibilité ponctuels sans garantie transactionnelle fournisseur. Déconnexion locale sans révocation du consentement fournisseur ni suppression d’événements. Pas de connexion réelle validée sans applications OAuth et comptes de recette du client. Tests HTTP simulés, aucun appel réel aux fournisseurs. Exploitation, consentements Google/tenant Microsoft, purge des tentatives et conservation des clés à valider avant production. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
 2. Statistiques et suivi métier Isolation complémentaires, répartition selon charge/disponibilités et sélection massive (répartition à tour de rôle bornée, portail client, résultats, file setter, qualification, notes, partage explicite, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
-5. Connecteurs agendas externes et règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
+5. Synchronisation des rendez-vous Google/Microsoft et connecteur Calendly (connexion et disponibilité Google/Microsoft livrées) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.
