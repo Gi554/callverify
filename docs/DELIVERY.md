@@ -234,9 +234,19 @@ Lien signé Django de 30 minutes, lié au compte et invalidé après changement 
 
 Transport portail distinct : PORTAL_EMAIL_* et PORTAL_FROM_EMAIL. En développement, les e-mails vont par défaut dans private-media/portal-mail, hors Git ; les tests utilisent une boîte en mémoire. Docker configure un SMTP explicite, à renseigner et tester avant envoi réel. Le service traite l’envoi de façon synchrone avec délai réseau maximal de dix secondes : file persistante, reprise d’envoi, protection distribuée et réduction des écarts de temps de réponse restent à renforcer avant production. Les adresses des comptes doivent être renseignées et non ambiguës ; récupération sans adresse impossible. Sept tests dédiés, suite portail, TypeScript/build et CI ; aucune migration. Aucun e-mail réel envoyé pendant ce lot.
 
+## Fonctionnalité 28 — invitations aux nouveaux comptes centraux
+
+Depuis Utilisateurs et accès, l’administrateur invite un nouveau compte avec identifiant, e-mail et rôle compatible avec son seul espace. La liste paginée indique en attente, expirée, acceptée ou révoquée ; commandes de renvoi et révocation. Aucun compte ni accès métier avant acceptation. Les comptes déjà présents sont refusés : leur association reste une commande séparée qui conserve leur mot de passe.
+
+Lien aléatoire de 24 heures dont seul le SHA-256 est stocké. Fragment retiré de la barre d’adresse à l’ouverture, jeton transmis dans le corps protégé par CSRF, jamais renvoyé dans une API ni inscrit dans l’audit. Le renvoi remplace le jeton ; expiration, révocation et usage unique sont vérifiés côté serveur. L’acceptation exige un mot de passe confirmé conforme aux règles centrales, revalide les droits de l’émetteur, crée atomiquement le compte, son seul accès et l’audit, sans connexion automatique. Les modifications de droits et acceptations sont sérialisées dans le même ordre ; contraintes insensibles à la casse pour l’identifiant et l’e-mail des invitations.
+
+Transport synchrone partagé avec la récupération : fichiers privés en développement, boîte en mémoire dans les tests ; SMTP réel à configurer et valider. Échec d’envoi affiché avec possibilité de renvoi ; aucun e-mail réel envoyé dans ce lot. L’historique réserve l’identifiant et l’adresse, y compris après révocation : pas de recyclage automatique ni d’édition du destinataire/rôle d’une invitation ; l’administration peut créer un compte par le parcours existant si nécessaire. File persistante, relances automatiques et limitation distribuée restent à réaliser. Acceptation limitée par IP, administration limitée aux sessions autorisées sans quota d’envoi spécifique pour l’instant.
+
+Sept tests fonctionnels et un test de double acceptation PostgreSQL ; suite portail de 62 tests (concurrence réservée à PostgreSQL), typage/build. La CI vérifie désormais aussi le portail sur PostgreSQL. Migrations 0003 et 0004 appliquées localement. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
-1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
+1. Gestion et migration complète des comptes, MFA et navigation unifiée avec Isolation.
 2. Statistiques et suivi métier Isolation, partage autorisé des interactions et affectations en masse (portail client, résultats, file setter, qualification, notes, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
