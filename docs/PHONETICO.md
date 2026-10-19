@@ -26,6 +26,14 @@ Validation de huit colonnes CSV (neuvième vide finale tolérée), poste exact e
 
 Tests entièrement simulés, aucune requête 244 réelle et aucun appel lancé. L’activation de la configuration pour une recette réelle reste à décider séparément.
 
+## Diagnostic du format des journaux 511
+
+Le PDF indique une première ligne d’en-têtes pour 511 mais ne donne pas leurs noms ni la sémantique des statuts. Cette étape n’est donc pas un historique d’appels métier : le bouton Diagnostic du format demande une fenêtre explicite de sept dates maximum, non futures, et ne retourne que noms de colonnes, empreinte de schéma et nombre de lignes. Aucun détail d’appel n’est renvoyé ou conservé. Aucune conversion de statut, attribution au setter ou rapprochement prospect n’est réalisée.
+
+NEWT_CDR_SCHEMA_ENABLED=false par défaut, activation indépendante des lectures 343/244. Hôte HTTPS et fonction 511 fixes, paramètres _sd/_ed générés depuis des dates validées, _dir=B, format CSV et corrélation hexadécimale ; pas de fonction choisie par le navigateur. Réservé aux administrateurs des deux espaces, session/CSRF, quota partagé et verrou global de lecture NEWT. Réponse de 1 Mio maximum, 64 colonnes, 10000 lignes et 2048 caractères par cellule. CSV UTF-8 strict, en-têtes distincts non vides et nombre de colonnes constant, sinon refus intégral. Seuls la période, le compte de lignes et l’empreinte sont audités ; pas de données d’appel dans l’audit. Aucun traitement automatique au démarrage ou en arrière-plan.
+
+Le fuseau du PBX et l’inclusivité réelle de ses dates doivent être confirmés en recette. Un compte zéro signifie seulement que le rapport reçu contient ses en-têtes sans données, pas l’absence d’activité. Les en-têtes et noms fournisseur sont affichés comme texte. Sans réponse réelle validée, l’adaptateur peut refuser un format incompatible plutôt que deviner. La recette de lecture et la correspondance des colonnes seront séparées des commandes d’appel, toujours absentes. Tests simulés uniquement, aucune requête NEWT réelle.
+
 ## À livrer séparément
 
 Vérification réelle des droits/configuration pour l’annuaire, recette de lecture 244 et remontée des journaux 511, interprétation documentée des codes et rapprochement appels/contacts. La fonction 245 et tout contrôle d’appel restent absents et soumis à une nouvelle autorisation explicite avant tout test réel. Création automatique de comptes depuis les postes reportée.
