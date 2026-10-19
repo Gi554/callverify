@@ -47,3 +47,13 @@ API : POST `/api/work-queue/distribution-preview/` avec setter_ids et items (id/
 5. Les connexions globales et les événements mail/métier sont volontairement absents ; les détails ne contiennent jamais de jeton, mot de passe, e-mail ou métadonnée brute.
 
 API de lecture seule : GET `/api/portal/workspaces/{workspace}/access-history/` ; filtres action, actor_id, start_date et end_date (YYYY-MM-DD), page. Tests : `python manage.py test portal.backend.identity.test_access_history --settings=portal.backend.settings`.
+
+## Révoquer les autres sessions du portail
+
+1. Se connecter au même compte central dans deux navigateurs ou profils distincts (deux onglets d’un même profil partagent généralement la même session).
+2. Dans le premier, ouvrir Mon compte et mes sessions → Déconnecter mes autres appareils, saisir le mot de passe actuel et confirmer. Le premier navigateur reste connecté, sans changement de mot de passe ou de droits.
+3. Dans le second, actualiser un parcours protégé : accès refusé, y compris l’émission de nouveaux tickets métier. Se reconnecter avec le mot de passe habituel : accès rétabli. Un autre compte déjà connecté reste utilisable.
+4. Un mot de passe incorrect ou une requête sans CSRF ne doit pas révoquer les sessions. Les essais sont limités avec le même quota que le changement de mot de passe.
+5. Vérifier les limites annoncées : session historique Isolation distincte, tickets déjà émis valables deux minutes au plus, requêtes en cours non interrompues. Pas de liste ou de comptage des appareils.
+
+API : POST `/api/portal/session/revoke-others/` avec current_password et session/CSRF ; réponse 204 sans secret. Tests : `python manage.py test portal.backend.identity.test_sessions --settings=portal.backend.settings` ; concurrence exécutée sur PostgreSQL. Appliquer la migration portail 0008 avant le nouveau serveur/worker.

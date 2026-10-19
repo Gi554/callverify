@@ -35,7 +35,7 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS','http://127.0.0.1:5173,h
 USE_TZ = True
 TIME_ZONE = 'UTC'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':['rest_framework.authentication.SessionAuthentication'],
+REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':['portal.backend.identity.authentication.CentralSessionAuthentication'],
     'DEFAULT_PERMISSION_CLASSES':['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_THROTTLE_RATES':{'portal_login':'10/min','portal_password':'5/min','user':'120/min'}}
 AUTH_PASSWORD_VALIDATORS = [

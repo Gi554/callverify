@@ -25,6 +25,10 @@ class AccessAudit(models.Model):
     metadata = models.JSONField(default=dict,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+class SessionGeneration(models.Model):
+    user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,primary_key=True)
+    generation=models.PositiveBigIntegerField(default=0)
+
 
 class Invitation(models.Model):
     import uuid
