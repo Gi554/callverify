@@ -16,6 +16,7 @@ from packages.access.isolation_visits import verify_booking
 from .models import Prospect,IsolationVisit,IsolationVisitCalendar,IsolationVisitResult,AuditEvent
 from .isolation_work import VisitAuthentication,Pager,Conflict,visible
 from .isolation_client import ResultMixin,result_output
+from .isolation_sharing import SharingMixin
 
 class SlotInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -80,7 +81,7 @@ def output(row):
 
 def snapshot(row):return {key:(getattr(row,key).isoformat() if key in ('starts_at','ends_at') else getattr(row,key)) for key in ('starts_at','ends_at','timezone','status','revision')}
 
-class IsolationVisitViewSet(ResultMixin,viewsets.GenericViewSet):
+class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
     authentication_classes=[VisitAuthentication]
     permission_classes=[IsAuthenticated]
     serializer_class=BookingInput

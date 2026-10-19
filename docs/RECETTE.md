@@ -16,3 +16,14 @@
 Aucun appel Twilio réel, aucun email transmis à un destinataire réel, aucun stockage S3 réel et aucun domaine public déployé. Les accès et informations seront fournis plus tard. La restauration média chiffrée et les tests de charge/concurrence au volume cible doivent être réalisés sur l'infrastructure retenue. Les appels Voice sont préparables mais leur émission reste à implémenter après validation du scénario.
 
 Les données et comptes de recette sont fictifs. Aucun compte de production n'a été créé.
+
+## Observations partagées Isolation
+
+1. Avec un setter Isolation, ouvrir un prospect attribué et ajouter une note depuis le suivi ; disposer d’une visite du dossier liée au client.
+2. Dans Visites → Observations partagées, la note apparaît Interne. Avec le client de la visite, le même écran ne doit pas la montrer.
+3. Le responsable ou l’administrateur sélectionne Publier pour ce client, vérifie le texte et confirme avec un motif. Le client actualise : seule cette observation apparaît, avec rôle et identifiant de l’auteur.
+4. Une autre note non publiée reste absente. Un autre client, même lié au même dossier par une visite, ne reçoit aucun partage implicite.
+5. Retirer le partage avec un motif puis actualiser le client : l’observation disparaît. Elle reste conservée dans le suivi interne. Les copies déjà consultées ne peuvent pas être retirées.
+6. Réattribuer le dossier : l’ancien setter perd les commandes de publication ; le nouveau ou l’administrateur peut gérer le partage, sans changer l’auteur historique. Une ancienne révision doit être refusée et exiger un rechargement.
+
+Commandes automatiques : `python manage.py test core.test_isolation_sharing` (deux tests de concurrence exécutés uniquement sur PostgreSQL). API : GET/POST `/api/visits/{id}/activities/` ; POST exige activity_id, revision du prospect, visible et reason. L’identité client provient de la visite, jamais d’un champ fourni par le navigateur. Aucun appel, Lookup ou e-mail n’est déclenché.
