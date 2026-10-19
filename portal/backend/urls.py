@@ -2,6 +2,7 @@ from django.urls import path
 from .identity import views
 from .identity import management_api
 from .identity import invitations
+from .identity.access_history import history as access_history
 from .identity.passwords import change_password
 from .identity.recovery import request_reset,confirm_reset
 from .identity.isolation import setters as isolation_setters,visit_proof
@@ -11,6 +12,7 @@ urlpatterns=[path('api/portal/csrf/',views.csrf),path('api/portal/login/',views.
     path('api/portal/session/',views.session),path('api/portal/access/<str:workspace>/',views.access)]
 urlpatterns += [path('api/portal/workspaces/<str:workspace>/users/',management_api.users),
     path('api/portal/workspaces/<str:workspace>/users/<int:pk>/',management_api.update_access)]
+urlpatterns += [path('api/portal/workspaces/<str:workspace>/access-history/',access_history)]
 urlpatterns += [path('api/portal/assurance/participants/',participants),path('api/portal/assurance/booking-proof/',booking_proof)]
 urlpatterns += [path('api/portal/assurance/task-owner-proof/',task_owner_proof)]
 urlpatterns += [path('api/portal/isolation/setters/',isolation_setters)]

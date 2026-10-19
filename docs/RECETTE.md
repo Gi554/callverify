@@ -37,3 +37,13 @@ Commandes automatiques : `python manage.py test core.test_isolation_sharing` (de
 5. Setter, client et compte Assurance ne peuvent pas utiliser les routes de répartition. Aucun appel ou Lookup déclenché. La charge préexistante ne participe pas au calcul.
 
 API : POST `/api/work-queue/distribution-preview/` avec setter_ids et items (id/revision), puis POST `/api/work-queue/distribute/` avec ces champs, request_id, reason et preuve par item. Les cibles sont recalculées côté serveur. Tests : `python manage.py test core.test_isolation_bulk` ; quatre tests de concurrence du module sont exécutés uniquement sur PostgreSQL. Limite : 25 prospects de la page courante, pas une distribution massive en arrière-plan.
+
+## Journal des accès du portail
+
+1. Avec un administrateur Assurance, ouvrir Utilisateurs et accès → Consulter le journal des accès. Associer un compte de recette existant, modifier son rôle et le suspendre ; actualiser le journal pour vérifier auteur, cible et états avant/après.
+2. Filtrer par action, numéro d’auteur et dates UTC incluses. Réinitialiser les champs puis actualiser pour retrouver tous les événements de l’espace. La pagination est de 25 lignes.
+3. Un administrateur Assurance seul ne doit pas consulter le journal Isolation, même par URL directe. Un compte multi-administrateur peut changer l’espace dans Utilisateurs et accès. Setter, conseiller et client n’y ont pas accès.
+4. Suspendre l’accès administrateur depuis un autre administrateur : le prochain chargement du journal doit être refusé. Un rôle de superutilisateur sans adhésion explicite ne suffit pas.
+5. Les connexions globales et les événements mail/métier sont volontairement absents ; les détails ne contiennent jamais de jeton, mot de passe, e-mail ou métadonnée brute.
+
+API de lecture seule : GET `/api/portal/workspaces/{workspace}/access-history/` ; filtres action, actor_id, start_date et end_date (YYYY-MM-DD), page. Tests : `python manage.py test portal.backend.identity.test_access_history --settings=portal.backend.settings`.

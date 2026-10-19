@@ -326,9 +326,17 @@ Le registre de lots existant distingue la répartition d’une affectation manue
 
 Six tests fonctionnels et deux tests de concurrence PostgreSQL ajoutés : aperçu sans écriture, équilibre déterministe, reprise et séparation des modes, permissions/preuves/bornes, rollback, 25 prospects, concurrence avec l’affectation manuelle et double confirmation. Suite core de 151 tests (15 réservés à PostgreSQL), tests ciblés, contrôle des migrations, typage/build ; aucune migration nécessaire. Limites : page courante uniquement, aucune sélection massive ou exécution planifiée, pas de pondération ou de quota par setter et pas de réservation des dossiers par l’aperçu. Les droits attestés peuvent rester valables deux minutes après révocation. Revue esthétique différée.
 
+## Fonctionnalité 37 — journal d’administration des accès du portail
+
+Depuis Utilisateurs et accès → Consulter le journal des accès, un administrateur consulte les événements historiques de ses seuls espaces explicitement administrés : accès accordé/modifié, invitation créée/renouvelée/révoquée/acceptée. Liste de 25 événements par page, tri du plus récent au plus ancien avec identifiant départageant les dates égales ; filtres par action, identifiant numérique d’auteur et dates UTC incluses. Aucun nouveau droit implicite pour un superutilisateur central. Une suspension ou perte du rôle administrateur bloque les requêtes suivantes immédiatement.
+
+Réponses par liste explicite de champs : action/libellé, date, auteur central actuel (identifiant et nom de compte), identifiant du compte concerné, rôle/état avant et après, référence UUID d’invitation et type d’association lorsque ces informations existent. Aucune sérialisation brute des métadonnées : adresses, mots de passe, jetons, contenu chiffré et champs inconnus sont exclus. Une trace dont l’auteur a été supprimé reste affichée sans identité d’auteur ; les champs historiques absents ou mal formés sont omis. Aucun nom de compte cible ou adresse d’invité n’est résolu par cette route. Lecture seule, sans cache ni écriture récursive de consultation.
+
+Sept tests fonctionnels ajoutés : périmètres, rôles/révocation, liste de champs et secrets imbriqués, dates et pagination, filtres invalides/écritures refusées, parcours réel de création/modification d’accès et suppression d’auteur. Suite portail de 95 tests (trois réservés à PostgreSQL), contrôle des migrations, typage/build et CI complète. Aucune migration nécessaire. Limites : journal des accès et invitations seulement, pas de connexions globales, d’événements mail ou d’audit métier centralisé ; pas d’export, de notification ou de scellement cryptographique. Les noms d’auteurs sont ceux des comptes actuels, sans instantané historique. Les commandes serveur qui n’ont pas écrit ces événements ne sont pas reconstituées. Conservation et archivage restent à définir. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
-1. Gestion et migration complète des comptes, MFA et navigation unifiée avec Isolation.
+1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration livrées).
 2. Statistiques et suivi métier Isolation complémentaires, répartition selon charge/disponibilités et sélection massive (répartition à tour de rôle bornée, portail client, résultats, file setter, qualification, notes, partage explicite, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
