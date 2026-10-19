@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed,ref,onMounted,onBeforeUnmount} from 'vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
+import AssuranceContactInteractions from './AssuranceContactInteractions.vue'
 import AssuranceContactNotes from './AssuranceContactNotes.vue'
 import AssuranceContactDocuments from './AssuranceContactDocuments.vue'
 import AssuranceCustomValues from './AssuranceCustomValues.vue'
@@ -53,6 +54,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <button v-if="!token&&dirty" class="secondary" @click="emit('close')">Fermer sans enregistrer les changements locaux</button><template v-if="role==='administrator'"><form class="unlock-form" @submit.prevent="unlock"><label>Motif du déverrouillage forcé<input v-model="reason" maxlength="1000" required></label><button class="secondary" :disabled="busy||saving||!!token||!reason.trim()">Déverrouiller la fiche</button></form><button class="secondary" @click="historyPage=1;loadHistory()">Consulter l’historique administrateur</button><div v-if="showHistory"><p v-if="!history.length">Aucune modification enregistrée.</p><article v-for="entry in history" :key="entry.id"><strong>{{entry.action}}</strong><small>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur interne {{entry.actor_id}}</small><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><div class="history-pages"><button class="secondary" :disabled="historyPage===1" @click="historyPage--;loadHistory()">Précédent</button><span>Page {{historyPage}}</span><button class="secondary" :disabled="historyPage*25>=historyCount" @click="historyPage++;loadHistory()">Suivant</button></div></div></template>
 <AssuranceCustomValues v-if="canWrite" :contact-id="current.id" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 <section v-if="canWrite"><h3>Statut commercial : {{current.status_label||current.status}}</h3><p>Le statut ne remplace pas le compte rendu d’un rendez-vous ni l’enregistrement d’un contrat.</p><form v-if="pipeline" @submit.prevent="changeStatus"><label>Nouveau statut<select v-model="nextStatus" :disabled="!token||busy||saving"><option v-for="stage in pipeline.stages.filter((s:any)=>s.active)" :key="stage.key" :value="stage.key">{{stage.label}}</option></select></label><label>Motif du changement<textarea v-model="statusReason" maxlength="1000" required :disabled="!token||busy||saving"></textarea></label><button class="primary" :disabled="!token||busy||saving||nextStatus===current.status">Enregistrer le statut</button></form><button class="secondary" :disabled="busy||saving" @click="loadPipeline">Recharger les statuts disponibles</button></section>
+<AssuranceContactInteractions :contact-id="current.id" :request="request"/>
 <AssuranceContactNotes :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
 <AssuranceContactDocuments :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
 <AssuranceAppointments :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/>
