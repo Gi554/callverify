@@ -173,7 +173,7 @@ def availability(user,workspace,data):
         except providers.ProviderError as error:
             failure=True
             if error.reauthorize:
-                row.connected=False;row.payload='';row.expires_at=None;row.revision+=1;row.save(update_fields=['connected','payload','expires_at','revision'])
+                row.connected=False;row.auto_sync=False;row.payload='';row.expires_at=None;row.revision+=1;row.save(update_fields=['connected','auto_sync','payload','expires_at','revision'])
                 AccessAudit.objects.create(user=user,workspace=workspace,action='calendar.reauthorization_required',metadata={'provider':row.provider})
         require_owner(user,workspace)
     if failure:raise Unavailable()

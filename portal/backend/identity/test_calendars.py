@@ -80,11 +80,11 @@ class CalendarTests(TestCase):
             self.assertEqual(self.client.post(self.base+'assurance/busy/',self.window,format='json').status_code,200);self.assertEqual(refresh.call_count,1)
         row.refresh_from_db();self.assertEqual(unseal(row.payload),renewed)
     def test_provider_revocation_is_not_free_time_and_persists_reconnect_state(self):
-        self.connected()
+        self.connected();CalendarConnection.objects.update(auto_sync=True)
         with patch('packages.calendar_connectors.providers.busy',side_effect=providers.ProviderError(True)):
             response=self.client.post(self.base+'assurance/busy/',self.window,format='json')
         self.assertEqual(response.status_code,503);self.assertNotIn('busy',response.data)
-        row=CalendarConnection.objects.get();self.assertFalse(row.connected);self.assertEqual(row.payload,'')
+        row=CalendarConnection.objects.get();self.assertFalse(row.connected);self.assertFalse(row.auto_sync);self.assertEqual(row.payload,'')
     def test_disconnect_clears_tokens_pending_consent_and_is_owner_only(self):
         row=self.connected();state=self.start()
         self.assertEqual(self.client.post(self.base+'assurance/disconnect/',{'revision':row.revision},format='json').status_code,204)
