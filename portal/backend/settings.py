@@ -37,7 +37,7 @@ TIME_ZONE = 'UTC'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':['rest_framework.authentication.SessionAuthentication'],
     'DEFAULT_PERMISSION_CLASSES':['rest_framework.permissions.IsAuthenticated'],
-    'DEFAULT_THROTTLE_RATES':{'portal_login':'10/min','user':'120/min'}}
+    'DEFAULT_THROTTLE_RATES':{'portal_login':'10/min','portal_password':'5/min','user':'120/min'}}
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator','OPTIONS':{'min_length':12}},
     {'NAME':'django.contrib.auth.password_validation.CommonPasswordValidator'}]

@@ -218,6 +218,14 @@ Chaque ajout exige un texte de 3 000 caractères maximum et un identifiant de re
 
 Cinq tests fonctionnels et un test de concurrence PostgreSQL ajoutés : permissions, idempotence, historique/pagination, résultat conservé et annulation si l’audit échoue. Suite Isolation, typage/build et CI complète ; migration 0011 appliquée localement. Limites : précisions textuelles uniquement, aucune correction structurée du résultat, notification ou tâche automatique ; revue esthétique différée.
 
+## Fonctionnalité 26 — changement du mot de passe central
+
+Tous les utilisateurs connectés au portail /crm disposent d’une commande « Mon mot de passe », y compris sans espace attribué. L’opération exige le mot de passe actuel, un nouveau mot de passe distinct et sa confirmation. Les règles centrales sont vérifiées côté serveur (minimum 12 caractères et refus des mots de passe courants), avec entrées limitées à 256 caractères, sans suppression des espaces. Aucun identifiant cible ne peut être transmis pour modifier un autre compte. La route est authentifiée par session, protégée par CSRF et limitée à cinq tentatives par minute et par compte via le cache configuré.
+
+Une écriture transactionnelle sérialise les changements sur le compte avant de vérifier le mot de passe actuel ; l’audit et le nouveau hachage sont enregistrés ensemble. Le journal indique seulement le compte et l’action, sans mot de passe ni hachage. La session utilisée est renouvelée et reste authentifiée ; les autres sessions portent l’ancien hachage et sont rejetées à leur prochaine requête. Les rôles et accès des deux espaces restent inchangés. Les tickets métier précédemment émis peuvent subsister jusqu’à deux minutes ; le compte historique Isolation demeure distinct.
+
+Huit tests supplémentaires avec de vraies sessions/CSRF : ancien mot de passe, règles de validation, confirmation, cible interdite, limitation des tentatives, reprise de connexion, invalidation de l’autre session et rollback si l’audit échoue. Suite portail complète, typage/build et CI. Aucune migration nécessaire. Limites : récupération de mot de passe oublié, invitations, MFA et limitation distribuée avant production restent à livrer ; revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA, invitations, récupération et navigation unifiée avec Isolation.
