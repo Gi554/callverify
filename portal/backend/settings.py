@@ -71,3 +71,5 @@ NEWT_DIRECTORY_ENABLED=os.getenv('NEWT_DIRECTORY_ENABLED','false').lower()=='tru
 NEWT_USERNAME=os.getenv('NEWT_USERNAME','')
 NEWT_PASSWORD=os.getenv('NEWT_PASSWORD','')
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['phone_directory']='5/min'
+
+NEWT_STATUS_ENABLED=os.getenv('NEWT_STATUS_ENABLED','false').lower()=='true'
