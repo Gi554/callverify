@@ -388,7 +388,7 @@ Limites : partage global de champs actifs uniquement ; pas d’exception par dos
 
 ## Fonctionnalité 43 — partage explicite des documents internes Assurance
 
-**Suivi de livraison : branche partage-documents-assurance vers staging.** L’utilisateur a autorisé la poursuite pendant l’incident Actions ; le lot 42 reste séparé sur staging et doit être validé/fusionné avant intégration de ce lot.
+**Livraison : PR #47 vers staging, puis [PR #48 vers main](https://github.com/Gi554/callverify/pull/48).** L’utilisateur a autorisé la poursuite pendant l’incident Actions. Le lot 42 a ensuite été fusionné dans main via la PR #46 ; les documents sont passés par la PR #47 vers staging puis la [PR #48 vers main](https://github.com/Gi554/callverify/pull/48).
 
 L’administration peut publier un document interne existant vers tous les conseillers ayant accès au dossier. Nom de fichier public distinct obligatoire, extension conservée, motif et confirmation de vérification du contenu/métadonnées exigés. Aucun document existant ou nouvel envoi n’est partagé par défaut. Le fichier original reste immuable, attribué à son auteur et accessible dans le parcours interne ; publication/retrait modifient seulement une autorisation et un nom public avec révision attendue et audit atomique avant/après. Les documents personnels des conseillers ne peuvent pas être publiés par cette commande.
 
@@ -398,11 +398,23 @@ Huit tests fonctionnels et une concurrence PostgreSQL ajoutés : privé par déf
 
 Limites : partage du fichier intégral à tous les conseillers autorisés du dossier, sans destinataire individuel ni expiration. La confirmation de revue est humaine : pas de suppression automatique des métadonnées embarquées, de caviardage ou d’analyse du contenu binaire. Pour un fichier contenant des informations internes, ne pas le publier ; préparer et déposer une version expurgée avant de l’autoriser. Révocation effective aux prochaines requêtes, sans récupération des copies déjà téléchargées ni rafraîchissement automatique des écrans. Notes internes non partagées par ce lot. Revue esthétique différée.
 
+## Fonctionnalité 44 — version publique des notes internes Assurance
+
+**Suivi de livraison : [PR #49 vers staging](https://github.com/Gi554/callverify/pull/49), puis PR distincte de staging vers main.** Préparation isolée autorisée pendant l’attente de la CI. Les champs et les documents ont été livrés avant les notes ; chaque lot conserve ses vérifications et ses PR propres.
+
+L’administration rédige explicitement une version destinée aux conseillers autorisés du dossier, avec confirmation de revue et motif. La zone de rédaction ne reprend pas automatiquement la note interne. Original et auteur restent inchangés ; seule la copie publique est retournée au conseiller dans la liste et la chronologie. Aucun partage par défaut. Les notes personnelles des conseillers restent réservées à leur auteur et à l’administration et ne peuvent pas être publiées par cette commande.
+
+Publication et retrait exigent une révision attendue et écrivent un audit atomique avant/après, contenant la version publique précédente. Le retrait efface la copie publique courante sans effacer l’original ni son historique administratif ; une nouvelle publication exige une nouvelle version et revue. Liste sans cache, contrôle du périmètre contact à chaque requête et absence d’auteur, métadonnée de revue ou texte interne dans les réponses conseiller. Aucun champ de partage n’est accepté par l’ajout de note ordinaire. L’administrateur utilise les commandes de publication dans la liste des notes de la fiche ; pas de verrou de saisie requis pour gérer la copie d’une note immuable.
+
+Huit tests fonctionnels et une concurrence PostgreSQL ajoutés : défaut privé, copie seule dans liste/chronologie, retrait, original conservé, rôles/espaces/périmètres, notes personnelles, validation de revue et texte, révisions, audit et rollback. Migration Assurance 0021 : trois attributs avec partage désactivé et copie vide pour l’historique. Suite Assurance de 211 tests (23 réservés à PostgreSQL), typage/build et contrôle des migrations avant publication ; aucun fournisseur externe sollicité.
+
+Limites : publication à tous les conseillers autorisés du dossier, pas par destinataire ni avec expiration. Revue humaine du texte, sans analyse automatique des identités saisies. L’auteur et le texte internes ne sont jamais copiés automatiquement, mais l’administration reste responsable du contenu qu’elle rédige. La date présentée est celle de la note originale, pas celle de publication ; les dates de publication/retrait sont dans les audits. Pas de notification, export dédié ou actualisation automatique des écrans, et aucune récupération des informations déjà consultées. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
 2. Statistiques et suivi métier Isolation complémentaires, répartition selon charge/disponibilités et sélection massive (répartition à tour de rôle bornée, portail client, résultats, file setter, qualification, notes, partage explicite, rappels et visites internes livrés).
-3. Compléments des fiches Assurance : champs métier définitifs à valider, import des champs personnalisés, partage sélectif de notes/documents internes et cycle des mandats/contrats (coordonnées sous verrou, champs configurables avec partage conseiller explicite, notes, documents et chronologie des interactions livrés).
+3. Compléments des fiches Assurance : champs métier définitifs à valider, import des champs personnalisés et cycle des mandats/contrats (partages champs/documents/notes suivis séparément dans les lots 42 à 44) (coordonnées sous verrou, champs configurables avec partage conseiller explicite, notes, documents et chronologie des interactions livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteur Calendly et synchronisation Google/Microsoft avancée (publication unidirectionnelle sur agenda principal livrée, recette réelle OAuth à effectuer) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.

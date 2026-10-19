@@ -133,6 +133,9 @@ class ContactNote(models.Model):
     author_id=models.PositiveBigIntegerField()
     channel=models.CharField(max_length=20,choices=[('internal','Interne'),('advisor','Conseiller')])
     body=models.TextField()
+    advisor_visible=models.BooleanField(default=False)
+    advisor_body=models.TextField(blank=True)
+    sharing_revision=models.PositiveIntegerField(default=0)
     created_at=models.DateTimeField(auto_now_add=True)
     class Meta:
         indexes=[models.Index(fields=['contact','channel','author_id'])]

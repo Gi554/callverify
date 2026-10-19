@@ -5,6 +5,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from .notes import visible_notes
 from .models import ContactNote,ContactDocument,Appointment,AppointmentReport,AppointmentIncident
 
 KINDS=('note','document','appointment','report','incident')
@@ -36,20 +37,19 @@ class ContactInteractionMixin:
         kind=request.query_params.get('type','')
         if kind and kind not in KINDS:raise ValidationError('Type d’interaction invalide')
         dates=window(request.query_params)
-        notes=ContactNote.objects.filter(contact=contact)
+        notes=visible_notes(contact,user)
         documents=ContactDocument.objects.filter(contact=contact)
         appointments=Appointment.objects.filter(contact=contact)
         if user.role=='advisor':
-            notes=notes.filter(channel='advisor',author_id=user.pk)
             documents=documents.filter(Q(channel='advisor',author_id=user.pk)|Q(channel='internal',advisor_visible=True))
             appointments=appointments.filter(advisor_id=user.pk)
         elif user.role=='setter':
-            notes=notes.filter(channel='internal');documents=documents.filter(channel='internal')
+            documents=documents.filter(channel='internal')
             appointments=appointments.filter(setter_id=user.pk)
         reports=AppointmentReport.objects.filter(appointment__in=appointments.values('pk'))
         incidents=AppointmentIncident.objects.filter(appointment__in=appointments.values('pk'))
         sources={
-            'note':(notes,F('body'),F('channel'),F('pk')),
+            'note':(notes,Case(When(channel='internal',then=F('advisor_body')),default=F('body'),output_field=TextField()) if user.role=='advisor' else F('body'),Case(When(channel='internal',then=Value('shared')),default=F('channel'),output_field=CharField()) if user.role=='advisor' else F('channel'),F('pk')),
             'document':(documents,Case(When(channel='internal',then=F('advisor_filename')),default=F('filename'),output_field=CharField()) if user.role=='advisor' else F('filename'),Case(When(channel='internal',then=Value('shared')),default=F('channel'),output_field=CharField()) if user.role=='advisor' else F('channel'),F('pk')),
             'appointment':(appointments,Value(''),F('status'),F('pk')),
             'report':(reports,F('note'),Case(When(performed=True,then=Value('performed')),default=Value('not_performed'),output_field=CharField()),F('appointment_id')),
