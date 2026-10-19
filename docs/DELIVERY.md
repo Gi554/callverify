@@ -426,6 +426,14 @@ Audits centraux avant/après avec motif, sans secret fournisseur ; configuration
 
 Limites : saisie manuelle non vérifiée auprès du PBX, un seul PBX, pas de détection de nouveaux postes ni création automatique de comptes. Aucune connexion fournisseur, aucun identifiant NEWT stocké, aucune requête 244/343/245 ou autre et strictement aucun appel lancé. Pas de commande d’appel ni lecture des états/journaux livrée ; les tickets métier ne contiennent pas le poste. Vérification du poste dans le PBX à la charge de l’administrateur. Revue esthétique différée.
 
+## Fonctionnalité 47 — annuaire NEWT en lecture seule
+
+Consultation explicite des postes depuis l’administration centrale, réservée aux administrateurs des deux espaces car l’annuaire fournisseur est global. Connecteur étroit à hôte HTTPS fixe, fonction 343 seule, CSV, corrélation hexadécimale de dix caractères ; aucune fonction générique ou commande d’appel. Désactivé par défaut, secrets exclusivement serveur et non renseignés par la livraison. Aucun appel réseau automatique, aucune création ou association de compte à partir du résultat. Affichage de 25 postes par page avec date ; adresse PBX exclue, noms indicatifs.
+
+Validation stricte et bornes de réponse/taille/nombre de postes, refus des réponses vides, partielles, doublons et erreurs. TLS, redirections interdites, délais et neutralisation des erreurs. Accès session/CSRF, quota, sérialisation via verrou singleton de base centrale, audit du seul nombre de postes consultés ; pas de conservation de l’annuaire et pas de cache navigateur. Migration portail 0012. Huit tests fonctionnels/adaptateurs et une concurrence PostgreSQL ajoutés, simulation HTTP uniquement. Documentation de configuration et limites dans docs/PHONETICO.md.
+
+Limites : un seul PBX, aucune connexion réelle validée, aucune synchronisation périodique ni preuve du titulaire du poste. Lecture 244/511, interprétation des états, rapprochement avec les dossiers, création automatique des comptes et fonctions d’appel non livrés. Strictement aucun appel lancé et aucune requête NEWT réelle effectuée. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).

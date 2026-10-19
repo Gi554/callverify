@@ -125,3 +125,9 @@ class PhoneExtension(models.Model):
     extension=models.CharField(max_length=10,unique=True,null=True)
     revision=models.PositiveIntegerField(default=0)
     updated_at=models.DateTimeField(auto_now=True)
+
+
+class PhoneDirectoryGate(models.Model):
+    # Serialize provider directory reads across API workers, no cached personnel data.
+    id=models.PositiveSmallIntegerField(primary_key=True,default=1)
+    revision=models.PositiveIntegerField(default=0)
