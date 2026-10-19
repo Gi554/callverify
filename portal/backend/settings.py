@@ -41,3 +41,17 @@ REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':['rest_framework.authenticati
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator','OPTIONS':{'min_length':12}},
     {'NAME':'django.contrib.auth.password_validation.CommonPasswordValidator'}]
+
+# Portal mail settings are separate from the legacy Isolation mail transport.
+PORTAL_PUBLIC_URL=os.getenv('PORTAL_PUBLIC_URL','http://127.0.0.1:5173' if DEBUG else '')
+EMAIL_BACKEND=os.getenv('PORTAL_EMAIL_BACKEND','django.core.mail.backends.filebased.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_FILE_PATH=BASE_DIR/'private-media'/'portal-mail'
+EMAIL_HOST=os.getenv('PORTAL_EMAIL_HOST','')
+EMAIL_PORT=int(os.getenv('PORTAL_EMAIL_PORT','587'))
+EMAIL_HOST_USER=os.getenv('PORTAL_EMAIL_USER','')
+EMAIL_HOST_PASSWORD=os.getenv('PORTAL_EMAIL_PASSWORD','')
+EMAIL_USE_TLS=os.getenv('PORTAL_EMAIL_TLS','true').lower()=='true'
+EMAIL_TIMEOUT=10
+DEFAULT_FROM_EMAIL=os.getenv('PORTAL_FROM_EMAIL','AMX <amx@localhost>')
+PASSWORD_RESET_TIMEOUT=1800
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update(portal_recovery='5/hour',portal_reset='10/hour')
