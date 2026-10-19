@@ -52,6 +52,8 @@ EMAIL_HOST_USER=os.getenv('PORTAL_EMAIL_USER','')
 EMAIL_HOST_PASSWORD=os.getenv('PORTAL_EMAIL_PASSWORD','')
 EMAIL_USE_TLS=os.getenv('PORTAL_EMAIL_TLS','true').lower()=='true'
 EMAIL_TIMEOUT=10
+PORTAL_MAIL_KEY=os.getenv('PORTAL_MAIL_KEY','')
+if not DEBUG and not PORTAL_MAIL_KEY:raise ImproperlyConfigured('PORTAL_MAIL_KEY required')
 DEFAULT_FROM_EMAIL=os.getenv('PORTAL_FROM_EMAIL','AMX <amx@localhost>')
 PASSWORD_RESET_TIMEOUT=1800
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update(portal_recovery='5/hour',portal_reset='10/hour')

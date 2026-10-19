@@ -5,8 +5,8 @@ const rows=ref<any[]>([]),page=ref(1),count=ref(0),busy=ref(false),error=ref('')
 const form=ref({username:'',email:'',role:'setter'})
 const base=()=>`workspaces/${props.space}/invitations/`
 async function load(){try{const data=await props.request(base()+`?page=${page.value}`);rows.value=data.results;count.value=data.count}catch(e:any){error.value=e.message}}
-async function create(){busy.value=true;error.value='';message.value='';try{const result=await props.request(base(),form.value);form.value={username:'',email:'',role:'setter'};page.value=1;await load();message.value=result.mail_sent?'Invitation envoyée.':'Invitation enregistrée, mais e-mail non envoyé. Vous pouvez réessayer.'}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function action(row:any,action:string){busy.value=true;error.value='';message.value='';try{const result=await props.request(base()+row.id+'/',{action});message.value=action==='revoke'?'Invitation révoquée.':result.mail_sent?'Nouveau lien envoyé ; le précédent est invalidé.':'Envoi échoué ; réessayez.';await load()}catch(e:any){error.value=e.message}finally{busy.value=false}}
+async function create(){busy.value=true;error.value='';message.value='';try{const result=await props.request(base(),form.value);form.value={username:'',email:'',role:'setter'};page.value=1;await load();message.value=result.mail_queued?'Invitation mise en file d’envoi.':'Invitation enregistrée, mais e-mail non envoyé. Vous pouvez réessayer.'}catch(e:any){error.value=e.message}finally{busy.value=false}}
+async function action(row:any,action:string){busy.value=true;error.value='';message.value='';try{const result=await props.request(base()+row.id+'/',{action});message.value=action==='revoke'?'Invitation révoquée.':result.mail_queued?'Nouveau lien mis en file ; le précédent est invalidé.':'Envoi échoué ; réessayez.';await load()}catch(e:any){error.value=e.message}finally{busy.value=false}}
 const labels:Record<string,string>={pending:'En attente',accepted:'Acceptée',revoked:'Révoquée',expired:'Expirée'}
 onMounted(load)
 </script>

@@ -42,3 +42,20 @@ class Invitation(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(models.functions.Lower('username'),name='invitation_username_ci'),
             models.UniqueConstraint(models.functions.Lower('email'),name='invitation_email_ci')]
+
+class PortalMail(models.Model):
+    import uuid
+    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,null=True,on_delete=models.SET_NULL)
+    workspace = models.CharField(max_length=20,blank=True)
+    payload = models.TextField()
+    status = models.CharField(max_length=12,default='pending')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    next_attempt_at = models.DateTimeField()
+    lease_until = models.DateTimeField(null=True)
+    claim = models.UUIDField(null=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True)
+    class Meta:
+        indexes=[models.Index(fields=['status','next_attempt_at'],name='portal_mail_due')]
