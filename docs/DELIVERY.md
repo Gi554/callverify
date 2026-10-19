@@ -364,11 +364,21 @@ Quinze tests fonctionnels/adaptateurs et une concurrence PostgreSQL ajoutés au 
 
 Limites : agenda principal uniquement, pas de synchronisation bidirectionnelle/webhooks ni d’invités. Confirmation CRM et publication externe ne sont pas atomiques ; un conflit externe laisse le rendez-vous interne intact et en erreur de publication. Modifications concurrentes chez le fournisseur possibles entre contrôles. Un état incertain impose une vérification manuelle ; retrait potentiellement partiel. Le registre expose le dernier état, les audits gardent les actions techniques. Clés, worker, ALLOWED_HOSTS internes et configuration OAuth à déployer ; aucune preuve de présence ou résultat métier déduite de l’agenda. Calendly reporté. Revue esthétique différée.
 
+## Fonctionnalité 41 — chronologie des interactions des fiches Assurance
+
+La fiche prospect rassemble désormais une chronologie des notes, documents, rendez-vous enregistrés, comptes rendus et signalements. Lecture seule, 25 lignes par page, tri stable par date décroissante puis type/identifiant, filtres par type et intervalle ISO 8601 avec décalage explicite (bornes incluses). L’interface permet de filtrer, actualiser et parcourir les pages sans prise en charge du dossier. Les ajouts récents apparaissent après actualisation ; pas de rafraîchissement automatique dans ce lot.
+
+Chaque source est filtrée côté serveur avant union/pagination SQL : conseiller limité à ses propres notes/documents et rendez-vous ; setter aux notes/documents internes et à ses rendez-vous ; administrateur à l’ensemble du dossier. Le périmètre de la fiche est vérifié avant la lecture, y compris par URL directe. Liste explicite de champs sans auteur, identité setter, attribution, métadonnée d’import, hash ou contenu binaire. Réponses sans cache et aucune écriture lors de la consultation. Les corps de notes et comptes rendus déjà autorisés sont affichés comme texte, les documents sont représentés par leur nom ; leurs téléchargements restent dans le parcours documents existant.
+
+Sept tests ajoutés : cinq sources, confidentialité inter-conseillers/setters/contacts/espaces, dates et types invalides, bornes incluses, pagination avec dates identiques, absence de modification/audit de lecture et conservation d’un rendez-vous annulé. Suite Assurance de 186 tests (21 réservés à PostgreSQL), typage/build frontend, vérification des migrations et CI PostgreSQL. Aucune migration ni nouvel appel fournisseur.
+
+Limites : chronologie des enregistrements existants, pas un journal exhaustif des modifications. Un rendez-vous apparaît à sa date de création avec son état actuel ; reports, annulations détaillées, changements commerciaux et interventions administrateur restent dans leurs journaux dédiés. Aucune identité interne résolue. Appels Phonetico, cycles des mandats/contrats, champs métier définitifs et règles de visibilité complémentaires restent à livrer/valider. La présence de cette chronologie ne signifie pas que toutes les fiches métier sont terminées. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
 2. Statistiques et suivi métier Isolation complémentaires, répartition selon charge/disponibilités et sélection massive (répartition à tour de rôle bornée, portail client, résultats, file setter, qualification, notes, partage explicite, rappels et visites internes livrés).
-3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
+3. Compléments des fiches Assurance : champs métier définitifs à valider, import des champs personnalisés, partage contrôlé conseiller et cycle des mandats/contrats (coordonnées sous verrou, champs configurables internes, notes, documents et chronologie des interactions livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteur Calendly et synchronisation Google/Microsoft avancée (publication unidirectionnelle sur agenda principal livrée, recette réelle OAuth à effectuer) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
