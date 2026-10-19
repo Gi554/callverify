@@ -254,10 +254,20 @@ Limites explicites : livraison SMTP au moins une fois (doublon possible après a
 
 Sept tests de file et un test de réservation concurrente PostgreSQL ajoutés ; suites de récupération/invitation adaptées à la livraison différée, 70 tests portail (deux réservés à PostgreSQL), typage/build et CI complète. Migration 0005 appliquée localement. Revue esthétique différée.
 
+## Fonctionnalité 30 — affectations en lot des prospects Isolation
+
+L’administrateur Isolation sélectionne jusqu’à 25 prospects de la page courante et confirme une affectation/réattribution vers un setter actif ou un retrait commun, avec motif obligatoire. Annuaire central recherché et paginé ; chaque affectation exige une attestation liée au prospect, au setter cible et à l’acteur. Le lot ne fait ni appel, ni Lookup, ni modification de qualification, rappel, historique de visite ou résultat technique. Setter/client et identités Assurance sont refusés côté API.
+
+Toutes les révisions sont vérifiées dans une transaction : prospect manquant/modifié, cible déjà identique, attestation invalide ou erreur d’audit annulent le lot entier. Les écritures sont ordonnées par identifiant et utilisent la même version commune que les affectations unitaires et activités. Chaque prospect reçoit une entrée d’audit avant/après avec motif et référence de lot. Aucun transfert ne réécrit le setter d’origine des visites.
+
+Un identifiant de requête conserve un résultat historique minimal (identifiants/révisions), sans coordonnées. Une reprise identique par le même administrateur ne recommence pas les écritures ; réutilisation par un autre acteur ou pour un contenu différent refusée. Une reprise peut retourner la révision historique du lot si le dossier a évolué depuis : recharger la liste pour l’état courant. Les attestations ne sont pas exigées à nouveau pour lire le résultat d’un lot déjà accepté. Après une coupure réseau, le formulaire conserve son identifiant tant que la sélection, la cible ou le motif ne changent pas ; un rechargement complet perd cette continuité côté navigateur mais les révisions empêchent de réappliquer le lot ancien.
+
+Limites : sélection de la page courante seulement, effacée lors d’un changement de page/filtre ; pas de sélection implicite des milliers de résultats ni de répartition automatique équitable entre setters. Les fiches déjà affectées à la cible doivent être désélectionnées. Les attestations centrales restent valides deux minutes au maximum. Six tests fonctionnels et deux tests de concurrence PostgreSQL ajoutés ; suite core de 133 tests (onze réservés à PostgreSQL), typage/build, contrôle des migrations et CI. Migration 0012 appliquée localement. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Gestion et migration complète des comptes, MFA et navigation unifiée avec Isolation.
-2. Statistiques et suivi métier Isolation, partage autorisé des interactions et affectations en masse (portail client, résultats, file setter, qualification, notes, rappels et visites internes livrés).
+2. Statistiques et suivi métier Isolation, partage autorisé des interactions et répartition automatique (portail client, résultats, file setter, qualification, notes, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteurs agendas externes, notifications e-mail et règles de relance (comptes rendus, signalements et tâches persistantes livrés).
