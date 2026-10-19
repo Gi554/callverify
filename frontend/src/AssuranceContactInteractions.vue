@@ -3,7 +3,7 @@ import {ref,onMounted} from 'vue'
 const props=defineProps<{contactId:number;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
 const rows=ref<any[]>([]),page=ref(1),count=ref(0),kind=ref(''),after=ref(''),before=ref(''),busy=ref(false),error=ref('')
 const labels:Record<string,string>={note:'Note ajoutée',document:'Document ajouté',appointment:'Rendez-vous enregistré',report:'Compte rendu enregistré',incident:'Signalement ajouté'}
-const states:Record<string,string>={internal:'Interne',advisor:'Personnel conseiller',scheduled:'Planifié',cancelled:'Annulé',performed:'Effectué',not_performed:'Non effectué',reported:'Signalé'}
+const states:Record<string,string>={shared:'Partagé avec le conseiller',internal:'Interne',advisor:'Personnel conseiller',scheduled:'Planifié',cancelled:'Annulé',performed:'Effectué',not_performed:'Non effectué',reported:'Signalé'}
 async function load(reset=false){if(reset)page.value=1;busy.value=true;error.value='';rows.value=[];try{const query=new URLSearchParams({page:String(page.value)});if(kind.value)query.set('type',kind.value);if(after.value)query.set('after',after.value);if(before.value)query.set('before',before.value);const data=await props.request(`contacts/${props.contactId}/interactions/?${query}`);rows.value=data.results;count.value=data.count}catch(e:any){error.value=e.message;count.value=0}finally{busy.value=false}}
 onMounted(()=>load())
 </script>

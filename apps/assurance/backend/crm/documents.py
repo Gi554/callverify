@@ -3,12 +3,15 @@ import hashlib
 from datetime import timedelta
 from pathlib import PurePosixPath
 from django.db import transaction
+from django.db.models import Q,F
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.http import content_disposition_header
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
 from .models import ContactDocument,BusinessAudit
 from .leases import held,Conflict,LEASE_SECONDS
 
@@ -36,14 +39,15 @@ class DocumentInput(serializers.Serializer):
 
 def output(row,user):
     result={key:getattr(row,key) for key in ('id','filename','content_type','size','channel','created_at')}
-    if user.role=='administrator':result['author_id']=row.author_id
+    if user.role=='advisor' and row.channel=='internal':result.update(filename=row.advisor_filename,channel='shared')
+    if user.role=='administrator':result.update(author_id=row.author_id,advisor_visible=row.advisor_visible,advisor_filename=row.advisor_filename,sharing_revision=row.sharing_revision)
     return result
 
 class ContactDocumentMixin:
     def document_queryset(self,contact):
         user=self.request.user
         qs=ContactDocument.objects.filter(contact=contact)
-        if user.role=='advisor':qs=qs.filter(channel='advisor',author_id=user.pk)
+        if user.role=='advisor':qs=qs.filter(Q(channel='advisor',author_id=user.pk)|Q(channel='internal',advisor_visible=True))
         elif user.role=='setter':qs=qs.filter(channel='internal')
         return qs
 
@@ -82,7 +86,39 @@ class ContactDocumentMixin:
         row=get_object_or_404(self.document_queryset(self.get_object()),pk=document_id)
         BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.contact_id,action='contact.document_downloaded',metadata={'document_id':row.pk})
         response=HttpResponse(bytes(row.content),content_type=row.content_type)
-        response['Content-Disposition']=content_disposition_header(True,row.filename)
+        response['Content-Disposition']=content_disposition_header(True,row.advisor_filename if request.user.role=='advisor' and row.channel=='internal' else row.filename)
         response['Cache-Control']='no-store'
         response['X-Content-Type-Options']='nosniff'
         return response
+
+
+class SharingInput(serializers.Serializer):
+    revision=serializers.IntegerField(min_value=0)
+    enabled=serializers.BooleanField()
+    filename=serializers.CharField(max_length=180,required=False)
+    reviewed=serializers.BooleanField(required=False,default=False)
+    reason=serializers.CharField(max_length=1000)
+    def validate(self,data):
+        if set(self.initial_data)-set(self.fields):raise serializers.ValidationError('Champs non autorisés')
+        if data['enabled']:
+            name=data.get('filename','')
+            if not data['reviewed']:raise serializers.ValidationError('Vérifiez le contenu et les métadonnées du fichier avant publication')
+            if not name or name!=PurePosixPath(name).name or any(c in name for c in ('\\','/')) or any(ord(c)<32 or ord(c)==127 for c in name):raise serializers.ValidationError('Nom de fichier public simple requis')
+        return data
+
+class DocumentSharingMixin:
+    @action(detail=True,methods=['post'],url_path=r'documents/(?P<document_id>[0-9]+)/sharing')
+    def share_document(self,request,pk=None,document_id=None):
+        if request.user.role!='administrator':raise PermissionDenied('Publication réservée à l’administration')
+        contact=self.get_object();serializer=SharingInput(data=request.data);serializer.is_valid(raise_exception=True);data=serializer.validated_data
+        with transaction.atomic():
+            qs=ContactDocument.objects.filter(contact=contact,pk=document_id,channel='internal')
+            row=get_object_or_404(qs.defer('content'))
+            name=data.get('filename','') if data['enabled'] else ''
+            if data['enabled'] and PurePosixPath(name).suffix.lower()!=PurePosixPath(row.filename).suffix.lower():raise serializers.ValidationError('Conservez l’extension du fichier')
+            if row.sharing_revision!=data['revision']:raise Conflict('Partage modifié : actualisez')
+            before={'enabled':row.advisor_visible,'filename':row.advisor_filename,'revision':row.sharing_revision}
+            if not qs.filter(sharing_revision=data['revision']).update(advisor_visible=data['enabled'],advisor_filename=name,sharing_revision=F('sharing_revision')+1):raise Conflict('Partage modifié : actualisez')
+            row.refresh_from_db(fields=['advisor_visible','advisor_filename','sharing_revision'])
+            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=contact.pk,action='contact.document_sharing_changed',metadata={'document_id':row.pk,'before':before,'after':{'enabled':row.advisor_visible,'filename':row.advisor_filename,'revision':row.sharing_revision},'reason':data['reason'],'reviewed':data['reviewed']})
+        response=Response(output(row,request.user));response['Cache-Control']='no-store';return response
