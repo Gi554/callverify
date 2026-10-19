@@ -434,6 +434,14 @@ Validation stricte et bornes de réponse/taille/nombre de postes, refus des rép
 
 Limites : un seul PBX, aucune connexion réelle validée, aucune synchronisation périodique ni preuve du titulaire du poste. Lecture 244/511, interprétation des états, rapprochement avec les dossiers, création automatique des comptes et fonctions d’appel non livrés. Strictement aucun appel lancé et aucune requête NEWT réelle effectuée. Revue esthétique différée.
 
+## Fonctionnalité 48 — consultation manuelle de l’état observé NEWT 244
+
+Depuis une association existante de setter actif, l’administration des deux espaces peut consulter l’état du poste enregistré. Activation serveur indépendante désactivée par défaut. Lecture uniquement, hôte HTTPS et fonction 244 fixes, aucun paramètre navigateur pour la fonction/poste/destination. Pas de polling ni d’action sur un appel existant. Même sérialisation et quota que l’annuaire ; association relue sous verrou utilisateur pour ne pas interroger un ancien poste après réattribution.
+
+CSV strict de huit colonnes, neuvième vide finale tolérée, poste exact et corrélation vérifiée. Codes R/C/H affichés bruts et dédupliqués, nombre d’observations et date seulement ; destinations, noms, identifiants d’appels/enregistrements exclus et non persistés. Conclusion toujours Indéterminé : aucun code n’est traduit arbitrairement en disponibilité du poste ou validité d’un numéro. Réponse vide ou absence d’observation ne signifie pas Libre. Réponse mal formée/partielle, code inconnu ou corrélation non confirmée : erreur neutralisée sans résultat positif. Audit minimal de consultation et réponse sans cache.
+
+Sept tests ajoutés : confidentialité, poste côté serveur, fonctions arbitraires refusées, désactivation, configuration, rôles/espaces/périmètre, suspension, CSRF, format/corrélation/limites et transport 244 uniquement. Tests fournisseur simulés, aucune requête NEWT réelle ni appel lancé. Pas de migration, configuration et limites dans docs/PHONETICO.md. Interprétation fournisseur réelle, journaux 511, historique et rapprochement CRM non livrés. Fonctions de composition/raccrochage/DTMF absentes. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).

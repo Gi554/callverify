@@ -42,3 +42,6 @@ urlpatterns += [path('api/portal/workspaces/<str:workspace>/phone-extensions/',p
 
 from .identity.phone_directory import directory as phone_directory
 urlpatterns += [path('api/portal/phone-directory/',phone_directory)]
+
+from .identity.phone_status import status as phone_status
+urlpatterns += [path('api/portal/workspaces/<str:workspace>/phone-extensions/<int:pk>/status/',phone_status)]

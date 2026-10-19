@@ -38,6 +38,7 @@ services:
       ASSURANCE_INTERNAL_URL: http://assurance:8000
       ISOLATION_INTERNAL_URL: http://api:8000
       PORTAL_MAIL_KEY: ${PORTAL_MAIL_KEY:?Set a Fernet key for encrypted mail}
+      NEWT_STATUS_ENABLED: ${NEWT_STATUS_ENABLED:-false}
       NEWT_DIRECTORY_ENABLED: ${NEWT_DIRECTORY_ENABLED:-false}
       NEWT_USERNAME: ${NEWT_USERNAME:-}
       NEWT_PASSWORD: ${NEWT_PASSWORD:-}
