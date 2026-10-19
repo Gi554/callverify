@@ -1,6 +1,7 @@
 from django.urls import path
 from .identity import views
 from .identity import management_api
+from .identity.passwords import change_password
 from .identity.isolation import setters as isolation_setters,visit_proof
 from .identity.participants import participants,booking_proof,task_owner_proof
 
@@ -12,3 +13,4 @@ urlpatterns += [path('api/portal/assurance/participants/',participants),path('ap
 urlpatterns += [path('api/portal/assurance/task-owner-proof/',task_owner_proof)]
 urlpatterns += [path('api/portal/isolation/setters/',isolation_setters)]
 urlpatterns += [path('api/portal/isolation/visit-proof/',visit_proof)]
+urlpatterns += [path('api/portal/password/change/',change_password)]
