@@ -27,3 +27,13 @@ Les données et comptes de recette sont fictifs. Aucun compte de production n'a 
 6. Réattribuer le dossier : l’ancien setter perd les commandes de publication ; le nouveau ou l’administrateur peut gérer le partage, sans changer l’auteur historique. Une ancienne révision doit être refusée et exiger un rechargement.
 
 Commandes automatiques : `python manage.py test core.test_isolation_sharing` (deux tests de concurrence exécutés uniquement sur PostgreSQL). API : GET/POST `/api/visits/{id}/activities/` ; POST exige activity_id, revision du prospect, visible et reason. L’identité client provient de la visite, jamais d’un champ fourni par le navigateur. Aucun appel, Lookup ou e-mail n’est déclenché.
+
+## Répartition à tour de rôle Isolation
+
+1. Avec l’administrateur Isolation, ouvrir la file de prospects et Répartir entre plusieurs setters. Sélectionner les non affectés de la page et deux setters actifs ; saisir le motif.
+2. Prévisualiser sans enregistrer : vérifier chaque cible et les compteurs. Pour cinq prospects et deux setters : trois/deux, selon les identifiants croissants, indépendamment de l’ordre des cases cochées. Recharger une autre session : aucune affectation avant confirmation.
+3. Confirmer : tout le lot est attribué. Les nouveaux responsables retrouvent leurs prospects ; l’historique d’affectation conserve le motif et le mode round_robin.
+4. Entre aperçu et confirmation, affecter un prospect depuis une autre session : confirmation refusée pour tout le lot ; aucun partage partiel. Recharger puis refaire une sélection.
+5. Setter, client et compte Assurance ne peuvent pas utiliser les routes de répartition. Aucun appel ou Lookup déclenché. La charge préexistante ne participe pas au calcul.
+
+API : POST `/api/work-queue/distribution-preview/` avec setter_ids et items (id/revision), puis POST `/api/work-queue/distribute/` avec ces champs, request_id, reason et preuve par item. Les cibles sont recalculées côté serveur. Tests : `python manage.py test core.test_isolation_bulk` ; quatre tests de concurrence du module sont exécutés uniquement sur PostgreSQL. Limite : 25 prospects de la page courante, pas une distribution massive en arrière-plan.
