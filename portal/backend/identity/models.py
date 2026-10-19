@@ -37,6 +37,7 @@ class CalendarConnection(models.Model):
     connected=models.BooleanField(default=False)
     expires_at=models.DateTimeField(null=True)
     revision=models.PositiveIntegerField(default=0)
+    auto_sync=models.BooleanField(default=False)
     class Meta:
         constraints=[models.UniqueConstraint(fields=['user','workspace'],name='unique_owner_workspace_calendar')]
 
@@ -50,6 +51,24 @@ class CalendarAuthorization(models.Model):
     revision=models.PositiveIntegerField()
     expires_at=models.DateTimeField()
     used=models.BooleanField(default=False)
+
+class CalendarSync(models.Model):
+    import uuid
+    connection=models.ForeignKey(CalendarConnection,on_delete=models.PROTECT,related_name='events')
+    source_id=models.PositiveBigIntegerField()
+    key=models.UUIDField(default=uuid.uuid4,unique=True)
+    provider=models.CharField(max_length=20)
+    remote_id=models.CharField(max_length=2048,blank=True)
+    source_revision=models.IntegerField(default=-1)
+    fingerprint=models.CharField(max_length=64,blank=True)
+    status=models.CharField(max_length=20,default='pending')
+    error_code=models.CharField(max_length=40,blank=True)
+    checked_at=models.DateTimeField(null=True)
+    create_attempted=models.BooleanField(default=False)
+    expected_start=models.DateTimeField(null=True)
+    expected_end=models.DateTimeField(null=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['connection','source_id'],name='unique_calendar_sync_source')]
 
 
 class Invitation(models.Model):

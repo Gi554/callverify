@@ -354,13 +354,23 @@ Google utilise freeBusy ; Microsoft calendarView (occurrences développées, pag
 
 Limites : première étape connexion/disponibilité seulement ; création, report, annulation et réconciliation des rendez-vous externes restent à livrer séparément, les rendez-vous CRM restant internes. Agenda principal uniquement, aucune réservation par une lecture ; contrôles de disponibilité ponctuels sans garantie transactionnelle fournisseur. Déconnexion locale sans révocation du consentement fournisseur ni suppression d’événements. Pas de connexion réelle validée sans applications OAuth et comptes de recette du client. Tests HTTP simulés, aucun appel réel aux fournisseurs. Exploitation, consentements Google/tenant Microsoft, purge des tentatives et conservation des clés à valider avant production. Revue esthétique différée.
 
+## Fonctionnalité 40 — publication des rendez-vous Google/Microsoft
+
+Activation explicite par conseiller Assurance/client Isolation depuis Mon compte et mes sessions. Publication unidirectionnelle des rendez-vous futurs : création, report, retrait après annulation CRM. Worker sync_calendars et service Docker portal-calendars, synchronisation manuelle, pause, liste paginée des derniers états et erreurs. Découverte par API métier avec ticket du propriétaire, sans accès croisé aux bases, bornée à 5000 rendez-vous futurs par connexion/passage ; les sources connues sont également relues pour traiter les annulations. Filtre upcoming ajouté aux visites Isolation avec contrôle de périmètre.
+
+Événement privé à libellé neutre sans identité, setter, participant, invitation ou rappel. Marqueur de propriété, ETag/If-Match, contrôle préalable des disponibilités excluant le propre événement. Les participants ou changements d’horaires externes bloquent les mises à jour. Clé durable avant écriture et recherche de reprise : pas de nouvelle création aveugle après une réponse incertaine. Les droits révoqués arrêtent la connexion. Retrait explicite avant remplacement/déconnexion ; récupération par confirmation de nettoyage manuel avec mot de passe actuel, révision et audit atomique. Cette confirmation ne supprime rien à distance.
+
+Quinze tests fonctionnels/adaptateurs et une concurrence PostgreSQL ajoutés au portail ; un test de filtre Isolation. Suite portail de 134 tests (sept réservés à PostgreSQL), tests client Isolation, contrôle des migrations, typage et build frontend. Migration portail 0010. Tests fournisseurs simulés ; applications OAuth et comptes de recette du client toujours nécessaires pour valider les consentements réels.
+
+Limites : agenda principal uniquement, pas de synchronisation bidirectionnelle/webhooks ni d’invités. Confirmation CRM et publication externe ne sont pas atomiques ; un conflit externe laisse le rendez-vous interne intact et en erreur de publication. Modifications concurrentes chez le fournisseur possibles entre contrôles. Un état incertain impose une vérification manuelle ; retrait potentiellement partiel. Le registre expose le dernier état, les audits gardent les actions techniques. Clés, worker, ALLOWED_HOSTS internes et configuration OAuth à déployer ; aucune preuve de présence ou résultat métier déduite de l’agenda. Calendly reporté. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
 2. Statistiques et suivi métier Isolation complémentaires, répartition selon charge/disponibilités et sélection massive (répartition à tour de rôle bornée, portail client, résultats, file setter, qualification, notes, partage explicite, rappels et visites internes livrés).
 3. Fiches métier Assurance complètes (import brut, verrouillage et affectations multi-conseillers livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
-5. Synchronisation des rendez-vous Google/Microsoft et connecteur Calendly (connexion et disponibilité Google/Microsoft livrées) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
+5. Connecteur Calendly et synchronisation Google/Microsoft avancée (publication unidirectionnelle sur agenda principal livrée, recette réelle OAuth à effectuer) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
 6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.
