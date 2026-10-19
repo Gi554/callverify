@@ -39,3 +39,6 @@ urlpatterns += [path('api/portal/calendar/<str:workspace>/detach/',calendar_sync
 
 from .identity.phone_extensions import assignments as phone_assignments
 urlpatterns += [path('api/portal/workspaces/<str:workspace>/phone-extensions/',phone_assignments)]
+
+from .identity.phone_directory import directory as phone_directory
+urlpatterns += [path('api/portal/phone-directory/',phone_directory)]
