@@ -36,3 +36,6 @@ urlpatterns += [path('api/portal/workspaces/<str:workspace>/invitations/',invita
     path('api/portal/invitations/accept/',invitations.accept)]
 
 urlpatterns += [path('api/portal/calendar/<str:workspace>/detach/',calendar_sync.detach)]
+
+from .identity.phone_extensions import assignments as phone_assignments
+urlpatterns += [path('api/portal/workspaces/<str:workspace>/phone-extensions/',phone_assignments)]

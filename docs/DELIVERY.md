@@ -418,6 +418,14 @@ Révision de schéma prise à l’aperçu, vérifiée avant validation puis sous
 
 Huit tests ajoutés : CSV/XLSX, types et rapport, obligations et import brut, mapping/revision/champs archivés, reprise après changement de schéma, changement pendant validation, permissions et rollback. Suite Assurance, typage/build et contrôle des migrations ; aucune migration. Limites : première feuille et bornes du lecteur existant, aucun mapping des colonnes inconnues en nouveaux champs, formule conservée comme texte et jamais calculée, pas de mise à jour/dédoublonnage de contacts, pas de dates locales ambiguës ni de nombres Excel sériels convertis arbitrairement. Revue esthétique différée.
 
+## Fonctionnalité 46 — association manuelle des postes Phonetico
+
+Administration centrale → Utilisateurs et accès → Postes Phonetico, par espace administré. Association locale d’un poste numérique à un compte setter actif, modification et retrait avec révision attendue et motif. Un poste unique par compte et un compte unique par poste dans le déploiement (hypothèse un seul PBX). Un compte présent dans les deux espaces partage le même poste ; l’administration de ses deux espaces setter actifs est exigée pour modifier cette association globale. Suspensions/changements de rôle empêchent une nouvelle attribution mais laissent retirer l’ancienne association. Les révisions sont conservées après retrait pour refuser les formulaires anciens. Liste paginée de 25 comptes et réponses sans cache, réservées aux administrateurs explicites ; aucun poste exposé au conseiller ni aux API métier.
+
+Audits centraux avant/après avec motif, sans secret fournisseur ; configuration et audit transactionnels. Sept tests fonctionnels ajoutés : unicité, révisions, retrait, périmètres et rôles, droits multi-espaces, suspension, CSRF, validation stricte et rollback. Un test interdit tout accès réseau pendant les parcours d’association. Migration portail 0011 créant le registre privé des associations.
+
+Limites : saisie manuelle non vérifiée auprès du PBX, un seul PBX, pas de détection de nouveaux postes ni création automatique de comptes. Aucune connexion fournisseur, aucun identifiant NEWT stocké, aucune requête 244/343/245 ou autre et strictement aucun appel lancé. Pas de commande d’appel ni lecture des états/journaux livrée ; les tickets métier ne contiennent pas le poste. Vérification du poste dans le PBX à la charge de l’administrateur. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
