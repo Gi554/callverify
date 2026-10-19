@@ -167,6 +167,14 @@ class ProspectActivity(models.Model):
     changes=models.JSONField(default=dict)
     created_at=models.DateTimeField(auto_now_add=True)
 
+class ProspectActivityShare(models.Model):
+    activity=models.ForeignKey(ProspectActivity,on_delete=models.PROTECT,related_name='client_shares')
+    client_id=models.PositiveBigIntegerField()
+    visible=models.BooleanField(default=False)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['activity','client_id'],name='unique_activity_client_share')]
+
 class IsolationVisit(models.Model):
     prospect=models.ForeignKey(Prospect,on_delete=models.PROTECT,related_name='visits')
     request_id=models.UUIDField(unique=True)
