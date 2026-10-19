@@ -388,7 +388,7 @@ Limites : partage global de champs actifs uniquement ; pas d’exception par dos
 
 ## Fonctionnalité 43 — partage explicite des documents internes Assurance
 
-**Suivi de livraison : branche partage-documents-assurance vers staging.** L’utilisateur a autorisé la poursuite pendant l’incident Actions. Le lot 42 a ensuite été fusionné dans main via la PR #46 ; les documents sont passés par la PR #47 vers staging puis la [PR #48 vers main](https://github.com/Gi554/callverify/pull/48).
+**Livraison : PR #47 vers staging, puis [PR #48 vers main](https://github.com/Gi554/callverify/pull/48).** L’utilisateur a autorisé la poursuite pendant l’incident Actions. Le lot 42 a ensuite été fusionné dans main via la PR #46 ; les documents sont passés par la PR #47 vers staging puis la [PR #48 vers main](https://github.com/Gi554/callverify/pull/48).
 
 L’administration peut publier un document interne existant vers tous les conseillers ayant accès au dossier. Nom de fichier public distinct obligatoire, extension conservée, motif et confirmation de vérification du contenu/métadonnées exigés. Aucun document existant ou nouvel envoi n’est partagé par défaut. Le fichier original reste immuable, attribué à son auteur et accessible dans le parcours interne ; publication/retrait modifient seulement une autorisation et un nom public avec révision attendue et audit atomique avant/après. Les documents personnels des conseillers ne peuvent pas être publiés par cette commande.
 
@@ -400,7 +400,7 @@ Limites : partage du fichier intégral à tous les conseillers autorisés du dos
 
 ## Fonctionnalité 44 — version publique des notes internes Assurance
 
-**Préparation isolée sur partage-notes-assurance, après le lot documents.** Travail autorisé pendant l’attente de la CI ; les lots champs, documents puis notes doivent être intégrés dans cet ordre, sans déclarer leurs PR fusionnées avant validation.
+**Suivi de livraison : [PR #49 vers staging](https://github.com/Gi554/callverify/pull/49), puis PR distincte de staging vers main.** Préparation isolée autorisée pendant l’attente de la CI. Les champs et les documents ont été livrés avant les notes ; chaque lot conserve ses vérifications et ses PR propres.
 
 L’administration rédige explicitement une version destinée aux conseillers autorisés du dossier, avec confirmation de revue et motif. La zone de rédaction ne reprend pas automatiquement la note interne. Original et auteur restent inchangés ; seule la copie publique est retournée au conseiller dans la liste et la chronologie. Aucun partage par défaut. Les notes personnelles des conseillers restent réservées à leur auteur et à l’administration et ne peuvent pas être publiées par cette commande.
 
