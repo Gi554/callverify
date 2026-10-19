@@ -53,6 +53,7 @@ EMAIL_HOST_PASSWORD=os.getenv('PORTAL_EMAIL_PASSWORD','')
 EMAIL_USE_TLS=os.getenv('PORTAL_EMAIL_TLS','true').lower()=='true'
 EMAIL_TIMEOUT=10
 PORTAL_MAIL_KEY=os.getenv('PORTAL_MAIL_KEY','')
+ASSURANCE_INTERNAL_URL=os.getenv('ASSURANCE_INTERNAL_URL','http://127.0.0.1:8091' if DEBUG else 'http://assurance:8000')
 if not DEBUG and not PORTAL_MAIL_KEY:raise ImproperlyConfigured('PORTAL_MAIL_KEY required')
 DEFAULT_FROM_EMAIL=os.getenv('PORTAL_FROM_EMAIL','AMX <amx@localhost>')
 PASSWORD_RESET_TIMEOUT=1800

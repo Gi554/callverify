@@ -1,0 +1,39 @@
+from datetime import timedelta
+from django.utils import timezone
+from django.core import signing
+from rest_framework.decorators import api_view,authentication_classes,permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import PermissionDenied,ValidationError
+from rest_framework.response import Response
+from packages.access.mail_bridge import verify
+from .models import TaskNotification
+
+def authorize(request,operation,**claims):
+    token=request.headers.get('Authorization','')
+    if not token.startswith('Bearer '):raise PermissionDenied('Échange serveur requis')
+    try:verify(token[7:],operation,**claims)
+    except (signing.BadSignature,ValueError,TypeError):raise PermissionDenied('Échange serveur invalide ou expiré')
+
+def candidates():
+    return TaskNotification.objects.filter(kind__in=['report','incident'],task__closed_at__isnull=True,
+        created_at__gte=timezone.now()-timedelta(days=7))
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def events(request):
+    try:after=int(request.query_params.get('after','0'))
+    except (ValueError,TypeError):raise ValidationError('Curseur invalide')
+    if not 0<=after<=9223372036854775807:raise ValidationError('Curseur invalide')
+    authorize(request,'events',after=after)
+    rows=candidates().filter(pk__gt=after).order_by('pk').values('id','created_at','task__setter_id')[:100]
+    response=Response({'events':[{'id':row['id'],'created_at':row['created_at'],'setter_id':row['task__setter_id']} for row in rows]})
+    response['Cache-Control']='no-store';return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def eligible(request,pk,user_id):
+    authorize(request,'eligible',event=pk,user=user_id)
+    response=Response({'eligible':candidates().filter(pk=pk,task__setter_id=user_id).exists()})
+    response['Cache-Control']='no-store';return response
