@@ -8,6 +8,9 @@ from uuid import UUID
 from zipfile import ZipFile,BadZipFile
 from xml.etree.ElementTree import ParseError
 from django.db import transaction,IntegrityError
+from django.db.models import F
+from .custom_fields import schema,validate_values,output as schema_output,Conflict
+from .models import ContactFieldSchema
 from rest_framework.decorators import api_view,parser_classes
 from rest_framework.parsers import MultiPartParser,FormParser
 from rest_framework.exceptions import PermissionDenied,ValidationError
@@ -87,11 +90,12 @@ def imports(request):
     mode=request.data.get('mode','preview')
     if mode=='preview':
         return Response({'columns':columns,'rows':[{'line':line,'values':values} for line,values in rows[:5]],
-                         'total':len(rows),'sheet':'Première feuille du classeur' if upload.name.lower().endswith('.xlsx') else None})
+                         'total':len(rows),'custom_schema':schema_output(schema()),'sheet':'Première feuille du classeur' if upload.name.lower().endswith('.xlsx') else None})
     if mode!='confirm':raise ValidationError('Action inconnue')
     try:
         mapping=json.loads(request.data.get('mapping','{}'))
         request_id=UUID(request.data.get('request_id',''))
+        custom_mapping=json.loads(request.data.get('custom_mapping','{}'))
     except (ValueError,TypeError,AttributeError):raise ValidationError('Correspondance ou identifiant d’import invalide')
     if not isinstance(mapping,dict) or set(mapping)-{'name','phone','email'}:
         raise ValidationError('Correspondance invalide')
@@ -99,26 +103,54 @@ def imports(request):
     if any(type(value) is not int or value<0 or value>=len(columns) for value in mapping.values()):
         raise ValidationError('Colonne inconnue')
     if len(set(mapping.values()))!=len(mapping):raise ValidationError('Chaque champ doit utiliser une colonne distincte')
-    digest=hashlib.sha256(raw+json.dumps([has_header,mapping],sort_keys=True).encode()).hexdigest()
+    if not isinstance(custom_mapping,dict) or len(custom_mapping)>30:raise ValidationError('Correspondance métier invalide')
+    if any(type(value) is not int or value<0 or value>=len(columns) for value in custom_mapping.values()):raise ValidationError('Colonne métier inconnue')
+    if len(set([*mapping.values(),*custom_mapping.values()]))!=len(mapping)+len(custom_mapping):raise ValidationError('Chaque champ doit utiliser une colonne distincte')
+    revision=request.data.get('schema_revision','')
+    if custom_mapping and (not isinstance(revision,str) or not revision.isdecimal() or len(revision)>10):raise ValidationError('Révision du schéma métier requise')
+    canonical=[has_header,mapping] if not custom_mapping else [has_header,mapping,custom_mapping,int(revision)]
+    digest=hashlib.sha256(raw+json.dumps(canonical,sort_keys=True).encode()).hexdigest()
     def replay(batch):
         if batch.created_by_id!=request.user.pk or batch.fingerprint!=digest:
             return Response({'detail':'Identifiant d’import déjà utilisé'},status=409)
         return Response(output(batch))
     existing=ContactImport.objects.filter(request_id=request_id).first()
     if existing:return replay(existing)
+    rules=schema();active={item['key']:item for item in rules.fields if item['active']}
+    if custom_mapping:
+        if rules.revision!=int(revision):raise Conflict('Configuration métier modifiée : refaites l’aperçu')
+        if set(custom_mapping)-set(active):raise ValidationError('Champ métier inconnu ou archivé')
     accepted=[];errors=[]
     for line,values in rows:
         fields={field:values[index] for field,index in mapping.items()}
         reason='Téléphone manquant' if not fields['phone'].strip() else ''
         if any(len(value)>(254 if field=='email' else 250) for field,value in fields.items()):
             reason='Champ trop long (nom/téléphone : 250 ; e-mail : 254 caractères)'
+        custom={}
+        if not reason and custom_mapping:
+            try:
+                for key,index in custom_mapping.items():
+                    value=values[index];item=active[key]
+                    if value=='':value=None
+                    elif item['type']=='boolean':
+                        word=value.strip().casefold()
+                        if word not in ('true','false','oui','non','1','0'):raise ValidationError({key:'Booléen : oui/non, true/false ou 1/0 requis'})
+                        value=word in ('true','oui','1')
+                    elif item['type']=='date' and len(value)==19 and value.endswith(' 00:00:00'):value=value[:10]
+                    custom[key]=value
+                validate_values(custom,list(active.values()))
+            except ValidationError as error:
+                reason='Champs métier : '+str(error.detail)
         if reason:errors.append({'line':line,'reason':reason})
         else:accepted.append(Contact(name=fields.get('name',''),phone=fields['phone'],email=fields.get('email',''),
-                                     created_by_id=request.user.pk,source_row=line,source_values=values))
+                                     created_by_id=request.user.pk,source_row=line,source_values=values,custom_values=custom))
     try:
         with transaction.atomic():
+            if custom_mapping:
+                ContactFieldSchema.objects.filter(pk=1).update(revision=F('revision'))
+                if schema().revision!=int(revision):raise Conflict('Configuration métier modifiée : refaites l’aperçu')
             batch=ContactImport.objects.create(request_id=request_id,fingerprint=digest,filename=Path(upload.name).name[:250],
-                created_by_id=request.user.pk,total=len(rows),imported=len(accepted),rejected=len(errors),report=errors,columns=columns,mapping=mapping)
+                created_by_id=request.user.pk,total=len(rows),imported=len(accepted),rejected=len(errors),report=errors,columns=columns,mapping=mapping if not custom_mapping else {**mapping,"custom_fields":custom_mapping,"schema_revision":int(revision)})
             for contact in accepted:contact.import_batch=batch
             Contact.objects.bulk_create(accepted,batch_size=200)
             BusinessAudit.objects.create(actor_id=request.user.pk,action='contacts.imported',object_id=batch.pk)
