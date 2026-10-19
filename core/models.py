@@ -204,3 +204,10 @@ class IsolationVisitSupplement(models.Model):
     author_client_id=models.PositiveBigIntegerField()
     note=models.TextField()
     created_at=models.DateTimeField(auto_now_add=True)
+
+class IsolationAssignmentBatch(models.Model):
+    request_id=models.UUIDField(unique=True)
+    actor_portal_id=models.PositiveBigIntegerField()
+    fingerprint=models.CharField(max_length=64)
+    result=models.JSONField(default=dict)
+    created_at=models.DateTimeField(auto_now_add=True)
