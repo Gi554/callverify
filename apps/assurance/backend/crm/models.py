@@ -97,6 +97,19 @@ class FollowUpTask(models.Model):
     resolution=models.TextField(blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
 
+class TaskNotification(models.Model):
+    task=models.ForeignKey(FollowUpTask,on_delete=models.PROTECT,related_name='notifications')
+    event_key=models.CharField(max_length=100,unique=True)
+    kind=models.CharField(max_length=30)
+    created_at=models.DateTimeField(auto_now_add=True)
+
+class TaskNotificationRead(models.Model):
+    notification=models.ForeignKey(TaskNotification,on_delete=models.CASCADE,related_name='receipts')
+    user_id=models.PositiveBigIntegerField()
+    read_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['notification','user_id'],name='unique_task_notification_read')]
+
 class AppointmentIncident(models.Model):
     appointment=models.ForeignKey(Appointment,on_delete=models.PROTECT,related_name='incidents')
     request_id=models.UUIDField(unique=True)
