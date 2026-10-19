@@ -29,6 +29,28 @@ class SessionGeneration(models.Model):
     user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,primary_key=True)
     generation=models.PositiveBigIntegerField(default=0)
 
+class CalendarConnection(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    workspace=models.CharField(max_length=20)
+    provider=models.CharField(max_length=20,blank=True)
+    payload=models.TextField(blank=True)
+    connected=models.BooleanField(default=False)
+    expires_at=models.DateTimeField(null=True)
+    revision=models.PositiveIntegerField(default=0)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['user','workspace'],name='unique_owner_workspace_calendar')]
+
+class CalendarAuthorization(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    workspace=models.CharField(max_length=20)
+    provider=models.CharField(max_length=20)
+    state_hash=models.CharField(max_length=64,unique=True)
+    session_hash=models.CharField(max_length=64)
+    verifier=models.TextField()
+    revision=models.PositiveIntegerField()
+    expires_at=models.DateTimeField()
+    used=models.BooleanField(default=False)
+
 
 class Invitation(models.Model):
     import uuid
