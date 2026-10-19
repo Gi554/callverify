@@ -36,6 +36,7 @@ services:
       PORTAL_DB_PASSWORD: ${PORTAL_DB_PASSWORD:?Set PORTAL_DB_PASSWORD}
       ASSURANCE_MAIL_BRIDGE_KEY: ${ASSURANCE_MAIL_BRIDGE_KEY:?Set a dedicated mail bridge key}
       ASSURANCE_INTERNAL_URL: http://assurance:8000
+      ISOLATION_INTERNAL_URL: http://api:8000
       PORTAL_MAIL_KEY: ${PORTAL_MAIL_KEY:?Set a Fernet key for encrypted mail}
       PORTAL_CALENDAR_KEY: ${PORTAL_CALENDAR_KEY:-}
       GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CALENDAR_CLIENT_ID:-}
@@ -66,6 +67,18 @@ services:
     depends_on:
       portal-db:
         condition: service_healthy
+  portal-calendars:
+    build: .
+    environment: *portal-environment
+    command: python manage.py sync_calendars --settings=portal.backend.settings --loop --interval 60
+    restart: unless-stopped
+    depends_on:
+      portal-db:
+        condition: service_healthy
+      assurance:
+        condition: service_started
+      api:
+        condition: service_started
   assurance-mail-relay:
     build: .
     environment: *portal-environment
@@ -87,7 +100,7 @@ services:
       ASSURANCE_DB_NAME: ${ASSURANCE_DB_NAME:-amx_assurance}
       ASSURANCE_DB_USER: ${ASSURANCE_DB_USER:-amx_assurance}
       ASSURANCE_DB_PASSWORD: ${ASSURANCE_DB_PASSWORD:?Set ASSURANCE_DB_PASSWORD}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1},assurance
     command: gunicorn apps.assurance.backend.wsgi:application --bind 0.0.0.0:8000 --workers 2
     depends_on:
       assurance-db:
@@ -102,6 +115,8 @@ services:
         condition: service_healthy
   api:
     environment:
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1},api
+      TRUST_PROXY: "true"
       ISOLATION_ACCESS_KEY: ${ISOLATION_ACCESS_KEY:?Set ISOLATION_ACCESS_KEY}
 volumes:
   portal_postgres:

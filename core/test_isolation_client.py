@@ -36,6 +36,13 @@ class IsolationClientTests(TestCase):
         self.assertEqual(set(row),{'id','name','reference','raw_phone'})
         self.assertEqual(self.client.get('/api/client-prospects/?search=Hors').data['count'],0)
         self.assertEqual(AdminUser.objects.count(),1)
+    def test_upcoming_calendar_filter_is_bounded_and_owner_scoped(self):
+        self.assertEqual(self.client.get('/api/visits/?period=upcoming').data['count'],0)
+        IsolationVisit.objects.filter(pk=self.visit.pk).update(starts_at=timezone.now()+timedelta(hours=1),ends_at=timezone.now()+timedelta(hours=2))
+        self.assertEqual(self.client.get('/api/visits/?period=upcoming').data['count'],1)
+        self.auth(73,'client');self.assertEqual(self.client.get('/api/visits/?period=upcoming').data['count'],0)
+        self.assertEqual(self.client.get('/api/visits/?period=all').status_code,400)
+
     def test_results_due_persist_after_read_and_clear_only_on_report(self):
         self.assertEqual(self.client.get('/api/client-dashboard/').data['results_due'],1)
         self.assertIsNone(self.client.get(self.url+'result/').data)

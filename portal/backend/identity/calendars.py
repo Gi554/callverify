@@ -102,7 +102,7 @@ def connections(request):
             try:config(provider);ready[provider]=True
             except Unavailable:ready[provider]=False
         rows.append({'workspace':workspace,'provider':row.provider if row else '', 'connected':bool(row and row.connected),
-            'revision':row.revision if row else 0,'configured':ready})
+            'revision':row.revision if row else 0,'auto_sync':bool(row and row.auto_sync),'configured':ready})
     response=Response({'connections':rows});response['Cache-Control']='no-store';return response
 
 @api_view(['POST'])
@@ -113,6 +113,7 @@ def start(request,workspace):
     with transaction.atomic():
         row,_=CalendarConnection.objects.get_or_create(user=request.user,workspace=workspace)
         CalendarConnection.objects.filter(pk=row.pk).update(revision=F('revision'));row.refresh_from_db()
+        if row.events.exclude(status__in=['removed','abandoned']).exists():raise ValidationError('Retirez les événements AMX ou confirmez leur nettoyage manuel avant de remplacer cet agenda')
         CalendarAuthorization.objects.create(user=request.user,workspace=workspace,provider=provider,state_hash=hashlib.sha256(state.encode()).hexdigest(),
             session_hash=session_hash(request),verifier=seal(verifier),revision=row.revision,expires_at=timezone.now()+timedelta(minutes=10))
         AccessAudit.objects.create(user=request.user,workspace=workspace,action='calendar.authorization_started',metadata={'provider':provider})
@@ -133,8 +134,11 @@ def callback(request,provider):
     except providers.ProviderError:raise Unavailable() from None
     with transaction.atomic():
         require_owner(request.user,attempt.workspace)
+        owner_connection=CalendarConnection.objects.get(user=request.user,workspace=attempt.workspace)
+        CalendarConnection.objects.filter(pk=owner_connection.pk).update(revision=F('revision'))
+        if owner_connection.events.exclude(status__in=['removed','abandoned']).exists():raise ValidationError('Retirez les événements AMX avant de remplacer cet agenda')
         changed=CalendarConnection.objects.filter(user=request.user,workspace=attempt.workspace,revision=attempt.revision).update(
-            provider=provider,payload=seal(tokens),connected=True,expires_at=timezone.now()+timedelta(seconds=seconds),revision=F('revision')+1)
+            provider=provider,payload=seal(tokens),connected=True,auto_sync=False,expires_at=timezone.now()+timedelta(seconds=seconds),revision=F('revision')+1)
         if not changed:raise ValidationError('Connexion modifiée entre-temps : recommencez')
         AccessAudit.objects.create(user=request.user,workspace=attempt.workspace,action='calendar.connected',metadata={'provider':provider})
     response=Response({'workspace':attempt.workspace,'connected':True,'provider':provider});response['Cache-Control']='no-store';return response
@@ -146,7 +150,10 @@ def disconnect(request,workspace):
     data=validated(RevisionInput,request.data)
     with transaction.atomic():
         row=CalendarConnection.objects.filter(user=request.user,workspace=workspace).first()
-        if not row or not CalendarConnection.objects.filter(pk=row.pk,revision=data['revision']).update(payload='',connected=False,expires_at=None,revision=F('revision')+1):raise ValidationError('Connexion modifiée : actualisez')
+        if row:
+            CalendarConnection.objects.filter(pk=row.pk).update(revision=F('revision'))
+            if row.events.exclude(status__in=['removed','abandoned']).exists():raise ValidationError('Retirez les événements AMX avant de déconnecter cet agenda')
+        if not row or not CalendarConnection.objects.filter(pk=row.pk,revision=data['revision']).update(payload='',connected=False,auto_sync=False,expires_at=None,revision=F('revision')+1):raise ValidationError('Connexion modifiée : actualisez')
         CalendarAuthorization.objects.filter(user=request.user,workspace=workspace,used=False).update(used=True,verifier='')
         AccessAudit.objects.create(user=request.user,workspace=workspace,action='calendar.disconnected',metadata={})
     response=Response(status=204);response['Cache-Control']='no-store';return response
@@ -166,7 +173,7 @@ def availability(user,workspace,data):
         except providers.ProviderError as error:
             failure=True
             if error.reauthorize:
-                row.connected=False;row.payload='';row.expires_at=None;row.revision+=1;row.save(update_fields=['connected','payload','expires_at','revision'])
+                row.connected=False;row.auto_sync=False;row.payload='';row.expires_at=None;row.revision+=1;row.save(update_fields=['connected','auto_sync','payload','expires_at','revision'])
                 AccessAudit.objects.create(user=user,workspace=workspace,action='calendar.reauthorization_required',metadata={'provider':row.provider})
         require_owner(user,workspace)
     if failure:raise Unavailable()

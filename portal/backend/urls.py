@@ -3,6 +3,7 @@ from .identity import views
 from .identity import management_api
 from .identity import invitations
 from .identity import calendars
+from .identity import calendar_sync
 from .identity.access_history import history as access_history
 from .identity.passwords import change_password
 from .identity.session_security import revoke_others
@@ -26,7 +27,12 @@ urlpatterns += [path('api/portal/calendar/',calendars.connections),
     path('api/portal/calendar/<str:workspace>/start/',calendars.start),
     path('api/portal/calendar/<str:workspace>/disconnect/',calendars.disconnect),
     path('api/portal/calendar/<str:workspace>/busy/',calendars.busy)]
+urlpatterns += [path('api/portal/calendar/<str:workspace>/sync-config/',calendar_sync.configure),
+    path('api/portal/calendar/<str:workspace>/sync/',calendar_sync.synchronization),
+    path('api/portal/calendar/<str:workspace>/withdraw/',calendar_sync.withdraw_all)]
 urlpatterns += [path('api/portal/password/reset/request/',request_reset),path('api/portal/password/reset/confirm/',confirm_reset)]
 urlpatterns += [path('api/portal/workspaces/<str:workspace>/invitations/',invitations.invitations),
     path('api/portal/workspaces/<str:workspace>/invitations/<uuid:pk>/',invitations.invitation_action),
     path('api/portal/invitations/accept/',invitations.accept)]
+
+urlpatterns += [path('api/portal/calendar/<str:workspace>/detach/',calendar_sync.detach)]

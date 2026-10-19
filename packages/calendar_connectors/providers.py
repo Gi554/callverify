@@ -9,7 +9,7 @@ GOOGLE_SCOPES=('https://www.googleapis.com/auth/calendar.events','https://www.go
 MICROSOFT_SCOPES=('offline_access','Calendars.ReadWrite')
 
 class ProviderError(Exception):
-    def __init__(self,reauthorize=False):self.reauthorize=reauthorize;super().__init__('Calendar provider unavailable')
+    def __init__(self,reauthorize=False,code='provider_unavailable'):self.reauthorize=reauthorize;self.code=code;super().__init__('Calendar provider unavailable')
 
 def endpoints(provider,tenant='common'):
     if provider=='google':return 'https://accounts.google.com/o/oauth2/v2/auth','https://oauth2.googleapis.com/token',GOOGLE_SCOPES
@@ -24,15 +24,16 @@ def authorization(provider,config,redirect,state,verifier):
     else:params.update(response_mode='query',prompt='select_account')
     return url+'?'+urlencode(params)
 
-def http(method,url,**kwargs):
+def http(method,url,accepted=(200,201),**kwargs):
     try:
         response=requests.request(method,url,timeout=10,allow_redirects=False,**kwargs)
-        if response.status_code not in (200,201):
+        if response.status_code not in accepted:
             invalid=response.status_code==401
             if response.status_code==400:
                 try:invalid=response.json().get('error')=='invalid_grant'
                 except (ValueError,AttributeError):pass
             raise ProviderError(invalid)
+        if response.status_code in (204,404,410):return {'_status':response.status_code}
         if len(response.content)>2_000_000:raise ProviderError()
         data=response.json()
         if not isinstance(data,dict):raise ProviderError()
@@ -67,8 +68,11 @@ def instant(value,utc=False):
         result=result.replace(tzinfo=timezone.utc)
     return result.astimezone(timezone.utc)
 
-def busy(provider,access,start,end):
+def busy(provider,access,start,end,exclude_id=None):
     headers={'Authorization':'Bearer '+access};periods=[]
+    if provider=='google' and exclude_id:
+        from .events import google_busy_except
+        return google_busy_except(access,start,end,exclude_id)
     if provider=='google':
         data=http('POST','https://www.googleapis.com/calendar/v3/freeBusy',headers=headers,json={'timeMin':start.isoformat(),'timeMax':end.isoformat(),'timeZone':'UTC','items':[{'id':'primary'}]})
         calendars=data.get('calendars')
@@ -79,15 +83,16 @@ def busy(provider,access,start,end):
             if not isinstance(item,dict):raise ProviderError()
             periods.append((instant(item.get('start')),instant(item.get('end'))))
     else:
-        headers['Prefer']='outlook.timezone="UTC"'
+        headers['Prefer']='IdType="ImmutableId", outlook.timezone="UTC"'
         url='https://graph.microsoft.com/v1.0/me/calendar/calendarView'
-        params={'startDateTime':start.isoformat(),'endDateTime':end.isoformat(),'$select':'start,end,showAs,isCancelled','$top':1000}
+        params={'startDateTime':start.isoformat(),'endDateTime':end.isoformat(),'$select':'id,start,end,showAs,isCancelled','$top':1000}
         for _ in range(5):
             data=http('GET',url,headers=headers,params=params);params=None
             events=data.get('value')
             if not isinstance(events,list):raise ProviderError()
             for item in events:
                 if not isinstance(item,dict):raise ProviderError()
+                if exclude_id and item.get('id')==exclude_id:continue
                 if item.get('isCancelled') is True or item.get('showAs')=='free':continue
                 first=item.get('start',{});last=item.get('end',{})
                 if not isinstance(first,dict) or not isinstance(last,dict) or first.get('timeZone') not in ('UTC','Etc/UTC') or last.get('timeZone') not in ('UTC','Etc/UTC'):raise ProviderError()

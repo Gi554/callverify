@@ -91,6 +91,9 @@ class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
         qs=IsolationVisit.objects.select_related('prospect','result').order_by('starts_at','pk')
         if self.request.user.role=='setter':qs=qs.filter(prospect__assigned_setter_id=self.request.user.pk)
         if self.request.user.role=='client':qs=qs.filter(client_id=self.request.user.pk)
+        period=self.request.query_params.get('period','')
+        if period not in ('','upcoming'):raise ValidationError('Période invalide')
+        if period=='upcoming':qs=qs.filter(ends_at__gt=timezone.now())
         if self.request.query_params.get('result_due')=='true':qs=qs.filter(status='scheduled',ends_at__lte=timezone.now(),result__isnull=True)
         prospect=self.request.query_params.get('prospect_id','')
         if prospect:
