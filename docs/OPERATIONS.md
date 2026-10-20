@@ -23,6 +23,8 @@ Imports déjà terminés : aucun retraitement. Lookup : les `pending` peuvent ê
 
 ## Sauvegarde et restauration avant production
 
+Le parcours PostgreSQL unitaire chiffré avec restauration en base neuve est décrit dans [BACKUP_POSTGRES.md](BACKUP_POSTGRES.md). Il ne couvre pas encore les médias externes, la copie hors site ou la recette de l’hébergement client.
+
 Pour les trois bases **SQLite locales** et les fichiers privés, utiliser le parcours chiffré avec restauration sans écrasement décrit dans [BACKUP_LOCAL.md](BACKUP_LOCAL.md). Ce parcours est testé sur données jetables ; il ne couvre pas PostgreSQL/S3 ou la sauvegarde externe de production décrite ci-dessous.
 
 1. Sauvegarder PostgreSQL avec `pg_dump` dans un dépôt chiffré privé.

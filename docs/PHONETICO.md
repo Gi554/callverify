@@ -37,3 +37,10 @@ Le fuseau du PBX et l’inclusivité réelle de ses dates doivent être confirm�
 ## À livrer séparément
 
 Vérification réelle des droits/configuration pour l’annuaire, recette de lecture 244 et remontée des journaux 511, interprétation documentée des codes et rapprochement appels/contacts. La fonction 245 et tout contrôle d’appel restent absents et soumis à une nouvelle autorisation explicite avant tout test réel. Création automatique de comptes depuis les postes reportée.
+
+
+## Recette manuelle autorisée du 20 octobre 2026
+
+Lors de tests expressément demandés par l’utilisateur, la fonction 343 a confirmé Martinien au poste 501 et Emery au poste 512. Des commandes 245 ciblées ont répondu HTTP 200 avec Success. L’utilisateur a confirmé la sonnerie et le décrochage sur Martinien puis le fonctionnement d’un appel externe demandé. Ce mode fait d’abord sonner le poste source ; aucun auto-answer demandé, aucun audio navigateur ou WebRTC démontré. Aucune relance automatique ou campagne activée. Numéros externes et identifiants de corrélation de recette non conservés dans Git.
+
+La relecture du détail d’appels 511 pour la journée a renvoyé HTTP 500. Les durées, résultats CDR et codes R/C/H restent donc non validés ; Success n’est pas assimilé à un décrochage distant. Ces tests manuels ne livrent pas encore un bouton d’appel dans le CRM ou un historique métier exploitable. Les commandes d’appel ont été limitées aux demandes explicites de cette séance ; aucun nouvel appel n’est autorisé par cette note.
