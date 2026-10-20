@@ -22,3 +22,6 @@ urlpatterns += [path('api/assurance/internal/reminder-mail-events/',reminder_eve
 urlpatterns += [path('api/assurance/internal/escalation-mail-events/',escalation_events),path('api/assurance/internal/escalation-mail-events/<int:pk>/<int:user_id>/',escalation_eligible)]
 urlpatterns += [path('api/assurance/internal/mail-events/',mail_events),path('api/assurance/internal/mail-events/<int:pk>/<int:user_id>/',mail_eligible)]
 urlpatterns += [path('api/assurance/contact-fields/',definitions),path('api/assurance/statistics/',statistics),path('api/assurance/follow-up-policy/',follow_up_policy),path('api/assurance/follow-up-policy/history/',policy_history),path('api/assurance/imports/',imports),path('api/assurance/dashboard/',dashboard),path('api/assurance/',include(router.urls))]
+
+from .crm.agreement_registry import registry as agreement_registry
+urlpatterns += [path('api/assurance/agreement-registry/',agreement_registry)]
