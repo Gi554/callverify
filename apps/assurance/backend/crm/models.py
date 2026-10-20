@@ -215,3 +215,12 @@ class Agreement(models.Model):
     updated_at=models.DateTimeField(auto_now=True)
     class Meta:
         constraints=[models.UniqueConstraint(fields=['contact','kind','reference'],name='unique_agreement_contact_reference'),models.CheckConstraint(condition=models.Q(ends_on__isnull=True)|models.Q(starts_on__isnull=True)|models.Q(ends_on__gte=models.F('starts_on')),name='agreement_date_order')]
+
+
+class AgreementDocument(models.Model):
+    agreement=models.ForeignKey(Agreement,on_delete=models.PROTECT,related_name='document_links')
+    document=models.ForeignKey(ContactDocument,on_delete=models.PROTECT)
+    active=models.BooleanField(default=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['agreement','document'],name='unique_agreement_document')]

@@ -460,13 +460,25 @@ Neuf tests fonctionnels et deux concurrences PostgreSQL ajoutés : création/mod
 
 Limites : registre de suivi administratif seulement, aucun état de signature/validité juridique, automatisation de pipeline, modèle de contrat, montant, versement, document lié ou signature électronique. États de suivi libres entre les trois valeurs ; ils ne démontrent pas un engagement contractuel. Dates sans fuseau et fin possible sans début, car ces données sont facultatives ; l’ordre est contrôlé quand les deux sont présentes. Cycle métier définitif, documents associés, montants/versements et visibilité conseiller restent des lots séparés à cadrer. Revue esthétique différée.
 
+## Fonctionnalité 51 — pièces liées aux mandats et contrats Assurance
+
+**Périmètre confirmé par l’utilisateur : aucune fonction financière sur Assurance ou Isolation.** Les anciennes mentions de montants/versements parmi les pistes futures sont abandonnées ; elles ne représentent aucun développement réalisé ni prévu.
+
+Depuis un suivi administratif, l’administrateur associe un document interne existant de la même fiche ou retire ce lien avec un motif. Le fichier n’est ni copié ni supprimé ; son contenu, auteur et règle de partage conseiller restent inchangés. Les documents personnels des conseillers ne sont pas associables. Une même pièce peut être liée à plusieurs suivis de son dossier ; maximum 50 liens actifs par suivi, listes des pièces liées et disponibles paginées par 25. Téléchargement depuis le registre via la route documentaire privée existante.
+
+Création/retrait des liens soumis à prise en charge, jeton, révision de fiche et révision de suivi. Liens désactivés puis réactivables sans doublon, historique avant/après incluant les identifiants des documents, motif, acteur et date via le journal administratif du suivi. Incrément des deux révisions et audit atomiques ; une action sans changement ne produit aucun événement et une ancienne version est refusée. Liste sans cache ; mêmes droits administrateur Assurance et refus d’Isolation/setters/conseillers que le registre. Aucun accès supplémentaire aux fichiers ni changement de visibilité lié au mandat/contrat.
+
+Huit tests fonctionnels et une concurrence PostgreSQL ajoutés : association/retrait/réassociation, données et partage préservés, documents personnels et autre fiche refusés, périmètres, lease/révisions, audit/rollback, pagination et limite de 50. Migration Assurance 0023. Suite Assurance, typage/build et contrôle des migrations avant livraison ; aucun appel ni service externe sollicité.
+
+Limites : liaison des pièces internes déjà présentes, sans téléversement spécifique, génération de contrat, signature ou cycle juridique automatique. L’historique contient les références des pièces, pas de copie binaire du fichier ; les originaux restent protégés contre suppression par les liens. Le retrait du lien n’annule pas un partage conseiller déjà accordé séparément. Suivis archivés modifiables selon la règle existante, aucun gel juridique déduit. Revue esthétique différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
 2. Statistiques et suivi métier Isolation complémentaires, répartition selon charge/disponibilités et sélection massive (répartition à tour de rôle bornée, portail client, résultats, file setter, qualification, notes, partage explicite, rappels et visites internes livrés).
-3. Compléments des fiches Assurance : champs métier définitifs à valider, cycle métier complet des mandats/contrats (registre administratif réservé aux administrateurs livré au lot 50 ; documents liés, montants/versements et visibilité à préciser) (partages champs/documents/notes suivis séparément dans les lots 42 à 44) (coordonnées sous verrou, champs configurables avec partage conseiller explicite, notes, documents et chronologie des interactions livrés).
+3. Compléments des fiches Assurance : champs métier définitifs à valider, cycle métier complet des mandats/contrats (registre administratif réservé aux administrateurs livré au lot 50 ; documents liés livrés au lot 51 ; visibilité et cycle à préciser, finances exclues) (partages champs/documents/notes suivis séparément dans les lots 42 à 44) (coordonnées sous verrou, champs configurables avec partage conseiller explicite, notes, documents et chronologie des interactions livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteur Calendly et synchronisation Google/Microsoft avancée (publication unidirectionnelle sur agenda principal livrée, recette réelle OAuth à effectuer) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
-6. Contrats, statistiques métier, sauvegardes externes et déploiement final.
+6. Cycle administratif final des contrats (sans finances), statistiques métier, sauvegardes externes et déploiement final.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.

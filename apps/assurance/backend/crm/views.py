@@ -2,7 +2,7 @@ from rest_framework import serializers,viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .visibility import visible_contacts
-from .agreements import AgreementMixin
+from .agreements import AgreementMixin,AgreementDocumentMixin
 from .models import Contact,Appointment,FollowUpTask
 from django.utils import timezone
 from .leases import ContactLeaseMixin
@@ -28,7 +28,7 @@ class PublicContactSerializer(serializers.ModelSerializer):
         fields=['id','name','phone','email','status','status_label','updated_at','revision']
         read_only_fields=['status','updated_at','revision']
 
-class ContactViewSet(AgreementMixin,NoteSharingMixin,DocumentSharingMixin,ContactInteractionMixin,ContactPipelineMixin,ContactDocumentMixin,CustomValuesMixin,ContactNoteMixin,ContactLeaseMixin,viewsets.ReadOnlyModelViewSet):
+class ContactViewSet(AgreementDocumentMixin,AgreementMixin,NoteSharingMixin,DocumentSharingMixin,ContactInteractionMixin,ContactPipelineMixin,ContactDocumentMixin,CustomValuesMixin,ContactNoteMixin,ContactLeaseMixin,viewsets.ReadOnlyModelViewSet):
     pagination_class=ContactPagination
     serializer_class=PublicContactSerializer
     http_method_names=['get','head','options','post','patch','delete']
