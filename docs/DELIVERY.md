@@ -492,6 +492,16 @@ Sept tests ajoutés : bornes et horizons, absences de date/archivage/brouillons,
 
 Limites : alertes internes dérivées des dates renseignées et de l’état En suivi, sans e-mail, notification système, tâche de traitement ou horodatage d’acquittement. Horizon choisi dans la vue, non paramétrage global persistant. Pas de prise en compte d’un fuseau client ou d’heures dans les dates administratives. Une page laissée ouverte mais non visible n’est actualisée qu’au prochain passage visible de la minuterie ou manuellement. Aucune fonction financière sur les deux plateformes. Revue esthétique globale différée.
 
+## Fonctionnalité 54 — export Excel du registre administratif Assurance
+
+L’administrateur télécharge un fichier .xlsx depuis Mandats et contrats. Tous les filtres saisis (recherche référence/prospect, type, état, bornes de dates, alerte et horizon 7/30/90 jours) sont repris, ainsi que le tri du registre, indépendamment de la pagination. Validation et construction de la requête partagées avec la liste pour éviter deux définitions des résultats. Limite de 10 000 suivis : dépassement refusé explicitement, sans fichier tronqué. Les paramètres inconnus, répétés et la pagination sont refusés à l’export.
+
+Feuille principale : référence, nom et identifiant de fiche, type et état en français, dates Excel au format jour/mois/année, libellé d’échéance, jours calendaires avant fin et nombre de pièces actives. En-têtes figés, filtres Excel et largeurs lisibles. Feuille Périmètre : date de référence UTC, nombre de résultats et filtres utilisés, limites administratives. Aucun fichier joint, téléphone, note privée, champ personnalisé ou auteur inclus. Chaînes explicitement enregistrées comme texte, jamais comme formules ; caractères de contrôle XML incompatibles remplacés par le caractère de remplacement. Réponse privée sans cache, téléchargement via ticket métier existant. Aucune mutation, aucun appel ni fournisseur externe.
+
+Sept tests d’export : toutes les pages et confidentialité, cohérence des filtres/tri et dates, échéances/horizon, formules littérales, limite exacte et dépassement, droits/paramètres stricts et caractères XML. Suite Assurance, contrôle des migrations, typage/build et CI avant fusion ; aucune migration.
+
+Limites : export ponctuel des données au moment de la requête, pas un journal immuable ou une sauvegarde documentaire. Les filtres saisis peuvent différer de la dernière recherche affichée ; ce comportement est annoncé près du bouton. Pas d’export financier, de coordonnées ou de pièces binaires. Revue esthétique globale toujours différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
