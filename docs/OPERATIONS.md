@@ -23,6 +23,8 @@ Imports déjà terminés : aucun retraitement. Lookup : les `pending` peuvent ê
 
 ## Sauvegarde et restauration avant production
 
+Pour les trois bases **SQLite locales** et les fichiers privés, utiliser le parcours chiffré avec restauration sans écrasement décrit dans [BACKUP_LOCAL.md](BACKUP_LOCAL.md). Ce parcours est testé sur données jetables ; il ne couvre pas PostgreSQL/S3 ou la sauvegarde externe de production décrite ci-dessous.
+
 1. Sauvegarder PostgreSQL avec `pg_dump` dans un dépôt chiffré privé.
 2. Sauvegarder le volume média ou activer le versionnage du stockage objet privé.
 3. Restaurer la base et les fichiers dans un environnement isolé.

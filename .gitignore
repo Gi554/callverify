@@ -7,6 +7,7 @@ portal.sqlite3
 assurance.sqlite3
 *.sqlite3-journal
 private-media/
+/.backups/
 .coverage
 .test-media/
 node_modules/

@@ -528,6 +528,16 @@ Instance temporaire avec bases et comptes séparés, données synthétiques, auc
 
 Limites : entrée XLSX et refus des routes directes restent couverts par les tests API, pas par ce parcours navigateur ; affectation conseiller préparée dans la base de recette, pas validée par clics ; lecture graphique Excel/LibreOffice, recette des fournisseurs et revue esthétique finale non effectuées. Ce lot ne déclare pas le projet complet.
 
+## Fonctionnalité 58 — sauvegarde locale chiffrée et restauration SQLite isolée
+
+Outil opérateur scripts/crm_backup.py : génération d’une clé dans un fichier neuf sans affichage, sauvegarde explicite des trois bases locales et d’un dossier média privé, vérification et restauration vers un dossier neuf exclusivement. Snapshots SQLite en mémoire via l’API backup, WAL validé compris ; documents binaires Assurance dans leur base et fichiers privés Isolation dans l’archive. ZIP et manifeste entièrement chiffrés/authentifiés Fernet, pas de fichier intermédiaire en clair. Inventaire, tailles, empreintes, intégrité SQLite, références et nombres de lignes par table vérifiés avant toute restauration. Déchiffrement/restauration ne lance aucun service ou fournisseur.
+
+Sources distinctes et existantes, clé/archive hors média, liens/jonctions/noms non portables refusés. Attestation explicite de services/écritures arrêtés pour cohérence entre bases et fichiers séquentiels. Refus d’écraser archive, clé ou dossier cible existant. Nettoyage du seul nouveau dossier cible en cas d’erreur d’écriture. Limites locales : 256 Mio de contenu, 10 000 fichiers, manifeste de 1 Mio ; travail en mémoire et aucune gestion automatique de gros volumes. Répertoire .backups ignoré par Git. Commandes, conservation indépendante des clés et précautions de reprise dans docs/BACKUP_LOCAL.md.
+
+Dix tests ajoutés couvrant aller-retour, documents binaires/médias, WAL, écrasement/source préservée, clé/altération/empreintes/comptages, paramètres/limites, chemins/liens, erreur disque et CLI. Le test de lien est ignoré sur le Windows sans privilège de création ; exécuté en CI Linux. Recette réelle des commandes sur trois bases Django migrées jetables : adhésion centrale, contrat/pièce liée et octets Assurance, import et média Isolation restaurés puis contrôlés. Suite core et CI avant fusion. Aucune base active modifiée ni service externe sollicité.
+
+Limites : outil local SQLite, pas PostgreSQL/S3/Redis, pas de copie hors site, rotation ou planification ; aucun module de production complet déclaré. Attestation d’arrêt non vérifiable automatiquement ; droits Windows hérités du dossier privé (pas de configuration ACL par cet outil). Clés applicatives à conserver séparément ; tâches et sessions restaurées inchangées, ordonnanceurs/fournisseurs à laisser arrêtés jusqu’à décision explicite de reprise. Promotion des fichiers vers les chemins actifs non automatisée ; recette métier isolée encore nécessaire après restauration. Prochaine tranche : sauvegarde/restauration PostgreSQL et stockage externe de production.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
