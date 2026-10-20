@@ -46,6 +46,21 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.lock.txt
       - run: python manage.py test apps.assurance.backend.crm --settings=apps.assurance.backend.settings
+      - name: Install PostgreSQL 17 client tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release; echo "$VERSION_CODENAME")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-17
+      - name: Restore an encrypted dump into a disposable PostgreSQL database
+        run: PATH="/usr/lib/postgresql/17/bin:$PATH" python -m unittest core.test_crm_pg_backup -v
+        env:
+          CRM_BACKUP_PG_TEST: '1'
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: amx_test
+          PGPASSWORD: local-ci-only
       - run: python manage.py test portal.backend.identity --settings=portal.backend.settings
         env:
           PORTAL_DB_HOST: localhost

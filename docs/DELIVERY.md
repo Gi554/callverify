@@ -538,6 +538,14 @@ Dix tests ajoutés couvrant aller-retour, documents binaires/médias, WAL, écra
 
 Limites : outil local SQLite, pas PostgreSQL/S3/Redis, pas de copie hors site, rotation ou planification ; aucun module de production complet déclaré. Attestation d’arrêt non vérifiable automatiquement ; droits Windows hérités du dossier privé (pas de configuration ACL par cet outil). Clés applicatives à conserver séparément ; tâches et sessions restaurées inchangées, ordonnanceurs/fournisseurs à laisser arrêtés jusqu’à décision explicite de reprise. Promotion des fichiers vers les chemins actifs non automatisée ; recette métier isolée encore nécessaire après restauration. Prochaine tranche : sauvegarde/restauration PostgreSQL et stockage externe de production.
 
+## Fonctionnalité 59 — dump PostgreSQL chiffré et restauration de contrôle
+
+Outil opérateur unitaire scripts/crm_pg_backup.py : source/service explicites, connexion libpq privée, dump custom sans fichier intermédiaire en clair, chiffrement Fernet avec manifeste, empreinte et comptages par table. Vérification de l’archive et restauration sur base neuve préfixée crm_restore_, jamais une source existante. CREATE DATABASE exclusif, retrait de CONNECT/TEMPORARY à PUBLIC, restauration transactionnelle sans propriétaires/droits d’origine, rapprochement des compteurs. Aucune commande DROP dans l’outil ; cible conservée pour diagnostic en cas d’échec. Aucun démarrage de service ni appel fournisseur.
+
+Cinq tests simulés et une recette réelle PostgreSQL 17 dans la CI : base aléatoire, relations, BYTEA et séquences, sauvegarde chiffrée, restauration dans une autre base aléatoire, source préservée et cible existante refusée. Les clients officiels 17 sont installés dans ce job. Validation réelle locale indisponible (Docker arrêté, clients PostgreSQL absents) ; résultat de la recette CI requis avant fusion. Documentation BACKUP_POSTGRES et OPERATIONS avec commandes et limites. Note de recette Phonetico actualisée : appel manuel demandé confirmé par l’utilisateur, détail 511 toujours HTTP 500 ; aucune fonctionnalité d’appel automatique ou historique métier déclarée livrée.
+
+Limites : une base à la fois (répéter pour chaque service), attestation de maintenance, dump plafonné à 256 Mio et délai de 120 secondes. Les comptages ne remplacent pas la recette métier et verify ne remplace pas une restauration. Hors périmètre : médias/S3, copie externe, rotation/planification, sauvegarde des rôles globaux, PITR et recette de l’infrastructure client. La prochaine tranche reste la copie externe et les médias privés. Aucun changement esthétique.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
