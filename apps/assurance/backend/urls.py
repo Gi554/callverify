@@ -25,3 +25,6 @@ urlpatterns += [path('api/assurance/contact-fields/',definitions),path('api/assu
 
 from .crm.agreement_registry import registry as agreement_registry
 urlpatterns += [path('api/assurance/agreement-registry/',agreement_registry)]
+
+from .crm.agreement_registry import deadlines as agreement_deadlines
+urlpatterns += [path('api/assurance/agreement-deadlines/',agreement_deadlines)]

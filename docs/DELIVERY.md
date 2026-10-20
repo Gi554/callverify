@@ -482,6 +482,16 @@ Sept tests fonctionnels ajoutés : listes explicites et compteur de pièces, rec
 
 Limites : registre administratif réservé à l’administrateur, aucun export, action en masse, alerte d’échéance ou changement de statut depuis la liste. Revue esthétique globale inspirée de GoHighLevel reportée à la revue finale ; module ajouté dans la navigation fonctionnelle existante, fiche de détail existante réutilisée. Toutes fonctions financières exclues sur les deux plateformes.
 
+## Fonctionnalité 53 — alertes d’échéance des mandats et contrats
+
+Encart administratif Assurance présentant les suivis En suivi dont la date de fin est dépassée, ceux arrivant à échéance dans les 30 prochains jours (aujourd’hui et borne finale inclus), et ceux sans date de fin. Brouillons et archivés exclus des compteurs. Calcul au jour UTC affiché explicitement ; date passée strictement avant aujourd’hui, aucun changement de statut ou déduction de validité juridique. Consultation persistante tant que les données justifient l’alerte, sans acquittement implicite ni écriture de lecture. Actualisation manuelle, toutes les 60 secondes si la page est visible, et après modification depuis la liste centrale.
+
+Les commandes ouvrent la liste centrale avec le filtre approprié. La liste propose les horizons 7/30/90 jours et badges textuels colorés pour échéance proche, date dépassée, date manquante ou hors suivi. Nombre de jours calculé côté serveur. Filtres combinables avec référence/prospect/type/état/dates ; compteurs de liste calculés selon les filtres courants hors filtre alerte, à la différence de l’encart global. Les vues d’alerte trient par date de fin puis identifiant ; la pagination de 25 reste inchangée. Aucune donnée personnelle dans les compteurs globaux. Rôles/périmètres administrateur Assurance inchangés et réponses sans cache.
+
+Sept tests ajoutés : bornes et horizons, absences de date/archivage/brouillons, persistance sans modification ni audit, filtres combinés, jours/badges, compteurs non multipliés par les pièces, droits et paramètres invalides, recalcul après modification et changement de date UTC. Suite Assurance, typage/build et contrôle des migrations ; aucune migration ni tâche serveur nécessaire. Aucun fournisseur externe ou appel sollicité.
+
+Limites : alertes internes dérivées des dates renseignées et de l’état En suivi, sans e-mail, notification système, tâche de traitement ou horodatage d’acquittement. Horizon choisi dans la vue, non paramétrage global persistant. Pas de prise en compte d’un fuseau client ou d’heures dans les dates administratives. Une page laissée ouverte mais non visible n’est actualisée qu’au prochain passage visible de la minuterie ou manuellement. Aucune fonction financière sur les deux plateformes. Revue esthétique globale différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
