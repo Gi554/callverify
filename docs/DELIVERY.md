@@ -554,6 +554,16 @@ Relecture du cahier CRM AMX v1.0 du 18 octobre, comparaison des routes centrales
 
 Aucune nouvelle API ni interface livrée par ce lot documentaire. Ordre proposé : click-to-call Assurance puis Isolation, réservation avec contrôle externe, sécurité centrale, statistiques métier et règles contractuelles à cadrer. La refonte esthétique reste distincte. Chaque fonctionnalité suivra tests, commit, push, PR et fusion avant la suivante.
 
+## Fonctionnalité 61 — click-to-call Assurance côté serveur
+
+Autorisation d’appel depuis une fiche sous prise en charge par le setter actif connecté, preuve signée 60 secondes liée au dossier/version/numéro/jeton/UUID, puis endpoint central utilisant uniquement le poste associé à ce compte. Destination arbitraire, extension, fonction fournisseur, administrateur agissant pour un setter et conseiller refusés. Relecture métier serveur-à-serveur avant émission ; coordonnées Assurance originales inchangées et aucune validation Lookup introduite. Registre durable avant réseau, idempotence par UUID/contenu, sérialisation par compte et espacement 60 secondes entre commandes distinctes. Consultation privée d’une commande existante sans réémission. Flag NEWT_CALLS_ENABLED=false par défaut.
+
+Adaptateur 245 unitaire sans auto-answer/retry/redirection, réponse CSV corrélée bornée. Accepté signifie uniquement commande reçue ; rejeté, bloqué, indéterminé et réservation en cours distingués. Interruption/résultat ambigu jamais relancés automatiquement. Audit minimal Assurance et central, extension conservée côté serveur seulement, pas de secrets/preuves/numéros dans les audits. Migration portail 0013 ; aucune migration Assurance. Contrat API et commandes dans docs/ASSURANCE_CLICK_TO_CALL.md.
+
+Cinq tests Assurance et douze tests portail/adaptateur, plus une concurrence PostgreSQL (double soumission, une seule émission simulée). Suites locales : 272 tests Assurance dont 26 réservés PostgreSQL, 178 portail dont 9 réservés PostgreSQL. CI et migrations à contrôler avant fusion. Aucun appel réel ou flag activé pendant cette livraison.
+
+Limites : API backend, aucun nouveau bouton frontend ; Isolation non couverte, pas de raccrochage ou historique CDR, ni audio WebRTC. Vérification distribuée instantanée, sans atomicité entre bases après le dernier contrôle ; délai entre demandes ne garantit pas la disponibilité du poste. Réservation interrompue conservée pour examen manuel, pas de résolution fournisseur automatique. Retention à préciser ; timeline et audit central non fusionnés en historique d’appels du dossier. Recette réelle des nouveaux endpoints encore à effectuer sur autorisation explicite. Prochaine fonctionnalité : équivalent Isolation sur les prospects attribués.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
