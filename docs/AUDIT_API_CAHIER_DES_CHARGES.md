@@ -96,3 +96,8 @@ Chaque tranche : contrôles, commit sur staging, push, PR et fusion main avant l
 ## Correction de périmètre du 21 octobre 2026
 
 La précision utilisateur remplace « un seul client au lancement » : Isolation conserve **un client unique permanent**, avec identité du setter visible sur les visites et actions autorisées. Le lot62 garantit une seule adhésion centrale de rôle client, même suspendue, et refuse sa réaffectation de rôle dans les parcours administratifs. Plusieurs conseillers Assurance restent possibles avec masquage du setter. Les tests négatifs du service métier peuvent simuler un autre client pour contrôler les frontières ; ils ne représentent pas une fonction de création multi-client. Le stockage externe reste reporté.
+
+
+## Actualisation du 21 octobre 2026 — lot 63
+
+Après le lot 61 Assurance, click-to-call backend Isolation livré pour le setter affecté, sous contrôle administratif et exclusions, désactivé par défaut. Contrat : ISOLATION_CLICK_TO_CALL.md. Cette actualisation ne transforme pas le module téléphonie complet en fonctionnalité terminée : boutons, audio navigateur, CDR et recette réelle restent absents. Prochaine tranche : disponibilité externe à la réservation.

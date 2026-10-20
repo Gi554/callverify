@@ -9,6 +9,7 @@ ROLES = {
 class PhoneCallAttempt(models.Model):
     request_id=models.UUIDField(primary_key=True)
     user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    workspace=models.CharField(max_length=20,default='assurance')
     contact_id=models.PositiveBigIntegerField()
     extension=models.CharField(max_length=10)
     fingerprint=models.CharField(max_length=64)

@@ -49,3 +49,8 @@ La relecture du détail d’appels 511 pour la journée a renvoyé HTTP 500. Les
 ## API métier Assurance (lot 61)
 
 Le click-to-call Assurance est désormais implémenté côté serveur, désactivé par défaut : voir [ASSURANCE_CLICK_TO_CALL.md](ASSURANCE_CLICK_TO_CALL.md). Cette livraison remplace, pour Assurance seulement, les mentions historiques ci-dessus d’absence de commande métier 245. Aucun appel réel pendant ce lot. Raccrochage, historique CDR, bouton frontend, Isolation et WebRTC restent non livrés ; le diagnostic 511 HTTP500 demeure non résolu.
+
+
+## API métier Isolation (lot 63)
+
+Le parcours serveur Isolation est livré séparément : [ISOLATION_CLICK_TO_CALL.md](ISOLATION_CLICK_TO_CALL.md). Il remplace la mention historique d’absence de commande métier Isolation. Deux flags désactivés par défaut ; aucun appel réel pendant le développement. Aucun bouton, audio navigateur, CDR ou raccrochage ajouté.

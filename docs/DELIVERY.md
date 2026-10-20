@@ -572,6 +572,16 @@ Migration portail 0014 : vérification préalable des adhésions client existant
 
 Limites : un compte central de rôle client Isolation, réservé même suspendu, aucun mécanisme d’organisation multi-client ni de transfert/remplacement livré. Une suppression ou modification SQL directe de l’adhésion par un opérateur privilégié n’est pas un parcours autorisé par l’API et peut invalider cette règle ; les API n’exposent pas de suppression de compte. Les fichiers/activités restent soumis à leurs règles de partage existantes : connaître les auteurs ne publie pas toutes les notes privées. Aucun changement d’interface, appel ou fournisseur. Le click-to-call Isolation reste la tranche suivante.
 
+## Fonctionnalité 63 — click-to-call Isolation côté serveur
+
+Autorisation unitaire réservée au setter affecté : preuve signée 60 secondes liée au prospect, révision, compte, numéro et UUID. Conformité administrative allowed, téléphone normalisé nord-américain, validité non invalide et exclusions contrôlés, puis relus avant émission. Aucune destination ou extension arbitraire. Validité inconnue non transformée en ligne active ; aucun Lookup ni modification des résultats techniques. Client unique permanent et auteurs existants préservés.
+
+Registre central partagé avec Assurance mais cloisonné par espace et propriétaire, idempotence et délai commun 60 secondes par compte. Migration 0015 attribuant les anciens enregistrements à Assurance. Double activation nécessaire : NEWT_CALLS_ENABLED et NEWT_ISOLATION_CALLS_ENABLED, tous deux false par défaut. Adaptateur 245 existant sans auto-answer/retry réutilisé. Documentation et commandes dans docs/ISOLATION_CLICK_TO_CALL.md.
+
+Six tests core et cinq portail ajoutés. Suites locales : 174 core (17 réservés PostgreSQL), 190 portail (9 réservés PostgreSQL), cinq tests métier Assurance de régression réussis ; migrations cohérentes. CI PostgreSQL avant fusion. Aucun appel réel, secret ajouté ou flag activé.
+
+Limites : API backend sans nouveau bouton, audio navigateur, CDR, raccrochage ou historique client des appels. Accepté signifie commande reçue uniquement ; inconnue/en cours jamais relancée automatiquement. Contrôle distribué sans transaction atomique entre services ; examen manuel après interruption. Conservation et recette réelle à finaliser. Prochaine fonctionnalité : contrôle des disponibilités externes Google/Microsoft lors de la réservation.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
