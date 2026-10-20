@@ -520,6 +520,14 @@ Aucun défaut reproduit sur ces deux parcours : ce lot ajoute une couverture tra
 
 Limites : API et contenu XLSX vérifiés automatiquement ; session centrale, clics, téléchargement natif et rendu visuel ne sont pas couverts par ces tests. La checklist navigateur reste à exécuter et la revue esthétique finale demeure différée. Aucune recette réelle Phonetico, OAuth ou SMTP réalisée dans ce lot.
 
+## Lot 57 — recette navigateur administrateur et conseiller Assurance
+
+Recette réelle du parcours central de connexion, import CSV, correction sous prise en charge, contrat, ajout/liaison/téléchargement d’une pièce interne, liste/statistiques filtrées, téléchargement Excel et archivage/historique. Fichier effectivement téléchargé contrôlé localement : référence, jours avant fin et compteur documentaire cohérents, coordonnées privées exclues. Après archivage, disparition des échéances proches et classement Hors suivi vérifiés dans l’interface. Connexion conseiller avec une fiche synthétique préaffectée : module administratif absent et pièce interne non visible, aucun partage implicite. Rapport détaillé et limites dans docs/RECETTE_ASSURANCE_CONTRATS.md.
+
+Instance temporaire avec bases et comptes séparés, données synthétiques, aucun fournisseur activé ; déconnexion puis arrêt des services de recette. Captures, fichiers et secrets hors Git. Aucun défaut applicatif reproduit : lot documentaire, sans modification de comportement ou migration. Contrôles CI avant fusion.
+
+Limites : entrée XLSX et refus des routes directes restent couverts par les tests API, pas par ce parcours navigateur ; affectation conseiller préparée dans la base de recette, pas validée par clics ; lecture graphique Excel/LibreOffice, recette des fournisseurs et revue esthétique finale non effectuées. Ce lot ne déclare pas le projet complet.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
