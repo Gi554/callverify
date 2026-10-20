@@ -472,6 +472,16 @@ Huit tests fonctionnels et une concurrence PostgreSQL ajoutés : association/ret
 
 Limites : liaison des pièces internes déjà présentes, sans téléversement spécifique, génération de contrat, signature ou cycle juridique automatique. L’historique contient les références des pièces, pas de copie binaire du fichier ; les originaux restent protégés contre suppression par les liens. Le retrait du lien n’annule pas un partage conseiller déjà accordé séparément. Suivis archivés modifiables selon la règle existante, aucun gel juridique déduit. Revue esthétique différée.
 
+## Fonctionnalité 52 — liste centrale des mandats et contrats Assurance
+
+Module Mandats et contrats accessible à l’administrateur depuis la navigation Assurance. Liste de 25 suivis par page, ordre des dernières modifications puis identifiant décroissant pour départager les dates identiques. Recherche par référence ou nom du prospect, combinable avec type Mandat/Contrat, état Brouillon/En suivi/Archivé et bornes inclusives sur dates de début et de fin. Les filtres de date excluent les valeurs non renseignées et les bornes inversées sont refusées. Pas de tri, taille de page ou champ de recherche arbitraire côté navigateur ; filtres inconnus/répétés et dates invalides refusés.
+
+Colonnes de référence, prospect minimal (id/nom), type, état, dates et nombre de pièces actives, sans métadonnées de setter, contenu documentaire, coordonnées ou champs privés. La commande Ouvrir la fiche charge le parcours existant, avec ses protections de prise en charge/révisions et son registre administratif. Retour à la liste avec actualisation après fermeture/modification. Aucun nouveau droit conseiller/setter et aucun périmètre Isolation ; route serveur de lecture seule, réponse sans cache et aucune écriture/audit déclenchée par une consultation.
+
+Sept tests fonctionnels ajoutés : listes explicites et compteur de pièces, recherche/filtres combinés, dates inclusives et valeurs absentes, filtres invalides/répétés, rôles/espaces, pagination avec dates égales et ouverture de fiche autorisée. Suite Assurance, contrôle des migrations, typage/build et CI ; aucune migration. Aucun appel ni service externe sollicité.
+
+Limites : registre administratif réservé à l’administrateur, aucun export, action en masse, alerte d’échéance ou changement de statut depuis la liste. Revue esthétique globale inspirée de GoHighLevel reportée à la revue finale ; module ajouté dans la navigation fonctionnelle existante, fiche de détail existante réutilisée. Toutes fonctions financières exclues sur les deux plateformes.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
