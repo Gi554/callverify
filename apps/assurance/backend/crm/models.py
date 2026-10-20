@@ -199,3 +199,19 @@ class ReminderEvent(models.Model):
         constraints=[models.CheckConstraint(condition=(models.Q(kind='task_overdue',task__isnull=False,recipient_role='setter')|models.Q(kind='report_missing',task__isnull=True,recipient_role='advisor')|
             models.Q(kind='task_escalation',task__isnull=False,recipient_role='administrator',recipient_id=0)|models.Q(kind='report_escalation',task__isnull=True,recipient_role='administrator',recipient_id=0)),name='reminder_kind_target')]
         indexes=[models.Index(fields=['recipient_id','recipient_role','valid_until'],name='reminder_active_recipient')]
+
+
+class Agreement(models.Model):
+    contact=models.ForeignKey(Contact,on_delete=models.PROTECT,related_name='agreements')
+    request_id=models.UUIDField(unique=True)
+    fingerprint=models.CharField(max_length=64)
+    kind=models.CharField(max_length=10,choices=[('mandate','Mandat'),('contract','Contrat')])
+    reference=models.CharField(max_length=100)
+    status=models.CharField(max_length=10,default='draft',choices=[('draft','Brouillon'),('tracking','En suivi'),('archived','Archivé')])
+    starts_on=models.DateField(null=True,blank=True)
+    ends_on=models.DateField(null=True,blank=True)
+    revision=models.PositiveIntegerField(default=0)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['contact','kind','reference'],name='unique_agreement_contact_reference'),models.CheckConstraint(condition=models.Q(ends_on__isnull=True)|models.Q(starts_on__isnull=True)|models.Q(ends_on__gte=models.F('starts_on')),name='agreement_date_order')]
