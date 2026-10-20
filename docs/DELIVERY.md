@@ -546,6 +546,14 @@ Cinq tests simulés et une recette réelle PostgreSQL 17 dans la CI : base aléa
 
 Limites : une base à la fois (répéter pour chaque service), attestation de maintenance, dump plafonné à 256 Mio et délai de 120 secondes. Les comptages ne remplacent pas la recette métier et verify ne remplace pas une restauration. Hors périmètre : médias/S3, copie externe, rotation/planification, sauvegarde des rôles globaux, PITR et recette de l’infrastructure client. La prochaine tranche reste la copie externe et les médias privés. Aucun changement esthétique.
 
+## Lot 60 — audit des API face au cahier des charges
+
+Relecture du cahier CRM AMX v1.0 du 18 octobre, comparaison des routes centrales/Assurance/Isolation, règles et tests existants. Matrice dans docs/AUDIT_API_CAHIER_DES_CHARGES.md distinguant développé/testé, partiel, manquant, recette fournisseur et report explicite. Plan initial marqué historique pour éviter de confondre ses premières tranches avec l’état actuel. Audit statique et preuves historiques CI/navigateur, sans nouveau test fournisseur ou déclaration de nouvelle recette exhaustive.
+
+Écarts confirmés : click-to-call Phonetico métier absent malgré le test manuel réussi ; CDR 511 bloqué HTTP500 ; contrôle d’agenda externe non intégré à la confirmation de réservation ; MFA centrale absente et limitation distribuée à terminer ; statistiques internes partielles et cycle contractuel administratif seulement. Google/Microsoft et SMTP différenciés des fonctions absentes : connecteurs présents, recette réelle encore requise. Finances exclues, Calendly et stockage externe reportés. Brouillons de copie externe conservés dans private-media/deferred-remote-backup hors Git, non livrés et retirés des modules de tests actifs.
+
+Aucune nouvelle API ni interface livrée par ce lot documentaire. Ordre proposé : click-to-call Assurance puis Isolation, réservation avec contrôle externe, sécurité centrale, statistiques métier et règles contractuelles à cadrer. La refonte esthétique reste distincte. Chaque fonctionnalité suivra tests, commit, push, PR et fusion avant la suivante.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).

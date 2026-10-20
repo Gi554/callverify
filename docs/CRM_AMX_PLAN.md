@@ -1,5 +1,7 @@
 # Évolution CRM AMX
 
+> Plan initial conservé pour contexte : ses mentions « en cours » et « lots suivants » ne constituent pas un état actuel. Pour le bilan backend du 20 octobre 2026, voir [AUDIT_API_CAHIER_DES_CHARGES.md](AUDIT_API_CAHIER_DES_CHARGES.md), comparé aux routes et tests de main après PR #65. Voir DELIVERY pour les livraisons successives.
+
 Référence métier : CRM_AMX_Cahier_des_charges.docx, version du 18 octobre 2026, fourni par le client. L'évolution est livrée par lots testés sur staging, puis PR et fusion vers main. Aucun préfixe de branche automatique.
 
 ## Lot 1 — socle en cours
