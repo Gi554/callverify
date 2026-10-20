@@ -45,3 +45,23 @@ Deux tests parcourent les mêmes étapes par les API métier, une fois avec un C
 ## Portée de la validation
 
 Les tests automatiques couvrent les API et le contenu du XLSX, pas les clics, le rendu visuel, le téléchargement natif du navigateur ou l’authentification centrale réelle. La checklist manuelle reste à exécuter ; elle n’est pas déclarée réussie par sa présence dans le dépôt. Les tests utilisent des tickets métier de recette et une date UTC figée, pas des comptes de production. La revue esthétique globale reste différée.
+
+
+## Exécution navigateur du 20 octobre 2026
+
+Recette réalisée dans le navigateur intégré sur le frontend Vite et les deux services Django locaux, avec deux bases SQLite **séparées** de celles du projet, comptes administrateur/conseiller synthétiques et téléphonie désactivée. Le dossier de recette, les mots de passe, bases, captures et fichiers restent dans les emplacements privés ignorés par Git. Services temporaires arrêtés après déconnexion.
+
+Résultats observés :
+
+- Connexion centrale administrateur, entrée Assurance et aperçu CSV : trois lignes, aucune fiche créée avant confirmation. Correspondances choisies dans l’interface.
+- Confirmation : deux contacts importés et ligne physique 3 rejetée pour téléphone manquant. Doublon de téléphone brut conservé.
+- Ouverture et prise en charge ; correction du nom enregistrée puis contrat En suivi créé depuis la fiche, avec dates et motif.
+- Téléversement d’une pièce PDF synthétique interne, association au contrat et téléchargement depuis Pièces liées. Comparaison des octets du fichier téléchargé avec la source : identiques. Le PDF de recette vérifie le transport, pas la qualité d’un document PDF métier.
+- Registre central : référence, état, dates et une pièce active cohérents. Recherche par référence + Échéance proche + horizon 7 jours : une ligne et une unité dans les catégories Contrat, En suivi et Échéance proche.
+- Téléchargement Excel déclenché par le bouton du navigateur. Classeur ouvert par le contrôle local : référence et nom corrigé présents, sept jours avant fin, une pièce liée, e-mail privé absent. La lecture graphique du classeur dans Excel/LibreOffice n’a pas été effectuée.
+- Archivage depuis la fiche ouverte par le registre : historique avec motifs de création/liaison/archivage, pièce conservée. Retour à la recherche Échéance proche : zéro résultat et synthèse à zéro. Filtre Archivé sans alerte : une ligne, Contrat = 1, Archivé = 1 et Hors suivi = 1 ; compteur global des échéances proches revenu à zéro.
+- Pour préparer le contrôle conseiller, affectation du seul prospect synthétique au compte synthétique dans la **base de recette**, hors interface. Cette préparation ne valide donc pas un parcours d’affectation métier.
+- Déconnexion puis connexion centrale conseiller : une seule fiche visible, aucun module administratif Mandats et contrats. Fiche autorisée en lecture seule, zéro document visible et aucune interaction révélant la pièce interne. Aucun partage accordé ; aucun autre compte ou rôle existant modifié.
+- Aucune erreur console relevée à la fin du parcours dans l’application. Une expiration temporaire du contrôle d’autorisation de l’outil navigateur a nécessité une nouvelle tentative ; ce n’était pas une erreur du CRM.
+
+Aucun défaut applicatif reproduit dans ce parcours. Ce résultat ne remplace pas une recette complète : XLSX en entrée couvert par les tests API, pas retesté par les clics dans ce lot ; refus des accès directs non autorisés couvert par les tests API ; OAuth, SMTP, Phonetico, signature et rendu responsive non validés ici. Les étapes manuelles ci-dessus restent une checklist réutilisable, et non une déclaration de couverture de tous les modules.
