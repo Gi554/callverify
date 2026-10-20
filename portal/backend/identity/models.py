@@ -23,7 +23,8 @@ class Membership(models.Model):
     role = models.CharField(max_length=30)
     active = models.BooleanField(default=True)
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['user','workspace'],name='unique_workspace_membership')]
+        constraints = [models.UniqueConstraint(fields=['user','workspace'],name='unique_workspace_membership'),
+                       models.UniqueConstraint(fields=['workspace'],condition=models.Q(workspace='isolation',role='client'),name='single_isolation_client')]
     def clean(self):
         from django.core.exceptions import ValidationError
         if self.role not in ROLES.get(self.workspace,set()):

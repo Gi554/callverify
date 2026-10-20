@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase,override_settings
+from django.db import transaction,IntegrityError
 from rest_framework.test import APIClient
 from .models import Membership
 from packages.access.isolation_visits import verify_booking
@@ -21,8 +22,9 @@ class IsolationVisitProofTests(TestCase):
     def test_no_client_or_multiple_active_clients_require_configuration(self):
         self.client_access.active=False;self.client_access.save();self.assertEqual(self.post().status_code,400)
         self.client_access.active=True;self.client_access.save()
-        extra=get_user_model().objects.create_user('other-client');Membership.objects.create(user=extra,workspace='isolation',role='client')
-        self.assertEqual(self.post().status_code,400)
+        extra=get_user_model().objects.create_user('other-client')
+        with self.assertRaises(IntegrityError),transaction.atomic():Membership.objects.create(user=extra,workspace='isolation',role='client')
+        self.assertEqual(self.post().status_code,200)
     def test_scope_revocation_and_other_setter_are_denied(self):
         self.assertEqual(self.post(setter_id=self.admin.pk).status_code,403)
         self.setter_access.active=False;self.setter_access.save();self.assertEqual(self.post().status_code,403)

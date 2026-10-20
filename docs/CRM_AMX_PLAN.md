@@ -22,3 +22,8 @@ Isolation conserve temporairement core/ et config/ pour éviter de déplacer les
 ## Points à traiter avant production
 
 Migration explicite des comptes historiques, MFA du portail, invitation et récupération centrales, gestion des adhésions depuis le portail, révocation des sessions/tickets selon le besoin, limitation distribuée des tentatives, connecteurs externes, sauvegardes et déploiement. Ne pas interpréter les routes de socle comme des modules métiers terminés. Les identifiants d'intégration restent côté serveur. Les fonctions Phonetico seront implémentées après vérification de sa documentation ; aucun appel réel n'est déclenché par ce socle.
+
+
+## Règle client Isolation confirmée le 21 octobre 2026
+
+Isolation : un client unique permanent, pas seulement pour le lancement ; le client voit le setter responsable des visites et l’auteur des actions autorisées. Assurance : plusieurs conseillers possibles et identité du setter masquée. Le lot62 impose cette unicité dans la base centrale et les parcours de gestion des accès. La suspension ne permet pas de créer un autre client.
