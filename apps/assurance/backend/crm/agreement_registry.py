@@ -50,7 +50,26 @@ def registry(request):
     pager=PageNumberPagination();pager.page_size=25;rows=pager.paginate_queryset(qs,request)
     response=pager.get_paginated_response([{**output(row),'contact':{'id':row.contact_id,'name':row.contact.name},'document_count':row.document_count,'deadline_state':deadline_state(row,today,days),'days_to_end':(row.ends_on-today).days if row.ends_on else None} for row in rows])
     response.data['deadlines']={**counts,'as_of':today,'timezone':'UTC','horizon_days':days}
+    response.data['statistics']=statistics(qs,today,days)
     response['Cache-Control']='no-store';return response
+
+
+def statistics(qs,today,days):
+    """All filtered results, including the deadline filter, never the current page."""
+    conditions={
+        'mandate':Q(kind='mandate'),'contract':Q(kind='contract'),
+        'draft':Q(status='draft'),'tracking':Q(status='tracking'),'archived':Q(status='archived'),
+        'overdue':Q(status='tracking',ends_on__lt=today),
+        'upcoming':Q(status='tracking',ends_on__gte=today,ends_on__lte=today+timedelta(days=days)),
+        'undated':Q(status='tracking',ends_on__isnull=True),
+        'later':Q(status='tracking',ends_on__gt=today+timedelta(days=days)),
+        'not_tracked':~Q(status='tracking'),
+    }
+    totals=qs.aggregate(total=Count('pk',distinct=True),**{key:Count('pk',filter=condition,distinct=True) for key,condition in conditions.items()})
+    return {'total':totals['total'],'by_kind':{key:totals[key] for key in ('mandate','contract')},
+            'by_status':{key:totals[key] for key in ('draft','tracking','archived')},
+            'by_deadline':{key:totals[key] for key in ('overdue','upcoming','undated','later','not_tracked')},
+            'as_of':today,'timezone':'UTC','horizon_days':days}
 
 
 def deadline_counts(qs,today,days):

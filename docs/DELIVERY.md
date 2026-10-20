@@ -502,6 +502,16 @@ Sept tests d’export : toutes les pages et confidentialité, cohérence des fil
 
 Limites : export ponctuel des données au moment de la requête, pas un journal immuable ou une sauvegarde documentaire. Les filtres saisis peuvent différer de la dernière recherche affichée ; ce comportement est annoncé près du bouton. Pas d’export financier, de coordonnées ou de pièces binaires. Revue esthétique globale toujours différée.
 
+## Fonctionnalité 55 — statistiques administratives des mandats et contrats
+
+La liste centrale affiche une synthèse des résultats de la dernière recherche appliquée : nombre total, répartition Mandat/Contrat, répartition Brouillon/En suivi/Archivé et répartition des échéances (dépassée, proche, manquante, ultérieure, hors suivi). Les filtres du registre, y compris alerte et horizon 7/30/90 jours, s’appliquent intégralement ; toutes les pages sont comptées. Chaque répartition est exhaustive et exclusive, aucune multiplication des suivis par leurs documents. Brouillons et archivés sont Hors suivi ; les autres catégories concernent uniquement En suivi. Date de référence UTC affichée et bornes identiques aux alertes existantes.
+
+Calcul serveur en agrégats, mêmes droits administrateur Assurance et refus des autres rôles/espaces, aucune identité ou coordonnée dans les statistiques. Réponse du registre existante enrichie, sans nouvelle route ni migration. La synthèse est effacée pendant le chargement et en cas d’erreur, et actualisée par les commandes existantes de recherche/rafraîchissement et après modification de fiche. Les compteurs d’alerte préexistants restent explicitement calculés hors filtre d’alerte ; la nouvelle synthèse inclut ce filtre.
+
+Cinq tests ajoutés : totaux réconciliés et bornes UTC, filtres combinés/horizon, résultats vides/confidentialité, indépendance de la pagination et des jointures documentaires, droits/paramètres invalides. Suite Assurance, contrôle des migrations, typage/build et CI avant fusion. Aucune écriture, aucun appel ni accès fournisseur.
+
+Limites : photographie des états administratifs courants, sans historique temporel, conversion commerciale, valeur financière ou validation juridique. Les requêtes de lecture ne constituent pas un instantané transactionnel immuable en présence de modifications simultanées. Synthèse affichée uniquement dans le registre ; l’export Excel existant conserve ses lignes et sa feuille Périmètre sans nouvelle feuille statistique. Revue esthétique finale différée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
