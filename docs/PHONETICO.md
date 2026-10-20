@@ -44,3 +44,8 @@ Vérification réelle des droits/configuration pour l’annuaire, recette de lec
 Lors de tests expressément demandés par l’utilisateur, la fonction 343 a confirmé Martinien au poste 501 et Emery au poste 512. Des commandes 245 ciblées ont répondu HTTP 200 avec Success. L’utilisateur a confirmé la sonnerie et le décrochage sur Martinien puis le fonctionnement d’un appel externe demandé. Ce mode fait d’abord sonner le poste source ; aucun auto-answer demandé, aucun audio navigateur ou WebRTC démontré. Aucune relance automatique ou campagne activée. Numéros externes et identifiants de corrélation de recette non conservés dans Git.
 
 La relecture du détail d’appels 511 pour la journée a renvoyé HTTP 500. Les durées, résultats CDR et codes R/C/H restent donc non validés ; Success n’est pas assimilé à un décrochage distant. Ces tests manuels ne livrent pas encore un bouton d’appel dans le CRM ou un historique métier exploitable. Les commandes d’appel ont été limitées aux demandes explicites de cette séance ; aucun nouvel appel n’est autorisé par cette note.
+
+
+## API métier Assurance (lot 61)
+
+Le click-to-call Assurance est désormais implémenté côté serveur, désactivé par défaut : voir [ASSURANCE_CLICK_TO_CALL.md](ASSURANCE_CLICK_TO_CALL.md). Cette livraison remplace, pour Assurance seulement, les mentions historiques ci-dessus d’absence de commande métier 245. Aucun appel réel pendant ce lot. Raccrochage, historique CDR, bouton frontend, Isolation et WebRTC restent non livrés ; le diagnostic 511 HTTP500 demeure non résolu.

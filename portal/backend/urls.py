@@ -48,3 +48,5 @@ urlpatterns += [path('api/portal/workspaces/<str:workspace>/phone-extensions/<in
 
 from .identity.phone_cdr import schema as phone_cdr_schema
 urlpatterns += [path('api/portal/phone-cdr-schema/',phone_cdr_schema)]
+from .identity.phone_calls import calls as assurance_calls,status as assurance_call_status
+urlpatterns += [path('api/portal/assurance/calls/',assurance_calls),path('api/portal/assurance/calls/<uuid:request_id>/',assurance_call_status)]

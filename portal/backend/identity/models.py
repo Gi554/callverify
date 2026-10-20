@@ -6,6 +6,17 @@ ROLES = {
     'isolation': {'administrator','setter','client'},
 }
 
+class PhoneCallAttempt(models.Model):
+    request_id=models.UUIDField(primary_key=True)
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    contact_id=models.PositiveBigIntegerField()
+    extension=models.CharField(max_length=10)
+    fingerprint=models.CharField(max_length=64)
+    state=models.CharField(max_length=20,default='dispatching')
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+
+
 class Membership(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='workspace_memberships')
     workspace = models.CharField(max_length=20,choices=[(key,key) for key in ROLES])
