@@ -28,9 +28,7 @@ class Filters(serializers.Serializer):
             if first and last and first>last:raise serializers.ValidationError('Bornes de dates inversées')
         return data
 
-@api_view(['GET'])
-def registry(request):
-    administrator(request);serializer=Filters(data=request.query_params);serializer.is_valid(raise_exception=True);data=serializer.validated_data
+def filtered(data):
     qs=Agreement.objects.select_related('contact').annotate(document_count=Count('document_links',filter=Q(document_links__active=True))).order_by('-updated_at','-pk')
     if data.get('search'):qs=qs.filter(Q(reference__icontains=data['search'])|Q(contact__name__icontains=data['search']))
     for key in ('kind','status'):
@@ -43,6 +41,12 @@ def registry(request):
     counts=deadline_counts(qs,today,days)
     if data.get('deadline')=='upcoming':qs=qs.filter(status='tracking',ends_on__gte=today,ends_on__lte=today+timedelta(days=days)).order_by('ends_on','pk')
     elif data.get('deadline')=='overdue':qs=qs.filter(status='tracking',ends_on__lt=today).order_by('ends_on','pk')
+    return qs,today,days,counts
+
+@api_view(['GET'])
+def registry(request):
+    administrator(request);serializer=Filters(data=request.query_params);serializer.is_valid(raise_exception=True)
+    qs,today,days,counts=filtered(serializer.validated_data)
     pager=PageNumberPagination();pager.page_size=25;rows=pager.paginate_queryset(qs,request)
     response=pager.get_paginated_response([{**output(row),'contact':{'id':row.contact_id,'name':row.contact.name},'document_count':row.document_count,'deadline_state':deadline_state(row,today,days),'days_to_end':(row.ends_on-today).days if row.ends_on else None} for row in rows])
     response.data['deadlines']={**counts,'as_of':today,'timezone':'UTC','horizon_days':days}
