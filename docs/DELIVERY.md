@@ -512,6 +512,14 @@ Cinq tests ajoutés : totaux réconciliés et bornes UTC, filtres combinés/hori
 
 Limites : photographie des états administratifs courants, sans historique temporel, conversion commerciale, valeur financière ou validation juridique. Les requêtes de lecture ne constituent pas un instantané transactionnel immuable en présence de modifications simultanées. Synthèse affichée uniquement dans le registre ; l’export Excel existant conserve ses lignes et sa feuille Périmètre sans nouvelle feuille statistique. Revue esthétique finale différée.
 
+## Lot 56 — recette automatisée transversale du registre Assurance
+
+Deux scénarios de non-régression traversent les API réelles d’import CSV/XLSX, aperçu/confirmation/rejeu, recherche et correction sous verrou, création/rejeu du contrat, téléversement/rejeu et liaison d’une pièce interne, téléchargement, liste filtrée, statistiques, contenu Excel, archivage, historique, conflit de version et libération. Contrôle du maintien des documents privés et refus du registre/export au conseiller affecté. Données synthétiques en mémoire, base de test jetable, aucune purge de la base locale et aucune requête fournisseur autorisée par les scénarios.
+
+Aucun défaut reproduit sur ces deux parcours : ce lot ajoute une couverture transversale et ne prétend pas livrer une nouvelle fonction métier. Guide de recette reproductible dans docs/RECETTE_ASSURANCE_CONTRATS.md, avec commande et checklist navigateur. Suite Assurance et CI avant fusion. Aucune migration ni modification de comportement applicatif.
+
+Limites : API et contenu XLSX vérifiés automatiquement ; session centrale, clics, téléchargement natif et rendu visuel ne sont pas couverts par ces tests. La checklist navigateur reste à exécuter et la revue esthétique finale demeure différée. Aucune recette réelle Phonetico, OAuth ou SMTP réalisée dans ce lot.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
