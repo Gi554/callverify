@@ -18,6 +18,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from .models import Invitation,Membership,AccessAudit,ROLES
 from .management_api import require_admin,lock_admin,AccessInput,AccessPagination
+from .client_policy import available as client_available
 from .recovery import public_url,ResetThrottle
 
 def digest(token):return hashlib.sha256(token.encode()).hexdigest()
@@ -57,6 +58,7 @@ def invitations(request,workspace):
     try:
         with transaction.atomic():
             lock_admin(request.user,workspace);available(values['username'],values['email'])
+            client_available(workspace,values['role'])
             if Invitation.objects.filter(username__iexact=values['username']).exists():raise ValidationError('Identifiant déjà invité ; renvoyez ou révoquez l’invitation existante')
             row=Invitation.objects.create(**values,workspace=workspace,issuer=request.user,token_hash=digest(token),expires_at=timezone.now()+timedelta(hours=24))
             AccessAudit.objects.create(user=request.user,workspace=workspace,action='invitation.created',metadata={'invitation':str(row.pk),'role':row.role})
@@ -76,6 +78,7 @@ def invitation_action(request,workspace,pk):
         if row.accepted_at or row.revoked_at:return Response({'detail':'Invitation déjà clôturée'},status=409)
         if request.data['action']=='revoke':row.revoked_at=timezone.now()
         else:
+            client_available(workspace,row.role)
             available(row.username,row.email);row.issuer=request.user;row.token_hash=digest(token);row.expires_at=timezone.now()+timedelta(hours=24)
         row.save()
         AccessAudit.objects.create(user=request.user,workspace=workspace,action='invitation.'+request.data['action'],metadata={'invitation':str(row.pk)})
@@ -110,6 +113,7 @@ def accept(request):
             if row.accepted_at or row.revoked_at or row.expires_at<=timezone.now() or not secrets.compare_digest(row.token_hash,digest(values['token'])):raise ValidationError('Invitation invalide ou expirée')
             if not row.issuer.is_active or row.issuer_id!=initial.issuer_id:raise ValidationError('Invitation indisponible')
             available(row.username,row.email)
+            client_available(row.workspace,row.role)
             user=get_user_model()(username=row.username,email=row.email)
             try:validate_password(values['password'],user)
             except DjangoValidationError as error:raise ValidationError({'password':error.messages})

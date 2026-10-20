@@ -91,3 +91,8 @@ Les URL internes `/api/` du service historique sont exposées par le proxy CRM s
 6. Recettes fournisseurs, rétention et déploiement. Les blocages CDR/SMTP/OAuth ne doivent pas être présentés comme « API à coder » lorsque le connecteur existe déjà.
 
 Chaque tranche : contrôles, commit sur staging, push, PR et fusion main avant la suivante. La refonte GoHighLevel reste une phase distincte après validation des parcours métier ; aucune nouvelle interface décorative n’est requise par cet audit.
+
+
+## Correction de périmètre du 21 octobre 2026
+
+La précision utilisateur remplace « un seul client au lancement » : Isolation conserve **un client unique permanent**, avec identité du setter visible sur les visites et actions autorisées. Le lot62 garantit une seule adhésion centrale de rôle client, même suspendue, et refuse sa réaffectation de rôle dans les parcours administratifs. Plusieurs conseillers Assurance restent possibles avec masquage du setter. Les tests négatifs du service métier peuvent simuler un autre client pour contrôler les frontières ; ils ne représentent pas une fonction de création multi-client. Le stockage externe reste reporté.

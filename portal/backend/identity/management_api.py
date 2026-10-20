@@ -10,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied,ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .models import Membership,AccessAudit,ROLES
+from .client_policy import available as client_available,immutable as client_immutable
 
 def require_admin(user,workspace):
     if workspace not in ROLES or not Membership.objects.filter(user=user,workspace=workspace,role='administrator',active=True).exists():
@@ -84,6 +85,7 @@ def users(request,workspace):
     try:
         with transaction.atomic():
             lock_admin(request.user,workspace)
+            client_available(workspace,values['role'])
             if values['existing']:
                 user=get_user_model().objects.filter(username=values['username'],is_active=True).first()
                 if not user:raise ValidationError('Compte indisponible ou déjà associé à cet espace')
@@ -112,6 +114,8 @@ def update_access(request,workspace,pk):
         if row.user_id==request.user.pk:
             raise ValidationError('Modification de votre propre accès interdite')
         before={'role':row.role,'active':row.active}
+        client_immutable(row,serializer.validated_data.get('role',row.role))
+        client_available(workspace,serializer.validated_data.get('role',row.role),exclude=row.pk)
         for key,value in serializer.validated_data.items():setattr(row,key,value)
         row.save(update_fields=list(serializer.validated_data))
         AccessAudit.objects.create(user=request.user,action='membership.updated',workspace=workspace,
