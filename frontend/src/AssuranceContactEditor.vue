@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed,ref,onMounted,onBeforeUnmount} from 'vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
+import AssuranceAgreements from './AssuranceAgreements.vue'
 import AssuranceContactInteractions from './AssuranceContactInteractions.vue'
 import AssuranceContactNotes from './AssuranceContactNotes.vue'
 import AssuranceContactDocuments from './AssuranceContactDocuments.vue'
@@ -56,6 +57,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <AssuranceSharedFields v-if="role==='advisor'" :contact-id="current.id" :request="request"/>
 <AssuranceCustomValues v-if="canWrite" :contact-id="current.id" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 <section v-if="canWrite"><h3>Statut commercial : {{current.status_label||current.status}}</h3><p>Le statut ne remplace pas le compte rendu d’un rendez-vous ni l’enregistrement d’un contrat.</p><form v-if="pipeline" @submit.prevent="changeStatus"><label>Nouveau statut<select v-model="nextStatus" :disabled="!token||busy||saving"><option v-for="stage in pipeline.stages.filter((s:any)=>s.active)" :key="stage.key" :value="stage.key">{{stage.label}}</option></select></label><label>Motif du changement<textarea v-model="statusReason" maxlength="1000" required :disabled="!token||busy||saving"></textarea></label><button class="primary" :disabled="!token||busy||saving||nextStatus===current.status">Enregistrer le statut</button></form><button class="secondary" :disabled="busy||saving" @click="loadPipeline">Recharger les statuts disponibles</button></section>
+<AssuranceAgreements v-if="role==='administrator'" :contact-id="current.id" :contact-revision="current.revision" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 <AssuranceContactInteractions :contact-id="current.id" :request="request"/>
 <AssuranceContactNotes :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
 <AssuranceContactDocuments :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
