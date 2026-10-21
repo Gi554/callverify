@@ -616,6 +616,10 @@ Vérifications : TypeScript/build et tests du parcours d'appel ; recette Chrome 
 
 Limites : première tranche visuelle, pas une refonte terminée de tous les formulaires métier. Fiches détaillées, listes et agendas à harmoniser ensuite ; filtres/route active non persistés dans l'URL, données client de présentation à préparer séparément. MFA centrale, protection distribuée, compléments statistiques et cycle contractuel, CDR, recette des fournisseurs et production restent ouverts. Priorité suivante pour vendredi : listes de contacts et fiche dossier cohérentes avec cette structure.
 
+## Correction 68 — accès direct à l'espace unique
+
+Un compte avec un seul accès actif entre directement dans cet espace, y compris si la valeur landing reçue est absente. La barre latérale affiche uniquement le nom de cet espace, sans liste de choix ou proposition de l'autre métier. Le sélecteur n'est rendu que pour plusieurs espaces réellement autorisés par la session. Aucun rôle ni accès ajouté en base. Trois tests de rendu couvrent Assurance seule, Isolation seule et double accès. TypeScript et CI avant fusion. La refonte visuelle GoHighLevel demandée est la tranche suivante, pas déclarée livrée par cette correction.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
