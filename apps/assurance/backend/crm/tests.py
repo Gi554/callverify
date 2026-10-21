@@ -383,6 +383,9 @@ class ConcurrentAssignmentTests(TransactionTestCase):
 @skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
 class AppointmentTests(TestCase):
     def setUp(self):
+        from unittest.mock import patch
+        external=patch('apps.assurance.backend.crm.appointments.external_check',return_value={'result':'internal_only','checked_at':'2026-10-21T10:00:00+00:00'})
+        self.external_check=external.start();self.addCleanup(external.stop)
         from .models import AdvisorAssignment
         from django.utils import timezone
         from datetime import timedelta
@@ -503,6 +506,9 @@ class AppointmentTests(TestCase):
 @skipUnless(settings.ROOT_URLCONF=='apps.assurance.backend.urls','Service Assurance indépendant')
 class ConcurrentAppointmentTests(TransactionTestCase):
     def setUp(self):
+        from unittest.mock import patch
+        external=patch('apps.assurance.backend.crm.appointments.external_check',return_value={'result':'internal_only','checked_at':'2026-10-21T10:00:00+00:00'})
+        self.external_check=external.start();self.addCleanup(external.stop)
         from django.db import connection
         from .models import AdvisorAssignment
         from django.utils import timezone

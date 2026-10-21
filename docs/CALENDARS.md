@@ -53,3 +53,8 @@ Recette réelle après configuration OAuth : connecter son compte de test, activ
 - [Google création d’événement](https://developers.google.com/workspace/calendar/api/v3/reference/events/insert)
 - [Microsoft événement et transactionId](https://learn.microsoft.com/en-us/graph/api/resources/event?view=graph-rest-1.0)
 - [Microsoft recherche par propriété étendue](https://learn.microsoft.com/en-us/graph/api/singlevaluelegacyextendedproperty-get?view=graph-rest-1.0)
+
+
+## Confirmation Assurance (lot 64)
+
+Les réservations et déplacements Assurance contrôlent maintenant les occupations externes côté serveur : voir BOOKING_EXTERNAL_CALENDARS.md. Cette règle remplace les mentions historiques de réservation uniquement interne pour Assurance. Absence de connexion distinguée de la disponibilité confirmée ; Isolation reste à intégrer.

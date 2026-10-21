@@ -101,3 +101,8 @@ La précision utilisateur remplace « un seul client au lancement » : Isolation
 ## Actualisation du 21 octobre 2026 — lot 63
 
 Après le lot 61 Assurance, click-to-call backend Isolation livré pour le setter affecté, sous contrôle administratif et exclusions, désactivé par défaut. Contrat : ISOLATION_CLICK_TO_CALL.md. Cette actualisation ne transforme pas le module téléphonie complet en fonctionnalité terminée : boutons, audio navigateur, CDR et recette réelle restent absents. Prochaine tranche : disponibilité externe à la réservation.
+
+
+## Actualisation du 21 octobre 2026 — lot 64
+
+Le contrôle des occupations Google/Microsoft est intégré à la création et au déplacement Assurance, avec refus sur conflit ou échec d’agenda connecté. Aucun verrou fournisseur : contrôle instantané, agenda principal uniquement, recette réelle non effectuée. Isolation demeure la tranche suivante. Contrat et limites : BOOKING_EXTERNAL_CALENDARS.md.

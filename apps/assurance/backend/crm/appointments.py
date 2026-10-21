@@ -1,4 +1,4 @@
-"""Internal appointments. External calendars are explicitly not consulted yet."""
+"""Internal appointments with server-side external availability confirmation."""
 import hashlib
 import json
 from datetime import timedelta
@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from packages.access.assignments import verify_booking
 from .models import Appointment,AdvisorAssignment,AdvisorSchedule,Contact,BusinessAudit
 from .leases import Conflict,writer,held,LEASE_SECONDS
+from .calendar_checks import check as external_check
 
 class IntervalInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -31,7 +32,7 @@ class IntervalInput(serializers.Serializer):
             if raw is None or timezone.is_naive(raw):raise ValidationError({key:'Date ISO 8601 avec décalage horaire explicite requise'})
             if raw.astimezone(zone).utcoffset()!=raw.utcoffset():
                 raise ValidationError({key:'Décalage incompatible avec le fuseau à cette date'})
-        if data['ends_at']<=data['starts_at']:raise ValidationError('La fin doit être après le début')
+        if not timedelta(0)<data['ends_at']-data['starts_at']<=timedelta(days=31):raise ValidationError('Fenêtre positive limitée à 31 jours')
         return data
 
 class BookingInput(IntervalInput):
@@ -83,9 +84,9 @@ def prevent_overlap(contact_id,advisor_id,start,end,exclude=None):
 def snapshot(row):
     return {'starts_at':row.starts_at.isoformat(),'ends_at':row.ends_at.isoformat(),'timezone':row.timezone,'status':row.status,'revision':row.revision}
 
-def audit(user,row,action,before=None,reason=''):
+def audit(user,row,action,before=None,reason='',external=None):
     BusinessAudit.objects.create(actor_id=user.pk,object_id=row.pk,action=action,
-        metadata={'contact_id':row.contact_id,'setter_id':row.setter_id,'advisor_id':row.advisor_id,'before':before,'after':snapshot(row),'reason':reason})
+        metadata={'contact_id':row.contact_id,'setter_id':row.setter_id,'advisor_id':row.advisor_id,'before':before,'after':snapshot(row),'reason':reason,**({'external_check':external} if external else {})})
 
 def output(row,user):
     # No reverse relations, assignment IDs, free-text reasons or setter metadata
@@ -151,11 +152,13 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
                 calendar_lock(assignment.advisor_id)
                 if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
                 prevent_overlap(contact.pk,assignment.advisor_id,data['starts_at'],data['ends_at'])
+                external=external_check(request.user,assignment.advisor_id,data['starts_at'],data['ends_at'])
+                if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
                 row=Appointment.objects.create(request_id=data['request_id'],fingerprint=fingerprint,contact=contact,assignment=assignment,
                     setter_id=assignment.setter_id,setter_name=claims['setter']['name'],advisor_id=assignment.advisor_id,
                     advisor_name=claims['advisor']['name'],booked_by_id=request.user.pk,
                     **{key:data[key] for key in ('starts_at','ends_at','timezone')})
-                audit(request.user,row,'appointment.booked')
+                audit(request.user,row,'appointment.booked',external=external)
         except IntegrityError:
             existing=Appointment.objects.select_related('contact').filter(request_id=data['request_id']).first()
             if existing:return replay(existing)
@@ -175,10 +178,12 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
             if row.revision!=data['revision'] or row.status!='scheduled' or hasattr(row,'report'):raise Conflict('Rendez-vous modifié, annulé ou déjà renseigné')
             if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
             prevent_overlap(row.contact_id,row.advisor_id,data['starts_at'],data['ends_at'],row.pk)
+            external=external_check(request.user,row.advisor_id,data['starts_at'],data['ends_at'],row.pk)
+            if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
             before=snapshot(row)
             for key in ('starts_at','ends_at','timezone'):setattr(row,key,data[key])
             row.revision+=1;row.save(update_fields=['starts_at','ends_at','timezone','revision','updated_at'])
-            audit(request.user,row,'appointment.rescheduled',before,data['reason'])
+            audit(request.user,row,'appointment.rescheduled',before,data['reason'],external)
         return Response(output(row,request.user))
     @action(detail=True,methods=['post'])
     def cancel(self,request,pk=None):

@@ -582,6 +582,14 @@ Six tests core et cinq portail ajoutés. Suites locales : 174 core (17 réservé
 
 Limites : API backend sans nouveau bouton, audio navigateur, CDR, raccrochage ou historique client des appels. Accepté signifie commande reçue uniquement ; inconnue/en cours jamais relancée automatiquement. Contrôle distribué sans transaction atomique entre services ; examen manuel après interruption. Conservation et recette réelle à finaliser. Prochaine fonctionnalité : contrôle des disponibilités externes Google/Microsoft lors de la réservation.
 
+## Fonctionnalité 64 — contrôle externe à la confirmation Assurance
+
+Création et déplacement de rendez-vous consultent côté serveur l'agenda principal Google/Microsoft du conseiller avant confirmation, sans paramètre de contournement navigateur. Conflit externe 409, échec/connexion perdue 503 et rollback ; absence de connexion antérieure explicitement internal_only. Rejeu confirmé sans nouveau réseau ; annulation indépendante du fournisseur. Déplacement excluant uniquement son événement AMX marqué et synchronisé, ambiguïté refusée. Registre et audits ne publient aucun détail d'événement au setter. Configuration PORTAL_INTERNAL_URL, protocole signé et commandes dans docs/BOOKING_EXTERNAL_CALENDARS.md ; aucune migration.
+
+Quatre tests métier et cinq centraux ajoutés, ainsi qu'une concurrence PostgreSQL de renouvellement unique. Suites locales Assurance 276 tests (26 réservés PostgreSQL), portail 196 (10 réservés PostgreSQL) ; migrations cohérentes, CI requise avant fusion. Aucun fournisseur réel, appel ou interface nouvelle.
+
+Limites : photographie libre/occupée, pas de verrou externe ni garantie contre un changement après contrôle ; publication externe facultative distincte. Transactions ouvertes pendant lecture réseau ; limitation actuelle du portail locale et agrégée par IP, production à dimensionner et recette OAuth réelle à faire. Isolation non couverte par cette tranche, fonctionnalité suivante.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
