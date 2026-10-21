@@ -97,6 +97,14 @@ def calls(request,workspace='assurance'):
     row.refresh_from_db();return reply(row)
 
 @api_view(['GET'])
+def options(request,workspace='assurance'):
+    setter(request.user,workspace)
+    enabled=bool(settings.NEWT_CALLS_ENABLED and (workspace!='isolation' or settings.NEWT_ISOLATION_CALLS_ENABLED) and settings.NEWT_USERNAME and settings.NEWT_PASSWORD)
+    linked=PhoneExtension.objects.filter(user=request.user,extension__isnull=False).exists()
+    response=Response({'enabled':enabled,'post_associated':linked})
+    response['Cache-Control']='no-store';return response
+
+@api_view(['GET'])
 def status(request,request_id,workspace='assurance'):
     setter(request.user,workspace)
     return reply(get_object_or_404(PhoneCallAttempt,pk=request_id,user=request.user,workspace=workspace))

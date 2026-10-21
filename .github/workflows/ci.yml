@@ -85,5 +85,6 @@ jobs:
           node-version: '22'
       - run: corepack enable
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: node --test tests/call-action.test.mjs
       - run: pnpm exec vue-tsc --noEmit
       - run: pnpm exec vite build

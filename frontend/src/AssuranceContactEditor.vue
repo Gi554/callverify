@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {computed,ref,onMounted,onBeforeUnmount} from 'vue'
+import CallAction from './CallAction.vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import AssuranceAgreements from './AssuranceAgreements.vue'
 import AssuranceContactInteractions from './AssuranceContactInteractions.vue'
@@ -41,6 +42,15 @@ async function persist():Promise<boolean>{
 function schedule(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(()=>{void persist()},1200)}
 function activity(){lastActivity=Date.now()}
 function edited(){activity();schedule()}
+async function prepareCall(){
+ if(saveTimer)clearTimeout(saveTimer)
+ if(!(await persist())||!token.value||dirty.value)throw new Error('Enregistrez et prenez en charge la fiche avant l’appel.')
+}
+async function callIntent(id:string){
+ if(saveTimer)clearTimeout(saveTimer)
+ if(!(await persist())||!token.value||dirty.value)throw new Error('Enregistrez et prenez en charge la fiche avant l’appel.')
+ return props.request(endpoint+'call-intent/',{request_id:id,token:token.value,contact_revision:current.value.revision})
+}
 async function release(){if(saveTimer)clearTimeout(saveTimer);if(pendingSave&&!(await pendingSave))return false;if(dirty.value&&!(await persist()))return false;if(!token.value)return true;try{await props.request(endpoint+'lease/',{token:token.value},'DELETE');token.value='';await refreshLock();message.value='Fiche libérée.';return true}catch(e:any){fail(e);return false}}
 async function close(){busy.value=true;if(await release())emit('close');busy.value=false}
 async function pulse(){if(!token.value||busy.value||saving.value)return;if(Date.now()>=Date.parse(expires.value)){token.value='';message.value='Verrou expiré après inactivité. Reprenez la fiche pour continuer.';return}if(document.visibilityState!=='visible'||Date.now()-lastActivity>120000)return;try{const lease=await props.request(endpoint+'lease/',{token:token.value},'PATCH');expires.value=lease.expires_at}catch(e:any){fail(e)}}
@@ -52,6 +62,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <template>
 <section class="contact-editor" aria-label="Fiche contact" @pointerdown="activity" @keydown="activity"><button class="secondary" :disabled="busy||saving" @click="close">Fermer la fiche</button><h3>{{current.name||'Contact sans nom'}}</h3><p v-if="error" role="alert" class="error">{{error}}</p><p v-if="message" role="status">{{message}}</p>
 <template v-if="canWrite"><p>{{token?'Vous avez la prise en charge de cette fiche.':locked?(mine?'Fiche prise en charge dans une autre session de votre compte.':'Fiche prise en charge par un autre utilisateur. Lecture seule disponible.'):'Cette fiche est disponible.'}}</p><p v-if="expires" class="subtle">Expiration du verrou : {{new Date(expires).toLocaleTimeString('fr-FR')}}. Renouvellement pendant votre activité.</p><button v-if="!token" class="primary" :disabled="busy" @click="claim">Prendre en charge / actualiser</button><button v-else class="secondary" :disabled="busy||saving" @click="release">Enregistrer et libérer</button></template>
+<CallAction v-if="role==='setter'" workspace="assurance" :resource-id="current.id" :phone="current.phone" :portal="portal" :prepare="callIntent" :before-open="prepareCall" :disabled="!token||busy||saving"/>
 <form @submit.prevent="persist" @input="edited"><label>Nom<input v-model="draft.name" :readonly="!token||busy" maxlength="250"></label><label>Téléphone fourni<input v-model="draft.phone" :readonly="!token||busy" maxlength="250" required></label><label>E-mail fourni<input v-model="draft.email" :readonly="!token||busy" maxlength="254"></label><p>Statut : {{current.status_label||current.status}} · version {{current.revision}}</p><button v-if="token" class="primary" :disabled="busy||saving||!dirty">{{saving?'Enregistrement…':'Enregistrer maintenant'}}</button></form>
 <button v-if="!token&&dirty" class="secondary" @click="emit('close')">Fermer sans enregistrer les changements locaux</button><template v-if="role==='administrator'"><form class="unlock-form" @submit.prevent="unlock"><label>Motif du déverrouillage forcé<input v-model="reason" maxlength="1000" required></label><button class="secondary" :disabled="busy||saving||!!token||!reason.trim()">Déverrouiller la fiche</button></form><button class="secondary" @click="historyPage=1;loadHistory()">Consulter l’historique administrateur</button><div v-if="showHistory"><p v-if="!history.length">Aucune modification enregistrée.</p><article v-for="entry in history" :key="entry.id"><strong>{{entry.action}}</strong><small>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur interne {{entry.actor_id}}</small><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><div class="history-pages"><button class="secondary" :disabled="historyPage===1" @click="historyPage--;loadHistory()">Précédent</button><span>Page {{historyPage}}</span><button class="secondary" :disabled="historyPage*25>=historyCount" @click="historyPage++;loadHistory()">Suivant</button></div></div></template>
 <AssuranceSharedFields v-if="role==='advisor'" :contact-id="current.id" :request="request"/>

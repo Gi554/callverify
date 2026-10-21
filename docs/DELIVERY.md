@@ -598,6 +598,14 @@ Quatre tests métier Isolation et trois centraux ajoutés, ainsi qu'une concurre
 
 Limites communes au lot 64 : photographie sans verrou fournisseur, agenda principal, transactions ouvertes pendant réseau, quota local partagé par IP et dimensionnement à valider en production. Connexion autrefois établie mais perdue bloque, sans repli silencieux. Publication et recette réelle OAuth distinctes ; aucun module de synchronisation bidirectionnelle déclaré complet. Prochaine fonctionnalité : authentification multifacteur centrale, avant la limitation distribuée et les autres écarts de l'audit.
 
+## Fonctionnalité 66 — parcours d'appel depuis les fiches des deux espaces
+
+Bouton Appeler réservé aux setters dans la fiche Assurance sous prise en charge et les prospects Isolation attribués. Précontrôle central en lecture seule : activation et association de poste, sans numéro de poste ni secret exposé. Confirmation explicite du numéro et explication du rappel sur le poste Phonetico. Assurance enregistre la fiche avant confirmation ; changement ultérieur du numéro bloque l'envoi. Les API métier conservent tous leurs contrôles.
+
+UUID conservé dans la session de l'onglet avant émission, aucune preuve stockée. Après réponse ambiguë/interruption : consultation GET seule, aucun renvoi automatique ou nouveau bouton d'émission tant que l'état reste indéterminé/en cours. Statuts distincts et acceptation jamais présentée comme décrochage. Déconnexion normale nettoyant les références locales. Les flags restent désactivés et aucun appel réel n'est exécuté.
+
+Vérifications : test central des capacités et régression des appels (19 tests dont une concurrence PostgreSQL réservée CI), tests du composant avec transport simulé, TypeScript et build. Pas de recette réelle Phonetico ou de validation utilisateur du rendu final. Limites : références locales par onglet et fiche, pas de liste globale d'historique ni de rapprochement CDR ; une commande inconnue/absente doit être examinée côté opérateur, aucun déblocage automatique. Prochaine tranche : structure du front et navigation cohérente pour la présentation. MFA centrale, limitation distribuée, statistiques finales, recette des fournisseurs et production restent explicitement ouverts.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).

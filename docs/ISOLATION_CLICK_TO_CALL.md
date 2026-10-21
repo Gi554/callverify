@@ -54,3 +54,8 @@ Audit métier d'autorisation conservant identifiant et nom du setter, prospect, 
 ## Vérification
 
 Six tests métier : affectation/rôle/espace, source et révision, paramètres injectés, conformité/exclusion/téléphone, changement avant contrôle final, preuve expirée ou d'un autre espace. Cinq tests centraux : registre privé/idempotence, flags/rôle/espace, relecture ciblée, blocage sans réémission et délai partagé. Régression Assurance et suites core/portail exécutées ; concurrence centrale PostgreSQL existante et tests métier intégrés à la CI PostgreSQL. Tous les fournisseurs simulés. Aucun bouton frontend, historique CDR, raccrochage ou recette réelle des nouveaux endpoints livré.
+
+
+## Parcours depuis la fiche (lot 66)
+
+Bouton réservé au setter : confirmation explicite, précontrôle des flags/poste et UUID conservé dans la session de l’onglet. Consultation de la commande par GET après interruption ; aucun renvoi automatique. Le précontrôle GET /api/portal/<espace>/calls/options/ ne déclenche aucun appel. Aucun flag activé ou appel réel pendant la livraison. Les mentions historiques d’absence de bouton sont remplacées par ce parcours ; CDR, audio navigateur et recette fournisseur demeurent distincts.

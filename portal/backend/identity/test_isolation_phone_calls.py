@@ -48,3 +48,13 @@ class IsolationCallsTests(TestCase):
         proof=issue(self.user.pk,42,0,uuid4(),'15145550101',uuid4())
         self.assertEqual(self.client.post('/api/portal/assurance/calls/',{'proof':proof},format='json').status_code,409)
         self.assertEqual(self.provider.call_count,1)
+
+    def test_options_never_send_and_reveal_no_extension(self):
+        with override_settings(NEWT_ISOLATION_CALLS_ENABLED=False):
+            response=self.client.get(self.url+'options/')
+            self.assertEqual(response.status_code,200);self.assertEqual(response.data,{'enabled':False,'post_associated':True})
+            self.assertEqual(response['Cache-Control'],'no-store')
+        self.assertTrue(self.client.get(self.url+'options/').data['enabled'])
+        Membership.objects.filter(pk=self.membership.pk).update(role='client')
+        self.assertEqual(self.client.get(self.url+'options/').status_code,403)
+        self.provider.assert_not_called()
