@@ -167,3 +167,13 @@ class CalendarConcurrencyTests(TransactionTestCase):
         CalendarConnection.objects.create(user=self.user,workspace='assurance',provider='google',connected=True,payload=seal(TOKENS),expires_at=timezone.now())
         with patch('packages.calendar_connectors.providers.tokens',return_value=({'access':'next','refresh':'rotated'},3600)) as refresh,patch('packages.calendar_connectors.providers.busy',return_value=[]):
             self.assertEqual(self.race('/api/portal/calendar/assurance/busy/',{'starts_at':'2026-12-01T00:00:00Z','ends_at':'2026-12-02T00:00:00Z'}),[200,200]);self.assertEqual(refresh.call_count,1)
+
+    def test_concurrent_booking_checks_rotate_refresh_token_once(self):
+        from packages.access.calendar_checks import issue
+        actor=get_user_model().objects.create_user('booking-setter')
+        Membership.objects.create(user=actor,workspace='assurance',role='setter')
+        CalendarConnection.objects.create(user=self.user,workspace='assurance',provider='google',connected=True,payload=seal(TOKENS),expires_at=timezone.now())
+        start=timezone.now()+timedelta(days=2)
+        proof=issue(actor.pk,'setter',self.user.pk,start,start+timedelta(minutes=30))
+        with patch('packages.calendar_connectors.providers.tokens',return_value=({'access':'next','refresh':'rotated'},3600)) as refresh,patch('packages.calendar_connectors.providers.busy',return_value=[]):
+            self.assertEqual(self.race('/api/portal/internal/assurance/calendar-check/',{'proof':proof}),[200,200]);self.assertEqual(refresh.call_count,1)

@@ -23,3 +23,5 @@ if os.getenv('ASSURANCE_DB_HOST'):
         'PASSWORD':os.environ['ASSURANCE_DB_PASSWORD'],'PORT':os.getenv('ASSURANCE_DB_PORT','5432')}
 REST_FRAMEWORK={'DEFAULT_AUTHENTICATION_CLASSES':['apps.assurance.backend.crm.access.WorkspaceAuthentication'],
     'DEFAULT_PERMISSION_CLASSES':['rest_framework.permissions.IsAuthenticated'],'UNAUTHENTICATED_USER':None}
+
+PORTAL_INTERNAL_URL=os.getenv("PORTAL_INTERNAL_URL","http://127.0.0.1:8090" if DEBUG else "")
