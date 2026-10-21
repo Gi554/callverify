@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Administration : parcours des invitations
+
+Formulaire ouvert à la demande, annulation avec effacement des champs, rôles traduits, badges d’état et actions avec icônes et libellés accessibles. Actualisation, états vide/erreur/chargement et pagination bloquée pendant les requêtes. Les messages distinguent l’enregistrement de la mise en file d’envoi ; aucune garantie de réception n’est affichée. Aucun e-mail de recette envoyé. Revue visuelle et test réel d’envoi restant à effectuer. Prochaine reprise : attribution des postes téléphoniques.
+
 ## Administration : organisation des utilisateurs et accès
 
 Séparation en rubriques Utilisateurs, Invitations, Postes téléphoniques et Journal des accès. Une seule rubrique est montée à la fois ; les modules annexes ne sont plus chargés systématiquement sous la liste. Le sélecteur d’espace reste commun et limité aux espaces administrés. En-tête unique, barre de recherche, tableau et badges harmonisés. Création, association, modification des rôles et suspension conservent leurs contrôles existants. Les formulaires internes des invitations/postes et les autres paramètres restent à revoir ; la refonte globale de l’administration n’est pas déclarée terminée. Validation visuelle réelle restant à effectuer.
