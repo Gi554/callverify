@@ -620,6 +620,12 @@ Limites : première tranche visuelle, pas une refonte terminée de tous les form
 
 Un compte avec un seul accès actif entre directement dans cet espace, y compris si la valeur landing reçue est absente. La barre latérale affiche uniquement le nom de cet espace, sans liste de choix ou proposition de l'autre métier. Le sélecteur n'est rendu que pour plusieurs espaces réellement autorisés par la session. Aucun rôle ni accès ajouté en base. Trois tests de rendu couvrent Assurance seule, Isolation seule et double accès. TypeScript et CI avant fusion. La refonte visuelle GoHighLevel demandée est la tranche suivante, pas déclarée livrée par cette correction.
 
+## Fonctionnalité 69 — palette CRM et fiche Assurance en panneaux
+
+Reprise de la disposition à partir de la documentation publique HighLevel (fiche contact, panneaux informations/activité/actions), sans copier ses captures dans le produit. Palette connectée bleu ardoise et accents doux, suppression du grand bandeau décoratif du dashboard. Fiche Assurance : informations et qualification à gauche, interactions au centre, notes/documents/rendez-vous/contrats en onglets à droite selon le rôle. Les panneaux utilisent les composants et contrôles métier existants ; aucun message ou canal de conversation fictif ajouté. Liste masquée pendant la consultation du dossier et retour explicite. Onglets montés conservés pour ne pas perdre un brouillon lors du changement.
+
+TypeScript, six tests frontend et build réussis. Recette visuelle navigateur tentée sur instance synthétique : indisponible, contrôle local désactivé dans les réglages Work. Ne constitue donc pas une validation graphique finale. Isolation et formulaires imbriqués restent à harmoniser, aucune refonte exhaustive déclarée. Connexion CallVerify d'origine à restaurer séparément avec choix de profil selon la dernière clarification utilisateur. Aucun appel ni donnée active modifiée.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
