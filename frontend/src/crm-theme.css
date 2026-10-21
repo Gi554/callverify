@@ -84,3 +84,11 @@
 .crm-connected .crm-stage .amx-content>section>dl{padding:18px;background:#f8faff;border:1px solid #e3eaf4;border-radius:7px;font-size:12px}
 @media(max-width:720px){.crm-connected .crm-stage .amx-main{padding:20px 14px}.crm-connected .crm-stage .amx-content{padding:16px}.crm-connected .crm-stage .amx-content>.assurance-contacts{padding:16px}.crm-connected .crm-settings-page{padding:16px}.crm-connected .crm-settings-page fieldset{grid-template-columns:1fr}.crm-connected .crm-stage fieldset{display:grid;grid-template-columns:1fr}.crm-connected .crm-stage fieldset>label{flex:none}.crm-connected .crm-stage .contacts-toolbar form label{min-width:0;width:100%}.crm-connected .crm-stage .contacts-toolbar form{width:100%}.crm-connected .crm-stage .crm-prospect-detail{padding:14px}}
 @media(prefers-reduced-motion:reduce){.crm-connected *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Contacts owns its compact header, toolbar and full-width list. */
+.contacts-layout .crm-connected .crm-stage .amx-main{padding:0;max-width:none}
+.contacts-layout .crm-connected .crm-stage .amx-heading,
+.contacts-layout .crm-connected .crm-stage .amx-workspace>.card-header{display:none}
+.contacts-layout .crm-connected .crm-stage .amx-workspace{border:0;border-radius:0;box-shadow:none;margin:0}
+.contacts-layout .crm-connected .crm-stage .amx-content,
+.contacts-layout .crm-connected .crm-stage .amx-content>.assurance-contacts{padding:0}
