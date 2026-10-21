@@ -20,6 +20,10 @@ Vérifications : tests ciblés des droits administrateur/setter et de l’isolat
 
 Le shell CRM connecté reprend une disposition plus proche des références fournies : liseré bleu supérieur, navigation sombre plus dense, état actif contrasté et zone de travail gris bleuté. Ce socle s’applique sans modifier les routes métier ni les droits, et servira aux prochaines listes, tableaux et vues Kanban.
 
+## Ajustement d’interface — liste Contacts Isolation
+
+La liste Contacts Isolation utilise une barre de filtres compacte : recherche, responsable, statut commercial, rappels à échéance et actualisation. Les données et contrôles existants restent identiques ; cette livraison améliore leur lisibilité sur grand comme petit écran, avec les états de ligne et actions déjà disponibles.
+
 ## Fonctionnalité 1 — portail et accès aux espaces
 
 Livrable du présent lot : portail de développement /crm, connexion et déconnexion centrales, droits explicites par espace, entrée directe pour un seul espace et sélection pour les comptes multi-espaces. Les tickets sont signés, limités à deux minutes et propres à chaque audience. Les services Assurance et Isolation possèdent des bases séparées et vérifient leurs droits côté API. Assurance ne propose aucune route Twilio.
