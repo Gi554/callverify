@@ -15,6 +15,11 @@ class AdminUser(AbstractUser):
 
 class Campaign(models.Model):
     owner = models.ForeignKey(AdminUser, on_delete=models.PROTECT)
+    # Legacy CallVerify campaigns remain owned by a local administrator.  CRM
+    # campaigns have an explicit central workspace marker and are only exposed
+    # through the scoped Isolation qualification API.
+    portal_workspace = models.CharField(max_length=30, blank=True, db_index=True)
+    portal_owner_id = models.PositiveBigIntegerField(null=True, blank=True, db_index=True)
     name = models.CharField(max_length=200)
     purpose = models.TextField()
     source = models.CharField(max_length=250)
