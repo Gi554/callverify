@@ -590,6 +590,14 @@ Quatre tests métier et cinq centraux ajoutés, ainsi qu'une concurrence Postgre
 
 Limites : photographie libre/occupée, pas de verrou externe ni garantie contre un changement après contrôle ; publication externe facultative distincte. Transactions ouvertes pendant lecture réseau ; limitation actuelle du portail locale et agrégée par IP, production à dimensionner et recette OAuth réelle à faire. Isolation non couverte par cette tranche, fonctionnalité suivante.
 
+## Fonctionnalité 65 — contrôle externe à la confirmation Isolation
+
+Création et déplacement de visites contrôlent l'agenda principal Google/Microsoft du client unique, via preuve de service Isolation distincte d'Assurance. Attribution, versions et chevauchements internes restent contrôlés ; setter d'origine et auteur conservés. Refus externe ou échec : aucune visite ni révision de prospect modifiée. Rejeu confirmé et annulation sans réseau fournisseur ; déplacement excluant seulement son événement AMX vérifié. Contrôle interne explicitement indiqué si aucun compte externe n'a jamais été connecté. Transport partagé avec Assurance, clés/audiences, propriétaire et registres toujours séparés par espace.
+
+Quatre tests métier Isolation et trois centraux ajoutés, ainsi qu'une concurrence PostgreSQL dédiée au renouvellement de jeton. Suites locales : 178 core (17 réservés PostgreSQL), 200 portail (11 réservés PostgreSQL), 276 Assurance (26 réservés PostgreSQL). Migrations cohérentes et CI avant fusion. Aucun fournisseur réel, appel, changement esthétique ou nouvelle migration. Configuration et commandes : docs/ISOLATION_EXTERNAL_CALENDAR.md.
+
+Limites communes au lot 64 : photographie sans verrou fournisseur, agenda principal, transactions ouvertes pendant réseau, quota local partagé par IP et dimensionnement à valider en production. Connexion autrefois établie mais perdue bloque, sans repli silencieux. Publication et recette réelle OAuth distinctes ; aucun module de synchronisation bidirectionnelle déclaré complet. Prochaine fonctionnalité : authentification multifacteur centrale, avant la limitation distribuée et les autres écarts de l'audit.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).

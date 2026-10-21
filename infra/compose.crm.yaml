@@ -123,6 +123,7 @@ services:
         condition: service_healthy
   api:
     environment:
+      PORTAL_INTERNAL_URL: http://portal:8000
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1},api
       TRUST_PROXY: "true"
       ISOLATION_ACCESS_KEY: ${ISOLATION_ACCESS_KEY:?Set ISOLATION_ACCESS_KEY}

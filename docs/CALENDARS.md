@@ -58,3 +58,8 @@ Recette réelle après configuration OAuth : connecter son compte de test, activ
 ## Confirmation Assurance (lot 64)
 
 Les réservations et déplacements Assurance contrôlent maintenant les occupations externes côté serveur : voir BOOKING_EXTERNAL_CALENDARS.md. Cette règle remplace les mentions historiques de réservation uniquement interne pour Assurance. Absence de connexion distinguée de la disponibilité confirmée ; Isolation reste à intégrer.
+
+
+## Confirmation Isolation (lot 65)
+
+Le contrôle externe est également intégré aux visites du client Isolation unique, avec preuves et connexions séparées d’Assurance. Voir ISOLATION_EXTERNAL_CALENDAR.md pour les commandes et limites. Cette tranche remplace les mentions historiques de réservation Isolation exclusivement interne.
