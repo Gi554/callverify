@@ -103,8 +103,8 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
  <PortalRecovery v-else-if="ready&&recoveryOpen" :uid="resetUid" :token="resetToken" :request="portal" @close="closeRecovery"/>
  <template v-else-if="user">
   <div class="amx-heading"><div><p class="amx-eyebrow">{{workspace?title(workspace):'AMX CRM'}}</p><h1>{{passwordOpen?'Mon compte':managing?'Utilisateurs et accès':pageTitle}}</h1><p class="subtle">{{passwordOpen?'Gérez votre compte, vos sessions et vos agendas.':managing?'Organisez les accès de votre équipe.':workspace?'Votre activité, vos dossiers et vos prochaines actions.':'Choisissez votre espace pour commencer.'}}</p></div><button v-if="workspace&&!passwordOpen&&!managing" class="secondary" :disabled="busy" @click="refreshWorkspace"><RefreshCw :size="16"/>Actualiser</button></div>
-  <PortalPassword v-if="passwordOpen" :request="portal"/>
-  <PortalAccess v-else-if="managing" :spaces="user.admin_workspaces" :username="user.username" :request="portal"/>
+  <div v-if="passwordOpen" class="crm-settings-page"><PortalPassword :request="portal"/></div>
+  <PortalAccess class="crm-settings-page" v-else-if="managing" :spaces="user.admin_workspaces" :username="user.username" :request="portal"/>
   <template v-else>
    <div v-if="!workspace" class="amx-spaces"><button v-for="item in user.workspaces" :key="item.workspace" class="amx-space" @click="enter(item.workspace)"><span class="amx-space-icon"><ShieldCheck v-if="item.workspace==='assurance'" :size="27"/><Home v-else :size="27"/></span><h2>{{title(item.workspace)}}</h2><p>{{item.workspace==='assurance'?'Contacts, conseillers et suivi des rendez-vous.':'Prospects, rappels et suivi des visites.'}}</p><span class="amx-role">{{({administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client'} as Record<string,string>)[item.role]||item.role}}</span><span class="amx-open">Ouvrir mon espace<ArrowRight :size="18"/></span></button><p v-if="!user.workspaces.length">Aucun espace actif. Contactez votre administrateur.</p></div>
    <p v-if="busy" role="status">Chargement de votre espace…</p>

@@ -632,6 +632,14 @@ Décor SVG, fond crème, marque et formulaire de la connexion CallVerify d'origi
 
 Huit tests frontend couvrant notamment sélection/soumission/changement de profil et espace unique ; deux tests API de refus sans session et de connexion autorisée ajoutés. TypeScript/build et suite portail avant fusion. Contrôle graphique navigateur indisponible car désactivé dans Work : validation visuelle finale à faire, pas annoncée terminée. Aucune MFA fictive ajoutée au formulaire central ; la MFA centrale demeure à livrer. La connexion historique CallVerify reste inchangée à la racine. Suite : harmonisation de la liste et du suivi Isolation, puis revue utilisateur de la disposition et des couleurs.
 
+## Fonctionnalité 71 — harmonisation transversale des écrans métier
+
+Thème commun limité au CRM connecté : palette bleu ardoise, surfaces blanches, accents doux, typographie, formulaires, états de focus, boutons, tableaux, alertes, cartes, paramètres et documents cohérents. La connexion CallVerify crème/profils reste indépendante. Navigation mobile, champs et groupes de formulaires adaptatifs, défilement des tableaux conservés. Les modules existants réutilisent ces styles sans changer leurs appels serveur ou droits.
+
+Prospects Isolation présentés dans une table : identité, état technique avec libellé/badge, qualification commerciale distincte, setter, rappel et actions groupées à icônes accessibles. Aucun résultat technique recalculé ; indéterminé conservé. Client Isolation : dossiers également tabulaires, accès aux visites/résultats maintenu. Contacts Assurance avec repère visuel et ouverture de fiche au nom ; suivi prospect encadré. Libellés d'agenda actualisés pour refléter les contrôles Google/Microsoft déjà livrés, sans promettre une publication externe automatique.
+
+Vérifications : TypeScript, huit tests frontend et build réussis ; diff vérifié et CI avant fusion. Aucun appel réel, nouvelle donnée de présentation ou changement backend. Contrôle visuel navigateur encore indisponible (désactivé dans Work) : harmonisation du code livrée, validation esthétique et parcours réel de tous les rôles non déclarés terminés. Les agendas restent des listes fonctionnelles, pas une grille calendaire livrée. Prochaine étape : recette visuelle utilisateur et corrections ciblées avant la présentation, puis écarts métier/production déjà recensés.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
