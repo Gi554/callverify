@@ -606,6 +606,16 @@ UUID conservé dans la session de l'onglet avant émission, aucune preuve stock�
 
 Vérifications : test central des capacités et régression des appels (19 tests dont une concurrence PostgreSQL réservée CI), tests du composant avec transport simulé, TypeScript et build. Pas de recette réelle Phonetico ou de validation utilisateur du rendu final. Limites : références locales par onglet et fiche, pas de liste globale d'historique ni de rapprochement CDR ; une commande inconnue/absente doit être examinée côté opérateur, aucun déblocage automatique. Prochaine tranche : structure du front et navigation cohérente pour la présentation. MFA centrale, limitation distribuée, statistiques finales, recette des fournisseurs et production restent explicitement ouverts.
 
+## Fonctionnalité 67 — structure du front et vue d'ensemble communes
+
+Nouveau cadre CRM avec barre latérale par rôle, sélecteur des espaces autorisés, fil d'Ariane, compte et administration accessibles sans empiler les modules dans la page. Assurance : contacts, rendez-vous, tâches, statistiques, conseillers et administration selon les droits ; Isolation : dossiers, visites et statistiques, client unique conservé. Vue d'ensemble utilisant les compteurs métier existants, actions de navigation et trois prochains rendez-vous/visites lus depuis les API ; absence et échec distingués. Aucun graphique ou chiffre de démonstration dans le produit. Rappels/notifications déplacés sur le dashboard ; fonctions existantes accessibles depuis leurs pages.
+
+Fond clair, cartes blanches, accents olive et icônes cohérentes ; menu replié sur petit écran, tableaux défilants et retour en haut lors des changements de page. Réponses de chargement d'espace périmées ignorées pour éviter d'afficher une synthèse d'un autre espace après navigation rapide. Aucun changement de droits ou de données serveur. Imports Lookup Isolation historiques toujours séparés et signalés, pas présentés comme migrés.
+
+Vérifications : TypeScript/build et tests du parcours d'appel ; recette Chrome desktop et largeur 390 px sur serveur local séparé avec réponses synthétiques et mutations refusées. Navigation dashboard/contacts, changement Assurance vers Isolation et ouverture/fermeture du menu mobile observés. Captures de recette privées hors Git. Cette recette vérifie le rendu et le câblage, pas une nouvelle recette des API réelles ou de tous les rôles. CI avant fusion.
+
+Limites : première tranche visuelle, pas une refonte terminée de tous les formulaires métier. Fiches détaillées, listes et agendas à harmoniser ensuite ; filtres/route active non persistés dans l'URL, données client de présentation à préparer séparément. MFA centrale, protection distribuée, compléments statistiques et cycle contractuel, CDR, recette des fournisseurs et production restent ouverts. Priorité suivante pour vendredi : listes de contacts et fiche dossier cohérentes avec cette structure.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
