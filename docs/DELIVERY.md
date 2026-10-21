@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Refonte de la liste Contacts Assurance
+
+En-tête compact propre à Contacts, suppression des titres et cartes englobantes en double, onglet de liste, barre d’actions avec recherche et actualisation, compteur et tableau plus dense. Le filtre de statut passe dans un panneau latéral modal natif avec application explicite, annulation et retrait du filtre actif. Import et fiche contact restent accessibles avec leurs permissions existantes. Ce lot concerne Contacts Assurance, pas l’ensemble des écrans CRM. Validation visuelle dans le navigateur non réalisée : l’accès local au navigateur est désactivé dans les réglages Work.
+
 ## Vue Opportunités Assurance
 
 Tableau en colonnes suivant les statuts commerciaux configurés, y compris les étapes archivées. Recherche serveur commune, compteurs par étape et pagination indépendante de 25 contacts avec « Afficher plus ». Les cartes ouvrent la fiche existante : les changements de statut conservent sa prise en charge, sa justification et ses contrôles de version. Les permissions restent celles des contacts (dont le périmètre conseiller). Aucun montant, glisser-déposer ou changement automatique de statut. Les colonnes se chargent avec trois requêtes simultanées maximum et présentent leurs erreurs individuellement. Validation : typage et build frontend ; revue visuelle navigateur non réalisée.
