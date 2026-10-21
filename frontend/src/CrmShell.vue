@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {ref} from 'vue'
-import {Layers,ChevronDown,ChevronRight,LogOut,Menu,X,Settings2,Users,LayoutDashboard,ContactRound,CalendarDays,ListTodo,BarChart3,UserRoundCheck,Files} from 'lucide-vue-next'
+import {Layers,ChevronDown,ChevronRight,LogOut,Menu,X,Settings2,Users,LayoutDashboard,ContactRound,CalendarDays,ListTodo,BarChart3,UserRoundCheck,Files,ShieldCheck} from 'lucide-vue-next'
 defineProps<{username:string;workspace:string;role:string;spaces:{workspace:string;role:string}[];items:{id:string;label:string;icon:string}[];active:string;pageTitle:string;accountOpen:boolean;accessOpen:boolean;canManage:boolean}>()
 const emit=defineEmits<{workspace:[value:string];navigate:[value:string];account:[];access:[];logout:[]}>()
 const mobile=ref(false)
-const icons:Record<string,any>={overview:LayoutDashboard,contacts:ContactRound,appointments:CalendarDays,followups:ListTodo,statistics:BarChart3,assignments:UserRoundCheck,agreements:Files,fields:Settings2}
+const icons:Record<string,any>={overview:LayoutDashboard,contacts:ContactRound,appointments:CalendarDays,followups:ListTodo,statistics:BarChart3,assignments:UserRoundCheck,agreements:Files,fields:Settings2,qualification:ShieldCheck}
 const roles:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client'}
 function navigate(id:string){emit('navigate',id);mobile.value=false}
 </script>

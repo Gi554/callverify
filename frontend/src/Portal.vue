@@ -11,6 +11,7 @@ import PortalRecovery from './PortalRecovery.vue'
 import PortalInvitationAccept from './PortalInvitationAccept.vue'
 import IsolationWorkQueue from './IsolationWorkQueue.vue'
 import IsolationClient from './IsolationClient.vue'
+import IsolationQualification from './IsolationQualification.vue'
 import AssuranceContacts from './AssuranceContacts.vue'
 import AssuranceAgreementRegistry from './AssuranceAgreementRegistry.vue'
 import AssuranceAgreementAlerts from './AssuranceAgreementAlerts.vue'
@@ -83,7 +84,7 @@ const navigation=computed(()=>{
  if(workspace.value==='assurance'){
   if(role.value!=='advisor')items.push({id:'followups',label:'Tâches de suivi',icon:'followups'},{id:'statistics',label:'Statistiques',icon:'statistics'},{id:'assignments',label:role.value==='administrator'?'Affectations':'Mes conseillers',icon:'assignments'})
   if(role.value==='administrator')items.push({id:'agreements',label:'Mandats et contrats',icon:'agreements'},{id:'fields',label:'Paramètres métier',icon:'fields'})
- }else items.push({id:'statistics',label:'Statistiques',icon:'statistics'})
+ }else {items.push({id:'statistics',label:'Statistiques',icon:'statistics'});if(role.value==='administrator')items.push({id:'qualification',label:'Qualification',icon:'qualification'})}
  return items
 })
 const pageTitle=computed(()=>navigation.value.find(item=>item.id===activeModule.value)?.label||'Mes espaces')
@@ -124,10 +125,10 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
      </template>
      <template v-else>
       <IsolationStatistics v-if="isolationModule==='statistics'" :request="isolation"/>
+      <IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
       <IsolationVisits v-else-if="isolationModule==='appointments'" :role="role" :portal="portal" :request="isolation" @close="selectModule('overview')" @changed="refreshIsolation"/>
       <IsolationClient v-else-if="role==='client'" :portal="portal" :request="isolation"/>
       <IsolationWorkQueue v-else :role="role" :portal="portal" :request="isolation"/>
-      <details v-if="role==='administrator'&&isolationModule==='contacts'" class="crm-legacy-link"><summary>Imports, vérification Lookup et exports</summary><p>Ces outils restent dans CallVerify pendant la transition ; une connexion distincte est nécessaire.</p><a class="secondary" href="/">Ouvrir CallVerify<ArrowRight :size="16"/></a></details>
      </template>
     </div></section>
    </template>

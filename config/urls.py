@@ -8,11 +8,13 @@ from core.isolation_work import WorkViewSet,dashboard as workspace_dashboard
 from core.isolation_visits import IsolationVisitViewSet
 from core.isolation_client import ClientProspects,client_dashboard
 from core.isolation_statistics import statistics as isolation_statistics
+from core.isolation_qualification import QualificationViewSet
 
 router = DefaultRouter()
 router.register('work-queue',WorkViewSet,basename='isolation-work')
 router.register('visits',IsolationVisitViewSet,basename='isolation-visit')
 router.register('client-prospects',ClientProspects,basename='isolation-client-prospect')
+router.register('qualification',QualificationViewSet,basename='isolation-qualification')
 for prefix, view, name in [('campaigns',views.CampaignViewSet,'campaign'),('imports',views.ImportViewSet,'import'),
     ('prospects',views.ProspectViewSet,'prospect'),('lookups',views.LookupViewSet,'lookup'),
     ('exports',views.ExportViewSet,'export'),('consents',views.ConsentViewSet,'consent'),

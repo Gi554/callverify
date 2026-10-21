@@ -6,6 +6,16 @@ Une fonctionnalité est terminée après vérification, commit, push, PR et fusi
 
 - PR 4 : nombres Excel avec suffixe .0, première ligne sans en-tête, diagnostic des campagnes sans numéro exploitable, état de ligne principal, badges, exports et séparation du résultat Basic.
 
+## Fonctionnalité 37 — parcours Qualification intégré à Isolation
+
+Depuis l’espace Isolation du portail CRM, le rôle administrateur dispose désormais d’un unique parcours « Qualification » : création d’une liste, aperçu et mappage CSV/XLSX, confirmation de l’import, lancement explicite de Twilio Lookup, consultation des résultats techniques et demande d’un export Excel. Le lancement Lookup reste volontaire : l’import ne déclenche ni Lookup ni appel. Les setters restent limités à leur file de travail et ne peuvent ni créer une liste, ni importer, ni lancer Lookup, ni exporter.
+
+Les nouvelles campagnes portent un marquage serveur Isolation et un propriétaire central audité. Les campagnes de l’ancienne interface CallVerify, même présentes dans la même base technique, ne sont jamais retournées par les routes CRM de qualification. Le compte technique nécessaire à la compatibilité de la clé étrangère historique est désactivé, sans mot de passe utilisable ; l’identité centrale qui lance chaque opération est conservée dans l’audit. Le lien de transition vers la racine CallVerify a été retiré du CRM.
+
+Limites : la racine historique et ses routes restent présentes pour compatibilité des données existantes, mais ne font plus partie du parcours CRM. Lookup nécessite toujours ses identifiants et son activation serveur ; si ces paramètres manquent, aucune requête fournisseur n’est envoyée. L’export reprend les colonnes techniques existantes. Aucune campagne d’appel ni appel ne peut être lancé par ce module.
+
+Vérifications : tests ciblés des droits administrateur/setter et de l’isolation des campagnes historiques, suite Isolation existante, vérification des migrations, TypeScript, tests frontend et build Vite. La suite complète Core a également été lancée : les tests métier atteignent leur exécution, mais 30 tests de sauvegarde échouent dans ce bac à sable Windows car le système refuse l’écriture/suppression des répertoires temporaires ; ils ne concernent pas le parcours Qualification.
+
 ## Fonctionnalité 1 — portail et accès aux espaces
 
 Livrable du présent lot : portail de développement /crm, connexion et déconnexion centrales, droits explicites par espace, entrée directe pour un seul espace et sélection pour les comptes multi-espaces. Les tickets sont signés, limités à deux minutes et propres à chaque audience. Les services Assurance et Isolation possèdent des bases séparées et vérifient leurs droits côté API. Assurance ne propose aucune route Twilio.
