@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {ref,computed,onMounted} from 'vue'
+import PortalLogin from './PortalLogin.vue'
 import CrmShell from './CrmShell.vue'
 import CrmOverview from './CrmOverview.vue'
 import IsolationVisits from './IsolationVisits.vue'
@@ -55,10 +56,15 @@ async function enter(value:string){
  try{const data=await business(value==='isolation'?(user.value?.workspaces.find(m=>m.workspace==='isolation')?.role==='client'?'client-dashboard/':'workspace-dashboard/'):'dashboard/',undefined,undefined,value);if(version===workspaceVersion)summary.value=data}
  catch(e:any){if(version===workspaceVersion){error.value=e.message;summary.value=null}}finally{if(version===workspaceVersion)busy.value=false}
 }
-async function login(){
+async function login(credentials:{username:string;password:string;workspace:string}){
  busy.value=true;error.value=''
- try{user.value=await portal('login/',{username:username.value,password:password.value});password.value='';csrf='';if(user.value?.workspaces.length===1)await enter(user.value.workspaces[0]!.workspace);else if(user.value?.landing&&user.value.workspaces.some(item=>item.workspace===user.value!.landing))await enter(user.value.landing)}
- catch(e:any){error.value=e.message}finally{busy.value=false}
+ try{
+  const authenticated=await portal('login/',{username:credentials.username,password:credentials.password,workspace:credentials.workspace});csrf=''
+  if(!authenticated.workspaces.some((item:Membership)=>item.workspace===credentials.workspace)){
+   await portal('session/',{});csrf='';throw new Error('Votre compte n’a pas accès à ce profil. Choisissez votre espace autorisé.')
+  }
+  user.value=authenticated;await enter(credentials.workspace)
+ }catch(e:any){error.value=e.message}finally{credentials.password='';busy.value=false}
 }
 async function refreshWorkspace(){
  const target=workspace.value,version=++workspaceVersion
@@ -89,12 +95,12 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
 </script>
 <template>
  <div class="amx-root" :class="{'is-authenticated':!!user}">
- <CrmShell :username="user?.username||''" :workspace="workspace" :role="role" :spaces="user?.workspaces||[]" :items="navigation" :active="activeModule" :page-title="pageTitle" :account-open="passwordOpen" :access-open="managing" :can-manage="!!user?.admin_workspaces?.length" @workspace="enter" @navigate="selectModule" @account="openAccount" @access="openAccess" @logout="logout">
+ <PortalLogin v-if="ready&&!user&&!recoveryOpen&&!inviteId" :busy="busy" :error="error" @submit="login" @recover="recoveryOpen=true;error=''"/>
+ <CrmShell v-else :username="user?.username||''" :workspace="workspace" :role="role" :spaces="user?.workspaces||[]" :items="navigation" :active="activeModule" :page-title="pageTitle" :account-open="passwordOpen" :access-open="managing" :can-manage="!!user?.admin_workspaces?.length" @workspace="enter" @navigate="selectModule" @account="openAccount" @access="openAccess" @logout="logout">
  <main class="amx-main">
  <p v-if="calendarNotice" role="status">{{calendarNotice}}</p><p v-if="!ready" class="subtle">Chargement de votre espace…</p><p v-if="error" role="alert" class="error">{{error}}</p>
  <PortalInvitationAccept v-if="ready&&inviteId" :id="inviteId" :token="inviteToken" :request="portal" @close="inviteId='';inviteToken=''"/>
  <PortalRecovery v-else-if="ready&&recoveryOpen" :uid="resetUid" :token="resetToken" :request="portal" @close="closeRecovery"/>
- <section v-else-if="ready&&!user" class="amx-login"><div class="amx-symbol"><ShieldCheck :size="30"/></div><p class="amx-eyebrow">VOTRE ESPACE DE TRAVAIL</p><h1>Heureux de vous revoir.</h1><p class="subtle">Connectez-vous à votre espace AMX.</p><form @submit.prevent="login"><label>Identifiant<input v-model="username" autocomplete="username" required></label><label>Mot de passe<input v-model="password" type="password" autocomplete="current-password" required></label><button class="primary full-width" :disabled="busy">{{busy?'Connexion…':'Se connecter'}}<ArrowRight :size="18"/></button></form><button class="secondary" @click="recoveryOpen=true">Mot de passe oublié ?</button></section>
  <template v-else-if="user">
   <div class="amx-heading"><div><p class="amx-eyebrow">{{workspace?title(workspace):'AMX CRM'}}</p><h1>{{passwordOpen?'Mon compte':managing?'Utilisateurs et accès':pageTitle}}</h1><p class="subtle">{{passwordOpen?'Gérez votre compte, vos sessions et vos agendas.':managing?'Organisez les accès de votre équipe.':workspace?'Votre activité, vos dossiers et vos prochaines actions.':'Choisissez votre espace pour commencer.'}}</p></div><button v-if="workspace&&!passwordOpen&&!managing" class="secondary" :disabled="busy" @click="refreshWorkspace"><RefreshCw :size="16"/>Actualiser</button></div>
   <PortalPassword v-if="passwordOpen" :request="portal"/>
@@ -127,7 +133,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
    </template>
   </template>
  </template>
- </main></CrmShell><footer v-if="!user" class="amx-footer">AMX · Votre espace de travail.</footer>
+ </main></CrmShell><footer v-if="!user&&(recoveryOpen||inviteId)" class="amx-footer">AMX · Votre espace de travail.</footer>
  </div>
 </template>
 <style>

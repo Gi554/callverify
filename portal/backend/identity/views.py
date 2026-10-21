@@ -27,6 +27,12 @@ def sign_in(request):
     user=authenticate(request,username=request.data.get('username',''),password=request.data.get('password',''))
     if not user or not user.is_active:
         return Response({'detail':'Identifiants incorrects'},status=400)
+    workspace=request.data.get('workspace')
+    if workspace is not None:
+        if workspace not in ('assurance','isolation'):
+            return Response({'detail':'Profil inconnu'},status=400)
+        if not Membership.objects.filter(user=user,workspace=workspace,active=True).exists():
+            return Response({'detail':'Votre compte n’a pas accès à ce profil.'},status=403)
     login(request,user)
     from .authentication import SESSION_KEY,generation
     request.session[SESSION_KEY]=generation(user)
