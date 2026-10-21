@@ -75,3 +75,8 @@ Audit Assurance d’autorisation lié au dossier et à sa version, sans preuve/n
 Tests Assurance : source exclusivement issue de la fiche, non-altération des coordonnées, rôle/espace, lease/version, vérification finale, paramètres interdits et format non composable. Tests portail : poste du compte, flag, CSRF, idempotence, demande en cours/échec ambigu, relecture refusée, preuve expirée, cooldown, statut privé, authentification de la relecture. Adaptateur fournisseur : arguments fixes, corrélation, réponse inconnue et absence de retry/auto-answer. Test de concurrence réelle PostgreSQL : deux soumissions simultanées, une seule émission simulée.
 
 Tous les appels sont **simulés** dans ce lot. La recette manuelle antérieure de 245 ne vaut pas validation réelle de ces nouveaux endpoints. Aucun flag activé ni nouvel appel demandé par leur développement. Isolation, bouton frontend et historique CDR restent des tranches distinctes.
+
+
+## Parcours depuis la fiche (lot 66)
+
+Bouton réservé au setter : confirmation explicite, précontrôle des flags/poste et UUID conservé dans la session de l’onglet. Consultation de la commande par GET après interruption ; aucun renvoi automatique. Le précontrôle GET /api/portal/<espace>/calls/options/ ne déclenche aucun appel. Aucun flag activé ou appel réel pendant la livraison. Les mentions historiques d’absence de bouton sont remplacées par ce parcours ; CDR, audio navigateur et recette fournisseur demeurent distincts.

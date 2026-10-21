@@ -56,3 +56,6 @@ from .identity import booking_calendars
 urlpatterns += [path("api/portal/internal/assurance/calendar-check/",booking_calendars.availability)]
 
 urlpatterns += [path("api/portal/internal/isolation/calendar-check/",booking_calendars.availability,{"workspace":"isolation"})]
+
+from .identity.phone_calls import options as call_options
+urlpatterns += [path('api/portal/assurance/calls/options/',call_options),path('api/portal/isolation/calls/options/',call_options,{'workspace':'isolation'})]
