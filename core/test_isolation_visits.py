@@ -13,6 +13,8 @@ from .test_isolation_activity import assigned_fixture
 @override_settings(DEBUG=True,SECURE_SSL_REDIRECT=False)
 class IsolationVisitTests(TestCase):
     def setUp(self):
+        external=patch('core.isolation_visits.external_check',return_value={'result':'internal_only','checked_at':'2026-10-21T10:00:00+00:00'})
+        self.external_check=external.start();self.addCleanup(external.stop)
         self.prospect=assigned_fixture();self.client=APIClient();self.auth(21,'setter')
         self.start=(timezone.now()+timedelta(days=7)).replace(microsecond=0);self.end=self.start+timedelta(hours=1)
         self.request_id=uuid4();self.url='/api/visits/'
@@ -99,6 +101,8 @@ class IsolationVisitTests(TestCase):
 @override_settings(DEBUG=True,SECURE_SSL_REDIRECT=False)
 class IsolationVisitConcurrencyTests(TransactionTestCase):
     def setUp(self):
+        external=patch('core.isolation_visits.external_check',return_value={'result':'internal_only','checked_at':'2026-10-21T10:00:00+00:00'})
+        self.external_check=external.start();self.addCleanup(external.stop)
         from django.db import connection
         if connection.vendor!='postgresql':self.skipTest('Concurrence dans CI PostgreSQL')
         self.prospect=assigned_fixture();self.other=Prospect.objects.create(campaign=self.prospect.campaign,raw_phone='autre',assigned_setter_id=22)

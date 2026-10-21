@@ -42,7 +42,7 @@ class BookingCalendarTests(TestCase):
         user=Mock(pk=21,role='setter')
         response=Mock();response.__enter__=Mock(return_value=response);response.__exit__=Mock(return_value=False);response.status_code=200
         response.raw.read.return_value=json.dumps({'result':'free','checked_at':self.start.isoformat()}).encode()
-        with patch('apps.assurance.backend.crm.calendar_checks.requests.post',return_value=response) as post:
+        with patch('packages.calendar_connectors.booking.requests.post',return_value=response) as post:
             self.assertEqual(check(user,31,self.start,self.end,7)['result'],'free')
             claims=verify(post.call_args.kwargs['json']['proof']);self.assertEqual(claims['owner'],31);self.assertEqual(claims['source_id'],7)
             self.assertFalse(post.call_args.kwargs['allow_redirects'])

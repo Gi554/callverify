@@ -54,3 +54,5 @@ urlpatterns += [path('api/portal/isolation/calls/',assurance_calls,{'workspace':
 
 from .identity import booking_calendars
 urlpatterns += [path("api/portal/internal/assurance/calendar-check/",booking_calendars.availability)]
+
+urlpatterns += [path("api/portal/internal/isolation/calendar-check/",booking_calendars.availability,{"workspace":"isolation"})]

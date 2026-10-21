@@ -29,3 +29,8 @@ Une preuve de contrôle libre n'est pas remise au navigateur pour être réutili
 Tests : réservation/déplacement bloqués et annulés transactionnellement, rejouabilité de l'UUID après refus, idempotence après succès, absence de contrôle pour annulation, audit, transport signé/strict, Google/Microsoft occupé/libre, compte jamais connecté/déconnecté, expiration/rôles, fournisseur indisponible et exclusion d'un seul événement AMX vérifié. Concurrence PostgreSQL : deux contrôles renouvellent une seule fois le jeton expiré ; réservations internes concurrentes toujours sérialisées. Fournisseurs simulés exclusivement, aucune recette OAuth réelle ni nouvel appel téléphonique.
 
 Le contrôle lit une photographie de l'agenda principal, sans poser de verrou chez Google/Microsoft. Une modification externe juste après le contrôle peut encore créer un conflit. Les transactions internes restent ouvertes pendant la lecture réseau ; le client interservice attend au maximum 90 secondes d'inactivité réseau, sans retry ni redirection, et le serveur web peut interrompre plus tôt selon son timeout. Dimensionnement des workers, limitation distribuée, surveillance, recette fournisseur et éventuelles améliorations asynchrones restent nécessaires pour la production. Aucun détail d'agenda du conseiller n'est publié au setter. Isolation reste la prochaine tranche ; Calendly, interface finale et synchronisation bidirectionnelle restent reportés.
+
+
+## Extension Isolation (lot 65)
+
+La tranche Isolation a ensuite été livrée : ISOLATION_EXTERNAL_CALENDAR.md. Le transport commun et le protocole sont partagés, avec clés, signatures et connexions séparées par espace ; le propriétaire est le client Isolation unique. Les limites ci-dessus restent applicables aux deux espaces.

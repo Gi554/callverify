@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import timedelta
 from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
 from django.core import signing
 from django.db import transaction
@@ -17,6 +18,7 @@ from .models import Prospect,IsolationVisit,IsolationVisitCalendar,IsolationVisi
 from .isolation_work import VisitAuthentication,Pager,Conflict,visible
 from .isolation_client import ResultMixin,result_output
 from .isolation_sharing import SharingMixin
+from .calendar_checks import check as external_check
 
 class SlotInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -32,7 +34,7 @@ class SlotInput(serializers.Serializer):
             raw=parse_datetime(str(self.initial_data[key]))
             if raw is None or timezone.is_naive(raw):raise ValidationError('Date ISO 8601 avec décalage explicite requise')
             if raw.astimezone(zone).utcoffset()!=raw.utcoffset():raise ValidationError('Décalage incompatible avec le fuseau')
-        if data['ends_at']<=data['starts_at']:raise ValidationError('La fin doit suivre le début')
+        if not timedelta(0)<data['ends_at']-data['starts_at']<=timedelta(days=31):raise ValidationError('Fenêtre positive limitée à 31 jours')
         return data
 
 class BookingInput(SlotInput):
@@ -123,6 +125,8 @@ class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
                 raise
             if prospect.assigned_setter_id!=claims['setter']['id']:raise Conflict('Responsable modifié : rechargez')
             calendar(claims['client']['id']);available(prospect,claims['client']['id'],data)
+            external=external_check(request.user,claims['client']['id'],data['starts_at'],data['ends_at'])
+            if data['starts_at']<=timezone.now():raise ValidationError('Créneau futur requis')
             row,created=IsolationVisit.objects.get_or_create(request_id=data['request_id'],defaults={
                 'fingerprint':fingerprint,'prospect':prospect,'client_id':claims['client']['id'],'client_name':claims['client']['name'],
                 'setter_id':claims['setter']['id'],'setter_name':claims['setter']['name'],'booked_by_id':request.user.pk,
@@ -131,7 +135,7 @@ class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
                 transaction.set_rollback(True)
                 return replay(row)
             AuditEvent.objects.create(action='isolation.visit.booked',object_id=str(row.pk),metadata={'actor_portal_id':request.user.pk,
-                'prospect_id':prospect.pk,'setter_id':row.setter_id,'client_id':row.client_id,'after':snapshot(row)})
+                'prospect_id':prospect.pk,'setter_id':row.setter_id,'client_id':row.client_id,'after':snapshot(row),'external_check':external})
         return Response(output(row),status=201)
     def modify(self,request,cancel=False):
         if request.user.role=='client':raise PermissionDenied('Modification réservée aux setters et administrateurs')
@@ -142,16 +146,18 @@ class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
             calendar(original.client_id)
             row=IsolationVisit.objects.get(pk=original.pk)
             if row.revision!=data['revision'] or row.status!='scheduled' or row.starts_at<=timezone.now() or IsolationVisitResult.objects.filter(visit=row).exists():raise Conflict('Visite modifiée, annulée, renseignée ou déjà commencée')
-            before=snapshot(row)
+            before=snapshot(row);external=None
             if cancel:row.status='cancelled'
             else:
                 claims=proof(data,request.user,prospect)
                 if claims['client']['id']!=row.client_id:raise Conflict('Client de la visite différent de la configuration active')
                 available(prospect,row.client_id,data,exclude=row.pk)
+                external=external_check(request.user,row.client_id,data['starts_at'],data['ends_at'],row.pk)
+                if data['starts_at']<=timezone.now():raise ValidationError('Créneau futur requis')
                 for key in ('starts_at','ends_at','timezone'):setattr(row,key,data[key])
             row.revision+=1;row.save(update_fields=['starts_at','ends_at','timezone','status','revision'])
             AuditEvent.objects.create(action='isolation.visit.cancelled' if cancel else 'isolation.visit.rescheduled',object_id=str(row.pk),
-                metadata={'actor_portal_id':request.user.pk,'before':before,'after':snapshot(row),'reason':data['reason']})
+                metadata={'actor_portal_id':request.user.pk,'before':before,'after':snapshot(row),'reason':data['reason'],**({'external_check':external} if external else {})})
         return Response(output(row))
     @action(detail=True,methods=['post'])
     def reschedule(self,request,pk=None):return self.modify(request)

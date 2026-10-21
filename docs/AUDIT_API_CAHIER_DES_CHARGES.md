@@ -106,3 +106,8 @@ Après le lot 61 Assurance, click-to-call backend Isolation livré pour le sette
 ## Actualisation du 21 octobre 2026 — lot 64
 
 Le contrôle des occupations Google/Microsoft est intégré à la création et au déplacement Assurance, avec refus sur conflit ou échec d’agenda connecté. Aucun verrou fournisseur : contrôle instantané, agenda principal uniquement, recette réelle non effectuée. Isolation demeure la tranche suivante. Contrat et limites : BOOKING_EXTERNAL_CALENDARS.md.
+
+
+## Actualisation du 21 octobre 2026 — lot 65
+
+Le contrôle Google/Microsoft couvre maintenant les réservations et déplacements des deux espaces (Assurance lot 64, Isolation lot 65). Toujours une photographie de l’agenda principal, sans verrou fournisseur ni recette OAuth réelle. Client Isolation unique et auteurs préservés. Prochain écart prioritaire : MFA centrale ; limitation distribuée encore à livrer.

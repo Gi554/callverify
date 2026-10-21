@@ -100,3 +100,5 @@ if os.getenv('S3_BUCKET'):
             'default_acl':None, 'querystring_auth':True, 'file_overwrite':False,
             'object_parameters':{'ServerSideEncryption':'AES256'}}},
         'staticfiles': {'BACKEND':'django.contrib.staticfiles.storage.StaticFilesStorage'}}
+
+PORTAL_INTERNAL_URL=os.getenv("PORTAL_INTERNAL_URL","http://127.0.0.1:8090" if DEBUG else "")
