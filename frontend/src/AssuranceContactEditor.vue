@@ -10,6 +10,7 @@ import AssuranceCustomValues from './AssuranceCustomValues.vue'
 import AssuranceSharedFields from './AssuranceSharedFields.vue'
 const props=defineProps<{contact:any;role:string;portal:(path:string,body?:any)=>Promise<any>;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
 const emit=defineEmits<{close:[];changed:[]}>()
+const detailTab=ref('notes')
 const current=ref({...props.contact}),draft=ref({name:props.contact.name,phone:props.contact.phone,email:props.contact.email})
 const base=ref({...draft.value}),token=ref(''),expires=ref(''),locked=ref(false),mine=ref(false),busy=ref(false),saving=ref(false),error=ref(''),message=ref(''),reason=ref('')
 const history=ref<any[]>([]),historyPage=ref(1),historyCount=ref(0),showHistory=ref(false)
@@ -60,7 +61,11 @@ onMounted(async()=>{try{await refreshLock();if(canWrite.value)await loadPipeline
 onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulseTimer)clearInterval(pulseTimer);const activeToken=token.value;const finish=pendingSave||Promise.resolve(true);void finish.then(()=>{if(activeToken)return props.request(endpoint+'lease/',{token:activeToken},'DELETE')}).catch(()=>{})})
 </script>
 <template>
-<section class="contact-editor" aria-label="Fiche contact" @pointerdown="activity" @keydown="activity"><button class="secondary" :disabled="busy||saving" @click="close">Fermer la fiche</button><h3>{{current.name||'Contact sans nom'}}</h3><p v-if="error" role="alert" class="error">{{error}}</p><p v-if="message" role="status">{{message}}</p>
+<section class="contact-editor" aria-label="Fiche contact" @pointerdown="activity" @keydown="activity">
+ <header class="record-header"><button class="secondary" :disabled="busy||saving" @click="close">← Contacts</button><div><h3>{{current.name||'Contact sans nom'}}</h3><span>{{current.status_label||current.status}}</span></div><small>Dossier #{{current.id}}</small></header>
+ <p v-if="error" role="alert" class="error record-feedback">{{error}}</p><p v-if="message" role="status" class="record-feedback">{{message}}</p>
+ <div class="record-columns">
+  <aside class="record-information"><div class="record-panel-title">Informations du contact</div><div class="record-panel-body">
 <template v-if="canWrite"><p>{{token?'Vous avez la prise en charge de cette fiche.':locked?(mine?'Fiche prise en charge dans une autre session de votre compte.':'Fiche prise en charge par un autre utilisateur. Lecture seule disponible.'):'Cette fiche est disponible.'}}</p><p v-if="expires" class="subtle">Expiration du verrou : {{new Date(expires).toLocaleTimeString('fr-FR')}}. Renouvellement pendant votre activité.</p><button v-if="!token" class="primary" :disabled="busy" @click="claim">Prendre en charge / actualiser</button><button v-else class="secondary" :disabled="busy||saving" @click="release">Enregistrer et libérer</button></template>
 <CallAction v-if="role==='setter'" workspace="assurance" :resource-id="current.id" :phone="current.phone" :portal="portal" :prepare="callIntent" :before-open="prepareCall" :disabled="!token||busy||saving"/>
 <form @submit.prevent="persist" @input="edited"><label>Nom<input v-model="draft.name" :readonly="!token||busy" maxlength="250"></label><label>Téléphone fourni<input v-model="draft.phone" :readonly="!token||busy" maxlength="250" required></label><label>E-mail fourni<input v-model="draft.email" :readonly="!token||busy" maxlength="254"></label><p>Statut : {{current.status_label||current.status}} · version {{current.revision}}</p><button v-if="token" class="primary" :disabled="busy||saving||!dirty">{{saving?'Enregistrement…':'Enregistrer maintenant'}}</button></form>
@@ -68,13 +73,25 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <AssuranceSharedFields v-if="role==='advisor'" :contact-id="current.id" :request="request"/>
 <AssuranceCustomValues v-if="canWrite" :contact-id="current.id" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 <section v-if="canWrite"><h3>Statut commercial : {{current.status_label||current.status}}</h3><p>Le statut ne remplace pas le compte rendu d’un rendez-vous ni l’enregistrement d’un contrat.</p><form v-if="pipeline" @submit.prevent="changeStatus"><label>Nouveau statut<select v-model="nextStatus" :disabled="!token||busy||saving"><option v-for="stage in pipeline.stages.filter((s:any)=>s.active)" :key="stage.key" :value="stage.key">{{stage.label}}</option></select></label><label>Motif du changement<textarea v-model="statusReason" maxlength="1000" required :disabled="!token||busy||saving"></textarea></label><button class="primary" :disabled="!token||busy||saving||nextStatus===current.status">Enregistrer le statut</button></form><button class="secondary" :disabled="busy||saving" @click="loadPipeline">Recharger les statuts disponibles</button></section>
-<AssuranceAgreements v-if="role==='administrator'" :contact-id="current.id" :contact-revision="current.revision" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
-<AssuranceContactInteractions :contact-id="current.id" :request="request"/>
-<AssuranceContactNotes :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
-<AssuranceContactDocuments :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
-<AssuranceAppointments :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/>
+</div></aside>
+  <main class="record-timeline"><div class="record-panel-title">Activité du dossier</div><div class="record-panel-body"><AssuranceContactInteractions :contact-id="current.id" :request="request"/>
+</div></main>
+  <aside class="record-actions"><nav class="record-tabs" aria-label="Actions du dossier"><button :class="{active:detailTab==='notes'}" @click="detailTab='notes'">Notes</button><button :class="{active:detailTab==='documents'}" @click="detailTab='documents'">Documents</button><button :class="{active:detailTab==='appointments'}" @click="detailTab='appointments'">RDV</button><button v-if="role==='administrator'" :class="{active:detailTab==='agreements'}" @click="detailTab='agreements'">Contrats</button></nav><div class="record-panel-body">
+   <div v-show="detailTab==='notes'"><AssuranceContactNotes :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
+</div>
+   <div v-show="detailTab==='documents'"><AssuranceContactDocuments :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
+</div>
+   <div v-show="detailTab==='appointments'"><AssuranceAppointments :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/>
+</div>
+   <div v-if="role==='administrator'" v-show="detailTab==='agreements'"><AssuranceAgreements v-if="role==='administrator'" :contact-id="current.id" :contact-revision="current.revision" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
+</div>
+  </div></aside>
+ </div>
 </section>
 </template>
 <style scoped>
 .contact-editor{padding:24px;border:1px solid #dfe2ce;border-radius:16px;margin:24px 0;background:#f8f8f0}.contact-editor form{display:grid;gap:16px;margin:24px 0}.contact-editor input[readonly]{background:#f1f1e9;color:#727763}.contact-editor article{border-top:1px solid #ddd;padding:16px 0}.contact-editor small{display:block;margin-top:8px}.contact-editor pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.history-pages{display:flex;align-items:center;gap:12px}.contact-editor button:disabled{opacity:.5;cursor:not-allowed}
+
+.contact-editor{padding:0;background:#fff;border-radius:8px;margin:0;overflow:hidden}.record-header{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid #e2e5dd;background:#fff}.record-header>div{flex:1}.record-header h3{font-size:16px;margin:0 0 5px}.record-header span{font-size:11px;color:#3974b7}.record-header small{color:#64748b;font-size:11px}.record-feedback{margin:0;padding:12px 20px;background:#f6f7ef}.record-columns{display:grid;grid-template-columns:minmax(245px,.85fr) minmax(300px,1.15fr) minmax(280px,1fr);align-items:start}.record-information,.record-timeline,.record-actions{min-width:0;min-height:65vh}.record-information,.record-timeline{border-right:1px solid #e3e7dd}.record-panel-title{height:49px;display:flex;align-items:center;padding:0 18px;font-size:12px;font-weight:650;border-bottom:1px solid #e3e7dd}.record-panel-body{padding:18px}.record-tabs{display:flex;min-height:49px;border-bottom:1px solid #e3e7dd;overflow:auto}.record-tabs button{border:0;border-bottom:2px solid transparent;background:none;padding:14px 12px;color:#7c8572;font-size:11px;cursor:pointer}.record-tabs button.active{color:#2563a6;border-bottom-color:#2563a6;font-weight:650}.record-panel-body :deep(h3){font-size:14px!important;margin-top:0}.record-panel-body :deep(p){font-size:12px;line-height:1.6;color:#64748b}.record-panel-body :deep(form){display:grid;grid-template-columns:1fr;gap:12px;margin:18px 0}.record-panel-body :deep(fieldset){min-width:0;display:grid;gap:10px}.record-panel-body :deep(input),.record-panel-body :deep(select),.record-panel-body :deep(textarea){width:100%;font-size:12px;padding:10px;border-radius:6px}.record-panel-body :deep(button){font-size:11px;padding:9px 12px}.record-panel-body :deep(article){box-shadow:none;border-radius:6px;padding:12px}.record-panel-body :deep(label){font-size:11px}.record-panel-body :deep(table){min-width:560px}.record-panel-body :deep(section){min-width:0}.record-panel-body :deep(.table-scroll){overflow:auto}
+@media(max-width:1150px){.record-columns{grid-template-columns:280px minmax(0,1fr)}.record-actions{grid-column:1/-1;border-top:1px solid #e3e7dd;min-height:0}.record-timeline{border-right:0}.record-information{min-height:0}}@media(max-width:650px){.record-columns{display:block}.record-information,.record-timeline{border-right:0;border-bottom:1px solid #e3e7dd;min-height:0}.record-header{gap:10px;padding:12px}.record-header small{display:none}}
 </style>
