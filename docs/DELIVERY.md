@@ -16,6 +16,10 @@ Limites : la racine historique et ses routes restent présentes pour compatibili
 
 Vérifications : tests ciblés des droits administrateur/setter et de l’isolation des campagnes historiques, suite Isolation existante, vérification des migrations, TypeScript, tests frontend et build Vite. La suite complète Core a également été lancée : les tests métier atteignent leur exécution, mais 30 tests de sauvegarde échouent dans ce bac à sable Windows car le système refuse l’écriture/suppression des répertoires temporaires ; ils ne concernent pas le parcours Qualification.
 
+## Ajustement d’interface — socle CRM compact
+
+Le shell CRM connecté reprend une disposition plus proche des références fournies : liseré bleu supérieur, navigation sombre plus dense, état actif contrasté et zone de travail gris bleuté. Ce socle s’applique sans modifier les routes métier ni les droits, et servira aux prochaines listes, tableaux et vues Kanban.
+
 ## Fonctionnalité 1 — portail et accès aux espaces
 
 Livrable du présent lot : portail de développement /crm, connexion et déconnexion centrales, droits explicites par espace, entrée directe pour un seul espace et sélection pour les comptes multi-espaces. Les tickets sont signés, limités à deux minutes et propres à chaque audience. Les services Assurance et Isolation possèdent des bases séparées et vérifient leurs droits côté API. Assurance ne propose aucune route Twilio.
