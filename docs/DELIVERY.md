@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Refonte de l’écran Opportunités Assurance
+
+En-tête compact sans titres englobants en double, contexte Assurance et compteur global signalant les résultats partiels en cas d’erreur. Colonnes à défilement vertical indépendant dans un tableau à défilement horizontal accessible au clavier ; cartes compactes et ouverture de fiche protégée des clics simultanés. Recherche serveur et pagination par étape conservées. Aucun glisser-déposer ni appel ajouté. Revue visuelle réelle restant à effectuer, l’accès navigateur Work étant désactivé lors de cette livraison. À poursuivre : refonte de l’administration (utilisateurs, accès et paramètres), puis revue globale des écrans restants.
+
 ## Refonte de la liste Contacts Assurance
 
 En-tête compact propre à Contacts, suppression des titres et cartes englobantes en double, onglet de liste, barre d’actions avec recherche et actualisation, compteur et tableau plus dense. Le filtre de statut passe dans un panneau latéral modal natif avec application explicite, annulation et retrait du filtre actif. Import et fiche contact restent accessibles avec leurs permissions existantes. Ce lot concerne Contacts Assurance, pas l’ensemble des écrans CRM. Validation visuelle dans le navigateur non réalisée : l’accès local au navigateur est désactivé dans les réglages Work.
