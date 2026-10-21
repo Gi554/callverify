@@ -86,6 +86,8 @@
 @media(prefers-reduced-motion:reduce){.crm-connected *{scroll-behavior:auto!important;transition:none!important}}
 
 /* Contacts owns its compact header, toolbar and full-width list. */
+.crm-connected .crm-stage .amx-main:has(>.crm-settings-page.access-panel)>.amx-heading{display:none}
+.crm-connected .crm-stage .crm-settings-page.access-panel{padding:0;border:1px solid #e0e6ef;border-radius:8px;overflow:hidden}
 .contacts-layout .crm-connected .crm-stage .amx-main{padding:0;max-width:none}
 .contacts-layout .crm-connected .crm-stage .amx-heading,
 .contacts-layout .crm-connected .crm-stage .amx-workspace>.card-header{display:none}

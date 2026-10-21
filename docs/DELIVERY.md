@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Administration : organisation des utilisateurs et accès
+
+Séparation en rubriques Utilisateurs, Invitations, Postes téléphoniques et Journal des accès. Une seule rubrique est montée à la fois ; les modules annexes ne sont plus chargés systématiquement sous la liste. Le sélecteur d’espace reste commun et limité aux espaces administrés. En-tête unique, barre de recherche, tableau et badges harmonisés. Création, association, modification des rôles et suspension conservent leurs contrôles existants. Les formulaires internes des invitations/postes et les autres paramètres restent à revoir ; la refonte globale de l’administration n’est pas déclarée terminée. Validation visuelle réelle restant à effectuer.
+
 ## Refonte de l’écran Opportunités Assurance
 
 En-tête compact sans titres englobants en double, contexte Assurance et compteur global signalant les résultats partiels en cas d’erreur. Colonnes à défilement vertical indépendant dans un tableau à défilement horizontal accessible au clavier ; cartes compactes et ouverture de fiche protégée des clics simultanés. Recherche serveur et pagination par étape conservées. Aucun glisser-déposer ni appel ajouté. Revue visuelle réelle restant à effectuer, l’accès navigateur Work étant désactivé lors de cette livraison. À poursuivre : refonte de l’administration (utilisateurs, accès et paramètres), puis revue globale des écrans restants.
