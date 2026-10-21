@@ -626,6 +626,12 @@ Reprise de la disposition à partir de la documentation publique HighLevel (fich
 
 TypeScript, six tests frontend et build réussis. Recette visuelle navigateur tentée sur instance synthétique : indisponible, contrôle local désactivé dans les réglages Work. Ne constitue donc pas une validation graphique finale. Isolation et formulaires imbriqués restent à harmoniser, aucune refonte exhaustive déclarée. Connexion CallVerify d'origine à restaurer séparément avec choix de profil selon la dernière clarification utilisateur. Aucun appel ni donnée active modifiée.
 
+## Fonctionnalité 70 — connexion CallVerify et profils métier
+
+Décor SVG, fond crème, marque et formulaire de la connexion CallVerify d'origine repris pour le portail central. Choix Assurance/Isolation présenté en profils visuels avant les identifiants ; formulaire du profil sélectionné, retour aux profils et récupération centrale préservés. Ce choix public n'est pas une attribution : la connexion centrale contrôle l'adhésion active au profil demandé avant de créer la session (paramètre facultatif pour compatibilité). Après connexion, sélection de ce seul espace ; changement dans le CRM réservé aux comptes multi-accès. Aucun accès créé automatiquement. Les mots de passe sont effacés après soumission ou changement de profil, jamais persistés.
+
+Huit tests frontend couvrant notamment sélection/soumission/changement de profil et espace unique ; deux tests API de refus sans session et de connexion autorisée ajoutés. TypeScript/build et suite portail avant fusion. Contrôle graphique navigateur indisponible car désactivé dans Work : validation visuelle finale à faire, pas annoncée terminée. Aucune MFA fictive ajoutée au formulaire central ; la MFA centrale demeure à livrer. La connexion historique CallVerify reste inchangée à la racine. Suite : harmonisation de la liste et du suivi Isolation, puis revue utilisateur de la disposition et des couleurs.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
