@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Cadre de navigation Setter selon la référence utilisateur
+
+Barre blanche sur toute la largeur avec marque AMX, accès à la liste des prospects, raccourci vers les tâches et profil. Menu bleu nuit, sélection bleue, statistiques séparées ; menu mobile et choix d’espace dans le profil uniquement pour les comptes ayant plusieurs accès. Appels, conversations et aide sans page dédiée restent désactivés et explicités par leurs libellés. Aucun compteur fictif ni appel déclenché. Les interfaces des autres rôles et le contenu des pages ne sont pas refondus par ce lot. Connexion Setter et rendu desktop contrôlés dans le navigateur local ; typage, build et tests des espaces contrôlés. La suite attend la validation de l’utilisateur, page par page.
+
 ## Administration : parcours des invitations
 
 Formulaire ouvert à la demande, annulation avec effacement des champs, rôles traduits, badges d’état et actions avec icônes et libellés accessibles. Actualisation, états vide/erreur/chargement et pagination bloquée pendant les requêtes. Les messages distinguent l’enregistrement de la mise en file d’envoi ; aucune garantie de réception n’est affichée. Aucun e-mail de recette envoyé. Revue visuelle et test réel d’envoi restant à effectuer. Prochaine reprise : attribution des postes téléphoniques.
