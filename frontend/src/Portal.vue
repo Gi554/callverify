@@ -13,6 +13,7 @@ import IsolationWorkQueue from './IsolationWorkQueue.vue'
 import IsolationClient from './IsolationClient.vue'
 import IsolationQualification from './IsolationQualification.vue'
 import AssuranceContacts from './AssuranceContacts.vue'
+import AssurancePipeline from './AssurancePipeline.vue'
 import AssuranceAgreementRegistry from './AssuranceAgreementRegistry.vue'
 import AssuranceAgreementAlerts from './AssuranceAgreementAlerts.vue'
 import AssuranceAssignments from './AssuranceAssignments.vue'
@@ -82,6 +83,7 @@ const navigation=computed(()=>{
  if(!workspace.value)return []
  const items=[{id:'overview',label:'Vue d’ensemble',icon:'overview'},{id:'contacts',label:role.value==='client'?'Mes dossiers':'Contacts',icon:'contacts'},{id:'appointments',label:workspace.value==='assurance'?'Rendez-vous':'Visites',icon:'appointments'}]
  if(workspace.value==='assurance'){
+  items.push({id:'pipeline',label:'Opportunités',icon:'agreements'})
   if(role.value!=='advisor')items.push({id:'followups',label:'Tâches de suivi',icon:'followups'},{id:'statistics',label:'Statistiques',icon:'statistics'},{id:'assignments',label:role.value==='administrator'?'Affectations':'Mes conseillers',icon:'assignments'})
   if(role.value==='administrator')items.push({id:'agreements',label:'Mandats et contrats',icon:'agreements'},{id:'fields',label:'Paramètres métier',icon:'fields'})
  }else {items.push({id:'statistics',label:'Statistiques',icon:'statistics'});if(role.value==='administrator')items.push({id:'qualification',label:'Qualification',icon:'qualification'})}
@@ -116,6 +118,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
     <section v-else :key="workspace+activeModule+contentVersion" class="card amx-workspace"><div class="card-header"><h2>{{pageTitle}}</h2></div><div class="amx-content">
      <template v-if="workspace==='assurance'">
       <AssuranceContacts v-if="assuranceModule==='contacts'" :portal="portal" :request="assurance" :role="role" @imported="summary.contacts=$event"/>
+      <AssurancePipeline v-else-if="assuranceModule==='pipeline'" :portal="portal" :request="assurance" :role="role"/>
       <AssuranceAgreementRegistry v-else-if="assuranceModule==='agreements'&&role==='administrator'" :key="agreementDeadline" :initial-deadline="agreementDeadline" :request="assurance" :portal="portal" @changed="refreshAssurance"/>
       <AssuranceAssignments v-else-if="assuranceModule==='assignments'&&role!=='advisor'" :request="assurance" :portal="portal" :role="role"/>
       <AssuranceFollowUps v-else-if="assuranceModule==='followups'&&role!=='advisor'" :portal="portal" :role="role" :request="assurance" @changed="refreshAssurance"/>

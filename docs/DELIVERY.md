@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Vue Opportunités Assurance
+
+Tableau en colonnes suivant les statuts commerciaux configurés, y compris les étapes archivées. Recherche serveur commune, compteurs par étape et pagination indépendante de 25 contacts avec « Afficher plus ». Les cartes ouvrent la fiche existante : les changements de statut conservent sa prise en charge, sa justification et ses contrôles de version. Les permissions restent celles des contacts (dont le périmètre conseiller). Aucun montant, glisser-déposer ou changement automatique de statut. Les colonnes se chargent avec trois requêtes simultanées maximum et présentent leurs erreurs individuellement. Validation : typage et build frontend ; revue visuelle navigateur non réalisée.
+
 Une fonctionnalité est terminée après vérification, commit, push, PR et fusion dans main. Le cahier des charges métier est CRM_AMX_Cahier_des_charges.docx du 18 octobre 2026.
 
 ## Correctifs CallVerify livrés
