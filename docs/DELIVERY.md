@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Accueil Setter : cartes pastel et vue opérationnelle
+
+Refonte de l’accueil Setter Assurance et Isolation suivant la référence fournie : fond doux, grandes cartes pêche/bleu/lilas, commandes noires arrondies, raccourci violet et panneaux plus légers. Navigation AMX conservée. Les cartes ouvrent les prospects, les tâches/rappels et l’agenda. Les trois prochains rendez-vous disponibles sont affichés avec date, fuseau et statut ; les rappels et notifications restent accessibles dans leur volet dépliable.
+
+Assurance : graphique alimenté par l’API de statistiques existante, sur les 30 derniers jours selon la date du rendez-vous en UTC, avec volumes effectués/non effectués/annulés/à venir et nombre de comptes rendus. Aucune tendance, mesure IA ou donnée inventée. Les rendez-vous passés sans compte rendu ne sont pas assimilés à des rendez-vous effectués. Isolation conserve ses indicateurs disponibles et son agenda sans graphique Assurance. Chargement, absence de données et erreurs avec relance sont distingués.
+
+Validation : typage Vue et build production, contrôle visuel bureau et mobile sur le compte Setter local. Aucun appel, rendez-vous ou message réel envoyé. Les accueils administrateur/conseiller/client ne sont pas modifiés. La recette métier globale et la reprise des autres pages restent à réaliser suivant les retours de l’utilisateur.
+
 ## Panneau latéral commun et fiche prospect guidée
 
 Composant SidePanel réutilisable pour les futures fiches/formulaires : ouverture à droite, contexte de page visible, en-tête et actions fixes, fermeture contrôlée et Échap protégé pendant les opérations, défilement interne, format mobile et animation réduite selon les préférences. La fiche prospect utilise trois onglets Coordonnées, Qualification et Rendez-vous ; les saisies restent montées pendant les changements d’onglet. Les champs complémentaires vides et l’historique de rendez-vous vide ne prennent plus de place. Sans conseiller attribué, un encart remplace le formulaire de réservation inutilisable. Une fermeture avec note, document ou qualification non enregistrés propose de rester ou d’abandonner ces saisies.
