@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Pilotage Assurance (1/4) — refonte UX/UI des statistiques
+
+Écran Statistiques (administrateur et « Mes statistiques » du setter) repensé sans changer les calculs ni l’API : barre d’outils avec raccourcis de période (7 jours, 30 jours, ce mois, mois dernier), dates libres et Calculer, exports Excel/CSV regroupés à droite ; ligne de contexte (période, périmètre, heure de calcul) ; quatre cartes clés (Rendez-vous avec annulés et à venir, Taux effectué avec jauge, Absences déclarées, Comptes rendus manquants mis en évidence) et indicateurs secondaires en pastilles ; détail par setter allégé (identifiant technique retiré, « dont N absents », badge orange des comptes rendus manquants, jauge du taux) ; méthodologie et réserves regroupées dans « Comment sont calculés ces chiffres ? ». Intitulés de colonnes disponibles pour l’affichage en cartes sur téléphone.
+
+Validation : trois tests (cartes et détail équipe, raccourci de période qui recalcule, setter sans tableau d’équipe) ; démo `admin.demo` à 1 440 px. 74 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : dates toujours en jours UTC (API inchangée) ; pas de graphique d’évolution dans le temps. Affectations, Mandats et contrats, Paramètres métier : lots suivants.
+
 ## Setter Assurance — retrait d’Opportunités
 
 Le module Opportunités n’apparaît plus dans le menu du setter Assurance (Accueil, Prospects, Rendez-vous, Tâches, Mes conseillers, Appels, Mes statistiques). Il reste disponible pour l’administrateur. Les statuts du pipeline restent utilisés par le tableau des prospects du setter.
