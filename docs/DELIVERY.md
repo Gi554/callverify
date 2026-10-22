@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Calendrier mensuel Setter Assurance et Isolation
+
+La page Rendez-vous/Visites Setter reprend la référence fournie : grille lundi-dimanche, navigation mensuelle, retour à aujourd’hui, repères corail, cartes pastel, recherche locale, filtre de statut et choix du fuseau canadien. Un clic sur un événement ouvre son détail dans le panneau commun à droite ; au-delà de trois événements par jour, « autres » ouvre la liste complète. Les reports/annulations continuent d’utiliser les commandes existantes, avec motif, révision et contrôles d’accès. Le report Assurance dispose de champs de date/heure locale et refuse les horaires ambigus ou inexistants. Le bouton Réserver guide vers la fiche prospect pour conserver le choix du conseiller et les contrôles métier.
+
+Les API Assurance et Isolation acceptent une fenêtre de chevauchement bornée à 62 jours avec instants explicites. Le calendrier charge toutes les pages du créneau affiché ; une erreur n’est pas présentée comme un calendrier partiel complet. Une ancienne réponse ne remplace pas le mois courant. Les événements de plusieurs jours et ceux se terminant à minuit sont répartis selon le fuseau affiché. Les périmètres de visibilité restent appliqués avant filtrage.
+
+Validation : 15 tests de rendez-vous Assurance, 12 de visites Isolation et 8 tests frontend (dates, heure d’été/hiver, chevauchements, chargement de 60 événements paginés, réponse périmée, erreur et panneau latéral), typage Vue, build production. Revue navigateur Assurance/Isolation, mois suivant/aujourd’hui, journée vide, entrée de réservation et présentation mobile. Aucun appel ni rendez-vous réel créé. Le compte de revue n’a pas de rendez-vous ; la répartition des événements et leur pagination sont couvertes par les données synthétiques des tests, pas par une réservation de recette.
+
+Limites : ce nouveau calendrier concerne le rôle Setter ; les parcours administrateur, conseiller et client restent conservés. Il affiche les rendez-vous internes, sans prétendre afficher les occupations externes Google/Microsoft ; leur contrôle reste celui de la réservation existante. Recherche limitée au créneau chargé. Pas de déplacement par glisser-déposer. La réservation complète depuis le calendrier reste orientée vers la fiche prospect ; recette externe et autres pages à revoir avec l’utilisateur.
+
 ## Accueil Setter : cartes pastel et vue opérationnelle
 
 Refonte de l’accueil Setter Assurance et Isolation suivant la référence fournie : fond doux, grandes cartes pêche/bleu/lilas, commandes noires arrondies, raccourci violet et panneaux plus légers. Navigation AMX conservée. Les cartes ouvrent les prospects, les tâches/rappels et l’agenda. Les trois prochains rendez-vous disponibles sont affichés avec date, fuseau et statut ; les rappels et notifications restent accessibles dans leur volet dépliable.

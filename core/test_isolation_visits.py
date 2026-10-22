@@ -23,6 +23,23 @@ class IsolationVisitTests(TestCase):
     def payload(self,**changes):return {'prospect_id':self.prospect.pk,'request_id':str(self.request_id),'revision':0,'proof':self.proof(),
         'starts_at':self.start.isoformat(),'ends_at':self.end.isoformat(),'timezone':'UTC',**changes}
     def book(self,**changes):return self.client.post(self.url,self.payload(**changes),format='json')
+    def test_calendar_window_overlap_boundaries_and_visibility(self):
+        row=self.book();self.assertEqual(row.status_code,201,row.data)
+        inside={'ends_after':(self.start+timedelta(minutes=5)).isoformat(),'starts_before':(self.end-timedelta(minutes=5)).isoformat()}
+        self.assertEqual(self.client.get(self.url,inside).data['count'],1)
+        self.assertEqual(self.client.get(self.url,{'ends_after':self.end.isoformat(),'starts_before':(self.end+timedelta(days=1)).isoformat()}).data['count'],0)
+        self.assertEqual(self.client.get(self.url,{'ends_after':(self.start-timedelta(days=1)).isoformat(),'starts_before':self.start.isoformat()}).data['count'],0)
+        self.auth(22,'setter')
+        self.assertEqual(self.client.get(self.url,inside).data['count'],0)
+
+    def test_calendar_window_rejects_invalid_or_unbounded_ranges(self):
+        for params in ({'ends_after':self.start.isoformat()},
+                       {'ends_after':self.start.replace(tzinfo=None).isoformat(),'starts_before':self.end.isoformat()},
+                       {'ends_after':'invalid','starts_before':self.end.isoformat()},
+                       {'ends_after':self.end.isoformat(),'starts_before':self.start.isoformat()},
+                       {'ends_after':self.start.isoformat(),'starts_before':(self.start+timedelta(days=63)).isoformat()}):
+            self.assertEqual(self.client.get(self.url,params).status_code,400,params)
+
     def test_booking_retry_and_original_participants(self):
         first=self.book();self.assertEqual(first.status_code,201,first.data)
         self.assertEqual(first.data['calendar'],'internal');self.assertEqual(first.data['original_setter']['id'],21)

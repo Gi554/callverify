@@ -97,3 +97,5 @@
 .contacts-layout .crm-connected .crm-stage .amx-workspace{border:0;border-radius:0;box-shadow:none;margin:0}
 .contacts-layout .crm-connected .crm-stage .amx-content,
 .contacts-layout .crm-connected .crm-stage .amx-content>.assurance-contacts{padding:0}
+
+.calendar-layout .crm-connected .crm-stage .amx-main{padding:0;background:#f5f5f8}.calendar-layout .amx-main>.amx-heading,.calendar-layout .amx-workspace>.card-header{display:none}.calendar-layout .crm-connected .crm-stage .amx-workspace{border:0!important;box-shadow:none!important;margin:0!important;border-radius:0!important;background:transparent!important;padding:0!important}.calendar-layout .crm-connected .crm-stage .amx-workspace>.amx-content{padding:0!important}
