@@ -205,6 +205,42 @@ class IsolationVisitViewSet(
     def retrieve(self, request, pk=None):
         return Response(output(self.get_object()))
 
+    @action(detail=False, methods=['get'])
+    def availability(self, request):
+        """Busy CRM intervals before booking; the client's external calendar stays checked at booking."""
+        if request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied('Disponibilités réservées aux setters et administrateurs')
+        prospect_id = request.query_params.get('prospect_id', '')
+        if not prospect_id.isdigit():
+            raise ValidationError('Prospect invalide')
+        prospect = get_object_or_404(visible(request.user), pk=int(prospect_id))
+        start = parse_datetime(request.query_params.get('start', ''))
+        end = parse_datetime(request.query_params.get('end', ''))
+        if not start or not end or start.tzinfo is None or end.tzinfo is None:
+            raise ValidationError('Période invalide : dates ISO 8601 avec décalage attendues')
+        if not start < end <= start + timedelta(days=7):
+            raise ValidationError('Période invalide : sept jours au maximum')
+        # Isolation has a single client (enforced by the portal): every scheduled visit occupies it.
+        rows = (
+            IsolationVisit.objects.filter(status='scheduled', starts_at__lt=end, ends_at__gt=start)
+            .order_by('starts_at', 'pk')
+            .values('starts_at', 'ends_at', 'prospect_id')
+        )
+        # Times only: other prospects' identities are never exposed.
+        return Response(
+            {
+                'busy': [
+                    {
+                        'starts_at': row['starts_at'],
+                        'ends_at': row['ends_at'],
+                        'reason': 'prospect' if row['prospect_id'] == prospect.pk else 'client',
+                    }
+                    for row in rows
+                ],
+                'external_calendar': 'checked_at_booking',
+            }
+        )
+
     def create(self, request):
         if request.user.role == 'client':
             raise PermissionDenied('Réservation réservée aux setters et administrateurs')

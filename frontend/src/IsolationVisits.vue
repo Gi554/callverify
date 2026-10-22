@@ -4,6 +4,7 @@ import IsolationCloserAssignment from './IsolationCloserAssignment.vue';
 import IsolationC2 from './IsolationC2.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
 import { bookingInterval } from './booking-time';
+import AvailabilitySlots from './AvailabilitySlots.vue';
 import IsolationVisitResult from './IsolationVisitResult.vue';
 import IsolationSharedActivities from './IsolationSharedActivities.vue';
 import IsolationVisitSupplements from './IsolationVisitSupplements.vue';
@@ -94,6 +95,10 @@ async function load() {
   );
   rows.value = data.results;
   count.value = data.count;
+}
+function loadBusy(start: string, end: string) {
+  const query = new URLSearchParams({ prospect_id: String(prospect.value.id), start, end });
+  return props.request(`visits/availability/?${query}`).then((data: any) => data.busy);
 }
 async function attest(row: any) {
   if (!row.assigned_setter)
@@ -201,7 +206,17 @@ onMounted(() => run(load));
       <fieldset :disabled="busy || c2Busy">
         <legend>{{ editing ? 'Reporter une visite' : 'Réserver une visite' }}</legend>
         <template v-if="!editing"
-          ><label
+          ><AvailabilitySlots
+            v-if="prospect"
+            v-model="localStart"
+            :zone="zone"
+            :duration="Number(duration)"
+            :disabled="busy || c2Busy"
+            :load="loadBusy"
+            :load-key="String(prospect.id)"
+            label="Disponibilités du client Isolation"
+            note="L’agenda Google ou Microsoft du client est vérifié à la confirmation."
+          /><label
             >Date et heure du rendez-vous<input
               v-model="localStart"
               type="datetime-local"

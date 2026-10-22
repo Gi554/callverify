@@ -127,6 +127,48 @@ class CloserTests(TestCase):
         self.assertEqual(count(), 1)
         self.assertEqual(count(client_id=73), 0)
 
+    def test_availability_lists_busy_times_only_within_the_booking_scope(self):
+        from .models import Prospect
+
+        other = Prospect.objects.get(pk=self.prospect.pk)
+        other.pk = None
+        other.phone = None
+        other.save()
+        IsolationVisit.objects.create(
+            prospect=other,
+            request_id=uuid4(),
+            fingerprint='other',
+            client_id=72,
+            client_name='Client',
+            setter_id=23,
+            setter_name='Autre setter',
+            booked_by_id=91,
+            starts_at=self.visit.starts_at,
+            ends_at=self.visit.ends_at,
+            timezone='UTC',
+        )
+        window = {
+            'prospect_id': self.prospect.pk,
+            'start': (self.visit.starts_at - timedelta(hours=1)).isoformat(),
+            'end': (self.visit.ends_at + timedelta(hours=1)).isoformat(),
+        }
+        self.auth(1, 'administrator')
+        data = self.client.get('/api/visits/availability/', window).data
+        self.assertEqual(sorted(row['reason'] for row in data['busy']), ['client', 'prospect'])
+        self.assertEqual(set(data['busy'][0]), {'starts_at', 'ends_at', 'reason'})
+        self.assertEqual(data['external_calendar'], 'checked_at_booking')
+        self.auth(21, 'setter')
+        self.assertEqual(self.client.get('/api/visits/availability/', window).status_code, 200)
+        self.auth(22, 'setter')
+        self.assertEqual(self.client.get('/api/visits/availability/', window).status_code, 404)
+        self.auth(72, 'client')
+        self.assertEqual(self.client.get('/api/visits/availability/', window).status_code, 403)
+        self.auth(1, 'administrator')
+        too_long = {**window, 'end': (self.visit.starts_at + timedelta(days=8)).isoformat()}
+        self.assertEqual(self.client.get('/api/visits/availability/', too_long).status_code, 400)
+        missing = {key: value for key, value in window.items() if key != 'prospect_id'}
+        self.assertEqual(self.client.get('/api/visits/availability/', missing).status_code, 400)
+
     def test_explicit_result_optional_note_and_retry(self):
         self.prepare()
         body = self.payload()
