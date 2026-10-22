@@ -27,7 +27,7 @@ class SharingMixin:
         visit=self.get_object()
         if request.method=='GET':
             shares=ProspectActivityShare.objects.filter(activity_id=OuterRef('pk'),client_id=visit.client_id,visible=True)
-            qs=ProspectActivity.objects.filter(prospect_id=visit.prospect_id).annotate(shared=Exists(shares)).order_by('-pk')
+            qs=ProspectActivity.objects.filter(prospect_id=visit.prospect_id,kind__in=['note','qualification']).annotate(shared=Exists(shares)).order_by('-pk')
             if request.user.role=='client':qs=qs.filter(shared=True)
             response=self.get_paginated_response([{**output(row),'shared':row.shared} for row in self.paginate_queryset(qs)])
             response['Cache-Control']='no-store'
@@ -38,7 +38,7 @@ class SharingMixin:
             writable=Prospect.objects.filter(pk=visit.prospect_id,assignment_revision=data['revision'])
             if request.user.role=='setter':writable=writable.filter(assigned_setter_id=request.user.pk)
             if not writable.update(assignment_revision=F('assignment_revision')+1):raise Conflict('Prospect modifié ou réattribué : rechargez')
-            activity=ProspectActivity.objects.filter(pk=data['activity_id'],prospect_id=visit.prospect_id).first()
+            activity=ProspectActivity.objects.filter(pk=data['activity_id'],prospect_id=visit.prospect_id,kind__in=['note','qualification']).first()
             if activity is None:raise ValidationError('Observation absente de ce dossier')
             share,_=ProspectActivityShare.objects.get_or_create(activity=activity,client_id=visit.client_id)
             if share.visible==data['visible']:raise Conflict('Visibilité déjà identique : rechargez')

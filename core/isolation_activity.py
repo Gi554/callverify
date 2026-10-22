@@ -78,6 +78,10 @@ class ActivityMixin:
                 # roll back any tentative update before returning the existing event.
                 transaction.set_rollback(True)
                 return replay(activity)
+            if data['kind']=='qualification' and data['status']=='callback':
+                from .models import IsolationFollowUp
+                IsolationFollowUp.objects.create(prospect=row,request_id=data['request_id'],fingerprint=fingerprint,
+                    created_by_id=user.pk,note=data['body'],due_at=data['callback_at'])
             AuditEvent.objects.create(action='isolation.prospect.activity_added',object_id=str(row.pk),metadata={
                 'actor_portal_id':user.pk,'activity_id':activity.pk,'kind':activity.kind,'revision':row.assignment_revision})
         return Response(output(activity),status=201)
