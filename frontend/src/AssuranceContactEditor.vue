@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed,ref,onMounted,onBeforeUnmount,watch} from 'vue'
 import CallAction from './CallAction.vue'
+import AssuranceContactFollowups from './AssuranceContactFollowups.vue'
 import {UserRound,ClipboardList,CalendarDays,Phone,ArrowRight,ArrowLeft,CheckCircle2,LoaderCircle,StickyNote,Paperclip,ChevronDown} from 'lucide-vue-next'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import AssuranceAgreements from './AssuranceAgreements.vue'
@@ -25,10 +26,11 @@ async function changeStatus(){
  try{current.value=await props.request(endpoint+'commercial-status/',{token:token.value,revision:current.value.revision,pipeline_revision:pipeline.value.revision,status:nextStatus.value,reason:statusReason.value});statusReason.value='';message.value='Statut commercial enregistré.';emit('changed');emit('summary',current.value)}catch(e:any){fail(e)}finally{busy.value=false}
 }
 const dirty=computed(()=>Object.keys(draft.value).some(key=>draft.value[key as keyof typeof draft.value]!==base.value[key as keyof typeof base.value]))
-const flowTab=ref('contact'),flowBody=ref<HTMLElement|null>(null),closePrompt=ref(false)
+const flowTab=ref(props.workflow==='call'?'exchange':'contact'),flowBody=ref<HTMLElement|null>(null),closePrompt=ref(false)
+const followupBusy=ref(false),followupDirty=ref(false),followups=ref<InstanceType<typeof AssuranceContactFollowups>|null>(null)
 const fieldsDirty=ref(false),noteDirty=ref(false),documentDirty=ref(false),fieldsBusy=ref(false),noteBusy=ref(false),documentBusy=ref(false)
-const blocked=computed(()=>busy.value||saving.value||callBusy.value||bookingBusy.value||fieldsBusy.value||noteBusy.value||documentBusy.value)
-const pendingDrafts=computed(()=>(!token.value&&dirty.value)||fieldsDirty.value||noteDirty.value||documentDirty.value||nextStatus.value!==current.value.status||!!statusReason.value.trim())
+const blocked=computed(()=>busy.value||saving.value||callBusy.value||bookingBusy.value||fieldsBusy.value||noteBusy.value||documentBusy.value||followupBusy.value)
+const pendingDrafts=computed(()=>(!token.value&&dirty.value)||followupDirty.value||fieldsDirty.value||noteDirty.value||documentDirty.value||nextStatus.value!==current.value.status||!!statusReason.value.trim())
 watch(blocked,value=>emit('busy',value),{immediate:true})
 let discarding=false
 async function changeFlow(tab:string){if(blocked.value)return;if(saveTimer)clearTimeout(saveTimer);if(!(await persist()))return;flowTab.value=tab;closePrompt.value=false;if(flowBody.value)flowBody.value.scrollTop=0}
@@ -74,6 +76,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <section v-if="workflow" class="guided-editor" aria-label="Fiche prospect" @pointerdown="activity" @keydown="activity">
  <nav class="drawer-tabs" aria-label="Rubriques de la fiche">
   <button :aria-current="flowTab==='contact'?'page':undefined" :disabled="blocked" @click="changeFlow('contact')"><UserRound :size="17"/>Coordonnées</button>
+  <button :aria-current="flowTab==='exchange'?'page':undefined" :disabled="blocked" @click="changeFlow('exchange')"><Phone :size="17"/>Appel et rappels</button>
   <button :aria-current="flowTab==='qualification'?'page':undefined" :disabled="blocked" @click="changeFlow('qualification')"><ClipboardList :size="17"/>Qualification</button>
   <button :aria-current="flowTab==='booking'?'page':undefined" :disabled="blocked" @click="changeFlow('booking')"><CalendarDays :size="17"/>Rendez-vous</button>
  </nav>
@@ -81,6 +84,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
   <p v-if="error" role="alert" class="drawer-feedback drawer-error">{{error}}</p>
   <div v-if="!token" class="drawer-access"><p>{{blocked?'Ouverture de la fiche…':'La fiche est en lecture seule. Reprenez-la pour modifier les informations.'}}</p><button v-if="!busy" class="secondary" :disabled="blocked" @click="claim">Reprendre la fiche</button></div>
   <div class="drawer-call-card"><div class="call-number"><span class="call-icon"><Phone :size="19"/></span><div><small>LE PROCHAIN ÉCHANGE COMMENCE ICI</small><strong>{{current.phone||'Numéro non renseigné'}}</strong></div></div><CallAction v-if="role==='setter'&&token" :auto-open="workflow==='call'" @busy="callBusy=$event" workspace="assurance" :resource-id="current.id" :phone="current.phone" :portal="portal" :prepare="callIntent" :before-open="prepareCall" :disabled="!token||busy||saving||bookingBusy"/></div>
+  <div v-show="flowTab==='exchange'" class="drawer-view"><AssuranceContactFollowups ref="followups" :contact-id="current.id" :revision="current.revision" :token="token" :blocked="busy||saving||bookingBusy||callBusy" :request="request" :prepare="prepareCall" @busy="followupBusy=$event" @dirty="followupDirty=$event" @qualify="changeFlow('qualification')" @review="flowTab='exchange'" @saved="emit('changed')"/></div>
   <div v-show="flowTab==='contact'" class="drawer-view">
    <div class="drawer-section-heading"><span class="section-icon blue"><UserRound :size="19"/></span><div><h3>Les coordonnées du prospect</h3><p>Un contact à jour pour un échange plus simple.</p></div></div>
    <form class="drawer-contact-form" @submit.prevent="persist" @input="edited"><label>Nom du prospect<input v-model="draft.name" :readonly="!token||busy||bookingBusy" maxlength="250" placeholder="Nom et prénom" autocomplete="off"></label><label>Numéro de téléphone<input v-model="draft.phone" :readonly="!token||busy||bookingBusy" maxlength="250" required autocomplete="off"></label><label>Adresse e-mail<input v-model="draft.email" :readonly="!token||busy||bookingBusy" maxlength="254" placeholder="Non renseignée" autocomplete="off"></label></form>
@@ -92,12 +96,12 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
    <details class="drawer-extra" open><summary><StickyNote :size="17"/>Notes de l’échange<ChevronDown :size="16"/></summary><div><AssuranceContactNotes compact :contact-id="current.id" :lease-token="token" :role="role" :request="request" @dirty="noteDirty=$event" @busy="noteBusy=$event"/></div></details>
    <details class="drawer-extra"><summary><Paperclip :size="17"/>Documents<ChevronDown :size="16"/></summary><div><AssuranceContactDocuments compact :contact-id="current.id" :lease-token="token" :role="role" :request="request" @dirty="documentDirty=$event" @busy="documentBusy=$event"/></div></details>
   </div>
-  <div v-show="flowTab==='booking'" class="drawer-view"><AssuranceAppointments compact @busy="bookingBusy=$event" :before-book="prepareCall" :blocked="busy||saving||callBusy" :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/></div>
+  <div v-show="flowTab==='booking'" class="drawer-view"><AssuranceAppointments compact @booked="followups?.booked($event)" @busy="bookingBusy=$event" :before-book="prepareCall" :blocked="busy||saving||callBusy" :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/></div>
  </div>
  <footer class="drawer-actions">
   <div v-if="closePrompt" class="drawer-unsaved" role="alert"><p>Des modifications ne sont pas encore enregistrées. Vous pouvez les conserver en gardant cette fiche ouverte.</p><button class="secondary" @click="closePrompt=false">Rester sur la fiche</button><button class="drawer-discard" :disabled="blocked" @click="discardAndClose">Fermer sans ces saisies</button></div>
   <div v-else class="drawer-save-state" role="status"><LoaderCircle v-if="saving||busy" :size="14" class="save-spinner"/><StickyNote v-else-if="pendingDrafts||dirty" :size="14" class="save-pending"/><CheckCircle2 v-else :size="14"/><span>{{saving?'Enregistrement des coordonnées…':busy?'Chargement…':!token?'Lecture seule':pendingDrafts?'Saisie à enregistrer dans son onglet':dirty?'Modifications en cours…':'Coordonnées à jour'}}</span></div>
-  <div class="drawer-action-row"><button v-if="flowTab!=='contact'" class="secondary" :disabled="blocked" @click="changeFlow(flowTab==='booking'?'qualification':'contact')"><ArrowLeft :size="15"/>Retour</button><button v-else class="secondary" :disabled="blocked" @click="close">Fermer</button><button v-if="flowTab!=='booking'" class="primary" :disabled="blocked" @click="changeFlow(flowTab==='contact'?'qualification':'booking')">{{flowTab==='contact'?'Qualifier le prospect':'Préparer le rendez-vous'}}<ArrowRight :size="16"/></button><button v-else class="primary" :disabled="blocked" @click="close">Terminer<CheckCircle2 :size="16"/></button></div>
+  <div class="drawer-action-row"><button v-if="flowTab!=='contact'" class="secondary" :disabled="blocked" @click="changeFlow(flowTab==='booking'?'qualification':flowTab==='qualification'?'exchange':'contact')"><ArrowLeft :size="15"/>Retour</button><button v-else class="secondary" :disabled="blocked" @click="close">Fermer</button><button v-if="flowTab!=='booking'" class="primary" :disabled="blocked" @click="changeFlow(flowTab==='contact'?'exchange':flowTab==='exchange'?'qualification':'booking')">{{flowTab==='contact'?'Résultat et rappel':flowTab==='exchange'?'Qualifier le prospect':'Préparer le rendez-vous'}}<ArrowRight :size="16"/></button><button v-else class="primary" :disabled="blocked" @click="close">Terminer<CheckCircle2 :size="16"/></button></div>
  </footer>
 </section>
 <section v-else class="contact-editor" aria-label="Fiche contact" @pointerdown="activity" @keydown="activity">

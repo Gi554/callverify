@@ -8,7 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .models import TaskNotification,TaskNotificationRead,FollowUpTask,BusinessAudit
 
-LABELS={'report':'Compte rendu nécessitant un suivi','incident':'Nouveau signalement','existing':'Suivi déjà ouvert'}
+LABELS={'report':'Compte rendu nécessitant un suivi','incident':'Nouveau signalement','existing':'Suivi déjà ouvert','manual':'Rappel à effectuer'}
 
 def notify(task,kind,key):
     return TaskNotification.objects.get_or_create(event_key=key,defaults={'task':task,'kind':kind})[0]
@@ -57,7 +57,7 @@ class TaskNotificationViewSet(viewsets.GenericViewSet):
             row=self.get_queryset().filter(pk=original.pk).first()
             if row is None:raise NotFound()
             receipt,created=TaskNotificationRead.objects.get_or_create(notification=row,user_id=request.user.pk)
-            if created:BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.task.appointment_id,
-                action='appointment.notification_read',metadata={'task_id':row.task_id,'notification_id':row.pk})
+            if created:BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.task.appointment_id or row.task.contact_id,
+                action=('appointment' if row.task.appointment_id else 'contact')+'.notification_read',metadata={'task_id':row.task_id,'notification_id':row.pk})
             row.read_at=receipt.read_at
         response=Response(output(row));response['Cache-Control']='no-store';return response

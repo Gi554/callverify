@@ -85,9 +85,12 @@ class AppointmentReport(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
 
 class FollowUpTask(models.Model):
+    contact=models.ForeignKey(Contact,null=True,blank=True,on_delete=models.PROTECT,related_name='manual_tasks')
+    request_id=models.UUIDField(null=True,blank=True,unique=True)
+    fingerprint=models.CharField(max_length=64,blank=True)
     policy_revision=models.PositiveIntegerField(default=0)
     revision=models.PositiveIntegerField(default=0)
-    appointment=models.OneToOneField(Appointment,on_delete=models.PROTECT,related_name='follow_up')
+    appointment=models.OneToOneField(Appointment,null=True,blank=True,on_delete=models.PROTECT,related_name='follow_up')
     setter_id=models.PositiveBigIntegerField(db_index=True)
     reason=models.TextField()
     priority=models.CharField(max_length=20,default='normal')
@@ -95,6 +98,19 @@ class FollowUpTask(models.Model):
     closed_at=models.DateTimeField(null=True,blank=True)
     closed_by_id=models.PositiveBigIntegerField(null=True,blank=True)
     resolution=models.TextField(blank=True)
+    created_at=models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints=[models.CheckConstraint(condition=(models.Q(appointment__isnull=False,contact__isnull=True)|models.Q(appointment__isnull=True,contact__isnull=False)),name='followup_exactly_one_source')]
+
+class ContactCallOutcome(models.Model):
+    contact=models.ForeignKey(Contact,on_delete=models.PROTECT,related_name='call_outcomes')
+    setter_id=models.PositiveBigIntegerField(db_index=True)
+    request_id=models.UUIDField(unique=True)
+    fingerprint=models.CharField(max_length=64)
+    result=models.CharField(max_length=30,choices=[('appointment_booked','Rendez-vous pris'),('voicemail','Répondeur'),('invalid_number','Numéro invalide'),('disconnected','Appel coupé'),('not_interested','Pas intéressé'),('callback','A demandé à être rappelé'),('unreachable','Injoignable')])
+    note=models.TextField(blank=True)
+    appointment=models.ForeignKey(Appointment,null=True,blank=True,on_delete=models.PROTECT,related_name='call_outcomes')
+    task=models.OneToOneField(FollowUpTask,null=True,blank=True,on_delete=models.PROTECT,related_name='call_outcome')
     created_at=models.DateTimeField(auto_now_add=True)
 
 class TaskNotification(models.Model):
@@ -187,7 +203,7 @@ class ReminderPolicy(models.Model):
 class ReminderEvent(models.Model):
     event_key=models.CharField(max_length=64,unique=True)
     kind=models.CharField(max_length=30)
-    appointment=models.ForeignKey(Appointment,on_delete=models.PROTECT,related_name='reminders')
+    appointment=models.ForeignKey(Appointment,null=True,blank=True,on_delete=models.PROTECT,related_name='reminders')
     task=models.ForeignKey(FollowUpTask,on_delete=models.PROTECT,null=True,related_name='reminders')
     recipient_id=models.PositiveBigIntegerField()
     recipient_role=models.CharField(max_length=20)

@@ -129,13 +129,14 @@ class TaskOwnerInput(serializers.Serializer):
         return data
 
 def task_output(row,user=None):
-    latest=row.appointment.incidents.order_by('-pk').first()
-    result={'id':row.pk,'appointment_id':row.appointment_id,'contact_id':row.appointment.contact_id,
-        'contact_name':row.appointment.contact.name,'reason':row.reason,'priority':row.priority,'due_at':row.due_at,
+    latest=row.appointment.incidents.order_by('-pk').first() if row.appointment_id else None
+    contact=row.appointment.contact if row.appointment_id else row.contact
+    result={'id':row.pk,'appointment_id':row.appointment_id,'contact_id':contact.pk,
+        'contact_name':contact.name,'reason':row.reason,'priority':row.priority,'due_at':row.due_at,
         'closed_at':row.closed_at,'resolution':row.resolution,'revision':row.revision,
         'overdue':row.closed_at is None and row.due_at<timezone.now(),
         'latest_incident':None if latest is None else {'note':latest.note,'created_at':latest.created_at}}
-    if user and user.role=='administrator':result.update(assigned_setter_id=row.setter_id,original_setter_id=row.appointment.setter_id)
+    if user and user.role=='administrator':result.update(assigned_setter_id=row.setter_id,original_setter_id=row.appointment.setter_id if row.appointment_id else None)
     return result
 
 class FollowUpViewSet(viewsets.GenericViewSet):
@@ -144,7 +145,7 @@ class FollowUpViewSet(viewsets.GenericViewSet):
     http_method_names=['get','post','head','options']
     def get_queryset(self):
         if self.request.user.role not in ('setter','administrator'):raise PermissionDenied('Suivi interne uniquement')
-        qs=FollowUpTask.objects.select_related('appointment__contact').order_by('closed_at','due_at','pk')
+        qs=FollowUpTask.objects.select_related('appointment__contact','contact').order_by('closed_at','due_at','pk')
         if self.request.user.role=='setter':qs=qs.filter(setter_id=self.request.user.pk)
         state=self.request.query_params.get('state','open')
         if state not in ('open','closed','all'):raise ValidationError('Filtre invalide')
@@ -159,10 +160,22 @@ class FollowUpViewSet(viewsets.GenericViewSet):
         if priority not in ('','low','normal','high','urgent'):raise ValidationError('Priorité invalide')
         if priority:qs=qs.filter(priority=priority)
         term=self.request.query_params.get('search','').strip()[:250]
-        if term:qs=qs.filter(Q(appointment__contact__name__icontains=term)|Q(reason__icontains=term))
+        if term:qs=qs.filter(Q(appointment__contact__name__icontains=term)|Q(contact__name__icontains=term)|Q(reason__icontains=term))
         return qs
     def list(self,request):return self.get_paginated_response([task_output(row,request.user) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(task_output(self.get_object(),request.user))
+    @action(detail=True,methods=['post'])
+    def edit(self,request,pk=None):
+        from .contact_followups import TaskEdit,audit_task
+        row=self.get_object();serializer=TaskEdit(data=request.data);serializer.is_valid(raise_exception=True);data=serializer.validated_data
+        with transaction.atomic():
+            writable=FollowUpTask.objects.filter(pk=row.pk,revision=data['revision'],closed_at__isnull=True)
+            if request.user.role=='setter':writable=writable.filter(setter_id=request.user.pk)
+            if not writable.update(reason=data['reason'],due_at=data['due_at'],priority=data['priority'],revision=F('revision')+1):
+                raise Conflict('Tâche modifiée ou clôturée : actualisez.')
+            audit_task(row,request.user,'follow_up_edited',{'before':{'reason':row.reason,'due_at':row.due_at.isoformat(),'priority':row.priority},
+                'after':{'reason':data['reason'],'due_at':data['due_at'].isoformat(),'priority':data['priority']}})
+        row.refresh_from_db();return Response(task_output(row,request.user))
     @action(detail=False,methods=['get'])
     def summary(self,request):
         qs=self.get_queryset();now=timezone.now()
@@ -186,8 +199,8 @@ class FollowUpViewSet(viewsets.GenericViewSet):
             before={'setter_id':row.setter_id,'revision':row.revision}
             if not FollowUpTask.objects.filter(pk=row.pk,revision=data['revision'],closed_at__isnull=True).update(
                 setter_id=target['id'],revision=F('revision')+1):raise Conflict('Tâche modifiée ou clôturée : actualisez')
-            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id,action='appointment.follow_up_reassigned',
-                metadata={'task_id':row.pk,'original_setter_id':row.appointment.setter_id,'before':before,
+            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id or row.contact_id,action=('appointment' if row.appointment_id else 'contact')+'.follow_up_reassigned',
+                metadata={'task_id':row.pk,'original_setter_id':row.appointment.setter_id if row.appointment_id else None,'before':before,
                     'after':{'setter_id':target['id'],'setter_name':target['name'],'revision':data['revision']+1},'reason':data['reason']})
         row.refresh_from_db();return Response(task_output(row,request.user))
     @action(detail=True,methods=['post'])
@@ -202,7 +215,7 @@ class FollowUpViewSet(viewsets.GenericViewSet):
             if row.revision!=data['revision'] or not FollowUpTask.objects.filter(pk=row.pk,revision=data['revision'],closed_at__isnull=False).update(
                 closed_at=None,closed_by_id=None,resolution='',priority=data['priority'],due_at=data['due_at'],
                 revision=F('revision')+1):raise Conflict('Tâche modifiée ou déjà ouverte : actualisez')
-            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id,action='appointment.follow_up_reopened',
+            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id or row.contact_id,action=('appointment' if row.appointment_id else 'contact')+'.follow_up_reopened',
                 metadata={'task_id':row.pk,'before':before,'after':{'closed_at':None,'closed_by_id':None,'resolution':'',
                     'priority':data['priority'],'due_at':data['due_at'].isoformat(),'revision':data['revision']+1},'reason':data['reason']})
         row.refresh_from_db();return Response(task_output(row,request.user))
@@ -215,15 +228,15 @@ class FollowUpViewSet(viewsets.GenericViewSet):
         with transaction.atomic():
             if row.revision!=data['revision'] or not FollowUpTask.objects.filter(pk=row.pk,revision=data['revision'],closed_at__isnull=True).update(
                 priority=data['priority'],due_at=data['due_at'],revision=F('revision')+1):raise Conflict('Tâche modifiée ou clôturée : actualisez')
-            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id,action='appointment.follow_up_planned',
+            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=row.appointment_id or row.contact_id,action=('appointment' if row.appointment_id else 'contact')+'.follow_up_planned',
                 metadata={'task_id':row.pk,'before':before,'after':{'priority':data['priority'],'due_at':data['due_at'].isoformat(),'revision':data['revision']+1},'reason':data['reason']})
         row.refresh_from_db();return Response(task_output(row,request.user))
     @action(detail=True,methods=['get'])
     def history(self,request,pk=None):
         if request.user.role!='administrator':raise PermissionDenied('Historique réservé aux administrateurs')
         row=self.get_object()
-        entries=self.paginate_queryset(BusinessAudit.objects.filter(object_id=row.appointment_id,
-            action__in=['appointment.notification_read','appointment.follow_up_planned','appointment.follow_up_closed','appointment.follow_up_reopened','appointment.follow_up_reassigned','appointment.follow_up_incident','appointment.incident_reported'],metadata__task_id=row.pk).order_by('-pk'))
+        entries=self.paginate_queryset(BusinessAudit.objects.filter(object_id=row.appointment_id or row.contact_id,
+            action__in=['appointment.notification_read','appointment.follow_up_planned','appointment.follow_up_edited','appointment.follow_up_closed','appointment.follow_up_reopened','appointment.follow_up_reassigned','appointment.follow_up_incident','appointment.incident_reported','contact.follow_up_created','contact.follow_up_edited','contact.follow_up_planned','contact.follow_up_closed','contact.follow_up_reopened','contact.follow_up_reassigned','contact.notification_read'],metadata__task_id=row.pk).order_by('-pk'))
         return self.get_paginated_response([{'id':item.pk,'action':item.action,'actor_id':item.actor_id,'created_at':item.created_at,'metadata':item.metadata} for item in entries])
     @action(detail=True,methods=['post'])
     def close(self,request,pk=None):
@@ -233,6 +246,6 @@ class FollowUpViewSet(viewsets.GenericViewSet):
             if request.user.role=='setter':writable=writable.filter(setter_id=request.user.pk)
             if original.revision!=serializer.validated_data['revision'] or not writable.update(closed_at=timezone.now(),
                 closed_by_id=request.user.pk,resolution=serializer.validated_data['resolution'],revision=F('revision')+1):raise Conflict('Tâche modifiée ou déjà clôturée : actualisez')
-            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=original.appointment_id,action='appointment.follow_up_closed',
+            BusinessAudit.objects.create(actor_id=request.user.pk,object_id=original.appointment_id or original.contact_id,action=('appointment' if original.appointment_id else 'contact')+'.follow_up_closed',
                 metadata={'task_id':original.pk,'resolution':serializer.validated_data['resolution']})
         original.refresh_from_db();return Response(task_output(original,request.user))

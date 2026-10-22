@@ -1,5 +1,29 @@
 # Suivi des livraisons CRM AMX
 
+## Résultats d’appel et rappels indépendants d’un rendez-vous — Assurance
+
+La fiche Setter propose l’onglet Appel et rappels : sept résultats métier avec note facultative, rappel daté en heure de Montréal lorsque demandé, création manuelle d’un rappel à tout moment. « Rendez-vous pris » ouvre la qualification existante ; le résultat est enregistré après la réservation effective et lié à ce rendez-vous. Si l’enregistrement du résultat échoue après réservation, retour sur sa saisie pour réessayer sans réserver de nouveau. Ce parcours ne déclenche aucun appel et ne prétend pas détecter le décrochage. Le numéro invalide déclaré par le setter n’écrase pas Lookup.
+
+Les rappels sans RDV et les suivis existants figurent ensemble dans Mes tâches et dans l’historique du contact. Le setter peut modifier note/priorité/date d’une tâche ouverte de son périmètre et la terminer avec résolution. Les rappels à venir et en retard, les notifications et la génération périodique restent compatibles. L’historique conserve les résultats et notes, les rappels et leur résolution ; les opérations sont auditées. Les résultats d’appel sont internes et propres au setter, l’administration garde son accès. Idempotence des créations, verrou de fiche et révision pour les écritures, clôture et modifications contrôlées.
+
+Validation : 61 tests backend réussis (5 tests PostgreSQL ignorés sur SQLite), 7 tests frontend réussis, typage Vue, build production et absence de migration manquante. Migration 0024 appliquée localement après sauvegarde SQLite dans private-media. Aucun appel, notification externe ou rendez-vous de recette lancé. Contrôle visuel non réalisé sur ce lot : l’accès au navigateur local est désactivé dans les réglages Work. Le build émet désormais un avertissement de taille du bundle (>500 kB), sans erreur de compilation.
+
+Limites : lot Assurance ; formulaires de qualification dédiés, partage au conseiller, C2 Isolation, closer, statistiques supplémentaires et base commune restent dans la liste ci-dessous. Les résultats restent des déclarations et ne remplacent pas les états fournisseur. Le résultat RDV pris s’appuie encore sur la qualification existante, en attendant le formulaire métier complet. L’historique des commandes fournisseur n’est pas encore fusionné à cette chronologie. Les statistiques de rendez-vous restent un cohort de RDV et ne comptent pas les rappels indépendants ; le tableau des tâches et le compteur de l’accueil les incluent.
+
+## Nouveau périmètre métier — précisions du 22 octobre 2026
+
+Premier lot livré : résultats d’appel déclarés et rappels manuels Assurance. Les résultats sont distincts des états techniques Lookup/Phonetico. Les tâches acceptent désormais un contact sans rendez-vous ; les tâches existantes liées à un rendez-vous sont conservées.
+
+Lots restant à livrer, dans cet ordre :
+- Qualification Assurance dédiée : âge, profession, situation matrimoniale, enfants, propriétaire, fumeur, conseiller existant, assurances multiples et notes ; coordonnées conservées.
+- Transmission contrôlée au conseiller des qualifications et notes utiles lors de la réservation ; affichage des informations depuis son espace. Présence/absence/annulation/report à représenter avec les preuves existantes et les transitions autorisées.
+- Formulaire Isolation C2 distinct : coordonnées/adresse/ville/code postal, grenier, électricité facultative, construction, âge et créneau.
+- Espace et permissions closer Isolation : nom du représentant, rendez-vous tenu, vente conclue, notes ; résultat modifiable selon les droits avec historique.
+- Statistiques Isolation par semaine et période, setter et closer : attribués, tenus, non tenus, conclus, présence et conclusion parmi les tenus ; exports. Les inconnus ne deviennent pas des absences. Exemple 5/15 = 33,3 %.
+- Centralisation physique : les services utilisent actuellement des bases distinctes (portail, Assurance, Isolation). Préparer puis vérifier une migration vers une base commune en préservant identités, liens, données et périmètres. Ce point n’est pas livré.
+- Étendre les résultats d’appels et rappels au parcours Isolation, puis compléter la chronologie des commandes d’appel fournisseur. Les campagnes silencieuses restent désactivées et aucun appel de recette n’est autorisé par cette évolution.
+
+
 ## Tableau des tâches Setter Assurance
 
 Page Mes tâches reprise selon la référence : trois colonnes À traiter, En retard et Clôturées, cartes sans photos avec prospect, priorité en français, échéance, signalement et rendez-vous source. Défilement interne par colonne et chargement de 25 cartes supplémentaires. Panneau bleu d’avancement calculé sur les tâches visibles selon les filtres, volumes par priorité et accès aux rendez-vous. Aucun statut « en cours » ni pourcentage d’avancement par tâche inventé ; une tâche reste ouverte jusqu’à sa clôture justifiée.
