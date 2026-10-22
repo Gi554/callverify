@@ -7,7 +7,7 @@ from openpyxl.styles import Font,PatternFill,Alignment
 from openpyxl.utils import get_column_letter
 
 LABELS={'appointments':'Rendez-vous','cancelled':'Annulés','upcoming':'À venir','reported':'Comptes rendus','performed':'Effectués (Oui)',
-        'not_performed':'Non effectués (Non)','reports_due':'Comptes rendus manquants','problem_reports':'Comptes rendus avec problème',
+        'not_performed':'Non effectués (tous motifs)','absent':'Absences déclarées','other_not_performed':'Non effectués (autre motif)','reports_due':'Comptes rendus manquants','problem_reports':'Comptes rendus avec problème',
         'incidents':'Signalements ultérieurs','open_tasks':'Tâches ouvertes','overdue_tasks':'Tâches en retard','closed_tasks':'Tâches clôturées',
         'performed_rate':'Taux effectué / comptes rendus (%)'}
 

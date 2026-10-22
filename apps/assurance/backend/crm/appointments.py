@@ -19,6 +19,7 @@ from packages.access.assignments import verify_booking
 from .models import Appointment,AdvisorAssignment,AdvisorSchedule,Contact,BusinessAudit
 from .leases import Conflict,writer,held,LEASE_SECONDS
 from .calendar_checks import check as external_check
+from .appointment_status import output as business_status,filter_status
 
 class IntervalInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -96,6 +97,7 @@ def output(row,user):
     result={'id':row.pk,'contact':{'id':row.contact_id,'name':row.contact.name,'phone':row.contact.phone,'email':row.contact.email},
         'advisor':{'id':row.advisor_id,'name':row.advisor_name},'starts_at':row.starts_at,'ends_at':row.ends_at,
         'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal','qualification_snapshot':row.qualification_snapshot}
+    result.update(business_status(row))
     if user.role!='advisor':result['assignment_id']=row.assignment_id
     if user.role=='administrator':result.update(setter={'id':row.setter_id,'name':row.setter_name},booked_by_id=row.booked_by_id)
     return result
@@ -109,7 +111,7 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
     http_method_names=['get','post','head','options']
     def get_queryset(self):
         user=self.request.user
-        qs=Appointment.objects.select_related('contact','assignment').order_by('starts_at','pk')
+        qs=Appointment.objects.select_related('contact','assignment','report').order_by('starts_at','pk')
         if user.role=='setter':qs=qs.filter(setter_id=user.pk)
         elif user.role=='advisor':qs=qs.filter(advisor_id=user.pk)
         elif user.role!='administrator':raise PermissionDenied('Accès non autorisé')
@@ -125,7 +127,7 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
         if period not in ('','upcoming','past'):raise ValidationError('Période invalide')
         if period=='upcoming':qs=qs.filter(ends_at__gt=timezone.now())
         if period=='past':qs=qs.filter(ends_at__lte=timezone.now()).order_by('-starts_at','-pk')
-        return calendar_window(qs,self.request.query_params)
+        return calendar_window(filter_status(qs,self.request.query_params.get('business_status','')),self.request.query_params)
     def list(self,request):
         rows=self.paginate_queryset(self.get_queryset())
         return self.get_paginated_response([output(row,request.user) for row in rows])
@@ -187,7 +189,7 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
             if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
             before=snapshot(row)
             for key in ('starts_at','ends_at','timezone'):setattr(row,key,data[key])
-            row.revision+=1;row.save(update_fields=['starts_at','ends_at','timezone','revision','updated_at'])
+            row.revision+=1;row.rescheduled_at=timezone.now();row.reschedule_count+=1;row.save(update_fields=['starts_at','ends_at','timezone','revision','updated_at','rescheduled_at','reschedule_count'])
             audit(request.user,row,'appointment.rescheduled',before,data['reason'],external)
         return Response(output(row,request.user))
     @action(detail=True,methods=['post'])

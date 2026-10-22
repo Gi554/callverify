@@ -52,7 +52,7 @@ class ContactInteractionMixin:
             'note':(notes,Case(When(channel='internal',then=F('advisor_body')),default=F('body'),output_field=TextField()) if user.role=='advisor' else F('body'),Case(When(channel='internal',then=Value('shared')),default=F('channel'),output_field=CharField()) if user.role=='advisor' else F('channel'),F('pk')),
             'document':(documents,Case(When(channel='internal',then=F('advisor_filename')),default=F('filename'),output_field=CharField()) if user.role=='advisor' else F('filename'),Case(When(channel='internal',then=Value('shared')),default=F('channel'),output_field=CharField()) if user.role=='advisor' else F('channel'),F('pk')),
             'appointment':(appointments,Value(''),F('status'),F('pk')),
-            'report':(reports,F('note'),Case(When(performed=True,then=Value('performed')),default=Value('not_performed'),output_field=CharField()),F('appointment_id')),
+            'report':(reports,F('note'),Case(When(performed=True,then=Value('performed')),When(outcome='absent',then=Value('absent')),default=Value('not_performed'),output_field=CharField()),F('appointment_id')),
             'incident':(incidents,F('note'),Value('reported'),F('appointment_id')),
         }
         if user.role in ('setter','administrator'):
