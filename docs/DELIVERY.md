@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Reprise des prospects Isolation — setter et administration
+
+La file Isolation utilise les cartes du modèle Assurance, sans photo : statuts vides masqués, recherche et filtres, pagination indépendante de 25 par statut, quatre cartes par ligne sur grand écran si un seul statut reste visible. Les six statuts commerciaux Isolation sont conservés. Chargement borné à trois requêtes simultanées, réponses périmées ignorées, erreurs par colonne et recherche appliquée conservée lors de la pagination. La page utilise toute la largeur disponible.
+
+Les cartes donnent accès à la fiche, à la préparation explicite d’appel pour le setter et au C2/visites. La fiche latérale sépare résultat déclaré, notes/statut, rappels et historique par onglets sans démonter leurs brouillons. La préparation recharge le numéro courant, conserve la confirmation CallAction et n’envoie jamais automatiquement un appel. Fermeture bloquée pendant une commande et confirmation existante des brouillons préservée.
+
+L’administrateur conserve la répartition et les affectations groupées (sur les cartes chargées), la recherche des setters, l’affectation individuelle et l’historique dans des panneaux à droite. Aucun bouton d’appel setter ajouté à l’administration, aucun nouveau droit. Les routes et contrôles backend restent inchangés.
+
+Validation : trois tests de composants dédiés (statuts vides, pagination et recherche appliquée, ouverture de fiche/appel sans POST, commandes administrateur et absence d’appel), suite frontend complète, typage et build production. Aucun appel ni Lookup réel. Revue visuelle non réalisée : accès navigateur local désactivé dans Work. La mise en forme ne vaut pas validation visuelle définitive.
+
+Prochain lot : harmoniser les tâches Isolation puis les vues d’administration communes (navigation, accueil et calendrier), en gardant les actions propres à chaque rôle.
+
 ## CRM unique — retrait du front autonome CallVerify
 
 La racine, /demo et les anciennes pages à hash montent désormais uniquement le portail et normalisent leur adresse vers /crm. L’ancien choix entre App et Portal était la cause de l’application séparée encore visible à la racine. Suppression des composants App.vue, Workspace.vue et de leur client API exclusivement historique ; titre HTML AMX. La connexion à profils existante est conservée selon la demande initiale. Retours OAuth et liens centraux invitation/récupération préservés ; les anciens jetons locaux ne sont pas convertis en identités centrales.
