@@ -7,7 +7,7 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view,throttle_classes
 from rest_framework.exceptions import APIException,ValidationError
 from rest_framework.response import Response
-from packages.newt.cdr import fetch_schema
+from packages.newt.cdr import fetch_schema,confirmed,PROVIDER_TIMEZONE
 from packages.newt.directory import DirectoryUnavailable
 from .calendars import StrictInput,validated
 from .management_api import require_admin
@@ -41,5 +41,6 @@ def schema(request):
             result=fetch_schema(settings.NEWT_USERNAME,settings.NEWT_PASSWORD,data['starts_on'],data['ends_on'])
             AccessAudit.objects.create(user=request.user,action='phone.cdr_schema_read',metadata={'starts_on':str(data['starts_on']),'ends_on':str(data['ends_on']),'row_count':result['row_count'],'schema_fingerprint':result['schema_fingerprint']})
     except DirectoryUnavailable:raise Unavailable() from None
-    response=Response({**result,'starts_on':data['starts_on'],'ends_on':data['ends_on'],'source':'NEWT 511','checked_at':timezone.now(),'mapping_confirmed':False})
+    response=Response({**result,'starts_on':data['starts_on'],'ends_on':data['ends_on'],'source':'NEWT 511','checked_at':timezone.now(),
+        'mapping_confirmed':confirmed(result['columns']),'timezone':PROVIDER_TIMEZONE,'duration_unit_confirmed':False})
     response['Cache-Control']='no-store';return response

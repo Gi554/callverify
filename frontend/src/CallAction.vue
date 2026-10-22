@@ -50,12 +50,12 @@ onMounted(()=>{if(props.autoOpen&&!requestId.value)void open()})
  <div class="call-action">
   <button v-if="!requestId" type="button" class="secondary" :disabled="disabled||pending" @click="open"><Phone :size="16"/> Appeler</button>
   <section v-if="confirming" class="call-confirm" aria-label="Confirmer l’appel">
-   <strong>Appeler {{confirmedPhone}}</strong><p>Votre poste Phonetico sonnera d’abord. Décrochez pour joindre le contact. Le son passe par votre téléphone ou softphone.</p>
+   <strong>Appeler {{confirmedPhone}}</strong><p>Votre poste Phonetico sonnera d’abord. Décrochez : la composition du numéro extérieur démarre ensuite. Le son passe par votre téléphone ou softphone.</p>
    <button type="button" class="primary" :disabled="disabled||pending" @click="send">Confirmer l’appel</button>
    <button type="button" class="secondary" @click="confirming=false">Annuler</button>
   </section>
   <p v-if="pending" role="status">Traitement de la demande…</p>
-  <p v-if="result" role="status">{{labels[result.state]||'État inconnu'}}. Une acceptation ne prouve ni sonnerie distante ni décrochage.</p>
+  <p v-if="result" role="status">{{labels[result.state]||'État inconnu'}}. {{result.definition||'Une acceptation ne prouve ni sonnerie distante ni décrochage.'}}</p>
   <p v-if="error" role="alert">{{error}}</p>
   <template v-if="requestId">
    <small>Référence de commande : {{requestId}}</small>

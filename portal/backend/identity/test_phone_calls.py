@@ -114,3 +114,12 @@ class ProviderTests(TestCase):
                 self.assertEqual(place('u','p','501','15145550101'),'unknown');self.assertEqual(get.call_count,1)
     def test_invalid_destination_cannot_select_a_function(self):
         with patch('packages.newt.calls.requests.get') as get:self.assertEqual(place('u','p','501','512&_f=250'),'unknown');get.assert_not_called()
+
+    def test_confirmed_provider_blank_echo_success_and_failure(self):
+        for word,expected in (('Success','accepted'),('Failure','rejected')):
+            with patch('packages.newt.calls.requests.get',return_value=self.response(f'{word},501,15145550101,,,,,'.encode())) as get:
+                self.assertEqual(place('u','p','501','15145550101'),expected)
+                get.assert_called_once();self.assertNotIn('_a',get.call_args.kwargs['params'])
+        for body in (b'Success,501,15145550102,,,,,',b'Success,501,15145550101,foreign,,,,',b'Success,501,15145550101,,unexpected,,,'):
+            with patch('packages.newt.calls.requests.get',return_value=self.response(body)):
+                self.assertEqual(place('u','p','501','15145550101'),'unknown')
