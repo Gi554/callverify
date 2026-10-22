@@ -90,6 +90,85 @@ const localStart = ref(props.compact ? '' : start.value.slice(0, 16)),
   duration = ref(30),
   historyVisible = ref(false);
 let requestId = crypto.randomUUID();
+// Advisor availability shown before booking: busy CRM times for the chosen assignment and
+// prospect. External calendars are still checked by the server when the booking is confirmed.
+const SLOT_FIRST_HOUR = 8,
+  SLOT_LAST_HOUR = 20,
+  SLOT_STEP = 30;
+const slotDay = ref(dayIn(new Date(), zone.value)),
+  slotBusy = ref<{ starts_at: string; ends_at: string }[]>([]),
+  slotLoading = ref(false),
+  slotError = ref('');
+let slotVersion = 0;
+function dayIn(date: Date, timeZone: string) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+function shiftDay(day: string, delta: number) {
+  const date = new Date(day + 'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate() + delta);
+  return date.toISOString().slice(0, 10);
+}
+const slotTitle = computed(() =>
+  new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(slotDay.value + 'T12:00:00Z')),
+);
+const slots = computed(() => {
+  const now = Date.now(),
+    result: { local: string; label: string; state: 'free' | 'busy' | 'past' }[] = [];
+  for (let minutes = SLOT_FIRST_HOUR * 60; minutes < SLOT_LAST_HOUR * 60; minutes += SLOT_STEP) {
+    const label = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+    const local = `${slotDay.value}T${label}`;
+    let interval;
+    try {
+      interval = bookingInterval(local, zone.value, duration.value);
+    } catch {
+      continue; // Nonexistent or repeated time at a daylight-saving change.
+    }
+    const from = Date.parse(interval.starts_at),
+      to = Date.parse(interval.ends_at);
+    const state =
+      from < now
+        ? 'past'
+        : slotBusy.value.some(
+              (row) => Date.parse(row.starts_at) < to && Date.parse(row.ends_at) > from,
+            )
+          ? 'busy'
+          : 'free';
+    result.push({ local, label, state });
+  }
+  return result;
+});
+async function loadSlots() {
+  if (!props.compact || !assignment.value) return;
+  const version = ++slotVersion;
+  slotLoading.value = true;
+  slotError.value = '';
+  try {
+    const from = bookingInterval(`${slotDay.value}T00:00`, zone.value, 15).starts_at,
+      to = bookingInterval(`${shiftDay(slotDay.value, 1)}T00:00`, zone.value, 15).starts_at;
+    const query = new URLSearchParams({ assignment_id: assignment.value, start: from, end: to });
+    if (props.contactId) query.set('contact_id', String(props.contactId));
+    const data = await props.request(`appointments/availability/?${query}`);
+    if (version === slotVersion) slotBusy.value = data.busy;
+  } catch (e: any) {
+    if (version === slotVersion) {
+      slotBusy.value = [];
+      slotError.value = e.message;
+    }
+  } finally {
+    if (version === slotVersion) slotLoading.value = false;
+  }
+}
+watch([assignment, slotDay, zone], () => void loadSlots());
 function resetId() {
   requestId = crypto.randomUUID();
 }
@@ -388,6 +467,55 @@ onMounted(() =>
             Suivant
           </button>
         </div>
+        <section
+          v-if="compact && assignment"
+          class="advisor-slots"
+          aria-label="Disponibilités du conseiller"
+        >
+          <header>
+            <button
+              type="button"
+              class="secondary"
+              aria-label="Jour précédent"
+              :disabled="slotDay <= dayIn(new Date(), zone)"
+              @click="slotDay = shiftDay(slotDay, -1)"
+            >
+              ‹
+            </button>
+            <strong>{{ slotTitle }}</strong>
+            <button
+              type="button"
+              class="secondary"
+              aria-label="Jour suivant"
+              @click="slotDay = shiftDay(slotDay, 1)"
+            >
+              ›
+            </button>
+          </header>
+          <p v-if="slotError" role="alert" class="error">
+            {{ slotError }}
+            <button type="button" class="secondary" @click="loadSlots">Réessayer</button>
+          </p>
+          <p v-else-if="slotLoading" role="status" class="subtle">Chargement des disponibilités…</p>
+          <div v-else class="slot-grid">
+            <button
+              v-for="slot in slots"
+              :key="slot.local"
+              type="button"
+              :class="[slot.state, { selected: localStart === slot.local }]"
+              :disabled="slot.state !== 'free' || busy || blocked"
+              :aria-pressed="localStart === slot.local"
+              :title="slot.state === 'busy' ? 'Conseiller ou prospect déjà occupé' : undefined"
+              @click="localStart = slot.local"
+            >
+              {{ slot.label }}
+            </button>
+          </div>
+          <small
+            >Créneaux de {{ SLOT_FIRST_HOUR }} h à {{ SLOT_LAST_HOUR }} h selon les rendez-vous du
+            CRM. L’agenda Google ou Microsoft du conseiller est vérifié à la confirmation.</small
+          >
+        </section>
         <fieldset v-if="compact" class="friendly-slot" :disabled="busy || blocked">
           <label>Date et heure<input v-model="localStart" type="datetime-local" required /></label
           ><label
@@ -856,6 +984,51 @@ onMounted(() =>
 .appointments button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.advisor-slots {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+.advisor-slots header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.advisor-slots header strong {
+  text-transform: capitalize;
+}
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+}
+.slot-grid button {
+  border: 1px solid #cfd8e3;
+  border-radius: 8px;
+  background: white;
+  padding: 8px 0;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.slot-grid button.busy {
+  background: #f1f3f6;
+  color: #9aa5b4;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.slot-grid button.past {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.slot-grid button.selected {
+  background: #1f5fa8;
+  border-color: #1f5fa8;
+  color: white;
+}
+.advisor-slots small {
+  color: #6b7686;
 }
 </style>
 <style scoped>

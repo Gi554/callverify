@@ -87,6 +87,36 @@ class AppointmentStatusTests(TestCase):
         self.assertEqual(ids(), 1)
         self.assertEqual(ids(setter_id=22), 0)
 
+    def test_availability_lists_busy_times_only_within_the_booking_scope(self):
+        url = self.url + 'availability/'
+        other = self.clone(advisor_id=99, assignment_id=self.row.assignment_id)
+        window = {
+            'assignment_id': self.row.assignment_id,
+            'start': (self.row.starts_at - timedelta(hours=1)).isoformat(),
+            'end': (self.row.ends_at + timedelta(hours=1)).isoformat(),
+        }
+        self.fixture.auth(1, 'administrator')
+        data = self.client.get(url, window).data
+        self.assertEqual([row['reason'] for row in data['busy']], ['advisor'])
+        self.assertEqual(set(data['busy'][0]), {'starts_at', 'ends_at', 'reason'})
+        self.assertEqual(data['external_calendar'], 'checked_at_booking')
+        with_contact = self.client.get(url, {**window, 'contact_id': other.contact_id}).data
+        self.assertEqual(
+            sorted(row['reason'] for row in with_contact['busy']), ['advisor', 'contact']
+        )
+        self.fixture.auth(21, 'setter')
+        self.assertEqual(self.client.get(url, window).status_code, 200)
+        self.fixture.auth(22, 'setter')
+        self.assertEqual(self.client.get(url, window).status_code, 403)
+        self.fixture.auth(31, 'advisor')
+        self.assertEqual(self.client.get(url, window).status_code, 403)
+        self.fixture.auth(1, 'administrator')
+        too_long = {**window, 'end': (self.row.starts_at + timedelta(days=8)).isoformat()}
+        self.assertEqual(self.client.get(url, too_long).status_code, 400)
+        naive = {**window, 'start': '2026-10-22T08:00:00'}
+        self.assertEqual(self.client.get(url, naive).status_code, 400)
+        self.assertEqual(self.client.get(url, {**window, 'assignment_id': 'x'}).status_code, 400)
+
     def test_explicit_absence_retry_and_immutable_outcome(self):
         self.assertEqual(self.fixture.report(outcome='absent').status_code, 201)
         self.assertEqual(self.fixture.report(outcome='absent').status_code, 200)
