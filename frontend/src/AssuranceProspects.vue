@@ -2,12 +2,22 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown } from 'lucide-vue-next'
 import AssuranceContactEditor from './AssuranceContactEditor.vue'
+import AssuranceContacts from './AssuranceContacts.vue'
 import SidePanel from './SidePanel.vue'
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>
   portal: (path: string, body?: any) => Promise<any>
   role: string
 }>()
+const emit = defineEmits<{ imported: [count: number] }>()
+const admin = computed(() => props.role === 'administrator')
+// Administrator only: the existing list keeps imports, filters and history.
+const listView = ref(false)
+function showBoard() {
+  if (!listView.value) return
+  listView.value = false
+  void load()
+}
 type Column = {
   key: string
   label: string
@@ -123,7 +133,9 @@ onBeforeUnmount(() => {
 <!-- prettier-ignore -->
 <template>
  <section class="prospects-board">
-  <header class="prospects-heading"><div><span>MON ESPACE ASSURANCE</span><h1>Prospects</h1><p>Retrouvez vos prospects, appelez et préparez leurs rendez-vous.</p></div><button class="secondary" :disabled="busy" @click="load"><RefreshCw :size="16"/>Actualiser</button></header>
+  <header class="prospects-heading"><div><span>{{admin?'ÉQUIPE ASSURANCE':'MON ESPACE ASSURANCE'}}</span><h1>Prospects</h1><p>{{admin?'Tous les prospects de l’équipe, par statut.':'Retrouvez vos prospects, appelez et préparez leurs rendez-vous.'}}</p></div><div class="prospects-heading-actions"><div v-if="admin" class="prospects-view-switch" role="group" aria-label="Affichage"><button :class="{'is-active':!listView}" :aria-pressed="!listView" @click="showBoard">Tableau</button><button :class="{'is-active':listView}" :aria-pressed="listView" @click="listView=true">Liste et imports</button></div><button v-if="!listView" class="secondary" :disabled="busy" @click="load"><RefreshCw :size="16"/>Actualiser</button></div></header>
+  <AssuranceContacts v-if="admin&&listView" :portal="portal" :request="request" :role="role" @imported="emit('imported',$event)"/>
+  <template v-else>
   <div class="prospects-toolbar"><label class="stage-filter"><select v-model="stage" aria-label="Filtrer les prospects par statut"><option value="">Tous les statuts</option><option v-for="column in columns" :key="column.key" :value="column.key">{{column.label}}{{column.active?'':' (archivé)'}}</option></select><ChevronDown :size="15"/></label><span class="prospects-count" role="status">{{busy?'Chargement…':`${total} prospect(s)`}}{{columns.some(c=>c.error)?' · résultat partiel':''}}</span><form @submit.prevent="load"><Search :size="17"/><input v-model="search" aria-label="Rechercher un prospect" placeholder="Nom, téléphone ou e-mail"><button :disabled="busy">Rechercher</button></form></div>
   <p v-if="error" role="alert" class="error">{{error}}</p>
   <p v-if="!busy&&!error&&!columns.length" class="board-empty">Aucun statut configuré. Contactez votre administrateur.</p>
@@ -136,7 +148,7 @@ onBeforeUnmount(() => {
      <article v-for="row in column.rows" :key="row.id" class="prospect-card">
       <button class="prospect-title" :data-prospect-id="row.id" :disabled="opening" @click="open(row,'edit')">{{row.name||'Prospect sans nom'}}</button>
       <small class="prospect-updated">Mis à jour {{new Date(row.updated_at).toLocaleDateString('fr-FR')}}</small>
-      <div class="prospect-phone"><Phone :size="14"/><span>{{row.phone||'Non renseigné'}}</span><div class="number-actions"><button :disabled="opening" :aria-label="'Modifier le numéro de '+(row.name||'ce prospect')" title="Modifier la fiche et le numéro" @click="open(row,'edit')"><Pencil :size="15"/></button><button class="phone-button" :disabled="opening||!row.phone" :aria-label="'Préparer l’appel vers '+row.phone" title="Appeler et qualifier le prospect" @click="open(row,'call')"><Phone :size="15"/></button></div></div>
+      <div class="prospect-phone"><Phone :size="14"/><span>{{row.phone||'Non renseigné'}}</span><div class="number-actions"><button :disabled="opening" :aria-label="'Modifier le numéro de '+(row.name||'ce prospect')" title="Modifier la fiche et le numéro" @click="open(row,'edit')"><Pencil :size="15"/></button><button v-if="!admin" class="phone-button" :disabled="opening||!row.phone" :aria-label="'Préparer l’appel vers '+row.phone" title="Appeler et qualifier le prospect" @click="open(row,'call')"><Phone :size="15"/></button></div></div>
       <p class="prospect-email"><Mail :size="14"/><span>{{row.email||'E-mail non renseigné'}}</span></p>
       <footer><span class="prospect-stage">{{row.status_label||column.label}}</span></footer>
      </article>
@@ -145,6 +157,7 @@ onBeforeUnmount(() => {
     </div>
    </section>
   </div>
+  </template>
   <SidePanel :scrollable="false" :open="!!selected" :title="selected?.name||'Prospect sans nom'" :subtitle="selected?.status_label||selected?.status" eyebrow="FICHE PROSPECT" :close-disabled="panelBusy" @request-close="editor?.close()"><AssuranceContactEditor v-if="selected" ref="editor" :key="selected.id" :contact="selected" :portal="portal" :request="request" :role="role" :workflow="workflow" @busy="panelBusy=$event" @summary="selected={...selected,...$event}" @close="closed"/></SidePanel>
  </section>
 </template>
@@ -162,6 +175,32 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 20px;
   margin-bottom: 24px;
+}
+.prospects-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.prospects-view-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: #eef1f6;
+}
+.prospects-view-switch button {
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #5b6b82;
+  padding: 9px 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.prospects-view-switch button.is-active {
+  background: white;
+  color: #26364d;
+  box-shadow: 0 1px 4px #26364d18;
 }
 .prospects-heading span {
   font-size: 10px;

@@ -125,7 +125,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
     </CrmOverview>
     <section v-else :key="workspace+activeModule+contentVersion" class="card amx-workspace"><div class="card-header"><h2>{{pageTitle}}</h2></div><div class="amx-content">
      <template v-if="workspace==='assurance'">
-      <AssuranceProspects v-if="assuranceModule==='contacts'&&role==='setter'" :portal="portal" :request="assurance" :role="role"/>
+      <AssuranceProspects v-if="assuranceModule==='contacts'&&['setter','administrator'].includes(role)" :portal="portal" :request="assurance" :role="role" @imported="summary.contacts=$event"/>
       <AssuranceContacts v-else-if="assuranceModule==='contacts'" :portal="portal" :request="assurance" :role="role" @imported="summary.contacts=$event"/>
       <AssurancePipeline v-else-if="assuranceModule==='pipeline'" :portal="portal" :request="assurance" :role="role"/>
       <AssuranceAgreementRegistry v-else-if="assuranceModule==='agreements'&&role==='administrator'" :key="agreementDeadline" :initial-deadline="agreementDeadline" :request="assurance" :portal="portal" @changed="refreshAssurance"/>
