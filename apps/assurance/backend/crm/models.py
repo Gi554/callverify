@@ -14,6 +14,7 @@ class ContactImport(models.Model):
     mapping=models.JSONField(default=dict)
 
 class Contact(models.Model):
+    assurance_qualification=models.JSONField(default=dict)
     custom_values=models.JSONField(default=dict)
     import_batch=models.ForeignKey(ContactImport,null=True,blank=True,on_delete=models.SET_NULL,related_name='contacts')
     source_row=models.PositiveIntegerField(null=True,blank=True)
@@ -56,6 +57,7 @@ class AdvisorSchedule(models.Model):
     version=models.PositiveIntegerField(default=0)
 
 class Appointment(models.Model):
+    qualification_snapshot=models.JSONField(default=dict)
     request_id=models.UUIDField(unique=True)
     fingerprint=models.CharField(max_length=64)
     contact=models.ForeignKey(Contact,on_delete=models.PROTECT,related_name='appointments')

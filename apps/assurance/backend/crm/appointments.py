@@ -37,6 +37,7 @@ class IntervalInput(serializers.Serializer):
         return data
 
 class BookingInput(IntervalInput):
+    contact_revision=serializers.IntegerField(min_value=0,required=False)
     contact_id=serializers.IntegerField(min_value=1)
     assignment_id=serializers.IntegerField(min_value=1)
     request_id=serializers.UUIDField()
@@ -90,15 +91,16 @@ def audit(user,row,action,before=None,reason='',external=None):
         metadata={'contact_id':row.contact_id,'setter_id':row.setter_id,'advisor_id':row.advisor_id,'before':before,'after':snapshot(row),'reason':reason,**({'external_check':external} if external else {})})
 
 def output(row,user):
-    # No reverse relations, assignment IDs, free-text reasons or setter metadata
-    # enter the public response, including for a cancelled appointment.
+    # Only the explicit qualification snapshot is shared. Internal notes, audit
+    # reasons, assignment IDs and setter metadata remain outside advisor output.
     result={'id':row.pk,'contact':{'id':row.contact_id,'name':row.contact.name,'phone':row.contact.phone,'email':row.contact.email},
         'advisor':{'id':row.advisor_id,'name':row.advisor_name},'starts_at':row.starts_at,'ends_at':row.ends_at,
-        'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal'}
+        'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal','qualification_snapshot':row.qualification_snapshot}
     if user.role!='advisor':result['assignment_id']=row.assignment_id
     if user.role=='administrator':result.update(setter={'id':row.setter_id,'name':row.setter_name},booked_by_id=row.booked_by_id)
     return result
 
+from .qualification import snapshot as qualification_snapshot
 from .reports import ReportMixin
 
 class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
@@ -149,13 +151,15 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
                     raise Conflict('Prenez en charge la fiche avant de réserver')
                 existing=Appointment.objects.select_related('contact').filter(request_id=data['request_id']).first()
                 if existing:return replay(existing)
+                contact=Contact.objects.get(pk=contact.pk)
+                if 'contact_revision' in data and contact.revision!=data['contact_revision']:raise Conflict('Qualification ou coordonnées modifiées : rechargez avant de réserver.')
                 active_assignment(assignment.pk)
                 calendar_lock(assignment.advisor_id)
                 if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
                 prevent_overlap(contact.pk,assignment.advisor_id,data['starts_at'],data['ends_at'])
                 external=external_check(request.user,assignment.advisor_id,data['starts_at'],data['ends_at'])
                 if data['starts_at']<=timezone.now():raise ValidationError('Le rendez-vous doit commencer dans le futur')
-                row=Appointment.objects.create(request_id=data['request_id'],fingerprint=fingerprint,contact=contact,assignment=assignment,
+                row=Appointment.objects.create(request_id=data['request_id'],fingerprint=fingerprint,contact=contact,assignment=assignment,qualification_snapshot=qualification_snapshot(contact),
                     setter_id=assignment.setter_id,setter_name=claims['setter']['name'],advisor_id=assignment.advisor_id,
                     advisor_name=claims['advisor']['name'],booked_by_id=request.user.pk,
                     **{key:data[key] for key in ('starts_at','ends_at','timezone')})

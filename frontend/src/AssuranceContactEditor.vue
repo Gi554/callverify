@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {computed,ref,onMounted,onBeforeUnmount,watch} from 'vue'
+import {computed,ref,onMounted,onBeforeUnmount,watch,nextTick} from 'vue'
 import CallAction from './CallAction.vue'
 import AssuranceContactFollowups from './AssuranceContactFollowups.vue'
+import AssuranceQualification from './AssuranceQualification.vue'
 import {UserRound,ClipboardList,CalendarDays,Phone,ArrowRight,ArrowLeft,CheckCircle2,LoaderCircle,StickyNote,Paperclip,ChevronDown} from 'lucide-vue-next'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import AssuranceAgreements from './AssuranceAgreements.vue'
@@ -27,13 +28,14 @@ async function changeStatus(){
 }
 const dirty=computed(()=>Object.keys(draft.value).some(key=>draft.value[key as keyof typeof draft.value]!==base.value[key as keyof typeof base.value]))
 const flowTab=ref(props.workflow==='call'?'exchange':'contact'),flowBody=ref<HTMLElement|null>(null),closePrompt=ref(false)
+const qualification=ref<InstanceType<typeof AssuranceQualification>|null>(null),qualificationBusy=ref(false),qualificationDirty=ref(false)
 const followupBusy=ref(false),followupDirty=ref(false),followups=ref<InstanceType<typeof AssuranceContactFollowups>|null>(null)
 const fieldsDirty=ref(false),noteDirty=ref(false),documentDirty=ref(false),fieldsBusy=ref(false),noteBusy=ref(false),documentBusy=ref(false)
-const blocked=computed(()=>busy.value||saving.value||callBusy.value||bookingBusy.value||fieldsBusy.value||noteBusy.value||documentBusy.value||followupBusy.value)
-const pendingDrafts=computed(()=>(!token.value&&dirty.value)||followupDirty.value||fieldsDirty.value||noteDirty.value||documentDirty.value||nextStatus.value!==current.value.status||!!statusReason.value.trim())
+const blocked=computed(()=>busy.value||saving.value||callBusy.value||bookingBusy.value||fieldsBusy.value||noteBusy.value||documentBusy.value||followupBusy.value||qualificationBusy.value)
+const pendingDrafts=computed(()=>(!token.value&&dirty.value)||qualificationDirty.value||followupDirty.value||fieldsDirty.value||noteDirty.value||documentDirty.value||nextStatus.value!==current.value.status||!!statusReason.value.trim())
 watch(blocked,value=>emit('busy',value),{immediate:true})
 let discarding=false
-async function changeFlow(tab:string){if(blocked.value)return;if(saveTimer)clearTimeout(saveTimer);if(!(await persist()))return;flowTab.value=tab;closePrompt.value=false;if(flowBody.value)flowBody.value.scrollTop=0}
+async function changeFlow(tab:string){if(blocked.value)return;if(saveTimer)clearTimeout(saveTimer);if(!(await persist()))return;if(tab==='booking'){try{await qualification.value?.ensureSaved();await nextTick()}catch(e:any){fail(e);return}}flowTab.value=tab;closePrompt.value=false;if(flowBody.value)flowBody.value.scrollTop=0}
 async function discardAndClose(){discarding=true;if(!token.value)draft.value={...base.value};await close();discarding=false}
 const endpoint=`contacts/${props.contact.id}/`
 let lastActivity=Date.now(),saveTimer:ReturnType<typeof setTimeout>|undefined,pulseTimer:ReturnType<typeof setInterval>|undefined,disposed=false,pendingSave:Promise<boolean>|null=null
@@ -58,13 +60,14 @@ async function prepareCall(){
  if(saveTimer)clearTimeout(saveTimer)
  if(!(await persist())||!token.value||dirty.value)throw new Error('Enregistrez et prenez en charge la fiche avant de continuer.')
 }
+async function prepareBooking(){await prepareCall();if(!qualification.value)throw new Error('Chargez la qualification avant de réserver.');await qualification.value.ensureSaved();await nextTick()}
 async function callIntent(id:string){
  if(saveTimer)clearTimeout(saveTimer)
  if(!(await persist())||!token.value||dirty.value)throw new Error('Enregistrez et prenez en charge la fiche avant de continuer.')
  return props.request(endpoint+'call-intent/',{request_id:id,token:token.value,contact_revision:current.value.revision})
 }
 async function release(){if(saveTimer)clearTimeout(saveTimer);if(pendingSave&&!(await pendingSave))return false;if(dirty.value&&!(await persist()))return false;if(!token.value)return true;try{await props.request(endpoint+'lease/',{token:token.value},'DELETE');token.value='';await refreshLock();message.value='Fiche libérée.';return true}catch(e:any){fail(e);return false}}
-async function close(){if(blocked.value)return;if(props.workflow&&pendingDrafts.value&&!discarding){closePrompt.value=true;return}busy.value=true;if(await release())emit('close');busy.value=false}
+async function close(){if(blocked.value)return;if(pendingDrafts.value&&!discarding){closePrompt.value=true;return}busy.value=true;if(await release())emit('close');busy.value=false}
 async function pulse(){if(!token.value||busy.value||saving.value)return;if(Date.now()>=Date.parse(expires.value)){token.value='';message.value='Verrou expiré après inactivité. Reprenez la fiche pour continuer.';return}if(document.visibilityState!=='visible'||Date.now()-lastActivity>120000)return;try{const lease=await props.request(endpoint+'lease/',{token:token.value},'PATCH');expires.value=lease.expires_at}catch(e:any){fail(e)}}
 async function unlock(){busy.value=true;error.value='';try{await props.request(endpoint+'unlock/',{reason:reason.value});token.value='';reason.value='';await refreshLock();message.value='Déverrouillage administrateur enregistré.'}catch(e:any){fail(e)}finally{busy.value=false}}
 async function loadHistory(){error.value='';try{const result=await props.request(endpoint+'history/?page='+historyPage.value);history.value=result.results;historyCount.value=result.count;showHistory.value=true}catch(e:any){fail(e)}}
@@ -91,12 +94,13 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
    <div class="drawer-tip"><CheckCircle2 :size="17"/><p>Les coordonnées s’enregistrent automatiquement pendant votre saisie.</p></div>
   </div>
   <div v-show="flowTab==='qualification'" class="drawer-view">
+   <AssuranceQualification ref="qualification" :contact-id="current.id" :role="role" :lease-token="token" :contact-revision="current.revision" :request="request" :prepare="prepareCall" :blocked="busy||saving||bookingBusy||callBusy" @busy="qualificationBusy=$event" @dirty="qualificationDirty=$event" @saved="current.revision=$event;emit('changed')"/>
    <AssuranceCustomValues compact :contact-id="current.id" :lease-token="token" :blocked="busy||saving||bookingBusy" :request="request" @dirty="fieldsDirty=$event" @busy="fieldsBusy=$event" @saved="current.revision=$event;emit('changed')"/>
    <section class="drawer-status-card"><div class="drawer-section-heading"><span class="section-icon lavender"><ClipboardList :size="19"/></span><div><h3>Où en est ce prospect ?</h3><p>Choisissez la suite à donner à votre échange.</p></div></div><form v-if="pipeline" @submit.prevent="changeStatus"><label>Statut du prospect<select v-model="nextStatus" :disabled="!token||blocked"><option v-for="stage in pipeline.stages.filter((s:any)=>s.active)" :key="stage.key" :value="stage.key">{{stage.label}}</option></select></label><label v-if="nextStatus!==current.status">Précisions sur le changement<textarea v-model="statusReason" maxlength="1000" required :disabled="!token||blocked" placeholder="Résumez la situation en quelques mots…"></textarea></label><button class="primary" :disabled="!token||blocked||nextStatus===current.status">Enregistrer le statut</button><p v-if="message==='Statut commercial enregistré.'" role="status" class="drawer-status-saved">Statut du prospect enregistré.</p></form><button v-else class="secondary" :disabled="blocked" @click="loadPipeline">Recharger les statuts</button></section>
    <details class="drawer-extra" open><summary><StickyNote :size="17"/>Notes de l’échange<ChevronDown :size="16"/></summary><div><AssuranceContactNotes compact :contact-id="current.id" :lease-token="token" :role="role" :request="request" @dirty="noteDirty=$event" @busy="noteBusy=$event"/></div></details>
    <details class="drawer-extra"><summary><Paperclip :size="17"/>Documents<ChevronDown :size="16"/></summary><div><AssuranceContactDocuments compact :contact-id="current.id" :lease-token="token" :role="role" :request="request" @dirty="documentDirty=$event" @busy="documentBusy=$event"/></div></details>
   </div>
-  <div v-show="flowTab==='booking'" class="drawer-view"><AssuranceAppointments compact @booked="followups?.booked($event)" @busy="bookingBusy=$event" :before-book="prepareCall" :blocked="busy||saving||callBusy" :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/></div>
+  <div v-show="flowTab==='booking'" class="drawer-view"><AssuranceAppointments compact @booked="followups?.booked($event)" @busy="bookingBusy=$event" :before-book="prepareBooking" :contact-revision="current.revision" :blocked="busy||saving||callBusy" :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/></div>
  </div>
  <footer class="drawer-actions">
   <div v-if="closePrompt" class="drawer-unsaved" role="alert"><p>Des modifications ne sont pas encore enregistrées. Vous pouvez les conserver en gardant cette fiche ouverte.</p><button class="secondary" @click="closePrompt=false">Rester sur la fiche</button><button class="drawer-discard" :disabled="blocked" @click="discardAndClose">Fermer sans ces saisies</button></div>
@@ -105,6 +109,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
  </footer>
 </section>
 <section v-else class="contact-editor" aria-label="Fiche contact" @pointerdown="activity" @keydown="activity">
+ <div v-if="closePrompt" class="drawer-unsaved" role="alert"><p>Une qualification ou une saisie n’est pas encore enregistrée.</p><button class="secondary" @click="closePrompt=false">Continuer la saisie</button><button class="secondary" @click="discardAndClose">Abandonner et fermer</button></div>
  <header class="record-header"><button class="secondary" :disabled="busy||saving||callBusy||bookingBusy" @click="close">{{workflow?'Fermer la fiche':'← Contacts'}}</button><div><h3>{{current.name||'Contact sans nom'}}</h3><span>{{current.status_label||current.status}}</span></div><small>Dossier #{{current.id}}</small></header>
  <p v-if="error" role="alert" class="error record-feedback">{{error}}</p><p v-if="message" role="status" class="record-feedback">{{message}}</p><p v-if="workflow==='call'" class="workflow-intro">Préparez et confirmez l’appel, puis complétez la fiche et réservez un rendez-vous avec un conseiller. Cette fenêtre reste ouverte pendant votre échange.</p>
  <button v-if="workflow&&!token&&canWrite" class="secondary workflow-retry" :disabled="busy" @click="claim">Reprendre la fiche pour modifier</button><div class="record-columns">
@@ -113,6 +118,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 <CallAction v-if="role==='setter'&&(!workflow||!!token)" :auto-open="workflow==='call'" @busy="callBusy=$event" workspace="assurance" :resource-id="current.id" :phone="current.phone" :portal="portal" :prepare="callIntent" :before-open="prepareCall" :disabled="!token||busy||saving"/>
 <form @submit.prevent="persist" @input="edited"><label>Nom<input v-model="draft.name" :readonly="!token||busy" maxlength="250"></label><label>Téléphone fourni<input v-model="draft.phone" :readonly="!token||busy" maxlength="250" required></label><label>E-mail fourni<input v-model="draft.email" :readonly="!token||busy" maxlength="254"></label><p v-if="!workflow">Statut : {{current.status_label||current.status}} · version {{current.revision}}</p><button v-if="token" class="primary" :disabled="busy||saving||!dirty">{{saving?'Enregistrement…':'Enregistrer maintenant'}}</button></form>
 <button v-if="!token&&dirty" class="secondary" @click="emit('close')">Fermer sans enregistrer les changements locaux</button><template v-if="role==='administrator'"><form class="unlock-form" @submit.prevent="unlock"><label>Motif du déverrouillage forcé<input v-model="reason" maxlength="1000" required></label><button class="secondary" :disabled="busy||saving||!!token||!reason.trim()">Déverrouiller la fiche</button></form><button class="secondary" @click="historyPage=1;loadHistory()">Consulter l’historique administrateur</button><div v-if="showHistory"><p v-if="!history.length">Aucune modification enregistrée.</p><article v-for="entry in history" :key="entry.id"><strong>{{entry.action}}</strong><small>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur interne {{entry.actor_id}}</small><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><div class="history-pages"><button class="secondary" :disabled="historyPage===1" @click="historyPage--;loadHistory()">Précédent</button><span>Page {{historyPage}}</span><button class="secondary" :disabled="historyPage*25>=historyCount" @click="historyPage++;loadHistory()">Suivant</button></div></div></template>
+<AssuranceQualification ref="qualification" :contact-id="current.id" :role="role" :lease-token="token" :contact-revision="current.revision" :request="request" :prepare="prepareCall" :blocked="busy||saving||bookingBusy||callBusy" @busy="qualificationBusy=$event" @dirty="qualificationDirty=$event" @saved="current.revision=$event;emit('changed')"/>
 <AssuranceSharedFields v-if="role==='advisor'" :contact-id="current.id" :request="request"/>
 <AssuranceCustomValues v-if="canWrite" :contact-id="current.id" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 <section v-if="canWrite"><h3>Statut commercial : {{current.status_label||current.status}}</h3><p>Le statut ne remplace pas le compte rendu d’un rendez-vous ni l’enregistrement d’un contrat.</p><form v-if="pipeline" @submit.prevent="changeStatus"><label>Nouveau statut<select v-model="nextStatus" :disabled="!token||busy||saving"><option v-for="stage in pipeline.stages.filter((s:any)=>s.active)" :key="stage.key" :value="stage.key">{{stage.label}}</option></select></label><label>Motif du changement<textarea v-model="statusReason" maxlength="1000" required :disabled="!token||busy||saving"></textarea></label><button class="primary" :disabled="!token||busy||saving||nextStatus===current.status">Enregistrer le statut</button></form><button class="secondary" :disabled="busy||saving" @click="loadPipeline">Recharger les statuts disponibles</button></section>
@@ -124,7 +130,7 @@ onBeforeUnmount(()=>{disposed=true;if(saveTimer)clearTimeout(saveTimer);if(pulse
 </div>
    <div v-show="detailTab==='documents'"><AssuranceContactDocuments :contact-id="current.id" :lease-token="token" :role="role" :request="request"/>
 </div>
-   <div v-show="detailTab==='appointments'"><AssuranceAppointments @busy="bookingBusy=$event" :compact="!!workflow" :before-book="prepareCall" :blocked="busy||saving" :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/>
+   <div v-show="detailTab==='appointments'"><AssuranceAppointments @busy="bookingBusy=$event" :compact="!!workflow" :before-book="prepareBooking" :contact-revision="current.revision" :blocked="busy||saving" :contact-id="current.id" :lease-token="token" :role="role" :request="request" :portal="portal"/>
 </div>
    <div v-if="role==='administrator'" v-show="detailTab==='agreements'"><AssuranceAgreements v-if="role==='administrator'" :contact-id="current.id" :contact-revision="current.revision" :lease-token="token" :blocked="busy||saving" :request="request" @saved="current.revision=$event;emit('changed')"/>
 </div>
