@@ -92,7 +92,7 @@ class EscalationTests(TestCase):
         self.assertFalse(FollowUpTask.objects.exists())
 
     def test_closure_replanning_disable_and_type_pause_remove_escalation(self):
-        rules = self.rules()
+        self.rules()
         task = self.overdue()
         generate()
         ReminderPolicy.objects.update(tasks_enabled=False)

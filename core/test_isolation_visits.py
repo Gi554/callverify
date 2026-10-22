@@ -380,7 +380,10 @@ class IsolationVisitConcurrencyTests(TransactionTestCase):
 
     def test_same_request_concurrent_retry_is_idempotent(self):
         payload = self.payload(self.prospect, 21)
-        action = lambda api: api.post('/api/visits/', payload, format='json')
+
+        def action(api):
+            return api.post('/api/visits/', payload, format='json')
+
         results = self.race([(21, action), (21, action)])
         self.assertEqual(sorted(results), [200, 201])
         self.assertEqual(IsolationVisit.objects.count(), 1)

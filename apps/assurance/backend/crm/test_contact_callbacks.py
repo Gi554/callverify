@@ -10,7 +10,6 @@ from .models import (
     ContactCallOutcome,
     FollowUpTask,
     TaskNotification,
-    BusinessAudit,
     ReminderEvent,
 )
 

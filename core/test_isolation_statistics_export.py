@@ -1,7 +1,6 @@
 import csv
 import io
 from django.test import TestCase, override_settings
-from rest_framework.test import APIClient
 from openpyxl import load_workbook
 from packages.access.tickets import issue
 from . import test_isolation_statistics as fixtures

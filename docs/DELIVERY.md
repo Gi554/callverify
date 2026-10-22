@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Socle technique — lint Python (Ruff check)
+
+Lot technique sans changement fonctionnel. `ruff check .` (règles par défaut : pyflakes et erreurs pycodestyle) est désormais exigé en CI. Corrections : imports inutilisés retirés (les ré-exports réellement utilisés, comme `Unavailable` des contrôles d’agenda, sont conservés explicitement), imports tardifs remontés en tête dans les tests, `appointments.py` et `calendar_sync.py`, affectations inutiles retirées en conservant les appels à effet (dont `get_object()` qui contrôle l’accès), `lambda` remplacées par des fonctions.
+
+Exceptions explicites et commentées dans `ruff.toml` : imports tardifs des settings (configuration des schémas), des `urls.py` construits par blocs, des scripts opérateur (après `django.setup()`) et des modules `isolation_followups`/`isolation_work` (imports mutuels) ; `import *` historiques de `core/views.py` et `core/tests.py`.
+
+Validation : suites core 248, portail 221, Assurance 310, unittest base commune/démo, `manage.py check` des trois projets, `ruff check` et `ruff format --check`.
+
+Limites : ESLint pour le frontend reste à ajouter dans un lot séparé ; les `import *` de `core/views.py` et `core/tests.py` restent à remplacer.
+
 ## Calendrier d’équipe — filtre par membre côté serveur
 
 `appointments/` (Assurance) accepte `setter_id` et `advisor_id` ; `visits/` (Isolation) accepte `setter_id`, `closer_id` et `client_id`. Ces paramètres ne font que restreindre le périmètre déjà appliqué selon le rôle : un setter ou un client ne voit jamais au-delà de ses propres rendez-vous ; un identifiant non numérique est refusé (400). Le calendrier transmet le membre choisi et recharge : naviguer de mois en mois sur un membre ne charge plus toute l’équipe. Les membres rencontrés dans les mois déjà chargés restent proposés dans le filtre.

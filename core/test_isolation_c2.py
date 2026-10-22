@@ -5,7 +5,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from packages.access.tickets import issue
 from . import test_isolation_visits as fixtures
-from .models import Prospect, IsolationVisit, AuditEvent
+from .models import Prospect, IsolationVisit
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)

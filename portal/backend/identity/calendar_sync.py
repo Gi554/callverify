@@ -28,6 +28,8 @@ from .calendars import (
     CalendarThrottle,
     OWNERS,
 )
+from .passwords import PasswordThrottle
+from django.contrib.auth import get_user_model
 
 ERRORS = {
     'provider_unavailable',
@@ -380,10 +382,6 @@ class DetachInput(StrictInput):
     current_password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
     revision = serializers.IntegerField(min_value=0)
     confirm_external_cleanup = serializers.BooleanField()
-
-
-from .passwords import PasswordThrottle
-from django.contrib.auth import get_user_model
 
 
 @api_view(['POST'])

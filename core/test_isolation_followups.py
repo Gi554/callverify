@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from .test_isolation_activity import assigned_fixture
-from .models import Prospect, ProspectActivity, IsolationFollowUp, IsolationVisit, AuditEvent
+from .models import Prospect, ProspectActivity, IsolationFollowUp, IsolationVisit
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
@@ -264,7 +264,7 @@ class FollowUpTests(TestCase):
 
     def test_filters_counts_and_remaining_earliest_task(self):
         first = self.task().data
-        second = self.task(revision=1, due_at=(self.due + timedelta(days=1)).isoformat()).data
+        self.task(revision=1, due_at=(self.due + timedelta(days=1)).isoformat()).data
         IsolationFollowUp.objects.filter(pk=first['id']).update(
             due_at=timezone.now() - timedelta(hours=1)
         )

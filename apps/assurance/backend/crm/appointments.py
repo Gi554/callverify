@@ -21,6 +21,8 @@ from .models import Appointment, AdvisorAssignment, AdvisorSchedule, Contact, Bu
 from .leases import Conflict, writer, held, LEASE_SECONDS
 from .calendar_checks import check as external_check
 from .appointment_status import output as business_status, filter_status
+from .qualification import snapshot as qualification_snapshot
+from .reports import ReportMixin
 
 
 class IntervalInput(serializers.Serializer):
@@ -171,10 +173,6 @@ def output(row, user):
             setter={'id': row.setter_id, 'name': row.setter_name}, booked_by_id=row.booked_by_id
         )
     return result
-
-
-from .qualification import snapshot as qualification_snapshot
-from .reports import ReportMixin
 
 
 class AppointmentViewSet(ReportMixin, viewsets.GenericViewSet):

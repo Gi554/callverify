@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import connection
-from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -10,7 +9,6 @@ from .models import (
     LookupCheck,
     ImportBatch,
     ExportJob,
-    AuditEvent,
     TaskDelivery,
     Campaign,
 )

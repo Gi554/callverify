@@ -3,7 +3,6 @@
 import hashlib
 import secrets
 from datetime import timedelta
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
