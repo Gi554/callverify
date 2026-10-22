@@ -2,10 +2,11 @@
 import {ref,computed,onMounted,onBeforeUnmount,nextTick} from 'vue'
 import {Search,RefreshCw,Pencil,Phone,Mail,ChevronDown} from 'lucide-vue-next'
 import AssuranceContactEditor from './AssuranceContactEditor.vue'
+import SidePanel from './SidePanel.vue'
 const props=defineProps<{request:(path:string,body?:any,method?:string)=>Promise<any>;portal:(path:string,body?:any)=>Promise<any>;role:string}>()
 type Column={key:string;label:string;active:boolean;rows:any[];count:number;page:number;next:boolean;busy:boolean;error:string}
 const columns=ref<Column[]>([]),search=ref(''),applied=ref(''),stage=ref(''),busy=ref(false),error=ref(''),opening=ref(false)
-const selected=ref<any>(null),workflow=ref<'edit'|'call'>('edit'),dialog=ref<HTMLDialogElement|null>(null),editor=ref<InstanceType<typeof AssuranceContactEditor>|null>(null)
+const selected=ref<any>(null),workflow=ref<'edit'|'call'>('edit'),panelBusy=ref(false),editor=ref<InstanceType<typeof AssuranceContactEditor>|null>(null)
 const visible=computed(()=>columns.value.filter(column=>(!stage.value||column.key===stage.value)&&(column.count>0||!!column.error)))
 const total=computed(()=>visible.value.reduce((n,c)=>n+c.count,0))
 let generation=0,disposed=false
@@ -28,12 +29,12 @@ async function load(){
 async function open(row:any,mode:'edit'|'call'){
  if(opening.value||selected.value)return
  opening.value=true;error.value=''
- try{const detail=await props.request(`contacts/${row.id}/`);if(disposed)return;workflow.value=mode;selected.value=detail;await nextTick();dialog.value?.showModal()}
+ try{const detail=await props.request(`contacts/${row.id}/`);if(disposed)return;workflow.value=mode;selected.value=detail}
  catch(e:any){selected.value=null;error.value=e.message}finally{opening.value=false}
 }
-function closed(){dialog.value?.close();selected.value=null;void load()}
+function closed(){const id=selected.value?.id;selected.value=null;panelBusy.value=false;void load().then(async()=>{await nextTick();if(!selected.value&&!disposed)document.querySelector<HTMLButtonElement>(`[data-prospect-id="${Number(id)}"]`)?.focus()})}
 onMounted(load)
-onBeforeUnmount(()=>{disposed=true;generation++;dialog.value?.close()})
+onBeforeUnmount(()=>{disposed=true;generation++})
 </script>
 <template>
  <section class="prospects-board">
@@ -48,7 +49,7 @@ onBeforeUnmount(()=>{disposed=true;generation++;dialog.value?.close()})
     <div class="prospect-stack">
      <p v-if="column.error" role="alert">{{column.error}}<button class="secondary" @click="loadColumn(column,generation,column.page>0)">Réessayer</button></p>
      <article v-for="row in column.rows" :key="row.id" class="prospect-card">
-      <button class="prospect-title" :disabled="opening" @click="open(row,'edit')">{{row.name||'Prospect sans nom'}}</button>
+      <button class="prospect-title" :data-prospect-id="row.id" :disabled="opening" @click="open(row,'edit')">{{row.name||'Prospect sans nom'}}</button>
       <small class="prospect-updated">Mis à jour {{new Date(row.updated_at).toLocaleDateString('fr-FR')}}</small>
       <div class="prospect-phone"><Phone :size="14"/><span>{{row.phone||'Non renseigné'}}</span><div class="number-actions"><button :disabled="opening" :aria-label="'Modifier le numéro de '+(row.name||'ce prospect')" title="Modifier la fiche et le numéro" @click="open(row,'edit')"><Pencil :size="15"/></button><button class="phone-button" :disabled="opening||!row.phone" :aria-label="'Préparer l’appel vers '+row.phone" title="Appeler et qualifier le prospect" @click="open(row,'call')"><Phone :size="15"/></button></div></div>
       <p class="prospect-email"><Mail :size="14"/><span>{{row.email||'E-mail non renseigné'}}</span></p>
@@ -59,7 +60,7 @@ onBeforeUnmount(()=>{disposed=true;generation++;dialog.value?.close()})
     </div>
    </section>
   </div>
-  <dialog ref="dialog" class="prospect-dialog" aria-label="Fiche prospect, qualification et rendez-vous" @cancel.prevent="editor?.close()"><AssuranceContactEditor v-if="selected" ref="editor" :key="selected.id" :contact="selected" :portal="portal" :request="request" :role="role" :workflow="workflow" @close="closed"/></dialog>
+  <SidePanel :scrollable="false" :open="!!selected" :title="selected?.name||'Prospect sans nom'" :subtitle="selected?.status_label||selected?.status" eyebrow="FICHE PROSPECT" :close-disabled="panelBusy" @request-close="editor?.close()"><AssuranceContactEditor v-if="selected" ref="editor" :key="selected.id" :contact="selected" :portal="portal" :request="request" :role="role" :workflow="workflow" @busy="panelBusy=$event" @summary="selected={...selected,...$event}" @close="closed"/></SidePanel>
  </section>
 </template>
 <style scoped>
