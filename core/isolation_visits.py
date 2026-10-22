@@ -183,6 +183,13 @@ class IsolationVisitViewSet(
             if not prospect.isdigit():
                 raise ValidationError('Prospect invalide')
             qs = qs.filter(prospect_id=int(prospect))
+        # Team calendar filters only narrow the role scope applied above.
+        for param in ('setter_id', 'closer_id', 'client_id'):
+            value = self.request.query_params.get(param, '')
+            if value:
+                if not value.isdigit():
+                    raise ValidationError('Participant invalide')
+                qs = qs.filter(**{param: int(value)})
         state = self.request.query_params.get('status', '')
         if state not in ('', 'scheduled', 'cancelled'):
             raise ValidationError('Statut invalide')

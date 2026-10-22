@@ -70,6 +70,23 @@ class AppointmentStatusTests(TestCase):
         self.assertIsNotNone(response.data['next'])
         self.assertEqual(len(self.client.get(self.url, {'page_size': 500}).data['results']), 100)
 
+    def test_team_calendar_filters_only_narrow_the_role_scope(self):
+        self.clone(setter_id=22, advisor_id=33)
+        self.clone(setter_id=22)
+        self.fixture.auth(1, 'administrator')
+
+        def ids(**query):
+            return self.client.get(self.url, query).data['count']
+
+        self.assertEqual(ids(), 3)
+        self.assertEqual(ids(setter_id=22), 2)
+        self.assertEqual(ids(advisor_id=33), 1)
+        self.assertEqual(ids(setter_id=22, advisor_id=33), 1)
+        self.assertEqual(self.client.get(self.url, {'advisor_id': 'x'}).status_code, 400)
+        self.fixture.auth(21, 'setter')
+        self.assertEqual(ids(), 1)
+        self.assertEqual(ids(setter_id=22), 0)
+
     def test_explicit_absence_retry_and_immutable_outcome(self):
         self.assertEqual(self.fixture.report(outcome='absent').status_code, 201)
         self.assertEqual(self.fixture.report(outcome='absent').status_code, 200)

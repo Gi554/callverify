@@ -144,7 +144,20 @@ function fixture({ workspace = 'assurance', role = 'administrator' } = {}) {
     role,
     request: async (path) => {
       requests.push(path)
-      return { results: rows, count: rows.length, next: null }
+      // Mirrors the API: participant parameters narrow the returned rows.
+      const query = new URLSearchParams(path.split('?')[1])
+      const of = {
+        setter_id: (row) => (row.setter || row.original_setter)?.id,
+        advisor_id: (row) => row.advisor?.id,
+        closer_id: (row) => row.closer?.id,
+        client_id: (row) => row.client?.id,
+      }
+      const results = rows.filter((row) =>
+        Object.entries(of).every(
+          ([param, get]) => !query.has(param) || String(get(row)) === query.get(param),
+        ),
+      )
+      return { results, count: results.length, next: null }
     },
     portal: async () => ({}),
   })
@@ -179,8 +192,19 @@ test('administrator filters the Assurance team calendar by setter or advisor', a
     select.props['onUpdate:modelValue']('advisor:7')
     await flush()
     assert.equal(count(f), '2')
-    assert.equal(f.requests.length, 1)
+    assert.equal(f.requests.length, 3)
     assert.match(f.requests[0], /[?&]page_size=100(&|$)/)
+    assert.doesNotMatch(f.requests[0], /_id=/)
+    assert.match(f.requests[1], /[?&]setter_id=2(&|$)/)
+    assert.match(f.requests[2], /[?&]advisor_id=7(&|$)/)
+    assert.doesNotMatch(f.requests[2], /setter_id/)
+    // Members met in earlier loads stay selectable after a filtered load.
+    select.props['onUpdate:modelValue']('setter:2')
+    await flush()
+    const options = all(memberSelect(f))
+      .filter((n) => n.tag === 'option')
+      .map(text)
+    assert.ok(options.includes('Alice Setter') && options.includes('Bruno Setter'))
   } finally {
     f.close()
   }
