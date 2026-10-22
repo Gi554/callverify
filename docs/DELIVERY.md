@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Calendrier d’équipe — filtre par membre côté serveur
+
+`appointments/` (Assurance) accepte `setter_id` et `advisor_id` ; `visits/` (Isolation) accepte `setter_id`, `closer_id` et `client_id`. Ces paramètres ne font que restreindre le périmètre déjà appliqué selon le rôle : un setter ou un client ne voit jamais au-delà de ses propres rendez-vous ; un identifiant non numérique est refusé (400). Le calendrier transmet le membre choisi et recharge : naviguer de mois en mois sur un membre ne charge plus toute l’équipe. Les membres rencontrés dans les mois déjà chargés restent proposés dans le filtre.
+
+Validation : deux tests backend (filtres Assurance et Isolation, combinaison, refus d’identifiant invalide, absence d’élargissement pour setter/client), tests calendrier mis à jour (paramètres envoyés, mémoire des membres). Suites core 248, Assurance 310, 67 tests frontend, typage, format et build. Aucune migration.
+
+Limites : la vue « Toute l’équipe » charge toujours le mois complet ; la liste des membres provient des rendez-vous déjà chargés (pas d’annuaire dédié). Les API de démo déjà lancées doivent être redémarrées pour en bénéficier.
+
 ## Correctifs issus de la revue en démo — parcours administrateur
 
 Revue navigateur des lots administrateur sur la démo fictive (`admin.demo`, Assurance et Isolation). Quatre défauts corrigés :

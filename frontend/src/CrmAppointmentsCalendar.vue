@@ -47,8 +47,10 @@ const assurance = computed(() => props.workspace === 'assurance'),
   admin = computed(() => props.role === 'administrator')
 // Administrator only: the existing list keeps its management tools.
 const listView = ref(false)
-// Team filter built from the loaded month: participants are only exposed to administrators.
+// Team filter: participants are only exposed to administrators. Members met in any loaded
+// month stay selectable; a selected member is filtered by the API, not only in the browser.
 const member = ref('')
+const known = ref<Record<string, Record<string, string>>>({})
 const memberKinds = computed(() =>
   assurance.value
     ? [
@@ -61,18 +63,29 @@ const memberKinds = computed(() =>
         { kind: 'client', label: 'Clients', of: (row: any) => row.client },
       ],
 )
+function remember(loaded: any[]) {
+  for (const { kind, of } of memberKinds.value) {
+    const people = { ...known.value[kind] }
+    for (const row of loaded) {
+      const person = of(row)
+      if (person?.id != null) people[String(person.id)] = person.name || `#${person.id}`
+    }
+    known.value = { ...known.value, [kind]: people }
+  }
+}
+const memberParams: Record<string, string> = {
+  setter: 'setter_id',
+  advisor: 'advisor_id',
+  closer: 'closer_id',
+  client: 'client_id',
+}
 const memberGroups = computed(() =>
   memberKinds.value
-    .map(({ kind, label, of }) => {
-      const people = new Map<string, string>()
-      for (const row of rows.value) {
-        const person = of(row)
-        if (person?.id != null) people.set(String(person.id), person.name || `#${person.id}`)
-      }
+    .map(({ kind, label }) => {
       return {
         kind,
         label,
-        options: [...people]
+        options: Object.entries(known.value[kind] || {})
           .map(([id, name]) => ({ value: `${kind}:${id}`, name }))
           .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
       }
@@ -185,6 +198,10 @@ async function load() {
         ...(assurance.value ? { business_status: status.value } : { status: status.value }),
         page_size: '100',
       })
+    if (member.value) {
+      const [kind, id] = member.value.split(':')
+      query.set(memberParams[kind], id)
+    }
     const result = await loadCalendarRows(
       props.request,
       assurance.value ? 'appointments' : 'visits',
@@ -195,7 +212,10 @@ async function load() {
         expectedCount.value = total
       },
     )
-    if (result) rows.value = result
+    if (result) {
+      rows.value = result
+      remember(result)
+    }
   } catch (e: any) {
     if (version === generation && !disposed) error.value = e.message
   } finally {
@@ -211,7 +231,7 @@ function closeDetail() {
   selected.value = null
   void load()
 }
-watch([month, zone, status], load, { immediate: true })
+watch([month, zone, status, member], load, { immediate: true })
 onBeforeUnmount(() => {
   disposed = true
   generation++

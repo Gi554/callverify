@@ -205,6 +205,13 @@ class AppointmentViewSet(ReportMixin, viewsets.GenericViewSet):
             except ValueError:
                 raise ValidationError('Contact invalide')
             qs = qs.filter(contact_id=contact)
+        # Team calendar filters only narrow the role scope applied above.
+        for param in ('setter_id', 'advisor_id'):
+            value = self.request.query_params.get(param, '')
+            if value:
+                if not value.isdigit():
+                    raise ValidationError('Participant invalide')
+                qs = qs.filter(**{param: int(value)})
         period = self.request.query_params.get('period', '')
         if period not in ('', 'upcoming', 'past'):
             raise ValidationError('Période invalide')

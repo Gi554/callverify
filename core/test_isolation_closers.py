@@ -104,6 +104,29 @@ class CloserTests(TestCase):
             len(self.client.get('/api/visits/', {'page_size': 500}).data['results']), 100
         )
 
+    def test_team_calendar_filters_only_narrow_the_role_scope(self):
+        values = {
+            field.attname: getattr(self.visit, field.attname)
+            for field in IsolationVisit._meta.fields
+            if not field.primary_key and field.name != 'created_at'
+        }
+        IsolationVisit.objects.create(
+            **{**values, 'request_id': uuid4(), 'setter_id': 23, 'client_id': 73, 'closer_id': 77}
+        )
+
+        def count(**query):
+            return self.client.get('/api/visits/', query).data['count']
+
+        self.auth(1, 'administrator')
+        self.assertEqual(count(), 2)
+        self.assertEqual(count(setter_id=23), 1)
+        self.assertEqual(count(closer_id=77), 1)
+        self.assertEqual(count(client_id=72), 1)
+        self.assertEqual(self.client.get('/api/visits/', {'closer_id': '-1'}).status_code, 400)
+        self.auth(72, 'client')
+        self.assertEqual(count(), 1)
+        self.assertEqual(count(client_id=73), 0)
+
     def test_explicit_result_optional_note_and_retry(self):
         self.prepare()
         body = self.payload()
