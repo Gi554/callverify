@@ -138,7 +138,8 @@ async function enter(value: string) {
   busy.value = true;
   workspace.value = value;
   summary.value = null;
-  assuranceModule.value = 'overview';
+  // Advisors only work from their appointments: no overview, contacts or pipeline.
+  assuranceModule.value = role.value === 'advisor' ? 'appointments' : 'overview';
   isolationModule.value = 'overview';
   managing.value = false;
   passwordOpen.value = false;
@@ -245,6 +246,8 @@ const activeModule = computed(() =>
 );
 const navigation = computed(() => {
   if (!workspace.value) return [];
+  if (workspace.value === 'assurance' && role.value === 'advisor')
+    return [{ id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' }];
   if (role.value === 'closer')
     return [
       { id: 'overview', label: 'Mes visites', icon: 'appointments' },

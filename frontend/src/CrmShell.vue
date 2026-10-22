@@ -45,6 +45,7 @@ const emit = defineEmits<{
 const mobile = ref(false);
 const profileOpen = ref(false);
 const admin = computed(() => props.role === 'administrator');
+const advisor = computed(() => props.role === 'advisor');
 // Modules opened from the "Pilotage" block of the administrator sidebar.
 const steeringIds = ['statistics', 'assignments', 'agreements', 'fields', 'qualification'];
 const mainItems = computed(() =>
@@ -91,9 +92,9 @@ function navigate(id: string) {
 </script>
 <template>
   <div
-    v-if="username && (role === 'setter' || admin)"
+    v-if="username && (role === 'setter' || admin || advisor)"
     class="crm-shell crm-connected setter-shell"
-    :class="{ 'admin-shell': admin }"
+    :class="{ 'admin-shell': admin, 'advisor-shell': advisor }"
   >
     <header class="setter-header">
       <button
@@ -111,6 +112,7 @@ function navigate(id: string) {
         ><span><strong>AMX</strong><small>CRM</small></span></a
       >
       <button
+        v-if="!advisor"
         class="setter-search"
         aria-label="Rechercher un prospect"
         @click="navigate('contacts')"
@@ -119,7 +121,7 @@ function navigate(id: string) {
       </button>
       <div class="setter-tools">
         <button
-          v-if="!admin"
+          v-if="role === 'setter'"
           class="setter-phone"
           disabled
           title="Appels : ouvrez une fiche prospect pour appeler"
@@ -154,7 +156,7 @@ function navigate(id: string) {
                   : workspace === 'isolation'
                     ? 'Isolation'
                     : 'Mes espaces'
-              }}{{ admin ? ' · Administration' : '' }}</small
+              }}{{ admin ? ' · Administration' : advisor ? ' · Conseiller' : '' }}</small
             ></span
           ><ChevronDown :size="17" />
         </button>
@@ -212,7 +214,7 @@ function navigate(id: string) {
             :size="26"
           /><span>{{ setterLabel(item) }}</span></button
         ><button
-          v-if="!admin"
+          v-if="role === 'setter'"
           style="order: 3"
           disabled
           title="Les appels se lancent depuis une fiche prospect"
@@ -220,7 +222,7 @@ function navigate(id: string) {
           <Phone :size="26" /><span>Appels</span>
         </button>
       </nav>
-      <div class="setter-statistics">
+      <div v-if="steeringItems.length || (admin && canManage)" class="setter-statistics">
         <p v-if="admin" class="setter-group-label">Pilotage</p>
         <button
           v-for="item in steeringItems"

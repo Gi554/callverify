@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Conseiller Assurance — harmonisation simple, utilisable sur téléphone
+
+Le conseiller passe sur le cadre commun (en-tête, barre latérale, menu mobile) avec un seul menu, **Mes rendez-vous**, et Mon compte ; il y arrive directement à l’entrée dans l’espace. Recherche, appels, Contacts, Opportunités et Vue d’ensemble ne lui sont plus proposés. La liste des rendez-vous n’affiche plus de double titre ni le texte de réservation (le conseiller ne réserve pas) : un texte dédié rappelle qualification et compte rendu ; la colonne Conseiller (toujours lui-même) est masquée. Sous 700 px, chaque rendez-vous devient une carte empilée, boutons pleine largeur ; vérifié à 375 px dans la démo sans aucun débordement horizontal.
+
+Validation : test de cadre conseiller (menu unique, ni recherche, ni appels, ni Pilotage) ; client Isolation conservé sur l’ancien cadre. 68 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : harmonisation volontairement minimale ; parcours conseiller (cartes par jour, appel direct, compte rendu mobile) à repenser ultérieurement. Closer et client Isolation gardent l’ancien cadre.
+
 ## Socle technique — formatage des templates Vue
 
 Lot technique sans changement fonctionnel. Les `<template>` des 63 composants sont désormais formatés par Prettier et contrôlés en CI ; plus aucun composant exclu. Les fichiers `.vue` utilisent `semi: true` (dérogation commentée dans `.prettierrc.json`) : sans point-virgule, Prettier répartissait les gestionnaires à plusieurs instructions (`emit(…); ouvert = false`) sur plusieurs lignes que le compilateur Vue ne sait pas lire, ce qui cassait le build. Les conversions `as Record<string,string>` des templates (`AssuranceContacts`, `AssuranceQualification`, `AssuranceQualificationSnapshot`, `IsolationProspectActivity`, `Portal`) deviennent des constantes typées du script.
