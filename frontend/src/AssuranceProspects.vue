@@ -6,7 +6,7 @@ const props=defineProps<{request:(path:string,body?:any,method?:string)=>Promise
 type Column={key:string;label:string;active:boolean;rows:any[];count:number;page:number;next:boolean;busy:boolean;error:string}
 const columns=ref<Column[]>([]),search=ref(''),applied=ref(''),stage=ref(''),busy=ref(false),error=ref(''),opening=ref(false)
 const selected=ref<any>(null),workflow=ref<'edit'|'call'>('edit'),dialog=ref<HTMLDialogElement|null>(null),editor=ref<InstanceType<typeof AssuranceContactEditor>|null>(null)
-const visible=computed(()=>columns.value.filter(column=>!stage.value||column.key===stage.value))
+const visible=computed(()=>columns.value.filter(column=>(!stage.value||column.key===stage.value)&&(column.count>0||!!column.error)))
 const total=computed(()=>visible.value.reduce((n,c)=>n+c.count,0))
 let generation=0,disposed=false
 async function loadColumn(column:Column,version:number,append=false){
@@ -41,6 +41,7 @@ onBeforeUnmount(()=>{disposed=true;generation++;dialog.value?.close()})
   <div class="prospects-toolbar"><label class="stage-filter"><select v-model="stage" aria-label="Filtrer les prospects par statut"><option value="">Tous les statuts</option><option v-for="column in columns" :key="column.key" :value="column.key">{{column.label}}{{column.active?'':' (archivé)'}}</option></select><ChevronDown :size="15"/></label><span class="prospects-count" role="status">{{busy?'Chargement…':`${total} prospect(s)`}}{{columns.some(c=>c.error)?' · résultat partiel':''}}</span><form @submit.prevent="load"><Search :size="17"/><input v-model="search" aria-label="Rechercher un prospect" placeholder="Nom, téléphone ou e-mail"><button :disabled="busy">Rechercher</button></form></div>
   <p v-if="error" role="alert" class="error">{{error}}</p>
   <p v-if="!busy&&!error&&!columns.length" class="board-empty">Aucun statut configuré. Contactez votre administrateur.</p>
+  <p v-else-if="!busy&&!error&&!visible.length" class="board-empty" role="status">{{stage?'Aucun prospect pour ce statut et cette recherche.':'Aucun prospect ne correspond à votre recherche.'}}</p>
   <div class="prospects-columns" role="region" tabindex="0" aria-label="Prospects par statut, défilement horizontal">
    <section v-for="(column,index) in visible" :key="column.key" class="prospect-column" :style="{'--stage-tone':['#f1ad54','#5b8def','#a18be2','#48b3be','#69b694'][columns.indexOf(column)%5]}">
     <header><span class="stage-dot"></span><h2>{{column.label}}<small v-if="!column.active">Archivé</small></h2><span class="column-count">{{column.busy&&!column.page?'…':column.count}}</span></header>
