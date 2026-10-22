@@ -61,7 +61,11 @@ def inspect(raw):
     return {'columns':headings,'row_count':count,'schema_fingerprint':hashlib.sha256(json.dumps(headings,ensure_ascii=False).encode()).hexdigest()}
 
 
-def fetch_schema(username,password,start,end):
+def fetch_schema(username,password,start,end):return inspect(fetch_raw(username,password,start,end))
+
+def fetch_records(username,password,start,end):return parse_records(fetch_raw(username,password,start,end))
+
+def fetch_raw(username,password,start,end):
     if not username or not password:raise DirectoryUnavailable()
     # Dates are server-validated date objects, never arbitrary provider arguments.
     from datetime import date
@@ -74,5 +78,5 @@ def fetch_schema(username,password,start,end):
                 if monotonic()>deadline:raise DirectoryUnavailable()
                 body.extend(chunk)
                 if len(body)>MAX_BYTES:raise DirectoryUnavailable()
-            return inspect(bytes(body))
+            return bytes(body)
     except (requests.RequestException,ValueError,UnicodeError):raise DirectoryUnavailable() from None

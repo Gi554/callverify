@@ -49,6 +49,9 @@ from .identity.phone_status import status as phone_status
 urlpatterns += [path('api/portal/workspaces/<str:workspace>/phone-extensions/<int:pk>/status/',phone_status)]
 
 from .identity.phone_cdr import schema as phone_cdr_schema
+from .identity.phone_history import history as phone_history
+urlpatterns += [path('api/portal/assurance/phone-history/',phone_history,{'workspace':'assurance'}),
+    path('api/portal/isolation/phone-history/',phone_history,{'workspace':'isolation'})]
 urlpatterns += [path('api/portal/phone-cdr-schema/',phone_cdr_schema)]
 from .identity.phone_calls import calls as assurance_calls,status as assurance_call_status
 urlpatterns += [path('api/portal/assurance/calls/',assurance_calls),path('api/portal/assurance/calls/<uuid:request_id>/',assurance_call_status)]

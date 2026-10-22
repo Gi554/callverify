@@ -9,6 +9,7 @@ from rest_framework.exceptions import PermissionDenied,ValidationError
 from rest_framework.response import Response
 from packages.access.phone_calls import issue,verify
 from .models import Prospect,Suppression,AuditEvent
+from packages.access.history_actions import HistoryMixin
 
 class Input(serializers.Serializer):
     revision=serializers.IntegerField(min_value=0)
@@ -25,7 +26,8 @@ def destination(row):
     if Suppression.objects.filter(e164=value).exists():raise ValidationError('Numéro exclu : appel interdit.')
     return value[1:]
 
-class IsolationPhoneCallMixin:
+class IsolationPhoneCallMixin(HistoryMixin):
+    history_workspace='isolation'
     @action(detail=True,methods=['post'],url_path='call-intent')
     def call_intent(self,request,pk=None):
         from .isolation_work import Conflict

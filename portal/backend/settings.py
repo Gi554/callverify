@@ -75,5 +75,6 @@ REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['phone_directory']='5/min'
 NEWT_STATUS_ENABLED=os.getenv('NEWT_STATUS_ENABLED','false').lower()=='true'
 
 NEWT_CDR_SCHEMA_ENABLED=os.getenv('NEWT_CDR_SCHEMA_ENABLED','false').lower()=='true'
+NEWT_CDR_HISTORY_ENABLED=os.getenv('NEWT_CDR_HISTORY_ENABLED','false').lower()=='true'
 NEWT_CALLS_ENABLED=os.getenv('NEWT_CALLS_ENABLED','false').lower()=='true'
 NEWT_ISOLATION_CALLS_ENABLED=os.getenv('NEWT_ISOLATION_CALLS_ENABLED','false').lower()=='true'
