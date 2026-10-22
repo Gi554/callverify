@@ -117,11 +117,11 @@ onMounted(() => run(load));
               {{ row.c2_snapshot?.fields?.full_name || row.prospect.name
               }}<small>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone }}</small>
             </td>
-            <td>
+            <td data-label="Rendez-vous">
               {{ date(row) }}<small>{{ row.timezone }}</small>
             </td>
-            <td>{{ row.original_setter.name }}</td>
-            <td>
+            <td data-label="Setter">{{ row.original_setter.name }}</td>
+            <td data-label="Résultat">
               {{
                 row.status === 'cancelled'
                   ? 'Annulée'

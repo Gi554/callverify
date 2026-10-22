@@ -188,7 +188,9 @@ onMounted(() => load());
                     >ID {{ row[result.group + '_id'] }}</small
                   >
                 </td>
-                <td v-for="key in columns" :key="key">{{ number(row[key]) }}</td>
+                <td v-for="key in columns" :key="key" :data-label="labels[key]">
+                  {{ number(row[key]) }}
+                </td>
               </tr>
               <tr v-if="!groups.results.length">
                 <td :colspan="columns.length + 1">Aucun rendez-vous dans cette période.</td>

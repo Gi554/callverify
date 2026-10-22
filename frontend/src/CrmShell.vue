@@ -1331,5 +1331,19 @@ function navigate(id: string) {
     width: 100%;
     margin: 6px 0 0;
   }
+  /* Headers are hidden on cards: each labelled cell shows its column name. */
+  .simple-shell .crm-stage :deep(.table-scroll td[data-label]::before) {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: #6b7686;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .simple-shell .crm-stage :deep(.table-scroll td:first-child) {
+    font-weight: 600;
+  }
 }
 </style>
