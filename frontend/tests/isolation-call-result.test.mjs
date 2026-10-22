@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { parse, compileScript } from 'vue/compiler-sfc'
-import { createRenderer, h, nextTick } from 'vue'
+import { createRenderer, nextTick } from 'vue'
 import ts from 'typescript'
 const require = createRequire(import.meta.url)
 const url = (code) =>

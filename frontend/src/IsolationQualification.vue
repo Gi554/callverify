@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Download, FileUp, Plus, RefreshCw, Search, ShieldCheck, Table2 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -18,9 +18,6 @@ const selected = ref(''),
   preview = ref<any>(null)
 const draft = ref({ name: '', purpose: '', source: '', budget: 0 }),
   mapping = ref({ phone: '', name: '', reference: '' })
-const currentCampaign = computed(() =>
-  campaigns.value.find((row) => String(row.id) === selected.value),
-)
 const lineLabel = (value: string) =>
   (
     ({ reachable: 'Joignable', unreachable: 'Non joignable', unknown: 'Indéterminée' }) as Record<

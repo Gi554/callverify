@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { bookingInterval } from './booking-time'
-import { Phone, Clock3, Plus, CheckCircle2 } from 'lucide-vue-next'
+import { Phone, Plus, CheckCircle2 } from 'lucide-vue-next'
 const props = defineProps<{
   contactId: number
   revision: number
