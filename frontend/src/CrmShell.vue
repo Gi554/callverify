@@ -651,14 +651,6 @@ function navigate(id: string) {
   box-shadow: 0 3px 12px #263a1903;
   overflow: hidden;
 }
-.crm-stage :deep(.amx-workspace > .card-header) {
-  padding: 20px 24px;
-  border-bottom: 1px solid #edf0e7;
-}
-.crm-stage :deep(.amx-workspace > .card-header h2) {
-  font-size: 16px;
-  font-weight: 650;
-}
 .crm-stage :deep(.amx-content) {
   padding: 24px;
 }

@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Titres en double supprimés
+
+Sur les écrans à mise en page générique, le titre de page était répété par l’en-tête de la carte (« Visites » puis « Visites »), puis souvent par le composant (« Visites Isolation », « Rendez-vous Assurance »). L’en-tête de carte est supprimé partout (avec ses règles CSS devenues inutiles) ; les titres internes des listes de visites et de rendez-vous ne s’affichent plus que lorsqu’ils apportent un contexte (fiche d’un prospect : « Visites · nom », « Rendez-vous du prospect » ; formulaire de réservation).
+
+Validation : démo — Statistiques Assurance de trois titres à deux, Visites du client Isolation à un seul. 71 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : « Mes dossiers » du client garde le titre « Mon espace client Isolation » de son composant (la mise en page Contacts masque déjà le titre de page) ; titres internes des autres modules inchangés.
+
 ## Accès direct au dernier espace — fin de la page « Mes espaces »
 
 Un compte autorisé dans les deux espaces n’est plus arrêté sur la page « Mes espaces » au rechargement ou au retour sur le site : le dernier espace utilisé (mémorisé dans le navigateur) est rouvert, sinon l’espace d’accueil du portail, sinon le premier espace autorisé. Le changement d’espace se fait par le menu du profil. La connexion ouvrait déjà l’espace du profil choisi. La page ne subsiste que pour un compte sans espace actif. Mémorisation au mieux : stockage indisponible sans effet bloquant.

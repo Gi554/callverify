@@ -561,9 +561,6 @@ const roleLabels: Record<string, string> = {
                 :key="workspace + activeModule + contentVersion"
                 class="card amx-workspace"
               >
-                <div class="card-header">
-                  <h2>{{ pageTitle }}</h2>
-                </div>
                 <div class="amx-content">
                   <template v-if="workspace === 'assurance'">
                     <AssuranceProspects
