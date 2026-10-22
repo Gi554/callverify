@@ -482,7 +482,7 @@ class AppointmentTests(TestCase):
         response=self.client.get(self.url)
         self.assertEqual(response.data['count'],1)
         public=response.data['results'][0]
-        self.assertEqual(set(public),{'id','contact','advisor','starts_at','ends_at','timezone','status','revision','calendar'})
+        self.assertEqual(set(public),{'id','contact','advisor','starts_at','ends_at','timezone','status','revision','calendar','qualification_snapshot'})
         self.assertNotIn('SECRET SETTER',str(public));self.assertNotIn('setter',str(public))
         self.assertEqual(self.client.get('/api/assurance/contacts/').data['count'],1)
         self.assertEqual(self.client.get('/api/assurance/dashboard/').data['contacts'],1)
