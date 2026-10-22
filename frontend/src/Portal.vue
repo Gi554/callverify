@@ -281,7 +281,9 @@ const navigation = computed(() => {
     },
   ];
   if (workspace.value === 'assurance') {
-    items.push({ id: 'pipeline', label: 'Opportunités', icon: 'agreements' });
+    // Opportunities are an administration view: setters work from prospects and tasks.
+    if (role.value !== 'setter')
+      items.push({ id: 'pipeline', label: 'Opportunités', icon: 'agreements' });
     if (role.value !== 'advisor')
       items.push(
         { id: 'followups', label: 'Tâches de suivi', icon: 'followups' },
