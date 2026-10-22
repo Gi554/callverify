@@ -24,6 +24,22 @@ class FollowUpTests(TestCase):
     def task_payload(self,**changes):return {'request_id':str(uuid4()),'revision':0,'note':'Rappeler le prospect','due_at':self.due.isoformat(),**changes}
     def task(self,**changes):return self.client.post(self.base+'follow-ups/',self.task_payload(**changes),format='json')
 
+    def test_search_filters_before_pagination_without_widening_setter_scope(self):
+        own=IsolationFollowUp.objects.create(prospect=self.prospect,request_id=uuid4(),fingerprint='test',created_by_id=21,
+            note='Dossier rénovation',due_at=self.due)
+        other=Prospect.objects.create(campaign=self.prospect.campaign,raw_phone='+10000000002',name='Rénovation hors périmètre',
+            assigned_setter_id=22,assigned_setter_name='Autre setter')
+        IsolationFollowUp.objects.create(prospect=other,request_id=uuid4(),fingerprint='test',created_by_id=22,
+            note='Dossier rénovation',due_at=self.due)
+        response=self.client.get('/api/follow-ups/',{'state':'upcoming','search':'rénovation'})
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(response.data['count'],1)
+        self.assertEqual(response.data['results'][0]['id'],own.pk)
+        self.assertEqual(response.data['results'][0]['owner_name'],'Setter')
+        self.assertEqual(self.client.get('/api/follow-ups/',{'search':'absent'}).data['count'],0)
+        self.auth(90,'administrator')
+        self.assertEqual(self.client.get('/api/follow-ups/',{'state':'upcoming','search':'rénovation'}).data['count'],2)
+
     def test_results_are_declared_and_do_not_change_lookup_or_commercial_status(self):
         for index,result in enumerate(('voicemail','invalid_number','disconnected','not_interested','unreachable')):
             response=self.call(result=result,revision=index)
