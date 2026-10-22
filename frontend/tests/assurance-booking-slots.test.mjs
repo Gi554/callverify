@@ -18,30 +18,39 @@ const url = (code) =>
 const source = (name) => readFileSync(new URL(`../src/${name}.ts`, import.meta.url), 'utf8')
 const bookingSource = url(source('booking-time'))
 const { bookingInterval } = await import(bookingSource)
-let code = compileScript(
-  parse(readFileSync(new URL('../src/AssuranceAppointments.vue', import.meta.url), 'utf8'))
-    .descriptor,
-  {
-    id: 'booking-slots',
-    inlineTemplate: true,
-    templateOptions: { compilerOptions: { hoistStatic: false } },
-  },
-).content
-code = code
-  .replace(/from ['"]vue['"]/g, `from '${vue}'`)
-  .replace("'./booking-time'", JSON.stringify(bookingSource))
-  .replace("'./appointment-status'", JSON.stringify(url(source('appointment-status'))))
-  .replace(
-    /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
-    (_, name) => `const ${name}={render:()=>null}`,
-  )
-code =
-  code
-    .replace(/vModelText as _vModelText,?/g, '')
-    .replace(/vModelSelect as _vModelSelect,?/g, '')
-    .replace(/vModelDynamic as _vModelDynamic,?/g, '') +
-  ';const _vModelText={},_vModelSelect={},_vModelDynamic={};'
-const component = (await import(url(code))).default
+function compile(name, stub) {
+  let code = compileScript(
+    parse(readFileSync(new URL(`../src/${name}.vue`, import.meta.url), 'utf8')).descriptor,
+    {
+      id: name,
+      inlineTemplate: true,
+      templateOptions: { compilerOptions: { hoistStatic: false } },
+    },
+  ).content
+  code = code
+    .replace(/from ['"]vue['"]/g, `from '${vue}'`)
+    .replace("'./booking-time'", JSON.stringify(bookingSource))
+    .replace("'./appointment-status'", JSON.stringify(url(source('appointment-status'))))
+    .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, component) => stub(component))
+  code =
+    code
+      .replace(/vModelText as _vModelText,?/g, '')
+      .replace(/vModelSelect as _vModelSelect,?/g, '')
+      .replace(/vModelDynamic as _vModelDynamic,?/g, '') +
+    ';const _vModelText={},_vModelSelect={},_vModelDynamic={};'
+  return import(url(code)).then((module) => module.default)
+}
+// The booking form only wires the shared grid: capture the props it passes.
+globalThis.slotProps = null
+const appointments = await compile('AssuranceAppointments', (name) =>
+  name === 'AvailabilitySlots'
+    ? `const AvailabilitySlots={props:['modelValue','zone','duration','load','loadKey'],setup(p){return()=>{globalThis.slotProps=p;return null}}}`
+    : `const ${name}={render:()=>null}`,
+)
+const slotsComponent = await compile(
+  'AvailabilitySlots',
+  (name) => `const ${name}={render:()=>null}`,
+)
 const renderer = createRenderer({
   createElement: (tag) => ({ tag, children: [], props: {}, style: {} }),
   createText: (text) => ({ text }),
@@ -86,8 +95,18 @@ const tomorrow = new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 }).format(new Date(Date.now() + 86400000))
+const dayAfter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Toronto',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date(Date.now() + 2 * 86400000))
 const busy = bookingInterval(`${tomorrow}T10:00`, 'America/Toronto', 60)
-function fixture() {
+const slotButtons = (root) =>
+  all(root).filter((n) => n.tag === 'button' && /^\d{2}:\d{2}$/.test(text(n).trim()))
+const slot = (root, label) => slotButtons(root).find((n) => text(n).trim() === label)
+
+test('booking form asks the API for the chosen assignment and prospect busy times', async () => {
   const root = { children: [] },
     requests = []
   const request = async (path) => {
@@ -96,12 +115,12 @@ function fixture() {
       return {
         count: 1,
         next: null,
-        results: [{ id: 5, setter: { name: 'Setter' }, advisor: { name: 'Conseiller Démo 04' } }],
+        results: [{ id: 5, setter: { name: 'S' }, advisor: { name: 'C' } }],
       }
     if (path.startsWith('appointments/availability/')) return { busy: [busy] }
     return { count: 0, next: null, results: [] }
   }
-  const app = renderer.createApp(component, {
+  const app = renderer.createApp(appointments, {
     role: 'setter',
     compact: true,
     contactId: 42,
@@ -111,45 +130,63 @@ function fixture() {
     portal: async () => ({}),
   })
   app.mount(root)
-  return { root, requests, close: () => app.unmount() }
-}
-const slotButtons = (f) =>
-  all(f.root).filter((n) => n.tag === 'button' && /^\d{2}:\d{2}$/.test(text(n).trim()))
-const slot = (f, label) => slotButtons(f).find((n) => text(n).trim() === label)
-
-test('setter sees the assigned advisor busy times before booking and picks a free slot', async () => {
-  const f = fixture()
   try {
     await flush()
-    assert.equal(slotButtons(f).length, 0)
-    const select = all(f.root).find((n) => n.tag === 'select')
-    select.props['onUpdate:modelValue']('5')
+    assert.equal(globalThis.slotProps, null)
+    all(root)
+      .find((n) => n.tag === 'select')
+      .props['onUpdate:modelValue']('5')
     await flush()
-    all(f.root)
+    assert.equal(globalThis.slotProps.loadKey, '5:42')
+    assert.deepEqual(
+      await globalThis.slotProps.load('2026-11-02T00:00:00-05:00', '2026-11-03T00:00:00-05:00'),
+      [busy],
+    )
+    const query = new URLSearchParams(requests.at(-1).split('?')[1])
+    assert.equal(query.get('assignment_id'), '5')
+    assert.equal(query.get('contact_id'), '42')
+    assert.equal(query.get('start'), '2026-11-02T00:00:00-05:00')
+  } finally {
+    app.unmount()
+  }
+})
+
+test('shared grid marks busy slots, keeps free ones selectable and reloads per day', async () => {
+  const root = { children: [] },
+    windows = [],
+    chosen = []
+  const app = renderer.createApp(slotsComponent, {
+    modelValue: '',
+    zone: 'America/Toronto',
+    duration: 30,
+    label: 'Disponibilités',
+    note: 'Agenda externe vérifié à la confirmation.',
+    loadKey: 'k',
+    load: async (start, end) => {
+      windows.push([start, end])
+      return [busy]
+    },
+    'onUpdate:modelValue': (value) => chosen.push(value),
+  })
+  app.mount(root)
+  try {
+    await flush()
+    all(root)
       .find((n) => n.props?.['aria-label'] === 'Jour suivant')
       .props.onClick()
     await flush()
-    const query = new URLSearchParams(
-      f.requests
-        .filter((p) => p.startsWith('appointments/availability/'))
-        .at(-1)
-        .split('?')[1],
-    )
-    assert.equal(query.get('assignment_id'), '5')
-    assert.equal(query.get('contact_id'), '42')
-    assert.equal(
-      query.get('start'),
+    assert.deepEqual(windows.at(-1), [
       bookingInterval(`${tomorrow}T00:00`, 'America/Toronto', 15).starts_at,
-    )
-    assert.equal(slot(f, '10:00').props.disabled, true)
-    assert.equal(slot(f, '10:30').props.disabled, true)
-    assert.equal(slot(f, '11:00').props.disabled, false)
-    assert.equal(slotButtons(f).length, 24)
-    slot(f, '11:00').props.onClick()
-    await flush()
-    assert.equal(slot(f, '11:00').props['aria-pressed'], true)
-    assert.match(text(f.root), /vérifié à la confirmation/)
+      bookingInterval(`${dayAfter}T00:00`, 'America/Toronto', 15).starts_at,
+    ])
+    assert.equal(slotButtons(root).length, 24)
+    assert.equal(slot(root, '10:00').props.disabled, true)
+    assert.equal(slot(root, '10:30').props.disabled, true)
+    assert.equal(slot(root, '11:00').props.disabled, false)
+    slot(root, '11:00').props.onClick()
+    assert.deepEqual(chosen, [`${tomorrow}T11:00`])
+    assert.match(text(root), /Agenda externe vérifié à la confirmation/)
   } finally {
-    f.close()
+    app.unmount()
   }
 })

@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Réservation Isolation — disponibilités du client dans la fiche
+
+La réservation de visite (« Préparer le C2 et réserver ») affiche la même grille que la réservation Assurance : créneaux du jour libres, occupés (barrés) ou passés, pour la durée choisie ; un clic remplit la date et l’heure. La grille devient un composant partagé `AvailabilitySlots`, utilisé par les deux espaces.
+
+Nouvelle API `GET visits/availability/?prospect_id=&start=&end=` : plages occupées du client Isolation (client unique garanti par le portail, donc toutes les visites planifiées) et du prospect. Horaires uniquement, aucune identité d’autre prospect. Setters (prospects qui leur sont affectés) et administrateurs ; client refusé ; sept jours au plus.
+
+Validation : test backend (motifs client/prospect, administrateur, setter affecté, autre setter 404, client 403, plages invalides) ; tests frontend du composant partagé et de la requête Assurance. Démo : client occupé de 13 h 30 à 17 h 30, créneaux libres ensuite. Suites core 249, Assurance 311, 70 tests frontend, typage, lint, format et build.
+
+Limites : agenda externe du client vérifié à la confirmation seulement ; plage 8 h–20 h fixe. Le report d’une visite garde la saisie ISO existante.
+
 ## Réservation Assurance depuis la fiche — disponibilités du conseiller
 
 Dans l’onglet Rendez-vous de la fiche prospect, dès qu’un conseiller attribué est choisi, une grille du jour (8 h–20 h, pas de 30 minutes, navigation jour par jour) affiche les créneaux libres, occupés (barrés) et passés, selon la durée choisie et le fuseau affiché. Un clic remplit la date et l’heure ; la saisie manuelle reste possible. Plus besoin de réserver à l’aveugle pour découvrir « Créneau indisponible ».
