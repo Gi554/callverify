@@ -54,3 +54,14 @@ Le click-to-call Assurance est désormais implémenté côté serveur, désactiv
 ## API métier Isolation (lot 63)
 
 Le parcours serveur Isolation est livré séparément : [ISOLATION_CLICK_TO_CALL.md](ISOLATION_CLICK_TO_CALL.md). Il remplace la mention historique d’absence de commande métier Isolation. Deux flags désactivés par défaut ; aucun appel réel pendant le développement. Aucun bouton, audio navigateur, CDR ou raccrochage ajouté.
+
+
+## Contrat confirmé et historique personnel en fiche — 22 octobre 2026
+
+Le support a confirmé les colonnes 511 From, To, Description, DNID, Date, Time, Duration, Amount et l’heure locale de Montréal. Utiliser America/Toronto pour les décalages saisonniers ; Duration et Amount n’ont pas de sémantique/unité confirmée. 244 : R = sonnerie du poste, C = en communication, H = en attente. 245 : Success intervient lorsque le poste a répondu et que la composition extérieure démarre, sans prouver un décrochage distant. Les champs d’écho vides sont acceptés seulement avec poste/destination exacts. Ces précisions remplacent les réserves historiques sur le format, pas la nécessité d’une recette réelle. Auto-answer reste désactivé ; _a=Y n’est pas envoyé.
+
+Les fiches Setter Assurance et Isolation proposent désormais un historique sortant personnel. Activer NEWT_CDR_HISTORY_ENABLED=true dans l’environnement serveur du portail, en présence de NEWT_USERNAME/NEWT_PASSWORD déjà gérés hors Git, puis redémarrer le service concerné ; ce flag n’active aucune commande d’appel. Le flag est transmis dans infra/compose.crm.yaml et vaut false par défaut. Aucun accès fournisseur n’a été réalisé pour cette livraison.
+
+POST /api/portal/{assurance|isolation}/phone-history/ reçoit seulement proof, starts_on, ends_on et page. La preuve se récupère par POST sur contacts/{id}/phone-history-proof/ côté Assurance ou work-queue/{id}/phone-history-proof/ côté Isolation, avec le ticket métier existant. Aucune preuve d’appel n’est acceptée. Le portail recontrôle deux fois la fiche, prend le poste associé au compte et filtre From=poste / To=numéro normalisé. Période sept dates maximum, heure de Montréal. Résultats uniquement depuis PhoneExtension.updated_at ; un changement d’association retire les données antérieures. Les dates ambiguës/non interprétables sont exclues. Aucun rapprochement entrant, ancien numéro, campagne ou appel unique n’est inféré.
+
+La consultation ne persiste pas le journal fournisseur et ne renvoie ni description, DNID, montant, numéros tiers, ni volume global. L’audit porte sur ressource/période/compte rapproché/page. Même quota et verrou de lecture que les autres consultations NEWT. Une erreur n’est pas présentée comme zéro appel ; zéro correspondance ne démontre pas une absence d’activité. Voir docs/DELIVERY.md pour la validation et les limites.

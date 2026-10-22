@@ -11,6 +11,7 @@ from django.utils import timezone
 from .leases import held
 from .agreements import lock_contact
 from .models import BusinessAudit
+from packages.access.history_actions import HistoryMixin
 
 class Intent(serializers.Serializer):
     token=serializers.UUIDField(write_only=True)
@@ -28,7 +29,8 @@ def dial_number(raw):
     if not re.fullmatch(r'1[2-9][0-9]{2}[2-9][0-9]{6}',digits):raise ValidationError('Numéro nord-américain composable requis ; corrigez la fiche.')
     return digits
 
-class PhoneCallMixin:
+class PhoneCallMixin(HistoryMixin):
+    history_workspace='assurance'
     @action(detail=True,methods=['post'],url_path='call-intent')
     def call_intent(self,request,pk=None):
         if request.user.role!='setter':raise PermissionDenied('Seul le setter connecté peut autoriser son propre appel.')
