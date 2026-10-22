@@ -121,9 +121,43 @@ const activityPeriod = computed(() =>
     ? `${activity.value.from.split('-').reverse().join('/')} – ${activity.value.to.split('-').reverse().join('/')}`
     : '30 derniers jours',
 )
+const admin = computed(() => props.role === 'administrator')
+// Isolation exposes no task summary endpoint: open tasks come from the dashboard summary.
+const teamTasks = ref<{ open: number | null; overdue: number } | null>(null),
+  teamTasksLoading = ref(false),
+  teamTasksError = ref('')
+const teamOpen = computed(() =>
+  assurance.value ? teamTasks.value?.open : props.summary.open_follow_ups,
+)
+let teamTasksVersion = 0
+async function loadTeamTasks() {
+  if (!admin.value) return
+  const version = ++teamTasksVersion
+  teamTasksLoading.value = true
+  teamTasksError.value = ''
+  try {
+    let counts: { open: number | null; overdue: number }
+    if (assurance.value) {
+      const data = await props.request('follow-ups/summary/')
+      counts = { open: data.open, overdue: data.overdue }
+    } else {
+      const data = await props.request('follow-ups/?state=overdue')
+      counts = { open: null, overdue: data.count }
+    }
+    if (version === teamTasksVersion) teamTasks.value = counts
+  } catch (e: any) {
+    if (version === teamTasksVersion) {
+      teamTasks.value = null
+      teamTasksError.value = e.message
+    }
+  } finally {
+    if (version === teamTasksVersion) teamTasksLoading.value = false
+  }
+}
 function refreshHome() {
   void loadUpcoming()
   void loadActivity()
+  void loadTeamTasks()
 }
 onMounted(refreshHome)
 </script>
@@ -159,6 +193,35 @@ onMounted(refreshHome)
    </aside>
   </div>
   <details v-if="assurance" class="home-followup-details"><summary><span class="followup-summary-icon"><ListTodo :size="18"/></span><span><strong>Rappels et notifications</strong><small>Le détail de mes suivis</small></span><ChevronDown :size="18"/></summary><div class="home-followup-content"><slot/></div></details>
+ </section>
+ <section v-else-if="admin" class="setter-homepage admin-homepage">
+  <div class="home-topline"><span class="home-workspace"><span></span>{{assurance?'Assurance':'Isolation'}} · Administration</span><button class="home-refresh" :disabled="loading||teamTasksLoading" @click="$emit('refresh');refreshHome()"><RefreshCw :size="15"/>Actualiser</button></div>
+  <div class="home-hero">
+   <div class="home-main-snapshot">
+    <header class="home-welcome"><h1>Bonjour {{username}} <span aria-hidden="true">✦</span></h1><p>Le pilotage de votre équipe, en un coup d’œil.</p></header>
+    <div class="home-highlights">
+     <button class="home-highlight peach" @click="$emit('navigate','contacts')"><span class="highlight-label">Prospects</span><small>Tout le périmètre de l’équipe</small><Users class="metric-decoration" :size="40"/><strong>{{summary.contacts??summary.prospects??0}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
+     <button class="home-highlight blue" @click="$emit('navigate','followups')"><span class="highlight-label">Tâches ouvertes</span><small>Les suivis en cours de l’équipe</small><ListTodo class="metric-decoration" :size="40"/><strong>{{teamOpen??(teamTasksError?'Indisponible':'…')}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
+     <button class="home-highlight lilac" @click="$emit('navigate','followups')"><span class="highlight-label">Tâches en retard</span><small>À relancer ou réattribuer</small><Clock3 class="metric-decoration" :size="40"/><strong>{{teamTasksError?'Indisponible':teamTasks?teamTasks.overdue:'…'}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
+    </div>
+    <p v-if="teamTasksError" class="panel-feedback" role="alert">Compteurs de tâches indisponibles : {{teamTasksError}} <button class="home-refresh" @click="loadTeamTasks">Réessayer</button></p>
+   </div>
+   <aside class="home-hero-side">
+    <button v-if="assurance" class="home-status-pill dark" @click="$emit('navigate','assignments')"><span class="pill-icon"><UserRoundCheck :size="19"/></span><span><strong>Affectations</strong><small>Setters et conseillers</small></span><ArrowUpRight :size="19"/></button>
+    <button v-else class="home-status-pill dark" @click="$emit('navigate','contacts')"><span class="pill-icon"><UserRoundCheck :size="19"/></span><span><strong>{{summary.unassigned??0}} prospect(s)</strong><small>Sans affectation</small></span><ArrowUpRight :size="19"/></button>
+    <button class="home-status-pill" @click="$emit('navigate','appointments')"><span class="pill-icon"><CalendarCheck :size="19"/></span><span><strong>Agenda de l’équipe</strong><small>{{assurance?'Rendez-vous':'Visites'}} planifiés</small></span><ArrowUpRight :size="19"/></button>
+    <button class="home-feature" @click="$emit('navigate','statistics')"><span class="feature-tag"><BarChart3 :size="13"/>PILOTAGE</span><strong>Suivez l’activité<br>de votre équipe.</strong><span>Ouvrir les statistiques <ArrowUpRight :size="19"/></span></button>
+   </aside>
+  </div>
+  <section class="home-panel home-agenda">
+   <header class="panel-heading"><div><h2>{{assurance?'Prochains rendez-vous de l’équipe':'Prochaines visites de l’équipe'}}</h2><p>Les trois prochains créneaux prévus</p></div><CalendarCheck :size="21"/></header>
+   <p v-if="loading" class="panel-feedback" role="status">Chargement de l’agenda…</p>
+   <div v-else-if="error" class="panel-feedback" role="alert"><p>{{error}}</p><button class="home-refresh" @click="loadUpcoming">Réessayer</button></div>
+   <div v-else-if="!upcoming.length" class="agenda-empty"><span><CalendarCheck :size="24"/></span><div><h3>Agenda libre</h3><p>Aucun {{assurance?'rendez-vous':'créneau'}} à venir dans l’équipe.</p></div></div>
+   <div v-else class="agenda-table-wrap"><table class="home-agenda-table"><thead><tr><th>Prospect</th><th>Date et heure</th><th>Fuseau</th><th>Statut</th></tr></thead><tbody><tr v-for="row in upcoming" :key="row.id"><td>{{(assurance?row.contact:row.prospect)?.name||'Dossier sans nom'}}</td><td><time>{{date(row)}}</time></td><td>{{row.timezone||'America/Toronto'}}</td><td><span class="appointment-status">Prévu</span></td></tr></tbody></table></div>
+   <button class="text-link" @click="$emit('navigate','appointments')">Voir l’agenda de l’équipe<ArrowRight :size="16"/></button>
+  </section>
+  <details v-if="assurance" class="home-followup-details" open><summary><span class="followup-summary-icon"><ListTodo :size="18"/></span><span><strong>Alertes et notifications</strong><small>Échéances des mandats, rappels et suivis</small></span><ChevronDown :size="18"/></summary><div class="home-followup-content"><slot/></div></details>
  </section>
  <section v-else class="crm-overview">
   <div class="crm-metrics"><div v-for="metric in metrics" :key="metric.label" class="crm-metric"><span class="metric-icon" :class="metric.tone"><component :is="metric.icon" :size="20"/></span><div><p>{{metric.label}}</p><strong>{{metric.value??0}}</strong></div></div></div>

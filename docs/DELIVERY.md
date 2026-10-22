@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Accueil et navigation administrateur — Assurance et Isolation
+
+L’administrateur utilise désormais le même cadre que le setter : en-tête avec recherche, tâches et profil (« Assurance · Administration »), barre latérale sombre. La navigation principale regroupe Accueil, Prospects, Rendez-vous ou Visites, Opportunités (Assurance) et Tâches ; un bloc **Pilotage** rassemble Statistiques, Affectations, Mandats et contrats, Paramètres métier, Vérification des numéros (Isolation) et, pour les gestionnaires d’accès, Utilisateurs et accès. Les commandes d’appel restent réservées au setter. Conseiller, closer et client conservent l’ancien cadre.
+
+Nouvel accueil administrateur : prospects du périmètre, tâches ouvertes et tâches en retard de l’équipe, raccourcis vers les affectations (Assurance) ou le nombre de prospects sans affectation (Isolation), l’agenda et les statistiques, et les trois prochains rendez-vous ou visites de l’équipe. Les alertes d’échéance des mandats, rappels et notifications Assurance restent affichés, ouverts par défaut. Les compteurs viennent des API existantes (`follow-ups/summary/` en Assurance, total de `follow-ups/?state=overdue` en Isolation) : aucun changement backend, aucune migration. Un échec de compteur affiche « Indisponible » et une alerte avec reprise, jamais un zéro trompeur.
+
+Validation : quatre tests de cadre (modules principaux et Pilotage, accès réservé aux gestionnaires, entrée active unique, autres rôles inchangés) et quatre tests d’accueil (compteurs et agenda Assurance, retards et prospects sans affectation Isolation, échec de compteur, accueil setter inchangé). Suite frontend 60 tests, typage, format et build réussis. Aucun appel, message ni fournisseur sollicité.
+
+Limites : pas de revue visuelle en navigateur dans ce lot (environnement démo non lancé) ; revue esthétique différée. Les compteurs ne se rafraîchissent qu’à l’ouverture ou via Actualiser. Le calendrier en vue d’équipe et l’alignement des prospects Assurance administrateur restent au lot suivant.
+
 ## Socle technique — formatage automatique du code
 
 Lot technique sans changement fonctionnel. Python formaté par Ruff 0.6.9 (`ruff.toml` : 100 colonnes, guillemets simples, migrations exclues) ; frontend formaté par Prettier 3.3.3 (`frontend/.prettierrc.json` : guillemets simples, sans point-virgule, 100 colonnes) pour les `<script>`, `<style>`, fichiers TypeScript, configurations et tests. La CI refuse désormais un code non formaté (`ruff format --check .`, `pnpm exec prettier --check .`).

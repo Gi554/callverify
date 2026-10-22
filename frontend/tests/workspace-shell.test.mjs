@@ -99,3 +99,77 @@ test('selector is present only for multiple authorized spaces', async () => {
   assert.match(html, /value="assurance"/)
   assert.match(html, /value="isolation"/)
 })
+
+const adminItems = [
+  { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
+  { id: 'contacts', label: 'Contacts', icon: 'contacts' },
+  { id: 'appointments', label: 'Rendez-vous', icon: 'appointments' },
+  { id: 'pipeline', label: 'Opportunités', icon: 'agreements' },
+  { id: 'followups', label: 'Tâches de suivi', icon: 'followups' },
+  { id: 'statistics', label: 'Statistiques', icon: 'statistics' },
+  { id: 'assignments', label: 'Affectations', icon: 'assignments' },
+  { id: 'agreements', label: 'Mandats et contrats', icon: 'agreements' },
+  { id: 'fields', label: 'Paramètres métier', icon: 'fields' },
+]
+const adminShell = (extra = {}) =>
+  renderToString(
+    createSSRApp(component, {
+      ...props,
+      username: 'Admin de recette',
+      role: 'administrator',
+      workspace: 'assurance',
+      spaces: [{ workspace: 'assurance', role: 'administrator' }],
+      items: adminItems,
+      ...extra,
+    }),
+  )
+const section = (html, start, end) =>
+  html.slice(html.indexOf(start), html.indexOf(end, html.indexOf(start)))
+
+test('administrator gets the setter frame with team modules and a steering block', async () => {
+  const html = await adminShell({ canManage: true })
+  assert.match(html, /setter-shell admin-shell/)
+  assert.doesNotMatch(html, /crm-sidebar/)
+  const nav = section(html, '<nav>', '</nav>')
+  for (const label of ['Accueil', 'Prospects', 'Rendez-vous', 'Opportunités', 'Tâches'])
+    assert.match(nav, new RegExp(label))
+  assert.doesNotMatch(nav, /Statistiques|Affectations|Mandats|Paramètres|Appels/)
+  const steering = section(html, 'setter-statistics', '</aside>')
+  for (const label of [
+    'Pilotage',
+    'Statistiques',
+    'Affectations',
+    'Mandats et contrats',
+    'Paramètres métier',
+    'Utilisateurs et accès',
+  ])
+    assert.match(steering, new RegExp(label))
+  assert.doesNotMatch(html, /Mes statistiques|setter-phone/)
+  assert.match(html, /Tâches de l’équipe/)
+  assert.match(html, /Assurance · Administration/)
+})
+
+test('administrator without access management does not see the access entry', async () => {
+  const html = await adminShell({ canManage: false })
+  assert.doesNotMatch(html, /Utilisateurs et accès/)
+})
+
+test('open access management is the only active steering entry', async () => {
+  const html = await adminShell({ canManage: true, active: 'statistics', accessOpen: true })
+  assert.equal((html.match(/is-active/g) || []).length, 1)
+  assert.match(html, /class="is-active"[^>]*aria-current="page"[^>]*>.*?Utilisateurs et accès/)
+})
+
+test('other roles keep the previous frame', async () => {
+  const html = await renderToString(
+    createSSRApp(component, {
+      ...props,
+      role: 'advisor',
+      workspace: 'assurance',
+      spaces: [{ workspace: 'assurance', role: 'advisor' }],
+      items: adminItems.slice(0, 3),
+    }),
+  )
+  assert.match(html, /crm-sidebar/)
+  assert.doesNotMatch(html, /setter-shell/)
+})
