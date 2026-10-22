@@ -21,6 +21,7 @@ import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import IsolationVisits from './IsolationVisits.vue'
 import IsolationFollowUps from './IsolationFollowUps.vue'
+import IsolationTasksBoard from './IsolationTasksBoard.vue'
 import IsolationCloserVisits from './IsolationCloserVisits.vue'
 import AssuranceFollowUps from './AssuranceFollowUps.vue'
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue'
@@ -104,7 +105,7 @@ const title=(value:string)=>value==='assurance'?'Assurance':'Isolation'
 onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|microsoft)$/);if(oauth){const query=new URLSearchParams(location.search);const body:any={state:query.get('state')||''};if(query.has('error'))body.error=query.get('error');else body.code=query.get('code')||'';history.replaceState(null,'','/crm');try{await portal('calendar/callback/'+oauth[1]+'/',body);passwordOpen.value=true;calendarNotice.value='Agenda connecté. Consultez Mon compte et mes sessions pour vérifier les disponibilités.'}catch(e:any){calendarNotice.value=e.message}}const invitation=location.hash.match(/^#invite=([a-f0-9-]{36}):([A-Za-z0-9_-]+)$/);if(invitation){inviteId.value=invitation[1]!;inviteToken.value=invitation[2]!;history.replaceState(null,'',location.pathname+location.search);ready.value=true;return}const recovery=location.hash.match(/^#reset=([A-Za-z0-9_-]+):([A-Za-z0-9_-]+)$/);if(recovery){resetUid.value=recovery[1]!;resetToken.value=recovery[2]!;recoveryOpen.value=true;history.replaceState(null,'',location.pathname+location.search);ready.value=true;return}try{user.value=await portal('session/');if(user.value?.workspaces.length===1)await enter(user.value.workspaces[0]!.workspace);else if(user.value?.landing&&user.value.workspaces.some(item=>item.workspace===user.value!.landing))await enter(user.value.landing)}catch{}finally{ready.value=true}})
 </script>
 <template>
- <div class="amx-root" :class="{'is-authenticated':!!user,'setter-home':!!user&&role==='setter'&&activeModule==='overview'&&!passwordOpen&&!managing,'tasks-page-layout':!!user&&role==='setter'&&activeModule==='followups'&&!passwordOpen&&!managing,'calendar-layout':!!user&&role==='setter'&&activeModule==='appointments'&&!passwordOpen&&!managing,'contacts-layout':!!user&&['contacts','pipeline'].includes(activeModule)&&!passwordOpen&&!managing}">
+ <div class="amx-root" :class="{'is-authenticated':!!user,'setter-home':!!user&&role==='setter'&&activeModule==='overview'&&!passwordOpen&&!managing,'tasks-page-layout':!!user&&['setter','administrator'].includes(role)&&activeModule==='followups'&&!passwordOpen&&!managing,'calendar-layout':!!user&&role==='setter'&&activeModule==='appointments'&&!passwordOpen&&!managing,'contacts-layout':!!user&&['contacts','pipeline'].includes(activeModule)&&!passwordOpen&&!managing}">
  <PortalLogin v-if="ready&&!user&&!recoveryOpen&&!inviteId" :busy="busy" :error="error" @submit="login" @recover="recoveryOpen=true;error=''"/>
  <CrmShell v-else :username="user?.username||''" :workspace="workspace" :role="role" :spaces="user?.workspaces||[]" :items="navigation" :active="activeModule" :page-title="pageTitle" :account-open="passwordOpen" :access-open="managing" :can-manage="!!user?.admin_workspaces?.length" @workspace="enter" @navigate="selectModule" @account="openAccount" @access="openAccess" @logout="logout">
  <main class="amx-main">
@@ -129,7 +130,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
       <AssurancePipeline v-else-if="assuranceModule==='pipeline'" :portal="portal" :request="assurance" :role="role"/>
       <AssuranceAgreementRegistry v-else-if="assuranceModule==='agreements'&&role==='administrator'" :key="agreementDeadline" :initial-deadline="agreementDeadline" :request="assurance" :portal="portal" @changed="refreshAssurance"/>
       <AssuranceAssignments v-else-if="assuranceModule==='assignments'&&role!=='advisor'" :request="assurance" :portal="portal" :role="role"/>
-      <AssuranceSetterTasks v-else-if="assuranceModule==='followups'&&role==='setter'" :request="assurance" @changed="refreshAssurance" @navigate="selectModule"/>
+      <AssuranceSetterTasks v-else-if="assuranceModule==='followups'&&['setter','administrator'].includes(role)" :role="role" :portal="portal" :request="assurance" @changed="refreshAssurance" @navigate="selectModule"/>
       <AssuranceFollowUps v-else-if="assuranceModule==='followups'&&role!=='advisor'" :portal="portal" :role="role" :request="assurance" @changed="refreshAssurance"/>
       <AssuranceStatistics v-else-if="assuranceModule==='statistics'&&role!=='advisor'" :role="role" :request="assurance"/>
       <AssuranceFieldSettings v-else-if="assuranceModule==='fields'&&role==='administrator'" :request="assurance"/>
@@ -138,7 +139,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
      </template>
      <template v-else>
       <IsolationStatistics v-if="isolationModule==='statistics'" :role="role" :request="isolation"/>
-      <IsolationFollowUps v-else-if="isolationModule==='followups'&&['setter','administrator'].includes(role)" :request="isolation" @saved="refreshIsolation"/><IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
+      <IsolationTasksBoard v-else-if="isolationModule==='followups'&&['setter','administrator'].includes(role)" :role="role" :request="isolation" @navigate="selectModule" @saved="refreshIsolation"/><IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
       <CrmAppointmentsCalendar v-else-if="isolationModule==='appointments'&&role==='setter'" workspace="isolation" :role="role" :portal="portal" :request="isolation" @navigate="selectModule"/>
       <IsolationVisits v-else-if="isolationModule==='appointments'" :role="role" :portal="portal" :request="isolation" @close="selectModule('overview')" @changed="refreshIsolation"/>
       <IsolationClient v-else-if="role==='client'" :portal="portal" :request="isolation"/>

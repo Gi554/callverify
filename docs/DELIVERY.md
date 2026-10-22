@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Reprise des tâches — Isolation et administration Assurance
+
+Isolation setter et administrateur disposent du tableau À traiter / En retard / Terminées, avec cartes, compteurs sur tout le périmètre filtré, recherche serveur avant pagination, 25 lignes par état et chargement complémentaire indépendant. Les totaux sont indisponibles lorsqu’une colonne échoue, plutôt qu’affichés partiellement comme complets. Les échéances restent en heure de Montréal. Édition et clôture s’ouvrent à droite ; les brouillons et opérations en cours empêchent une fermeture silencieuse. La création manuelle depuis la fiche prospect reste disponible.
+
+La recherche Isolation couvre nom, téléphone et note sans élargir l’affectation du setter ; l’administration garde son périmètre existant et voit le nom du responsable actuel. Aucun changement de rôle, aucune migration.
+
+Assurance administrateur reprend le même tableau que le setter, avec vue d’équipe et commandes administratives dans la fiche : réattribution, historique, planification, clôture et réouverture. Les règles des suivis sont accessibles dans un panneau propre avec protection des modifications. Le sélecteur de date remplace la saisie ISO pour la planification et convertit explicitement l’heure de Montréal, sans modifier les règles backend. Les setters ne reçoivent aucune commande administrative.
+
+Validation : tests dédiés des tableaux et commandes par rôle, pagination avec filtres appliqués, préparation de clôture sans POST automatique, planification avec décalage Montréal, recherche backend limitée au propriétaire ; tests existants de création/clôture maintenus. Suite core : 246 tests dont 19 ignorés ; suite frontend 51 tests plus le test de planification administrateur, typage et build réussis. Aucun appel, message ni fournisseur sollicité. Revue visuelle toujours indisponible dans Work.
+
+Limites : tableaux à actualiser, sans glisser-déposer ni garantie transactionnelle entre les trois lectures d’état ; les tâches sont classées selon leur échéance réelle. Les outils administratifs existants restent disponibles dans les panneaux, sans refonte de leurs contrats métier. Prochain lot : accueil, navigation et calendriers administrateur, et alignement des prospects Assurance administrateur en conservant l’import.
+
 ## Reprise des prospects Isolation — setter et administration
 
 La file Isolation utilise les cartes du modèle Assurance, sans photo : statuts vides masqués, recherche et filtres, pagination indépendante de 25 par statut, quatre cartes par ligne sur grand écran si un seul statut reste visible. Les six statuts commerciaux Isolation sont conservés. Chargement borné à trois requêtes simultanées, réponses périmées ignorées, erreurs par colonne et recherche appliquée conservée lors de la pagination. La page utilise toute la largeur disponible.

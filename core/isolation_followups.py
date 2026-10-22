@@ -37,7 +37,7 @@ def event(prospect,user,kind,note,changes,request_id=None):
 
 def output(row):
     return {'id':row.pk,'prospect_id':row.prospect_id,'prospect_name':row.prospect.name,'due_at':row.due_at,
-        'note':row.note,'revision':row.revision,'closed_at':row.closed_at,'resolution':row.resolution,
+        'owner_name':row.prospect.assigned_setter_name,'note':row.note,'revision':row.revision,'closed_at':row.closed_at,'resolution':row.resolution,
         'created_by_id':row.created_by_id,'owner_id':row.prospect.assigned_setter_id,
         'overdue':row.closed_at is None and row.due_at<timezone.now()}
 
@@ -158,6 +158,10 @@ class FollowUps(viewsets.GenericViewSet):
         if prospect:
             if not prospect.isdigit():raise ValidationError('Prospect invalide.')
             rows=rows.filter(prospect_id=int(prospect))
+        term=self.request.query_params.get('search','').strip()[:250]
+        if term:
+            from django.db.models import Q
+            rows=rows.filter(Q(prospect__name__icontains=term)|Q(prospect__raw_phone__icontains=term)|Q(note__icontains=term))
         state=self.request.query_params.get('state','open')
         if state not in ('open','closed','all','overdue','upcoming'):raise ValidationError('État invalide.')
         if state=='closed':rows=rows.filter(closed_at__isnull=False)
