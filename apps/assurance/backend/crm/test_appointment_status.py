@@ -60,6 +60,16 @@ class AppointmentStatusTests(TestCase):
         self.fixture.auth(32, 'advisor')
         self.assertEqual(self.client.get(self.url, {'business_status': 'absent'}).data['count'], 0)
 
+    def test_calendar_page_size_is_opt_in_and_bounded(self):
+        for _ in range(104):
+            self.clone()
+        self.assertEqual(len(self.client.get(self.url).data['results']), 25)
+        response = self.client.get(self.url, {'page_size': 100})
+        self.assertEqual(len(response.data['results']), 100)
+        self.assertEqual(response.data['count'], 105)
+        self.assertIsNotNone(response.data['next'])
+        self.assertEqual(len(self.client.get(self.url, {'page_size': 500}).data['results']), 100)
+
     def test_explicit_absence_retry_and_immutable_outcome(self):
         self.assertEqual(self.fixture.report(outcome='absent').status_code, 201)
         self.assertEqual(self.fixture.report(outcome='absent').status_code, 200)

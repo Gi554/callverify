@@ -183,6 +183,7 @@ async function load() {
       query = new URLSearchParams({
         ...window,
         ...(assurance.value ? { business_status: status.value } : { status: status.value }),
+        page_size: '100',
       })
     const result = await loadCalendarRows(
       props.request,

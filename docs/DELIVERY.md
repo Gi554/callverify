@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Correctifs issus de la revue en démo — parcours administrateur
+
+Revue navigateur des lots administrateur sur la démo fictive (`admin.demo`, Assurance et Isolation). Quatre défauts corrigés :
+
+- **Chiffres des cartes d’accueil** : la taille des compteurs suit désormais la largeur de la carte (container query), ils ne passent plus sous le bouton flèche sur écran moyen. Vaut aussi pour l’accueil setter ; la date du prochain rendez-vous garde son retour à la ligne.
+- **Chargement du calendrier d’équipe** : `appointments/` (Assurance) et `visits/` (Isolation) acceptent `page_size` borné à 100 ; le calendrier l’utilise. Un mois de 620 rendez-vous passe de 28 requêtes séquentielles (≈ 9 s en démo) à 7. Pagination par défaut inchangée (25) et `Pager` Isolation partagé non modifié pour les autres listes.
+- **Libellé** : dans « Tâches de l’équipe » Assurance, le bouton devient « Voir l’agenda de l’équipe » pour l’administrateur.
+- **Recherche sur mobile** : l’icône de recherche de l’en-tête ne se réduit plus à une pastille vide.
+
+Validation : deux tests backend (taille de page optionnelle et bornée, Assurance et Isolation), assertions frontend sur le libellé et `page_size=100`. Suites core 247, portail 221, Assurance 309, migrations, 67 tests frontend, typage, format et build. En démo : compteurs lisibles, libellé et icône mobile vérifiés ; la requête calendrier porte `page_size=100`, mais les API de démo déjà lancées gardent l’ancien code jusqu’à leur redémarrage (non redémarrées).
+
+Limites : le chargement reste séquentiel et côté navigateur pour le filtre par membre ; au-delà de quelques milliers de rendez-vous par mois, un filtre serveur sera nécessaire.
+
 ## Prospects Assurance administrateur — tableau par statut et imports conservés
 
 L’administrateur Assurance ouvre désormais Prospects sur le même tableau que le setter : colonnes par statut du pipeline, cartes, recherche serveur, filtre de statut, pagination par colonne et fiche dans le panneau latéral avec ses commandes administratives existantes. Intitulé « Équipe Assurance ». Les commandes d’appel ne sont pas proposées à l’administrateur, comme en Isolation. Une bascule **Tableau / Liste et imports** redonne l’écran Contacts existant (imports CSV/XLSX avec aperçu, mappage et historique, onglets et filtres) ; le nombre de contacts importés met toujours à jour l’accueil, et le retour au tableau le recharge. Aucun changement backend, aucune migration.

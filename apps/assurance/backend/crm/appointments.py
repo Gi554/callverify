@@ -75,6 +75,9 @@ class CancelInput(serializers.Serializer):
 
 class AppointmentPagination(PageNumberPagination):
     page_size = 25
+    # The monthly calendar reads a whole team month: larger pages, still bounded.
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 def attest(proof, user, assignment):
