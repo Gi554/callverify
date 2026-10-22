@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Correctif — test d’appel instable
+
+`test_phone_calls.test_one_dispatch_replay_status_and_private_output` vérifiait que le poste (« 501 ») et le numéro (« 1514… ») n’apparaissent pas dans la réponse, y compris dans l’identifiant de requête aléatoire : un UUID contenant « 501 » faisait échouer la CI par hasard (constaté sur #127). La vérification porte désormais sur tous les champs sauf cet identifiant. Aucun changement applicatif.
+
 ## Rôles terrain — intitulés de colonne dans les cartes sur téléphone
 
 En mode carte (téléphone, conseiller, closer et client), chaque valeur affiche désormais l’intitulé de sa colonne au-dessus d’elle ; la première cellule (prospect ou dossier) sert de titre de carte, en gras. Colonnes étiquetées : rendez-vous Assurance (Conseiller, Créneau, Statut), visites du closer (Rendez-vous, Setter, Résultat), dossiers du client (Téléphone, Référence, Suivi) et indicateurs des statistiques Isolation. Affichage inchangé sur ordinateur.
