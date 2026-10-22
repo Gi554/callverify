@@ -46,6 +46,8 @@ const mobile = ref(false);
 const profileOpen = ref(false);
 const admin = computed(() => props.role === 'administrator');
 const advisor = computed(() => props.role === 'advisor');
+// Field roles get the shared frame without search, calls or steering: kept simple for phones.
+const simple = computed(() => ['advisor', 'closer', 'client'].includes(props.role));
 // Modules opened from the "Pilotage" block of the administrator sidebar.
 const steeringIds = ['statistics', 'assignments', 'agreements', 'fields', 'qualification'];
 const mainItems = computed(() =>
@@ -58,15 +60,16 @@ const steeringItems = computed(() =>
     admin.value ? steeringIds.includes(item.id) : item.id === 'statistics',
   ),
 );
-const setterLabel = (item: { id: string; label: string }) =>
-  (
-    ({
-      overview: 'Accueil',
-      contacts: 'Prospects',
-      followups: 'Tâches',
-      statistics: admin.value ? 'Statistiques' : 'Mes statistiques',
-    }) as Record<string, string>
-  )[item.id] || item.label;
+const setterLabel = (item: { id: string; label: string }) => {
+  if (simple.value) return item.label;
+  const labels: Record<string, string> = {
+    overview: 'Accueil',
+    contacts: 'Prospects',
+    followups: 'Tâches',
+    statistics: admin.value ? 'Statistiques' : 'Mes statistiques',
+  };
+  return labels[item.id] || item.label;
+};
 const icons: Record<string, any> = {
   overview: LayoutDashboard,
   contacts: ContactRound,
@@ -92,9 +95,9 @@ function navigate(id: string) {
 </script>
 <template>
   <div
-    v-if="username && (role === 'setter' || admin || advisor)"
+    v-if="username && (role === 'setter' || admin || simple)"
     class="crm-shell crm-connected setter-shell"
-    :class="{ 'admin-shell': admin, 'advisor-shell': advisor }"
+    :class="{ 'admin-shell': admin, 'advisor-shell': advisor, 'simple-shell': simple }"
   >
     <header class="setter-header">
       <button
@@ -112,7 +115,7 @@ function navigate(id: string) {
         ><span><strong>AMX</strong><small>CRM</small></span></a
       >
       <button
-        v-if="!advisor"
+        v-if="!simple"
         class="setter-search"
         aria-label="Rechercher un prospect"
         @click="navigate('contacts')"
@@ -156,7 +159,9 @@ function navigate(id: string) {
                   : workspace === 'isolation'
                     ? 'Isolation'
                     : 'Mes espaces'
-              }}{{ admin ? ' · Administration' : advisor ? ' · Conseiller' : '' }}</small
+              }}{{
+                admin ? ' · Administration' : simple ? ' · ' + (roles[role] || role) : ''
+              }}</small
             ></span
           ><ChevronDown :size="17" />
         </button>
@@ -208,7 +213,7 @@ function navigate(id: string) {
           :aria-current="active === item.id && !accountOpen && !accessOpen ? 'page' : undefined"
           @click="navigate(item.id)"
         >
-          <Home v-if="item.id === 'overview'" :size="26" /><component
+          <Home v-if="item.id === 'overview' && !simple" :size="26" /><component
             v-else
             :is="icons[item.icon] || ContactRound"
             :size="26"
@@ -1299,6 +1304,40 @@ function navigate(id: string) {
   .setter-header .setter-brand {
     padding: 7px 10px;
     border-radius: 5px;
+  }
+}
+/* Field roles (advisor, closer, client) work from phones: tables become stacked cards. */
+@media (max-width: 700px) {
+  .simple-shell .crm-stage :deep(.table-scroll) {
+    overflow: visible;
+  }
+  .simple-shell .crm-stage :deep(.table-scroll table),
+  .simple-shell .crm-stage :deep(.table-scroll tbody),
+  .simple-shell .crm-stage :deep(.table-scroll tr),
+  .simple-shell .crm-stage :deep(.table-scroll td) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .simple-shell .crm-stage :deep(.table-scroll thead) {
+    display: none;
+  }
+  .simple-shell .crm-stage :deep(.table-scroll tr) {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border: 1px solid #e3e7ee;
+    border-radius: 12px;
+    background: white;
+  }
+  .simple-shell .crm-stage :deep(.table-scroll td) {
+    padding: 4px 0;
+    border: 0;
+    overflow-wrap: anywhere;
+  }
+  .simple-shell .crm-stage :deep(.table-scroll td button) {
+    width: 100%;
+    margin: 6px 0 0;
   }
 }
 </style>

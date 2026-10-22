@@ -284,7 +284,6 @@ onMounted(() =>
     :class="{
       'compact-booking': compact,
       'appointment-detail-mode': !!appointmentId,
-      'advisor-list': role === 'advisor',
     }"
   >
     <h3 v-if="!appointmentId && role !== 'advisor'">
@@ -1035,46 +1034,5 @@ onMounted(() =>
 .appointment-business-status.cancelled {
   background: #f1eff4;
   color: #a39aa9;
-}
-/* Advisors work from a phone: each appointment becomes a stacked card. */
-@media (max-width: 700px) {
-  .advisor-list .table-scroll {
-    overflow: visible;
-  }
-  .advisor-list table,
-  .advisor-list tbody,
-  .advisor-list tr,
-  .advisor-list td {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-  /* Overrides the shell table minimum width (680px) on phones. */
-  .appointments.advisor-list .table-scroll table {
-    min-width: 0;
-  }
-  .advisor-list thead {
-    display: none;
-  }
-  .advisor-list tr {
-    margin-bottom: 12px;
-    padding: 12px 14px;
-    border: 1px solid #e3e7ee;
-    border-radius: 12px;
-    background: white;
-  }
-  .advisor-list td {
-    padding: 4px 0;
-    border: 0;
-    overflow-wrap: anywhere;
-  }
-  .advisor-list td button {
-    width: 100%;
-    margin: 6px 0 0;
-  }
-  .advisor-list .appointment-actions {
-    flex-wrap: wrap;
-  }
 }
 </style>

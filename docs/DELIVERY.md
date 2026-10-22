@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Closer et client Isolation — cadre commun utilisable sur téléphone
+
+Le closer et le client Isolation passent sur le cadre commun, comme le conseiller : leurs menus et libellés sont conservés (closer : Mes visites, Mes statistiques ; client : Vue d’ensemble, Mes dossiers, Visites, Statistiques), sans recherche, appels ni Pilotage ; profil « Isolation · Closer » ou « Isolation · Client ». La mise en cartes des tableaux sur téléphone (sous 700 px) est désormais commune aux rôles terrain (conseiller, closer, client) et portée par le cadre ; la copie propre au conseiller est retirée.
+
+Validation : tests de cadre closer et client (libellés conservés, ni recherche, ni appels, ni Pilotage). Démo à 375 px : aucun débordement horizontal pour le closer (visites, statistiques) ni pour le client (vue d’ensemble, dossiers, visites). 71 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : en carte, les cellules n’ont plus l’intitulé de leur colonne ; double titre « Visites » / « Visites Isolation » encore présent sur plusieurs écrans. Parcours terrain à repenser plus tard.
+
 ## Réservation Isolation — disponibilités du client dans la fiche
 
 La réservation de visite (« Préparer le C2 et réserver ») affiche la même grille que la réservation Assurance : créneaux du jour libres, occupés (barrés) ou passés, pour la durée choisie ; un clic remplit la date et l’heure. La grille devient un composant partagé `AvailabilitySlots`, utilisé par les deux espaces.
