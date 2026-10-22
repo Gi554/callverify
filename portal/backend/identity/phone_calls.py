@@ -35,7 +35,7 @@ def setter(user,workspace='assurance'):
 def output(row):
     return {'request_id':str(row.request_id),('contact_id' if row.workspace=='assurance' else 'prospect_id'):row.contact_id,'workspace':row.workspace,'state':row.state,
             'created_at':row.created_at,'updated_at':row.updated_at,
-            'definition':'Accepté = commande reçue, pas une preuve de sonnerie ou de décrochage. Indéterminé/en cours : ne pas relancer automatiquement.'}
+            'definition':'Success Phonetico = le poste émetteur a répondu et la composition extérieure démarre. Cela ne prouve ni sonnerie distante ni décrochage du destinataire. Failure = rappel au poste échoué selon le fournisseur. Indéterminé/en cours : aucune relance automatique.'}
 
 def reply(row):
     response=Response(output(row));response['Cache-Control']='no-store';return response

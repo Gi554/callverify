@@ -4,11 +4,46 @@ import hashlib
 import io
 import json
 import secrets
+from datetime import datetime,timezone
+from zoneinfo import ZoneInfo
 from time import monotonic
 import requests
 from .directory import URL,DirectoryUnavailable
 
 MAX_BYTES=1024*1024
+CONFIRMED_COLUMNS=['From','To','Description','DNID','Date','Time','Duration','Amount']
+PROVIDER_TIMEZONE='America/Toronto'
+
+def confirmed(headings):return [value.strip() for value in headings]==CONFIRMED_COLUMNS
+
+def local_instant(day,clock):
+    """Do not guess which repeated autumn hour a provider timestamp denotes."""
+    try:
+        local=datetime.strptime(day+' '+clock,'%Y-%m-%d %H:%M:%S')
+        zone=ZoneInfo(PROVIDER_TIMEZONE)
+        candidates={local.replace(tzinfo=zone,fold=fold).astimezone(timezone.utc) for fold in (0,1)
+            if local.replace(tzinfo=zone,fold=fold).astimezone(timezone.utc).astimezone(zone).replace(tzinfo=None)==local}
+        return next(iter(candidates)).isoformat() if len(candidates)==1 else None
+    except ValueError:return None
+
+def parse_records(raw):
+    """Confirmed 511 CSV, for scoped matching by the caller; no answer inference."""
+    if len(raw)>MAX_BYTES:raise DirectoryUnavailable()
+    inspect(raw)
+    try:
+        reader=csv.reader(io.StringIO(raw.decode('utf-8-sig'),newline=''),strict=True)
+        if not confirmed(next(reader)):raise DirectoryUnavailable()
+        records=[]
+        for row in reader:
+            if not row:continue
+            values=dict(zip(CONFIRMED_COLUMNS,row))
+            # Duration and Amount have no confirmed unit/semantics; preserve as text.
+            records.append({'from':values['From'],'to':values['To'],'description':values['Description'],
+                'dnid':values['DNID'],'local_date':values['Date'],'local_time':values['Time'],
+                'timezone':PROVIDER_TIMEZONE,'occurred_at':local_instant(values['Date'],values['Time']),
+                'duration_raw':values['Duration'],'amount_raw':values['Amount']})
+        return records
+    except (UnicodeError,csv.Error,StopIteration,ValueError):raise DirectoryUnavailable() from None
 
 def inspect(raw):
     try:

@@ -20,6 +20,8 @@ def place(username,password,extension,destination):
             rows=list(csv.reader(io.StringIO(body.decode('utf-8-sig')),strict=True))
             if len(rows)!=1:return 'unknown'
             row=rows[0]
-            if len(row)<4 or row[1:4]!=[extension,destination,correlation] or any(row[4:]):return 'unknown'
+            # Provider confirmed empty correlation slots in Success,ext,TN,,,,,.
+            # Bind to this one HTTPS response's exact post and destination instead.
+            if len(row)<4 or len(row)>8 or row[1:3]!=[extension,destination] or row[3] not in ('',correlation) or any(row[4:]):return 'unknown'
             return {'Success':'accepted','Failure':'rejected'}.get(row[0],'unknown')
     except (requests.RequestException,ValueError,UnicodeError,csv.Error):return 'unknown'

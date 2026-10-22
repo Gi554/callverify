@@ -37,5 +37,8 @@ def status(request,workspace,pk):
             observation=fetch_status(settings.NEWT_USERNAME,settings.NEWT_PASSWORD,link.extension)
             AccessAudit.objects.create(user=request.user,workspace=workspace,action='phone.status_read',metadata={'target_id':member.user_id,'observations':observation['observations']})
     except DirectoryUnavailable:raise Unavailable() from None
-    response=Response({'extension':link.extension,**observation,'source':'NEWT 244','checked_at':timezone.now()})
+    labels={'R':'Sonnerie du poste','C':'En communication','H':'En attente'}
+    response=Response({'extension':link.extension,**observation,'states':[{'code':code,'label':labels[code]} for code in observation['codes']],
+        'definition':'États du poste confirmés par Phonetico : R = Ringing, C = On Call, H = On Hold. Ils ne prouvent ni le décrochage humain du destinataire ni la validité de son numéro. Sans observation, disponibilité indéterminée.',
+        'source':'NEWT 244','checked_at':timezone.now()})
     response['Cache-Control']='no-store';return response
