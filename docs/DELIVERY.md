@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Socle technique — fin des `import *` historiques
+
+`core/views.py` et `core/tests.py` importent désormais explicitement leurs modèles et sérialiseurs au lieu de `from .models import *` / `from .serializers import *`. Les exceptions Ruff correspondantes (F403/F405) sont retirées : tout le Python est contrôlé par les mêmes règles. Aucun module n’importait de modèle via `core.views`. Aucun changement de comportement.
+
+Validation : `ruff check` sans exception de ce type ; suites core 249, portail 221, Assurance 311, unittest base commune/démo, `manage.py check`.
+
 ## Correctif — test d’appel instable
 
 `test_phone_calls.test_one_dispatch_replay_status_and_private_output` vérifiait que le poste (« 501 ») et le numéro (« 1514… ») n’apparaissent pas dans la réponse, y compris dans l’identifiant de requête aléatoire : un UUID contenant « 501 » (#127) puis des microsecondes « 144501 » (#129) faisaient échouer la CI par hasard. Le test vérifie désormais la liste exacte des champs renvoyés et l’absence de ces chiffres dans les seules valeurs texte (hors identifiant aléatoire et dates). Aucun changement applicatif.

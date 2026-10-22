@@ -13,7 +13,21 @@ from twilio.request_validator import RequestValidator
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
-from .models import *
+from .models import (
+    AdminUser,
+    CallAttempt,
+    CallCampaign,
+    Campaign,
+    ConsentEvidence,
+    ExportJob,
+    ImportBatch,
+    ImportRow,
+    LookupCheck,
+    PlatformSettings,
+    Prospect,
+    Suppression,
+    WebhookEvent,
+)
 from .services import (
     normalize,
     process_import,
