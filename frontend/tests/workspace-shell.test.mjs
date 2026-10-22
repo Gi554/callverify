@@ -160,19 +160,42 @@ test('open access management is the only active steering entry', async () => {
   assert.match(html, /class="is-active"[^>]*aria-current="page"[^>]*>.*?Utilisateurs et accès/)
 })
 
-test('Isolation client and closer keep the previous frame', async () => {
-  const html = await renderToString(
-    createSSRApp(component, {
-      ...props,
-      role: 'client',
-      workspace: 'isolation',
-      spaces: [{ workspace: 'isolation', role: 'client' }],
-      items: adminItems.slice(0, 3),
-    }),
-  )
-  assert.match(html, /crm-sidebar/)
-  assert.doesNotMatch(html, /setter-shell/)
-})
+for (const [role, items, expected] of [
+  [
+    'closer',
+    [
+      { id: 'overview', label: 'Mes visites', icon: 'appointments' },
+      { id: 'statistics', label: 'Mes statistiques', icon: 'statistics' },
+    ],
+    ['Mes visites', 'Mes statistiques', 'Isolation · Closer'],
+  ],
+  [
+    'client',
+    [
+      { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
+      { id: 'contacts', label: 'Mes dossiers', icon: 'contacts' },
+      { id: 'appointments', label: 'Visites', icon: 'appointments' },
+    ],
+    ['Vue d’ensemble', 'Mes dossiers', 'Visites', 'Isolation · Client'],
+  ],
+])
+  test(`Isolation ${role} gets the simple shared frame with its own labels`, async () => {
+    const html = await renderToString(
+      createSSRApp(component, {
+        ...props,
+        role,
+        workspace: 'isolation',
+        spaces: [{ workspace: 'isolation', role }],
+        items,
+      }),
+    )
+    assert.match(html, /setter-shell simple-shell/)
+    assert.doesNotMatch(
+      html,
+      /crm-sidebar|setter-search|setter-phone|Appels|Pilotage|Accueil|Prospects/,
+    )
+    for (const label of expected) assert.match(html, new RegExp(label))
+  })
 
 test('advisor gets the shared frame with only appointments and no call or search tools', async () => {
   const html = await renderToString(
