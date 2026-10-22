@@ -160,16 +160,34 @@ test('open access management is the only active steering entry', async () => {
   assert.match(html, /class="is-active"[^>]*aria-current="page"[^>]*>.*?Utilisateurs et accès/)
 })
 
-test('other roles keep the previous frame', async () => {
+test('Isolation client and closer keep the previous frame', async () => {
   const html = await renderToString(
     createSSRApp(component, {
       ...props,
-      role: 'advisor',
-      workspace: 'assurance',
-      spaces: [{ workspace: 'assurance', role: 'advisor' }],
+      role: 'client',
+      workspace: 'isolation',
+      spaces: [{ workspace: 'isolation', role: 'client' }],
       items: adminItems.slice(0, 3),
     }),
   )
   assert.match(html, /crm-sidebar/)
   assert.doesNotMatch(html, /setter-shell/)
+})
+
+test('advisor gets the shared frame with only appointments and no call or search tools', async () => {
+  const html = await renderToString(
+    createSSRApp(component, {
+      ...props,
+      username: 'Conseiller de recette',
+      role: 'advisor',
+      workspace: 'assurance',
+      spaces: [{ workspace: 'assurance', role: 'advisor' }],
+      items: [{ id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' }],
+      active: 'appointments',
+    }),
+  )
+  assert.match(html, /setter-shell advisor-shell/)
+  assert.match(html, /Mes rendez-vous/)
+  assert.match(html, /Assurance · Conseiller/)
+  assert.doesNotMatch(html, /setter-search|setter-phone|Appels|setter-statistics|Pilotage/)
 })
