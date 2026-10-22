@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Réservation Assurance depuis la fiche — disponibilités du conseiller
+
+Dans l’onglet Rendez-vous de la fiche prospect, dès qu’un conseiller attribué est choisi, une grille du jour (8 h–20 h, pas de 30 minutes, navigation jour par jour) affiche les créneaux libres, occupés (barrés) et passés, selon la durée choisie et le fuseau affiché. Un clic remplit la date et l’heure ; la saisie manuelle reste possible. Plus besoin de réserver à l’aveugle pour découvrir « Créneau indisponible ».
+
+Nouvelle API `GET appointments/availability/?assignment_id=&start=&end=[&contact_id=]` : plages occupées du CRM pour le conseiller de l’attribution et, si fourni, pour le prospect. Horaires uniquement (début, fin, motif conseiller/prospect), aucune identité d’autre prospect. Réservée aux setters (leurs attributions actives) et administrateurs ; période de sept jours au plus, dates ISO avec décalage.
+
+Validation : test backend (périmètre setter/administrateur, refus autre setter et conseiller, motif prospect, plages invalides, absence d’identité) ; test frontend (requête, créneaux occupés/libres, sélection). Démo : avec `setter.demo01`, créneau occupé barré et créneaux passés grisés, clic reporté dans le champ. 69 tests frontend, 311 tests Assurance, typage, lint, format et build.
+
+Limites : l’agenda Google/Microsoft du conseiller n’est consulté qu’à la confirmation (contrôle ponctuel existant), la grille peut donc proposer un créneau occupé à l’extérieur. Plage 8 h–20 h fixe, sans horaires de travail paramétrables par conseiller.
+
 ## Conseiller Assurance — harmonisation simple, utilisable sur téléphone
 
 Le conseiller passe sur le cadre commun (en-tête, barre latérale, menu mobile) avec un seul menu, **Mes rendez-vous**, et Mon compte ; il y arrive directement à l’entrée dans l’espace. Recherche, appels, Contacts, Opportunités et Vue d’ensemble ne lui sont plus proposés. La liste des rendez-vous n’affiche plus de double titre ni le texte de réservation (le conseiller ne réserve pas) : un texte dédié rappelle qualification et compte rendu ; la colonne Conseiller (toujours lui-même) est masquée. Sous 700 px, chaque rendez-vous devient une carte empilée, boutons pleine largeur ; vérifié à 375 px dans la démo sans aucun débordement horizontal.

@@ -23,6 +23,7 @@ from .calendar_checks import check as external_check
 from .appointment_status import output as business_status, filter_status
 from .qualification import snapshot as qualification_snapshot
 from .reports import ReportMixin
+from .visibility import visible_contacts
 
 
 class IntervalInput(serializers.Serializer):
@@ -388,6 +389,56 @@ class AppointmentViewSet(ReportMixin, viewsets.GenericViewSet):
             row.save(update_fields=['status', 'revision', 'updated_at'])
             audit(request.user, row, 'appointment.cancelled', before, data['reason'])
         return Response(output(row, request.user))
+
+    @action(detail=False, methods=['get'])
+    def availability(self, request):
+        """Busy CRM intervals for a bookable assignment; external calendars stay checked at booking."""
+        writer(request)
+        try:
+            assignment = AdvisorAssignment.objects.get(
+                pk=int(request.query_params.get('assignment_id', '')), active=True
+            )
+        except (ValueError, AdvisorAssignment.DoesNotExist):
+            raise ValidationError('Attribution invalide ou suspendue')
+        if request.user.role == 'setter' and assignment.setter_id != request.user.pk:
+            raise PermissionDenied('Disponibilités limitées à vos attributions')
+        start = parse_datetime(request.query_params.get('start', ''))
+        end = parse_datetime(request.query_params.get('end', ''))
+        if not start or not end or start.tzinfo is None or end.tzinfo is None:
+            raise ValidationError('Période invalide : dates ISO 8601 avec décalage attendues')
+        if not start < end <= start + timedelta(days=7):
+            raise ValidationError('Période invalide : sept jours au maximum')
+        scope = Q(advisor_id=assignment.advisor_id)
+        contact = request.query_params.get('contact_id', '')
+        if contact:
+            if (
+                not contact.isdigit()
+                or not visible_contacts(request.user).filter(pk=int(contact)).exists()
+            ):
+                raise ValidationError('Prospect invalide')
+            scope |= Q(contact_id=int(contact))
+        rows = (
+            Appointment.objects.filter(status='scheduled', starts_at__lt=end, ends_at__gt=start)
+            .filter(scope)
+            .order_by('starts_at', 'pk')
+            .values('starts_at', 'ends_at', 'advisor_id')
+        )
+        # Times only: other prospects' identities are never exposed.
+        return Response(
+            {
+                'busy': [
+                    {
+                        'starts_at': row['starts_at'],
+                        'ends_at': row['ends_at'],
+                        'reason': 'advisor'
+                        if row['advisor_id'] == assignment.advisor_id
+                        else 'contact',
+                    }
+                    for row in rows
+                ],
+                'external_calendar': 'checked_at_booking',
+            }
+        )
 
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None):
