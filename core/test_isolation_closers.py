@@ -29,8 +29,9 @@ class CloserTests(TestCase):
         self.assertEqual(self.client.get('/api/closer-visits/').data['count'],1)
         self.assertEqual(self.client.get('/api/closer-visits/dashboard/').data['results_due'],1)
         self.assertEqual(self.client.get(self.base).data['closer'],{'id':77,'name':'Closer test'})
-        for url in ('/api/visits/','/api/work-queue/','/api/workspace-statistics/','/api/client-prospects/'):
+        for url in ('/api/visits/','/api/work-queue/','/api/client-prospects/'):
             self.assertEqual(self.client.get(url).status_code,403,url)
+        self.assertEqual(self.client.get('/api/workspace-statistics/').data['totals']['visits'],1)
         self.auth(78,'closer');self.assertEqual(self.client.get(self.base).status_code,404)
         self.assertEqual(self.report().status_code,404)
         self.assertEqual(self.client.get('/api/closer-visits/').data['count'],0)
