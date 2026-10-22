@@ -21,6 +21,8 @@ if os.getenv('ASSURANCE_DB_HOST'):
     DATABASES['default']={'ENGINE':'django.db.backends.postgresql','HOST':os.environ['ASSURANCE_DB_HOST'],
         'NAME':os.getenv('ASSURANCE_DB_NAME','amx_assurance'),'USER':os.getenv('ASSURANCE_DB_USER','amx_assurance'),
         'PASSWORD':os.environ['ASSURANCE_DB_PASSWORD'],'PORT':os.getenv('ASSURANCE_DB_PORT','5432')}
+from packages.database import configure_schema
+configure_schema(DATABASES['default'], 'assurance')
 REST_FRAMEWORK={'DEFAULT_AUTHENTICATION_CLASSES':['apps.assurance.backend.crm.access.WorkspaceAuthentication'],
     'DEFAULT_PERMISSION_CLASSES':['rest_framework.permissions.IsAuthenticated'],'UNAUTHENTICATED_USER':None}
 

@@ -73,6 +73,33 @@ jobs:
           POSTGRES_DB: amx_assurance
           POSTGRES_USER: amx_test
           POSTGRES_PASSWORD: local-ci-only
+  common-database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: amx_common_test
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U amx_common_test -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DEBUG: 'true'
+      CRM_COMMON_PG_TEST: '1'
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: amx_common_test
+      PGPASSWORD: local-ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.lock.txt
+      - run: python -m unittest core.test_crm_common_db -v
   frontend:
     runs-on: ubuntu-latest
     defaults:

@@ -22,6 +22,8 @@ if os.getenv('PORTAL_DB_HOST'):
     DATABASES['default'] = {'ENGINE':'django.db.backends.postgresql','HOST':os.environ['PORTAL_DB_HOST'],
         'NAME':os.getenv('PORTAL_DB_NAME','amx_portal'),'USER':os.getenv('PORTAL_DB_USER','amx_portal'),
         'PASSWORD':os.environ['PORTAL_DB_PASSWORD'],'PORT':os.getenv('PORTAL_DB_PORT','5432')}
+from packages.database import configure_schema
+configure_schema(DATABASES['default'], 'portal')
 SESSION_COOKIE_NAME = 'amx_portal_session'
 CSRF_COOKIE_NAME = 'amx_portal_csrf'
 SESSION_COOKIE_HTTPONLY = True
