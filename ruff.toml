@@ -18,6 +18,3 @@ quote-style = "single"
 # Mutual imports between these modules are resolved by importing at the end.
 "core/isolation_followups.py" = ["E402"]
 "core/isolation_work.py" = ["E402"]
-# Historical star re-exports; replacing them is a separate refactor.
-"core/views.py" = ["F403", "F405"]
-"core/tests.py" = ["F403", "F405"]
