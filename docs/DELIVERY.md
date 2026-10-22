@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Couleur du bloc logo Setter
+
+Fond du logo AMX aligné sur le bleu nuit de la barre latérale (#112330), texte blanc et sous-titre éclairci. Sur ordinateur, le bloc occupe exactement la largeur du menu (248 px) et toute la hauteur de l’en-tête. La version mobile conserve un bloc compact.
+
 ## Cadre de navigation Setter selon la référence utilisateur
 
 Barre blanche sur toute la largeur avec marque AMX, accès à la liste des prospects, raccourci vers les tâches et profil. Menu bleu nuit, sélection bleue, statistiques séparées ; menu mobile et choix d’espace dans le profil uniquement pour les comptes ayant plusieurs accès. Appels, conversations et aide sans page dédiée restent désactivés et explicités par leurs libellés. Aucun compteur fictif ni appel déclenché. Les interfaces des autres rôles et le contenu des pages ne sont pas refondus par ce lot. Connexion Setter et rendu desktop contrôlés dans le navigateur local ; typage, build et tests des espaces contrôlés. La suite attend la validation de l’utilisateur, page par page.
