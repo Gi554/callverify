@@ -19,7 +19,7 @@ def issue(user_id, workspace, role):
 
 def verify(token, workspace):
     claims = signing.loads(token,key=key_for(workspace),salt='amx.workspace.v1',max_age=120)
-    roles = {'assurance':{'administrator','setter','advisor'},'isolation':{'administrator','setter','client'}}
+    roles = {'assurance':{'administrator','setter','advisor'},'isolation':{'administrator','setter','client','closer'}}
     if claims.get('aud') != workspace or claims.get('role') not in roles[workspace] or not str(claims.get('sub','')).isdigit():
         raise signing.BadSignature('Invalid workspace claims')
     return claims

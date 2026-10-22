@@ -3,7 +3,7 @@ from django.db import models
 
 ROLES = {
     'assurance': {'administrator','setter','advisor'},
-    'isolation': {'administrator','setter','client'},
+    'isolation': {'administrator','setter','client','closer'},
 }
 
 class PhoneCallAttempt(models.Model):

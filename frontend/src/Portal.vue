@@ -20,6 +20,7 @@ import AssuranceAssignments from './AssuranceAssignments.vue'
 import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import IsolationVisits from './IsolationVisits.vue'
+import IsolationCloserVisits from './IsolationCloserVisits.vue'
 import AssuranceFollowUps from './AssuranceFollowUps.vue'
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue'
 import AssuranceNotifications from './AssuranceNotifications.vue'
@@ -53,12 +54,13 @@ async function business(path:string,body?:any,method?:string,target=workspace.va
  return response.status===204?null:response.json()
 }
 function assurance(path:string,body?:any,method?:string){return business(path,body,method,'assurance')}
+function isolationDashboard(role:string){return role==='closer'?'closer-visits/dashboard/':role==='client'?'client-dashboard/':'workspace-dashboard/'}
 function isolation(path:string,body?:any,method?:string){return business(path,body,method,'isolation')}
 async function enter(value:string){
  if(!user.value?.workspaces.some(item=>item.workspace===value))return
  const version=++workspaceVersion
  error.value='';busy.value=true;workspace.value=value;summary.value=null;assuranceModule.value='overview';isolationModule.value='overview';managing.value=false;passwordOpen.value=false
- try{const data=await business(value==='isolation'?(user.value?.workspaces.find(m=>m.workspace==='isolation')?.role==='client'?'client-dashboard/':'workspace-dashboard/'):'dashboard/',undefined,undefined,value);if(version===workspaceVersion)summary.value=data}
+ try{const data=await business(value==='isolation'?isolationDashboard(user.value?.workspaces.find(m=>m.workspace==='isolation')?.role||''):'dashboard/',undefined,undefined,value);if(version===workspaceVersion)summary.value=data}
  catch(e:any){if(version===workspaceVersion){error.value=e.message;summary.value=null}}finally{if(version===workspaceVersion)busy.value=false}
 }
 async function login(credentials:{username:string;password:string;workspace:string}){
@@ -74,16 +76,17 @@ async function login(credentials:{username:string;password:string;workspace:stri
 async function refreshWorkspace(){
  const target=workspace.value,version=++workspaceVersion
  error.value='';busy.value=true
- try{const data=await business(target==='assurance'?'dashboard/':role.value==='client'?'client-dashboard/':'workspace-dashboard/',undefined,undefined,target);if(version===workspaceVersion){summary.value=data;notificationVersion.value++;contentVersion.value++}}
+ try{const data=await business(target==='assurance'?'dashboard/':isolationDashboard(role.value),undefined,undefined,target);if(version===workspaceVersion){summary.value=data;notificationVersion.value++;contentVersion.value++}}
  catch(e:any){if(version===workspaceVersion)error.value=e.message}finally{if(version===workspaceVersion)busy.value=false}
 }
-async function refreshIsolation(){try{const data=await isolation(role.value==='client'?'client-dashboard/':'workspace-dashboard/');if(workspace.value==='isolation')summary.value=data}catch(e:any){if(workspace.value==='isolation')error.value=e.message}}
+async function refreshIsolation(){try{const data=await isolation(isolationDashboard(role.value));if(workspace.value==='isolation')summary.value=data}catch(e:any){if(workspace.value==='isolation')error.value=e.message}}
 async function logout(){await portal('session/',{});workspaceVersion++;try{for(const key of Object.keys(sessionStorage))if(key.startsWith('amx-call:'))sessionStorage.removeItem(key)}catch{};user.value=null;workspace.value='';summary.value=null;passwordOpen.value=false;csrf=''}
 
 const role=computed(()=>summary.value?.role||user.value?.workspaces.find(item=>item.workspace===workspace.value)?.role||'')
 const activeModule=computed(()=>workspace.value==='assurance'?assuranceModule.value:isolationModule.value)
 const navigation=computed(()=>{
  if(!workspace.value)return []
+ if(role.value==='closer')return [{id:'overview',label:'Mes visites',icon:'appointments'}]
  const items=[{id:'overview',label:'Vue d’ensemble',icon:'overview'},{id:'contacts',label:role.value==='client'?'Mes dossiers':'Contacts',icon:'contacts'},{id:'appointments',label:workspace.value==='assurance'?'Rendez-vous':'Visites',icon:'appointments'}]
  if(workspace.value==='assurance'){
   items.push({id:'pipeline',label:'Opportunités',icon:'agreements'})
@@ -112,10 +115,10 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
   <div v-if="passwordOpen" class="crm-settings-page"><PortalPassword :request="portal"/></div>
   <PortalAccess class="crm-settings-page" v-else-if="managing" :spaces="user.admin_workspaces" :username="user.username" :request="portal"/>
   <template v-else>
-   <div v-if="!workspace" class="amx-spaces"><button v-for="item in user.workspaces" :key="item.workspace" class="amx-space" @click="enter(item.workspace)"><span class="amx-space-icon"><ShieldCheck v-if="item.workspace==='assurance'" :size="27"/><Home v-else :size="27"/></span><h2>{{title(item.workspace)}}</h2><p>{{item.workspace==='assurance'?'Contacts, conseillers et suivi des rendez-vous.':'Prospects, rappels et suivi des visites.'}}</p><span class="amx-role">{{({administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client'} as Record<string,string>)[item.role]||item.role}}</span><span class="amx-open">Ouvrir mon espace<ArrowRight :size="18"/></span></button><p v-if="!user.workspaces.length">Aucun espace actif. Contactez votre administrateur.</p></div>
+   <div v-if="!workspace" class="amx-spaces"><button v-for="item in user.workspaces" :key="item.workspace" class="amx-space" @click="enter(item.workspace)"><span class="amx-space-icon"><ShieldCheck v-if="item.workspace==='assurance'" :size="27"/><Home v-else :size="27"/></span><h2>{{title(item.workspace)}}</h2><p>{{item.workspace==='assurance'?'Contacts, conseillers et suivi des rendez-vous.':'Prospects, rappels et suivi des visites.'}}</p><span class="amx-role">{{({administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client',closer:'Closer'} as Record<string,string>)[item.role]||item.role}}</span><span class="amx-open">Ouvrir mon espace<ArrowRight :size="18"/></span></button><p v-if="!user.workspaces.length">Aucun espace actif. Contactez votre administrateur.</p></div>
    <p v-if="busy" role="status">Chargement de votre espace…</p>
    <template v-if="workspace&&summary">
-    <CrmOverview v-if="activeModule==='overview'" :workspace="workspace" :role="role" :summary="summary" :username="user.username" :request="workspace==='assurance'?assurance:isolation" @navigate="selectModule" @refresh="refreshWorkspace">
+    <IsolationCloserVisits v-if="workspace==='isolation'&&role==='closer'" :request="isolation"/><CrmOverview v-else-if="activeModule==='overview'" :workspace="workspace" :role="role" :summary="summary" :username="user.username" :request="workspace==='assurance'?assurance:isolation" @navigate="selectModule" @refresh="refreshWorkspace">
      <template v-if="workspace==='assurance'"><AssuranceAgreementAlerts v-if="role==='administrator'" :request="assurance" :refresh-version="notificationVersion" @open="agreementDeadline=$event;assuranceModule='agreements'"/><AssuranceReminders :role="role" :request="assurance" @open-tasks="selectModule('followups')" @open-appointments="selectModule('appointments')"/><AssuranceNotifications v-if="role!=='advisor'" :request="assurance" :refresh-version="notificationVersion" @open-tasks="selectModule('followups')"/></template>
     </CrmOverview>
     <section v-else :key="workspace+activeModule+contentVersion" class="card amx-workspace"><div class="card-header"><h2>{{pageTitle}}</h2></div><div class="amx-content">

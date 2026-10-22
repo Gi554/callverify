@@ -9,6 +9,7 @@ from .identity.passwords import change_password
 from .identity.session_security import revoke_others
 from .identity.recovery import request_reset,confirm_reset
 from .identity.isolation import setters as isolation_setters,visit_proof
+from .identity.isolation_closers import closers as isolation_closers
 from .identity.participants import participants,booking_proof,task_owner_proof
 
 urlpatterns=[path('api/portal/csrf/',views.csrf),path('api/portal/login/',views.sign_in),
@@ -20,6 +21,7 @@ urlpatterns += [path('api/portal/assurance/participants/',participants),path('ap
 urlpatterns += [path('api/portal/assurance/task-owner-proof/',task_owner_proof)]
 urlpatterns += [path('api/portal/isolation/setters/',isolation_setters)]
 urlpatterns += [path('api/portal/isolation/visit-proof/',visit_proof)]
+urlpatterns += [path('api/portal/isolation/closers/',isolation_closers)]
 urlpatterns += [path('api/portal/password/change/',change_password)]
 urlpatterns += [path('api/portal/session/revoke-others/',revoke_others)]
 urlpatterns += [path('api/portal/calendar/',calendars.connections),
