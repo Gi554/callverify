@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Quatre prospects par ligne
+
+Lorsqu’un seul statut est visible, sa grille affiche quatre cartes par ligne sur grand écran (>1200 px), trois jusqu’à 1200 px, deux jusqu’à 1000 px et une jusqu’à 600 px pour préserver la lisibilité. Contrôle du diff effectué ; recette approfondie reportée.
+
 ## Largeur adaptative des cartes prospects
 
 Les statuts visibles occupent la largeur disponible. Lorsqu’un seul statut est visible, ses cartes se répartissent horizontalement dans une grille adaptative, puis passent à la ligne ; sur mobile elles restent en une colonne. Le défilement et le chargement par lots de 25 sont conservés. Recette approfondie toujours reportée.

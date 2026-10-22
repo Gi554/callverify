@@ -71,8 +71,10 @@ onBeforeUnmount(()=>{disposed=true;generation++;dialog.value?.close()})
 /* Let the remaining stages fill the board instead of keeping fixed narrow lanes. */
 .prospects-columns .prospect-column{flex:1 0 280px}
 .prospects-columns.single-status .prospect-column{flex:1 1 100%}
-.single-status .prospect-stack{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-content:start;align-items:start;gap:16px}
+.single-status .prospect-stack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-content:start;align-items:start;gap:16px}
 .single-status .prospect-stack>p,.single-status .more-prospects{grid-column:1/-1}
 .single-status .prospect-card{min-width:0;box-sizing:border-box}
+@media(max-width:1200px){.single-status .prospect-stack{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1000px){.single-status .prospect-stack{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.prospects-columns .prospect-column{flex-basis:260px}.single-status .prospect-stack{grid-template-columns:1fr}}
 </style>
