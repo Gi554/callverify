@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Largeur adaptative des cartes prospects
+
+Les statuts visibles occupent la largeur disponible. Lorsqu’un seul statut est visible, ses cartes se répartissent horizontalement dans une grille adaptative, puis passent à la ligne ; sur mobile elles restent en une colonne. Le défilement et le chargement par lots de 25 sont conservés. Recette approfondie toujours reportée.
+
 ## Colonnes prospects vides masquées
 
 Les colonnes sans prospect ne s’affichent plus. Tous les statuts restent sélectionnables dans le filtre et disponibles dans la fiche. Les erreurs de chargement restent visibles pour permettre de réessayer ; une recherche sans résultat affiche un message unique. Recette approfondie toujours reportée à la demande de l’utilisateur.
