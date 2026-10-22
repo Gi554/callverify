@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Base commune — cible PostgreSQL jetable et séparation des schémas
+
+La commande `scripts/crm_common_db.py` crée une nouvelle base de recette locale et trois schémas avec rôles distincts et mots de passe aléatoires conservés hors Git. Toute base/rôle existant, destination non privée, réutilisation ou nom hors préfixe de recette est refusé. Les services peuvent sélectionner explicitement leur schéma PostgreSQL via `CRM_DB_SCHEMA`, validé contre leur identité ; la configuration actuelle sans ce réglage est inchangée. Les privilèges publics de connexion, création de schéma et tables temporaires sont retirés sur cette cible.
+
+Validation : cinq tests, dont une recette PostgreSQL 18 réelle avec les migrations des trois services dans une base unique, séquences et opérations locales, refus de lecture/écriture/création interschémas, créations publiques/temporaires, rôles et bases. Suite core : 236 tests, dont 18 ignorés ; contrôles de schéma et absence de modification des sources. Recette PostgreSQL 17 ajoutée à la CI. Aucun appel, message ni fournisseur sollicité ; aucun service CRM courant arrêté.
+
+Limites : cible vide uniquement ; données existantes non transférées, bases courantes inchangées. Rôles de recette autorisés à migrer leur propre schéma, sans séparation migrateur/applicatif de production. Import, comparaison des données, références polymorphes, sauvegarde/restauration commune et bascule restent à réaliser. Voir [le plan](DATABASE_CENTRALIZATION.md). Prochain lot demandé : gros jeu de données fictives cohérent dans les deux espaces de recette, avec rendez-vous, rappels, résultats et comptes par rôle, sans connexion fournisseur réelle.
+
 ## Préparation de la base commune — audit SQLite en lecture seule
 
 Un nouvel outil `scripts/crm_db_audit.py` contrôle les trois sources locales sans les modifier : intégrité et clés étrangères, inventaire et empreintes de structure, migrations attendues, références aux identités centrales et sources métier des appels/calendriers selon l’espace. Les références sans clé étrangère sont classées explicitement ; les exclusions polymorphes restent signalées comme non vérifiées. Un rapport agrégé hors Git expose les blocages sans lignes métier ni secrets. Refus des sources absentes/identiques, des liens et de tout écrasement. Codes 0 (périmètre contrôlé sans problème), 2 (blocages avec rapport), 1 (audit impossible). `migration_ready` reste toujours false, même avec la déclaration opérateur `--quiesced`.

@@ -28,6 +28,8 @@ if os.getenv('POSTGRES_HOST'):
     DATABASES = {'default': {'ENGINE':'django.db.backends.postgresql','NAME':os.getenv('POSTGRES_DB','callverify'),
         'USER':os.getenv('POSTGRES_USER','callverify'),'PASSWORD':os.environ['POSTGRES_PASSWORD'],
         'HOST':os.environ['POSTGRES_HOST'],'PORT':os.getenv('POSTGRES_PORT','5432')}}
+from packages.database import configure_schema
+configure_schema(DATABASES['default'], 'isolation')
 AUTH_PASSWORD_VALIDATORS = [{'NAME':'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator','OPTIONS':{'min_length':12}},
     {'NAME':'django.contrib.auth.password_validation.CommonPasswordValidator'},
