@@ -180,6 +180,7 @@ test('administrator filters the Assurance team calendar by setter or advisor', a
     await flush()
     assert.equal(count(f), '2')
     assert.equal(f.requests.length, 1)
+    assert.match(f.requests[0], /[?&]page_size=100(&|$)/)
   } finally {
     f.close()
   }

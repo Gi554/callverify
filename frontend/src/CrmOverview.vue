@@ -653,6 +653,7 @@ onMounted(refreshHome)
 }
 .home-highlight {
   position: relative;
+  container-type: inline-size;
   text-align: left;
   border: 0;
   border-radius: 23px;
@@ -694,12 +695,15 @@ onMounted(refreshHome)
   position: absolute;
   bottom: 21px;
   left: 18px;
-  font-size: 31px;
+  /* Shrinks with narrow cards so large counts never slide under the arrow button. */
+  font-size: min(31px, 19cqi);
   line-height: 1.2;
   letter-spacing: -1px;
+  white-space: nowrap;
   max-width: calc(100% - 72px);
 }
 .home-highlight strong.next-slot {
+  white-space: normal;
   font-size: 17px;
   letter-spacing: -0.4px;
 }

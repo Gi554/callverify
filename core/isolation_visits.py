@@ -150,13 +150,19 @@ def snapshot(row):
     }
 
 
+class VisitPager(Pager):
+    # The monthly calendar reads a whole team month: larger pages, still bounded.
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class IsolationVisitViewSet(
     CloserAssignmentMixin, SharingMixin, ResultMixin, viewsets.GenericViewSet
 ):
     authentication_classes = [VisitAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BookingInput
-    pagination_class = Pager
+    pagination_class = VisitPager
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):

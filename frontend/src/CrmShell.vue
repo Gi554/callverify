@@ -975,9 +975,12 @@ function navigate(id: string) {
     padding: 4px;
   }
   .setter-search {
-    flex: 0;
+    flex: 0 0 auto;
     padding: 9px;
     background: #f0f4f8;
+  }
+  .setter-search svg {
+    flex-shrink: 0;
   }
   .setter-search span,
   .setter-tools {

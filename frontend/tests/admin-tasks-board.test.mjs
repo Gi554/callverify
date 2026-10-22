@@ -139,6 +139,7 @@ test('Assurance administration opens full management controls and policy without
   try {
     await flush()
     assert.ok(text(f.root).includes('Tâches de l’équipe'))
+    assert.ok(text(f.root).includes('Voir l’agenda de l’équipe'))
     await all(f.root)
       .find((n) => n.tag === 'button' && text(n).trim() === 'Ouvrir')
       .props.onClick()
@@ -164,6 +165,7 @@ test('setter keeps the existing task detail without administrator policy or reas
   try {
     await flush()
     assert.equal(text(f.root).includes('Règles des suivis'), false)
+    assert.ok(text(f.root).includes('Voir mes rendez-vous'))
     await all(f.root)
       .find((n) => n.tag === 'button' && text(n).trim() === 'Ouvrir')
       .props.onClick()

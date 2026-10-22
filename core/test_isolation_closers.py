@@ -88,6 +88,22 @@ class CloserTests(TestCase):
         self.assertEqual(self.assign().status_code, 200)
         self.assertEqual(self.assign().status_code, 409)
 
+    def test_calendar_page_size_is_opt_in_and_bounded(self):
+        values = {
+            field.attname: getattr(self.visit, field.attname)
+            for field in IsolationVisit._meta.fields
+            if not field.primary_key and field.name != 'created_at'
+        }
+        for _ in range(104):
+            IsolationVisit.objects.create(**{**values, 'request_id': uuid4()})
+        self.assertEqual(len(self.client.get('/api/visits/').data['results']), 25)
+        response = self.client.get('/api/visits/', {'page_size': 100})
+        self.assertEqual(len(response.data['results']), 100)
+        self.assertEqual(response.data['count'], 105)
+        self.assertEqual(
+            len(self.client.get('/api/visits/', {'page_size': 500}).data['results']), 100
+        )
+
     def test_explicit_result_optional_note_and_retry(self):
         self.prepare()
         body = self.payload()
