@@ -164,9 +164,7 @@ onMounted(() => run(load));
 </script>
 <template>
   <section>
-    <h3 v-if="!visitId">
-      Visites Isolation {{ prospect ? '· ' + (prospect.name || prospect.raw_phone) : '' }}
-    </h3>
+    <h3 v-if="!visitId && prospect">Visites · {{ prospect.name || prospect.raw_phone }}</h3>
     <p v-if="!visitId && role !== 'client'">
       Les visites concernent le client Isolation unique. Les conflits internes et les occupations de
       son agenda Google ou Microsoft connecté sont contrôlés avant confirmation.

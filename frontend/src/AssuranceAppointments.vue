@@ -286,14 +286,8 @@ onMounted(() =>
       'appointment-detail-mode': !!appointmentId,
     }"
   >
-    <h3 v-if="!appointmentId && role !== 'advisor'">
-      {{
-        compact
-          ? 'Réserver un rendez-vous'
-          : contactId
-            ? 'Rendez-vous du prospect'
-            : 'Rendez-vous Assurance'
-      }}
+    <h3 v-if="!appointmentId && (compact || contactId)">
+      {{ compact ? 'Réserver un rendez-vous' : 'Rendez-vous du prospect' }}
     </h3>
     <p v-if="!appointmentId && role === 'advisor'" class="subtle">
       Vos rendez-vous. Consultez la qualification transmise, puis renseignez le compte rendu après
