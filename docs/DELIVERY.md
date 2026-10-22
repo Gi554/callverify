@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Prospects Assurance administrateur — tableau par statut et imports conservés
+
+L’administrateur Assurance ouvre désormais Prospects sur le même tableau que le setter : colonnes par statut du pipeline, cartes, recherche serveur, filtre de statut, pagination par colonne et fiche dans le panneau latéral avec ses commandes administratives existantes. Intitulé « Équipe Assurance ». Les commandes d’appel ne sont pas proposées à l’administrateur, comme en Isolation. Une bascule **Tableau / Liste et imports** redonne l’écran Contacts existant (imports CSV/XLSX avec aperçu, mappage et historique, onglets et filtres) ; le nombre de contacts importés met toujours à jour l’accueil, et le retour au tableau le recharge. Aucun changement backend, aucune migration.
+
+Validation : trois tests (tableau d’équipe sans commande d’appel, bascule vers la liste avec remontée de l’import puis tableau rechargé, setter inchangé avec appel et sans bascule). Suite frontend 67 tests, typage, format et build réussis.
+
+Limites : l’import reste dans l’écran liste, sans refonte de son parcours. Pas de revue visuelle en navigateur ; revue esthétique différée.
+
 ## Calendrier d’équipe administrateur — Assurance et Isolation
 
 L’administrateur ouvre désormais Rendez-vous ou Visites sur le calendrier mensuel déjà utilisé par le setter, intitulé « Équipe » avec l’agenda de toute l’équipe. Un filtre **Membre de l’équipe** regroupe setters et conseillers (Assurance) ou setters d’origine, closers et clients (Isolation), construit à partir des rendez-vous du mois chargé ; la recherche couvre aussi ces noms. Une bascule **Calendrier / Liste** redonne accès à la liste de gestion existante sans rien retirer ; la réservation et le détail complet restent disponibles depuis le calendrier. Les modifications de visites Isolation depuis la liste rafraîchissent les compteurs de l’espace. Aucun changement backend, aucune migration : les participants étaient déjà renvoyés aux seuls administrateurs.
