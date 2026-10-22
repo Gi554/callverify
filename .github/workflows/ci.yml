@@ -99,7 +99,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.lock.txt
-      - run: python -m unittest core.test_crm_common_db -v
+      - run: python -m unittest core.test_crm_common_db core.test_crm_demo -v
   frontend:
     runs-on: ubuntu-latest
     defaults:

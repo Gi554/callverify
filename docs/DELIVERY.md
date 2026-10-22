@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Recette volumineuse — données fictives dans une base commune séparée
+
+Un générateur reproductible crée une nouvelle base PostgreSQL locale de recette, migre les trois schémas et remplit les parcours Assurance/Isolation par ORM. Aucun reset ni écrasement d’un jeu existant : nouveau dossier privé vide, nom de base aléatoire réservé, manifeste synthetic/disposable et refus de second remplissage. Volume paramétrable de 40 à 20 000 prospects par espace, 5 000 par défaut. Noms/adresses marqués Démo, courriels example.invalid et téléphones à indicatif régional invalide 000 ; aucune fausse preuve Lookup ou observation fournisseur.
+
+Le jeu local créé contient 10 000 prospects, 2 500 rendez-vous passés/futurs avec annulations et résultats manquants, 956 comptes rendus, 3 334 tâches en retard/à venir/terminées, 10 000 notes et 10 000 résultats d’appel déclarés. Six campagnes Isolation. Vingt-deux comptes et 33 appartenances couvrent administrateur, dix setters dans les deux espaces, cinq conseillers Assurance, cinq closers Isolation et le client Isolation unique. Qualifications et C2 distincts, instantanés figés, attributions et liens de rappel conservés.
+
+Un lanceur dédié expose la recette sur localhost:5174/crm et les API sur 8190/8191/8100, sans repli vers les serveurs actuels. Refus des ports occupés, cookies portail distincts, arrêt des seuls processus enfants. Le lanceur ne charge pas .env et filtre les variables héritées : aucun secret NEWT/Twilio/SMTP/OAuth, Lookup désactivé, courriels en mémoire, aucun worker externe ni poste téléphonique connecté. Manifestes, identifiants, données et journaux restent hors Git. Voir [le guide de recette](DEMO_DATA.md) et le fichier privé ACCES.txt.
+
+Validation : cinq tests dédiés dont recette réelle PostgreSQL 18 à 120 prospects par espace, reprise refusée, intégrité des liens, rôles, scénarios et environnement. Suite core : 241 tests dont 19 ignorés ; portail complet : 221 tests dont 11 ignorés ; typage et build Vue réussis, avertissement bundle >500 kB conservé. Dix-huit lectures HTTP réussies via le proxy démo couvrent connexion, tableaux de bord et listes des cinq rôles sur le jeu volumineux. La CI PostgreSQL 17 rejoue le générateur. Revue visuelle à faire ; aucun appel, message ou rendez-vous externe réel lancé.
+
+Limites : données synthétiques relatives à la date de génération, pas une simulation de fournisseur ni un test de charge concurrent. Aucun transfert des fichiers SQLite habituels, aucune bascule. Prochain lot : répétition du transfert de copies SQLite vers une autre cible commune, comparaison des données puis sauvegarde/restauration avant de considérer une bascule.
+
 ## Base commune — cible PostgreSQL jetable et séparation des schémas
 
 La commande `scripts/crm_common_db.py` crée une nouvelle base de recette locale et trois schémas avec rôles distincts et mots de passe aléatoires conservés hors Git. Toute base/rôle existant, destination non privée, réutilisation ou nom hors préfixe de recette est refusé. Les services peuvent sélectionner explicitement leur schéma PostgreSQL via `CRM_DB_SCHEMA`, validé contre leur identité ; la configuration actuelle sans ce réglage est inchangée. Les privilèges publics de connexion, création de schéma et tables temporaires sont retirés sur cette cible.
