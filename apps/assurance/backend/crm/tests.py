@@ -3,6 +3,7 @@ from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from django.conf import settings
 from unittest import skipUnless
+from django.test import TransactionTestCase
 
 if 'apps.assurance.backend.crm' in settings.INSTALLED_APPS:
     from .models import Contact
@@ -391,9 +392,6 @@ class ContactLeaseTests(TestCase):
         self.contact.refresh_from_db()
         self.assertEqual(self.contact.revision, 0)
         self.assertEqual(self.contact.name, 'Original')
-
-
-from django.test import TransactionTestCase
 
 
 @override_settings(DEBUG=True)
@@ -1104,7 +1102,10 @@ class ConcurrentAppointmentTests(TransactionTestCase):
         from .models import Appointment, BusinessAudit
 
         payload = self.payload(0)
-        operation = lambda api: api.post('/api/assurance/appointments/', payload, format='json')
+
+        def operation(api):
+            return api.post('/api/assurance/appointments/', payload, format='json')
+
         results = self.race([(21, operation), (21, operation)])
         self.assertEqual(sorted(results), [200, 201])
         self.assertEqual(Appointment.objects.count(), 1)
@@ -2148,7 +2149,8 @@ class StatisticsExportTests(TestCase):
         self.url = fixture.query()
 
     def test_csv_bom_readable_headers_and_audit(self):
-        import csv, io
+        import csv
+        import io
         from .models import BusinessAudit
 
         response = self.client.get(self.url + '&export=csv')
@@ -2208,7 +2210,8 @@ class StatisticsExportTests(TestCase):
                 ends_at=self.row.ends_at,
             )
         self.assertEqual(len(self.client.get(self.url).data['setters']['results']), 25)
-        import csv, io
+        import csv
+        import io
 
         rows = list(
             csv.reader(

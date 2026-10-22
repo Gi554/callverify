@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.core.management import call_command
-from django.db import connection, close_old_connections, transaction
+from django.db import connection, close_old_connections
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from .models import PortalMail, AccessAudit, Invitation, Membership

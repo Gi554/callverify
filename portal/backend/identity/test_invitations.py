@@ -7,8 +7,12 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
-from .models import Invitation, Membership, AccessAudit, PortalMail
+from .models import Invitation, Membership, AccessAudit
 from .mail_queue import dispatch
+from concurrent.futures import ThreadPoolExecutor
+from unittest import skipUnless
+from django.db import connection, close_old_connections
+from django.test import TransactionTestCase
 
 
 @override_settings(
@@ -170,12 +174,6 @@ class InvitationTests(TestCase):
         self.assertFalse(get_user_model().objects.filter(username='newperson').exists())
         self.assertIsNone(Invitation.objects.get().accepted_at)
         self.assertEqual(self.accept(body).status_code, 204)
-
-
-from concurrent.futures import ThreadPoolExecutor
-from unittest import skipUnless
-from django.db import connection, close_old_connections
-from django.test import TransactionTestCase
 
 
 @skipUnless(connection.vendor == 'postgresql', 'Row locking requires PostgreSQL')

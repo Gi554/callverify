@@ -1,4 +1,5 @@
-from packages.calendar_connectors.booking import check as shared_check, Unavailable, Busy
+from packages.calendar_connectors.booking import check as shared_check, Busy
+from packages.calendar_connectors.booking import Unavailable as Unavailable  # re-exported
 
 
 def check(user, client, start, end, source_id=None):

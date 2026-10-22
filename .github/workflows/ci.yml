@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.lock.txt
-      - run: pip install ruff==0.6.9 && ruff format --check .
+      - run: pip install ruff==0.6.9 && ruff format --check . && ruff check .
       - run: python manage.py test core
       - run: python manage.py test portal.backend.identity --settings=portal.backend.settings
       - run: python manage.py test apps.assurance.backend.crm --settings=apps.assurance.backend.settings

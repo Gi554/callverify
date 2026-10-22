@@ -1,4 +1,3 @@
-from datetime import timedelta
 from uuid import uuid4
 from unittest.mock import patch, Mock
 from django.contrib.auth import get_user_model
@@ -9,6 +8,11 @@ from packages.access.phone_calls import issue
 from packages.newt.calls import place
 from .phone_calls import eligible
 from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
+from unittest import skipUnless
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+from django.db import connection, close_old_connections
+from django.test import TransactionTestCase
 
 
 @override_settings(
@@ -128,7 +132,6 @@ class PhoneCallsTests(TestCase):
         self.assertEqual(self.post().status_code, 400)
 
     def test_preflight_is_fixed_authenticated_bounded_and_fails_closed(self):
-        from io import BytesIO
         from packages.access.phone_calls import verify
 
         response = Mock()
@@ -146,13 +149,6 @@ class PhoneCallsTests(TestCase):
         response.raw.read.return_value = b'bad'
         with patch('portal.backend.identity.phone_calls.requests.post', return_value=response):
             self.assertFalse(eligible(self.user, verify(self.proof, self.user.pk), self.proof))
-
-
-from unittest import skipUnless
-from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
-from django.db import connection, close_old_connections
-from django.test import TransactionTestCase
 
 
 @skipUnless(connection.vendor == 'postgresql', 'Call serialization requires PostgreSQL')

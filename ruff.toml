@@ -4,3 +4,20 @@ extend-exclude = ["**/migrations/**", "frontend", "output", "demo"]
 
 [format]
 quote-style = "single"
+
+[lint]
+# Ruff defaults (pyflakes + pycodestyle errors). Exceptions below are deliberate and scoped.
+
+[lint.per-file-ignores]
+# Django settings configure database schemas after the base settings dictionary.
+"**/settings.py" = ["E402"]
+# URL modules are assembled by successive feature blocks that import their views locally.
+"**/urls.py" = ["E402"]
+# Operator scripts must call django.setup() before importing models.
+"scripts/*.py" = ["E402"]
+# Mutual imports between these modules are resolved by importing at the end.
+"core/isolation_followups.py" = ["E402"]
+"core/isolation_work.py" = ["E402"]
+# Historical star re-exports; replacing them is a separate refactor.
+"core/views.py" = ["F403", "F405"]
+"core/tests.py" = ["F403", "F405"]

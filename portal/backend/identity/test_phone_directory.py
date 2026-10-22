@@ -5,6 +5,12 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.newt import directory
 from .models import Membership, AccessAudit, PhoneExtension
+from unittest import skipUnless
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock, Barrier
+from time import sleep
+from django.db import connection, close_old_connections
+from django.test import TransactionTestCase
 
 
 @override_settings(
@@ -141,14 +147,6 @@ class DirectoryAdapterTests(TestCase):
             with self.assertRaises(directory.DirectoryUnavailable):
                 directory.fetch('', '')
             http.assert_not_called()
-
-
-from unittest import skipUnless
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock, Barrier
-from time import sleep
-from django.db import connection, close_old_connections
-from django.test import TransactionTestCase
 
 
 @skipUnless(connection.vendor == 'postgresql', 'Directory serialization requires PostgreSQL')

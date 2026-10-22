@@ -1,9 +1,6 @@
 from copy import deepcopy
 from unittest.mock import patch
-from datetime import timedelta
 from django.test import TestCase, override_settings
-from django.utils import timezone
-from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from .models import Contact, ContactNote, BusinessAudit, Appointment
 from . import tests as fixtures

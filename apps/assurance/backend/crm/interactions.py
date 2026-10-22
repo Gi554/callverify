@@ -8,7 +8,6 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from .notes import visible_notes
 from .models import (
-    ContactNote,
     ContactDocument,
     Appointment,
     AppointmentReport,

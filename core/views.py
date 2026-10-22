@@ -14,9 +14,8 @@ from django.db.models import Count, Sum, Q
 from django.http import FileResponse
 from django.middleware.csrf import get_token
 from django.utils import timezone
-from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import (
     action,
     api_view,
@@ -24,16 +23,15 @@ from rest_framework.decorators import (
     authentication_classes,
     throttle_classes,
 )
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from twilio.request_validator import RequestValidator
 from .models import *
 from .serializers import *
-from .permissions import AdminOnly, SuperAdminOnly
-from .services import read_table, schedule_lookup, filtered_prospects, EXPORT_COLUMNS, FILTERS
-from .tasks import import_task, export_task
+from .permissions import SuperAdminOnly
+from .services import read_table, schedule_lookup, EXPORT_COLUMNS, FILTERS
 from .security import decrypt_secret, consume_backup, generate_backup_codes
 from .delivery import enqueue
 
@@ -228,7 +226,8 @@ class ImportViewSet(OwnedViewSet, viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'])
     def report(self, request, pk=None):
-        import csv, io
+        import csv
+        import io
         from django.http import HttpResponse
         from .services import safe_cell
 
@@ -566,7 +565,7 @@ class CallCampaignViewSet(OwnedViewSet, viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'])
     def start(self, request, pk=None):
-        obj = self.get_object()
+        self.get_object()
         from .voice import DISABLED_REASON
 
         return Response({'detail': DISABLED_REASON}, status=409)

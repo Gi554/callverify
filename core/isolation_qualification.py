@@ -4,11 +4,11 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 

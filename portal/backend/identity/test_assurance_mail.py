@@ -1,5 +1,4 @@
 from unittest.mock import patch, Mock
-from datetime import timedelta
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -9,6 +8,10 @@ from packages.access.mail_bridge import verify
 from .models import Membership, PortalMail, AssuranceMailRelay, AssuranceMailCursor
 from .assurance_mail import sync, fetch
 from .mail_queue import dispatch
+from unittest import skipUnless
+from concurrent.futures import ThreadPoolExecutor
+from django.db import connection, close_old_connections
+from django.test import TransactionTestCase
 
 
 @override_settings(
@@ -326,12 +329,6 @@ class AssuranceMailTests(TestCase):
                 user=self.user.pk,
             )
             self.assertIn('/escalation-mail-events/', get.call_args.args[0])
-
-
-from unittest import skipUnless
-from concurrent.futures import ThreadPoolExecutor
-from django.db import connection, close_old_connections
-from django.test import TransactionTestCase
 
 
 @skipUnless(connection.vendor == 'postgresql', 'Concurrent relay deduplication requires PostgreSQL')
