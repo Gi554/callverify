@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import {
   CalendarDays,
   ChevronLeft,
@@ -9,11 +9,11 @@ import {
   RefreshCw,
   ArrowRight,
   Search,
-} from 'lucide-vue-next'
-import SidePanel from './SidePanel.vue'
-import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status'
-import AssuranceAppointments from './AssuranceAppointments.vue'
-import IsolationVisits from './IsolationVisits.vue'
+} from 'lucide-vue-next';
+import SidePanel from './SidePanel.vue';
+import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status';
+import AssuranceAppointments from './AssuranceAppointments.vue';
+import IsolationVisits from './IsolationVisits.vue';
 import {
   dayKey,
   monthGrid,
@@ -21,36 +21,36 @@ import {
   eventsForDay,
   loadCalendarRows,
   calendarCells,
-} from './calendar-grid'
+} from './calendar-grid';
 const props = defineProps<{
-  workspace: string
-  role: string
-  request: (path: string, body?: any, method?: string) => Promise<any>
-  portal: (path: string, body?: any) => Promise<any>
-}>()
-const emit = defineEmits<{ navigate: [value: string]; changed: [] }>()
+  workspace: string;
+  role: string;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+  portal: (path: string, body?: any) => Promise<any>;
+}>();
+const emit = defineEmits<{ navigate: [value: string]; changed: [] }>();
 const zone = ref('America/Toronto'),
   month = ref(dayKey(new Date(), zone.value).slice(0, 7)),
   status = ref(''),
-  search = ref('')
+  search = ref('');
 const rows = ref<any[]>([]),
   busy = ref(false),
   error = ref(''),
   loadedCount = ref(0),
-  expectedCount = ref(0)
+  expectedCount = ref(0);
 const selected = ref<any>(null),
   selectedDay = ref(''),
   creating = ref(false),
-  detailBusy = ref(false)
+  detailBusy = ref(false);
 const assurance = computed(() => props.workspace === 'assurance'),
   canBook = computed(() => ['setter', 'administrator'].includes(props.role)),
-  admin = computed(() => props.role === 'administrator')
+  admin = computed(() => props.role === 'administrator');
 // Administrator only: the existing list keeps its management tools.
-const listView = ref(false)
+const listView = ref(false);
 // Team filter: participants are only exposed to administrators. Members met in any loaded
 // month stay selectable; a selected member is filtered by the API, not only in the browser.
-const member = ref('')
-const known = ref<Record<string, Record<string, string>>>({})
+const member = ref('');
+const known = ref<Record<string, Record<string, string>>>({});
 const memberKinds = computed(() =>
   assurance.value
     ? [
@@ -62,15 +62,15 @@ const memberKinds = computed(() =>
         { kind: 'closer', label: 'Closers', of: (row: any) => row.closer },
         { kind: 'client', label: 'Clients', of: (row: any) => row.client },
       ],
-)
+);
 function remember(loaded: any[]) {
   for (const { kind, of } of memberKinds.value) {
-    const people = { ...known.value[kind] }
+    const people = { ...known.value[kind] };
     for (const row of loaded) {
-      const person = of(row)
-      if (person?.id != null) people[String(person.id)] = person.name || `#${person.id}`
+      const person = of(row);
+      if (person?.id != null) people[String(person.id)] = person.name || `#${person.id}`;
     }
-    known.value = { ...known.value, [kind]: people }
+    known.value = { ...known.value, [kind]: people };
   }
 }
 const memberParams: Record<string, string> = {
@@ -78,7 +78,7 @@ const memberParams: Record<string, string> = {
   advisor: 'advisor_id',
   closer: 'closer_id',
   client: 'client_id',
-}
+};
 const memberGroups = computed(() =>
   memberKinds.value
     .map(({ kind, label }) => {
@@ -88,23 +88,23 @@ const memberGroups = computed(() =>
         options: Object.entries(known.value[kind] || {})
           .map(([id, name]) => ({ value: `${kind}:${id}`, name }))
           .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
-      }
+      };
     })
     .filter((group) => group.options.length),
-)
+);
 function matchesMember(row: any) {
-  if (!member.value) return true
-  const [kind, id] = member.value.split(':')
-  const person = memberKinds.value.find((entry) => entry.kind === kind)?.of(row)
-  return String(person?.id ?? '') === id
+  if (!member.value) return true;
+  const [kind, id] = member.value.split(':');
+  const person = memberKinds.value.find((entry) => entry.kind === kind)?.of(row);
+  return String(person?.id ?? '') === id;
 }
 const days = computed(() => monthGrid(month.value)),
-  today = computed(() => dayKey(new Date(), zone.value))
+  today = computed(() => dayKey(new Date(), zone.value));
 const title = computed(() =>
   new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(month.value + '-01T12:00:00Z'),
   ),
-)
+);
 const weekday = computed(() =>
   new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
@@ -112,12 +112,12 @@ const weekday = computed(() =>
     month: 'long',
     timeZone: zone.value,
   }).format(new Date()),
-)
+);
 const filtered = computed(() => {
-  const term = search.value.trim().toLocaleLowerCase('fr')
+  const term = search.value.trim().toLocaleLowerCase('fr');
   return rows.value.filter((row) => {
-    const person = row.contact || row.prospect
-    if (!matchesMember(row)) return false
+    const person = row.contact || row.prospect;
+    if (!matchesMember(row)) return false;
     return (
       !term ||
       [
@@ -133,13 +133,13 @@ const filtered = computed(() => {
           .toLocaleLowerCase('fr')
           .includes(term),
       )
-    )
-  })
-})
-const cells = computed(() => calendarCells(filtered.value, days.value, zone.value))
+    );
+  });
+});
+const cells = computed(() => calendarCells(filtered.value, days.value, zone.value));
 const dayRows = computed(() =>
   selectedDay.value ? eventsForDay(filtered.value, selectedDay.value, zone.value) : [],
-)
+);
 const monthCount = computed(
   () =>
     filtered.value.filter(
@@ -147,20 +147,20 @@ const monthCount = computed(
         dayKey(row.starts_at, zone.value).slice(0, 7) <= month.value &&
         dayKey(new Date(Date.parse(row.ends_at) - 1), zone.value).slice(0, 7) >= month.value,
     ).length,
-)
+);
 function person(row: any) {
   return (
     (row.contact || row.prospect)?.name ||
     (row.contact || row.prospect)?.phone ||
     'Prospect sans nom'
-  )
+  );
 }
 function time(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
     timeZone: zone.value,
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+  }).format(new Date(value));
 }
 function fullDay(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -169,38 +169,38 @@ function fullDay(value: string) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  }).format(new Date(value + 'T12:00:00Z'))
+  }).format(new Date(value + 'T12:00:00Z'));
 }
 function color(row: any) {
-  if (assurance.value) return appointmentTone(row)
+  if (assurance.value) return appointmentTone(row);
   return row.status === 'cancelled'
     ? 'cancelled'
-    : ['peach', 'violet', 'mint', 'blue'][Number(row.advisor?.id ?? row.client?.id ?? row.id) % 4]
+    : ['peach', 'violet', 'mint', 'blue'][Number(row.advisor?.id ?? row.client?.id ?? row.id) % 4];
 }
 function move(delta: number) {
-  const date = new Date(month.value + '-01T12:00:00Z')
-  date.setUTCMonth(date.getUTCMonth() + delta)
-  month.value = date.toISOString().slice(0, 7)
+  const date = new Date(month.value + '-01T12:00:00Z');
+  date.setUTCMonth(date.getUTCMonth() + delta);
+  month.value = date.toISOString().slice(0, 7);
 }
 let generation = 0,
-  disposed = false
+  disposed = false;
 async function load() {
-  const version = ++generation
-  busy.value = true
-  error.value = ''
-  rows.value = []
-  loadedCount.value = 0
-  expectedCount.value = 0
+  const version = ++generation;
+  busy.value = true;
+  error.value = '';
+  rows.value = [];
+  loadedCount.value = 0;
+  expectedCount.value = 0;
   try {
     const window = gridWindow(days.value, zone.value),
       query = new URLSearchParams({
         ...window,
         ...(assurance.value ? { business_status: status.value } : { status: status.value }),
         page_size: '100',
-      })
+      });
     if (member.value) {
-      const [kind, id] = member.value.split(':')
-      query.set(memberParams[kind], id)
+      const [kind, id] = member.value.split(':');
+      query.set(memberParams[kind], id);
     }
     const result = await loadCalendarRows(
       props.request,
@@ -208,58 +208,349 @@ async function load() {
       query,
       () => version === generation && !disposed,
       (loaded, total) => {
-        loadedCount.value = loaded
-        expectedCount.value = total
+        loadedCount.value = loaded;
+        expectedCount.value = total;
       },
-    )
+    );
     if (result) {
-      rows.value = result
-      remember(result)
+      rows.value = result;
+      remember(result);
     }
   } catch (e: any) {
-    if (version === generation && !disposed) error.value = e.message
+    if (version === generation && !disposed) error.value = e.message;
   } finally {
-    if (version === generation && !disposed) busy.value = false
+    if (version === generation && !disposed) busy.value = false;
   }
 }
 function open(row: any) {
-  selectedDay.value = ''
-  selected.value = row
+  selectedDay.value = '';
+  selected.value = row;
 }
 function closeDetail() {
-  if (detailBusy.value) return
-  selected.value = null
-  void load()
+  if (detailBusy.value) return;
+  selected.value = null;
+  void load();
 }
-watch([month, zone, status, member], load, { immediate: true })
+watch([month, zone, status, member], load, { immediate: true });
 onBeforeUnmount(() => {
-  disposed = true
-  generation++
-})
+  disposed = true;
+  generation++;
+});
 </script>
-<!-- prettier-ignore -->
 <template>
- <section class="appointment-calendar">
-  <header class="calendar-heading"><div><span class="calendar-eyebrow">{{admin?'ÉQUIPE':'MON ESPACE'}} {{assurance?'ASSURANCE':'ISOLATION'}}</span><h1>{{assurance?'Rendez-vous':'Visites'}}</h1><p>{{admin?'L’agenda de toute l’équipe.':'Vos prochains échanges prennent place ici.'}}</p></div><div v-if="admin" class="calendar-view-switch" role="group" aria-label="Affichage"><button :class="{'is-active':!listView}" :aria-pressed="!listView" @click="listView=false">Calendrier</button><button :class="{'is-active':listView}" :aria-pressed="listView" @click="listView=true">Liste</button></div><button v-if="canBook&&!listView" class="calendar-new" @click="creating=true"><Plus :size="16"/>Réserver un {{assurance?'rendez-vous':'créneau'}}</button></header>
-  <div v-if="admin&&listView" class="calendar-list-view"><AssuranceAppointments v-if="assurance" :request="request" :portal="portal" :role="role"/><IsolationVisits v-else :role="role" :portal="portal" :request="request" @close="listView=false" @changed="emit('changed')"/></div>
-  <div v-else class="calendar-surface">
-   <div class="calendar-toolbar"><div class="calendar-today"><strong>{{weekday}}</strong><span>{{busy?'Chargement…':`${monthCount} ${assurance?'rendez-vous':'visite(s)'} sur ce mois`}}</span></div><div class="calendar-month-nav"><button aria-label="Mois précédent" :disabled="month<='1901-01'" @click="move(-1)"><ChevronLeft :size="17"/></button><h2 aria-live="polite">{{title}}</h2><button aria-label="Mois suivant" :disabled="month>='2099-12'" @click="move(1)"><ChevronRight :size="17"/></button></div><div class="calendar-toolbar-end"><button class="calendar-today-button" @click="month=today.slice(0,7)">Aujourd’hui</button><button class="calendar-icon-button" :disabled="busy" aria-label="Actualiser le calendrier" @click="load"><RefreshCw :size="16"/></button></div></div>
-   <div class="calendar-filters"><label class="calendar-search"><Search :size="15"/><input v-model="search" :placeholder="admin?'Prospect ou membre de l’équipe…':'Prospect ou conseiller…'" aria-label="Rechercher dans les rendez-vous chargés"></label><label v-if="admin" class="calendar-select"><span>Membre de l’équipe</span><select v-model="member"><option value="">Toute l’équipe</option><optgroup v-for="group in memberGroups" :key="group.kind" :label="group.label"><option v-for="option in group.options" :key="option.value" :value="option.value">{{option.name}}</option></optgroup><option v-if="member&&!memberGroups.some(group=>group.options.some(option=>option.value===member))" :value="member">Membre sans rendez-vous ce mois</option></select></label><label class="calendar-select"><span>Statut</span><select v-model="status"><option value="">Tous les statuts</option><template v-if="assurance"><option v-for="(label,key) in appointmentStatusLabels" :key="key" :value="key">{{label}}</option></template><template v-else><option value="scheduled">Planifiés</option><option value="cancelled">Annulés</option></template></select></label><label class="calendar-select"><span>Heures affichées</span><select v-model="zone"><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Edmonton">Edmonton</option><option value="America/Winnipeg">Winnipeg</option><option value="America/Halifax">Halifax</option><option value="America/St_Johns">Saint-Jean</option></select></label></div>
-   <div v-if="error" class="calendar-error" role="alert"><strong>Le calendrier n’a pas pu être chargé.</strong><p>{{error}}</p><button class="calendar-today-button" @click="load">Réessayer</button></div>
-   <p v-else-if="busy" class="calendar-notice" role="status">Chargement des rendez-vous{{expectedCount?` · ${loadedCount} / ${expectedCount}`:'…'}}</p>
-   <p v-else-if="!filtered.length" class="calendar-notice" role="status">{{search.trim()||member?'Aucun rendez-vous ne correspond à votre recherche.':'Aucun rendez-vous pour cette période et ce statut.'}}</p>
-   <p class="calendar-mobile-hint">Faites défiler le calendrier vers la droite pour voir toute la semaine.<ArrowRight :size="13"/></p><div class="calendar-scroll" tabindex="0" role="region" :aria-label="`Calendrier de ${title}`" :aria-busy="busy">
-    <div class="calendar-weekdays"><span v-for="(day,index) in ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']" :key="day" :class="{'weekday-today':((new Date(today+'T12:00:00Z').getUTCDay()+6)%7)===index&&month===today.slice(0,7)}">{{day}}</span></div>
-    <div class="calendar-grid"><div v-for="cell in cells" :key="cell.day" class="calendar-cell" :class="{'outside-month':!cell.day.startsWith(month),'is-today':cell.day===today,'is-weekend':[0,6].includes(new Date(cell.day+'T12:00:00Z').getUTCDay())}"><button class="calendar-day" :aria-label="`${fullDay(cell.day)} : ${cell.rows.length} rendez-vous`" :aria-current="cell.day===today?'date':undefined" @click="selectedDay=cell.day"><time :datetime="cell.day">{{Number(cell.day.slice(-2))}}</time></button>
-     <button v-for="row in cell.rows.slice(0,3)" :key="row.id" class="calendar-event" :class="color(row)" :title="`${person(row)} · ${time(row.starts_at)} – ${time(row.ends_at)} · ${zone}`" @click="open(row)"><strong>{{person(row)}}</strong><small v-if="row.advisor">{{row.advisor.name}}</small><span><Clock3 :size="11"/>{{time(row.starts_at)}} – {{time(row.ends_at)}}</span><small v-if="assurance||row.status==='cancelled'">{{assurance?appointmentStatus(row):'Annulé'}}</small></button>
-     <button v-if="cell.rows.length>3" class="calendar-more" @click="selectedDay=cell.day">+ {{cell.rows.length-3}} autres</button>
-    </div></div>
-   </div><footer class="calendar-footer"><span><span class="legend-dot"></span>Planifié</span><template v-if="assurance"><span><span class="legend-dot done"></span>Fait</span><span><span class="legend-dot absent"></span>Absent / non effectué</span><span><span class="legend-dot pending"></span>Report / à renseigner</span></template><span><span class="legend-dot cancelled"></span>Annulé</span><small>Cliquer sur un créneau pour consulter et gérer le rendez-vous.</small></footer>
-  </div>
-  <SidePanel :open="!!selected" :title="selected?person(selected):'Rendez-vous'" eyebrow="RENDEZ-VOUS" :subtitle="selected?(assurance?appointmentStatus(selected):selected.status==='cancelled'?'Annulé':'Planifié'):''" :close-disabled="detailBusy" @request-close="closeDetail"><AssuranceAppointments v-if="selected&&assurance" :key="selected.id" :appointment-id="selected.id" :request="request" :portal="portal" :role="role" @busy="detailBusy=$event" @updated="selected=$event"/><IsolationVisits v-else-if="selected" :key="selected.id" :visit-id="selected.id" :request="request" :portal="portal" :role="role" @busy="detailBusy=$event" @updated="selected=$event" @close="closeDetail"/></SidePanel>
-  <SidePanel :open="!!selectedDay" :title="selectedDay?fullDay(selectedDay):'Rendez-vous du jour'" eyebrow="MON AGENDA" @request-close="selectedDay=''"><div class="calendar-day-list"><p v-if="!dayRows.length">Aucun rendez-vous ce jour. Pour réserver, ouvrez d’abord la fiche du prospect.</p><button v-for="row in dayRows" :key="row.id" class="calendar-event" :class="color(row)" @click="open(row)"><strong>{{person(row)}}</strong><span>{{time(row.starts_at)}} – {{time(row.ends_at)}} · {{zone}}</span><small>{{assurance?appointmentStatus(row):row.status==='cancelled'?'Annulé':'Planifié'}}</small></button></div></SidePanel>
-  <SidePanel :open="creating" title="Préparer un rendez-vous" eyebrow="UNE NOUVELLE RENCONTRE" @request-close="creating=false"><div class="calendar-booking-intro"><span><CalendarDays :size="32"/></span><h3>Tout commence par un prospect</h3><p>Ouvrez sa fiche, complétez les informations utiles puis choisissez un {{assurance?'conseiller attribué et un créneau dans son agenda':'créneau pour le client Isolation'}}.</p><ol><li>Choisir le prospect</li><li>{{assurance?'Sélectionner le conseiller':'Compléter la fiche'}}</li><li>Confirmer le rendez-vous</li></ol><p>Les conflits de calendrier sont contrôlés lors de la confirmation.</p><button class="calendar-new" @click="creating=false;emit('navigate','contacts')">Choisir un prospect<ArrowRight :size="17"/></button></div></SidePanel>
- </section>
+  <section class="appointment-calendar">
+    <header class="calendar-heading">
+      <div>
+        <span class="calendar-eyebrow"
+          >{{ admin ? 'ÉQUIPE' : 'MON ESPACE' }} {{ assurance ? 'ASSURANCE' : 'ISOLATION' }}</span
+        >
+        <h1>{{ assurance ? 'Rendez-vous' : 'Visites' }}</h1>
+        <p>
+          {{ admin ? 'L’agenda de toute l’équipe.' : 'Vos prochains échanges prennent place ici.' }}
+        </p>
+      </div>
+      <div v-if="admin" class="calendar-view-switch" role="group" aria-label="Affichage">
+        <button
+          :class="{ 'is-active': !listView }"
+          :aria-pressed="!listView"
+          @click="listView = false"
+        >
+          Calendrier</button
+        ><button
+          :class="{ 'is-active': listView }"
+          :aria-pressed="listView"
+          @click="listView = true"
+        >
+          Liste
+        </button>
+      </div>
+      <button v-if="canBook && !listView" class="calendar-new" @click="creating = true">
+        <Plus :size="16" />Réserver un {{ assurance ? 'rendez-vous' : 'créneau' }}
+      </button>
+    </header>
+    <div v-if="admin && listView" class="calendar-list-view">
+      <AssuranceAppointments
+        v-if="assurance"
+        :request="request"
+        :portal="portal"
+        :role="role"
+      /><IsolationVisits
+        v-else
+        :role="role"
+        :portal="portal"
+        :request="request"
+        @close="listView = false"
+        @changed="emit('changed')"
+      />
+    </div>
+    <div v-else class="calendar-surface">
+      <div class="calendar-toolbar">
+        <div class="calendar-today">
+          <strong>{{ weekday }}</strong
+          ><span>{{
+            busy
+              ? 'Chargement…'
+              : `${monthCount} ${assurance ? 'rendez-vous' : 'visite(s)'} sur ce mois`
+          }}</span>
+        </div>
+        <div class="calendar-month-nav">
+          <button aria-label="Mois précédent" :disabled="month <= '1901-01'" @click="move(-1)">
+            <ChevronLeft :size="17" />
+          </button>
+          <h2 aria-live="polite">{{ title }}</h2>
+          <button aria-label="Mois suivant" :disabled="month >= '2099-12'" @click="move(1)">
+            <ChevronRight :size="17" />
+          </button>
+        </div>
+        <div class="calendar-toolbar-end">
+          <button class="calendar-today-button" @click="month = today.slice(0, 7)">
+            Aujourd’hui</button
+          ><button
+            class="calendar-icon-button"
+            :disabled="busy"
+            aria-label="Actualiser le calendrier"
+            @click="load"
+          >
+            <RefreshCw :size="16" />
+          </button>
+        </div>
+      </div>
+      <div class="calendar-filters">
+        <label class="calendar-search"
+          ><Search :size="15" /><input
+            v-model="search"
+            :placeholder="admin ? 'Prospect ou membre de l’équipe…' : 'Prospect ou conseiller…'"
+            aria-label="Rechercher dans les rendez-vous chargés" /></label
+        ><label v-if="admin" class="calendar-select"
+          ><span>Membre de l’équipe</span
+          ><select v-model="member">
+            <option value="">Toute l’équipe</option>
+            <optgroup v-for="group in memberGroups" :key="group.kind" :label="group.label">
+              <option v-for="option in group.options" :key="option.value" :value="option.value">
+                {{ option.name }}
+              </option>
+            </optgroup>
+            <option
+              v-if="
+                member &&
+                !memberGroups.some((group) =>
+                  group.options.some((option) => option.value === member),
+                )
+              "
+              :value="member"
+            >
+              Membre sans rendez-vous ce mois
+            </option>
+          </select></label
+        ><label class="calendar-select"
+          ><span>Statut</span
+          ><select v-model="status">
+            <option value="">Tous les statuts</option>
+            <template v-if="assurance"
+              ><option v-for="(label, key) in appointmentStatusLabels" :key="key" :value="key">
+                {{ label }}
+              </option></template
+            ><template v-else
+              ><option value="scheduled">Planifiés</option>
+              <option value="cancelled">Annulés</option></template
+            >
+          </select></label
+        ><label class="calendar-select"
+          ><span>Heures affichées</span
+          ><select v-model="zone">
+            <option value="America/Toronto">Toronto / Montréal</option>
+            <option value="America/Vancouver">Vancouver</option>
+            <option value="America/Edmonton">Edmonton</option>
+            <option value="America/Winnipeg">Winnipeg</option>
+            <option value="America/Halifax">Halifax</option>
+            <option value="America/St_Johns">Saint-Jean</option>
+          </select></label
+        >
+      </div>
+      <div v-if="error" class="calendar-error" role="alert">
+        <strong>Le calendrier n’a pas pu être chargé.</strong>
+        <p>{{ error }}</p>
+        <button class="calendar-today-button" @click="load">Réessayer</button>
+      </div>
+      <p v-else-if="busy" class="calendar-notice" role="status">
+        Chargement des rendez-vous{{ expectedCount ? ` · ${loadedCount} / ${expectedCount}` : '…' }}
+      </p>
+      <p v-else-if="!filtered.length" class="calendar-notice" role="status">
+        {{
+          search.trim() || member
+            ? 'Aucun rendez-vous ne correspond à votre recherche.'
+            : 'Aucun rendez-vous pour cette période et ce statut.'
+        }}
+      </p>
+      <p class="calendar-mobile-hint">
+        Faites défiler le calendrier vers la droite pour voir toute la semaine.<ArrowRight
+          :size="13"
+        />
+      </p>
+      <div
+        class="calendar-scroll"
+        tabindex="0"
+        role="region"
+        :aria-label="`Calendrier de ${title}`"
+        :aria-busy="busy"
+      >
+        <div class="calendar-weekdays">
+          <span
+            v-for="(day, index) in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']"
+            :key="day"
+            :class="{
+              'weekday-today':
+                (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7 === index &&
+                month === today.slice(0, 7),
+            }"
+            >{{ day }}</span
+          >
+        </div>
+        <div class="calendar-grid">
+          <div
+            v-for="cell in cells"
+            :key="cell.day"
+            class="calendar-cell"
+            :class="{
+              'outside-month': !cell.day.startsWith(month),
+              'is-today': cell.day === today,
+              'is-weekend': [0, 6].includes(new Date(cell.day + 'T12:00:00Z').getUTCDay()),
+            }"
+          >
+            <button
+              class="calendar-day"
+              :aria-label="`${fullDay(cell.day)} : ${cell.rows.length} rendez-vous`"
+              :aria-current="cell.day === today ? 'date' : undefined"
+              @click="selectedDay = cell.day"
+            >
+              <time :datetime="cell.day">{{ Number(cell.day.slice(-2)) }}</time>
+            </button>
+            <button
+              v-for="row in cell.rows.slice(0, 3)"
+              :key="row.id"
+              class="calendar-event"
+              :class="color(row)"
+              :title="`${person(row)} · ${time(row.starts_at)} – ${time(row.ends_at)} · ${zone}`"
+              @click="open(row)"
+            >
+              <strong>{{ person(row) }}</strong
+              ><small v-if="row.advisor">{{ row.advisor.name }}</small
+              ><span><Clock3 :size="11" />{{ time(row.starts_at) }} – {{ time(row.ends_at) }}</span
+              ><small v-if="assurance || row.status === 'cancelled'">{{
+                assurance ? appointmentStatus(row) : 'Annulé'
+              }}</small>
+            </button>
+            <button
+              v-if="cell.rows.length > 3"
+              class="calendar-more"
+              @click="selectedDay = cell.day"
+            >
+              + {{ cell.rows.length - 3 }} autres
+            </button>
+          </div>
+        </div>
+      </div>
+      <footer class="calendar-footer">
+        <span><span class="legend-dot"></span>Planifié</span
+        ><template v-if="assurance"
+          ><span><span class="legend-dot done"></span>Fait</span
+          ><span><span class="legend-dot absent"></span>Absent / non effectué</span
+          ><span><span class="legend-dot pending"></span>Report / à renseigner</span></template
+        ><span><span class="legend-dot cancelled"></span>Annulé</span
+        ><small>Cliquer sur un créneau pour consulter et gérer le rendez-vous.</small>
+      </footer>
+    </div>
+    <SidePanel
+      :open="!!selected"
+      :title="selected ? person(selected) : 'Rendez-vous'"
+      eyebrow="RENDEZ-VOUS"
+      :subtitle="
+        selected
+          ? assurance
+            ? appointmentStatus(selected)
+            : selected.status === 'cancelled'
+              ? 'Annulé'
+              : 'Planifié'
+          : ''
+      "
+      :close-disabled="detailBusy"
+      @request-close="closeDetail"
+      ><AssuranceAppointments
+        v-if="selected && assurance"
+        :key="selected.id"
+        :appointment-id="selected.id"
+        :request="request"
+        :portal="portal"
+        :role="role"
+        @busy="detailBusy = $event"
+        @updated="selected = $event" /><IsolationVisits
+        v-else-if="selected"
+        :key="selected.id"
+        :visit-id="selected.id"
+        :request="request"
+        :portal="portal"
+        :role="role"
+        @busy="detailBusy = $event"
+        @updated="selected = $event"
+        @close="closeDetail"
+    /></SidePanel>
+    <SidePanel
+      :open="!!selectedDay"
+      :title="selectedDay ? fullDay(selectedDay) : 'Rendez-vous du jour'"
+      eyebrow="MON AGENDA"
+      @request-close="selectedDay = ''"
+      ><div class="calendar-day-list">
+        <p v-if="!dayRows.length">
+          Aucun rendez-vous ce jour. Pour réserver, ouvrez d’abord la fiche du prospect.
+        </p>
+        <button
+          v-for="row in dayRows"
+          :key="row.id"
+          class="calendar-event"
+          :class="color(row)"
+          @click="open(row)"
+        >
+          <strong>{{ person(row) }}</strong
+          ><span>{{ time(row.starts_at) }} – {{ time(row.ends_at) }} · {{ zone }}</span
+          ><small>{{
+            assurance ? appointmentStatus(row) : row.status === 'cancelled' ? 'Annulé' : 'Planifié'
+          }}</small>
+        </button>
+      </div></SidePanel
+    >
+    <SidePanel
+      :open="creating"
+      title="Préparer un rendez-vous"
+      eyebrow="UNE NOUVELLE RENCONTRE"
+      @request-close="creating = false"
+      ><div class="calendar-booking-intro">
+        <span><CalendarDays :size="32" /></span>
+        <h3>Tout commence par un prospect</h3>
+        <p>
+          Ouvrez sa fiche, complétez les informations utiles puis choisissez un
+          {{
+            assurance
+              ? 'conseiller attribué et un créneau dans son agenda'
+              : 'créneau pour le client Isolation'
+          }}.
+        </p>
+        <ol>
+          <li>Choisir le prospect</li>
+          <li>{{ assurance ? 'Sélectionner le conseiller' : 'Compléter la fiche' }}</li>
+          <li>Confirmer le rendez-vous</li>
+        </ol>
+        <p>Les conflits de calendrier sont contrôlés lors de la confirmation.</p>
+        <button
+          class="calendar-new"
+          @click="
+            creating = false;
+            emit('navigate', 'contacts');
+          "
+        >
+          Choisir un prospect<ArrowRight :size="17" />
+        </button></div
+    ></SidePanel>
+  </section>
 </template>
 <style scoped>
 .appointment-calendar {

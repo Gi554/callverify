@@ -2,5 +2,11 @@
   "singleQuote": true,
   "semi": false,
   "printWidth": 100,
-  "endOfLine": "auto"
+  "endOfLine": "auto",
+  "overrides": [
+    {
+      "files": "*.vue",
+      "options": { "semi": true }
+    }
+  ]
 }

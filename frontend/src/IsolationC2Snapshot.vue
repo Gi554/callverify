@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ snapshot: any }>()
+defineProps<{ snapshot: any }>();
 const labels: Record<string, string> = {
   full_name: 'Nom et prénom',
   phone: 'Téléphone',
@@ -10,7 +10,7 @@ const labels: Record<string, string> = {
   monthly_electricity: 'Électricité mensuelle ($)',
   construction_year: 'Année de construction',
   age: 'Âge du client',
-}
+};
 function value(v: any) {
   return v === true
     ? 'Oui'
@@ -18,11 +18,31 @@ function value(v: any) {
       ? 'Non'
       : v === null || v === undefined || v === ''
         ? 'Non renseigné'
-        : v
+        : v;
 }
 </script>
-<!-- prettier-ignore -->
-<template><details class="c2-copy"><summary>Formulaire C2 transmis avec la visite</summary><template v-if="snapshot?.fields"><p>Copie du {{new Date(snapshot.captured_at).toLocaleString('fr-FR')}} · Campagne {{snapshot.campaign_id}}</p><dl><div v-for="(label,key) in labels" :key="key"><dt>{{label}}</dt><dd>{{value(snapshot.fields[key])}}</dd></div></dl><small>La copie conserve les informations à la réservation. Le créneau actuel est celui de la visite.</small></template><p v-else>Aucun C2 conservé pour cette ancienne visite.</p></details></template>
+<template>
+  <details class="c2-copy">
+    <summary>Formulaire C2 transmis avec la visite</summary>
+    <template v-if="snapshot?.fields"
+      ><p>
+        Copie du {{ new Date(snapshot.captured_at).toLocaleString('fr-FR') }} · Campagne
+        {{ snapshot.campaign_id }}
+      </p>
+      <dl>
+        <div v-for="(label, key) in labels" :key="key">
+          <dt>{{ label }}</dt>
+          <dd>{{ value(snapshot.fields[key]) }}</dd>
+        </div>
+      </dl>
+      <small
+        >La copie conserve les informations à la réservation. Le créneau actuel est celui de la
+        visite.</small
+      ></template
+    >
+    <p v-else>Aucun C2 conservé pour cette ancienne visite.</p>
+  </details>
+</template>
 <style scoped>
 .c2-copy {
   border: 1px solid #e4e7f1;

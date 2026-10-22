@@ -167,7 +167,7 @@ function fixture({ workspace = 'assurance', role = 'administrator' } = {}) {
 const memberSelect = (f) =>
   all(f.root).find((n) => n.tag === 'select' && all(n).some((o) => o.tag === 'optgroup'))
 const count = (f) => text(f.root).match(/(\d+) (rendez-vous|visite\(s\)) sur ce mois/)?.[1]
-const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n) === label)
+const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
 
 test('administrator filters the Assurance team calendar by setter or advisor', async () => {
   const f = fixture()

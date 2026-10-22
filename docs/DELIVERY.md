@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Socle technique — formatage des templates Vue
+
+Lot technique sans changement fonctionnel. Les `<template>` des 63 composants sont désormais formatés par Prettier et contrôlés en CI ; plus aucun composant exclu. Les fichiers `.vue` utilisent `semi: true` (dérogation commentée dans `.prettierrc.json`) : sans point-virgule, Prettier répartissait les gestionnaires à plusieurs instructions (`emit(…); ouvert = false`) sur plusieurs lignes que le compilateur Vue ne sait pas lire, ce qui cassait le build. Les conversions `as Record<string,string>` des templates (`AssuranceContacts`, `AssuranceQualification`, `AssuranceQualificationSnapshot`, `IsolationProspectActivity`, `Portal`) deviennent des constantes typées du script.
+
+Tests : les recherches de boutons par texte exact comparent désormais le texte sans espaces de bord (le formatage ajoute des espaces autour des libellés, sans effet à l’écran).
+
+Validation : comparaison du texte produit par chaque template avant/après — contenu identique, seules des espaces de début/fin de texte apparaissent. Build, typage, ESLint, Prettier et 67 tests réussis ; écrans d’accueil, visites et vérification contrôlés en démo sans erreur console.
+
+Limites : ces espaces de bord pourraient se voir à côté d’une icône dans un conteneur non flexible ; non constaté sur les écrans parcourus, à surveiller lors de la revue esthétique finale.
+
 ## Socle technique — lint frontend (ESLint)
 
 ESLint 9 (versions figées) avec règles de justesse uniquement : JavaScript et TypeScript recommandés, `vue/flat/essential` ; la mise en forme reste à Prettier. `pnpm lint` et la CI l’exigent. Exceptions commentées : `no-explicit-any` désactivée (charges d’API typées librement dans tout le projet), `catch` vides autorisés (stockage navigateur « au mieux »), nom à un mot autorisé pour le composant racine `Portal`.

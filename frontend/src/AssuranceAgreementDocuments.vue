@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue';
 const props = defineProps<{
-  contactId: number
-  agreementId: number
-  contactRevision: number
-  leaseToken: string
-  blocked: boolean
-  request: (path: string, body?: any, method?: string) => Promise<any>
-}>()
-const emit = defineEmits<{ saved: [revision: number] }>()
+  contactId: number;
+  agreementId: number;
+  contactRevision: number;
+  leaseToken: string;
+  blocked: boolean;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+}>();
+const emit = defineEmits<{ saved: [revision: number] }>();
 const linked = ref<any[]>([]),
   available = ref<any[]>([]),
   page = ref(1),
@@ -20,32 +20,32 @@ const linked = ref<any[]>([]),
   reason = ref(''),
   busy = ref(false),
   error = ref(''),
-  message = ref('')
-const base = () => `contacts/${props.contactId}/agreements/${props.agreementId}/documents/`
+  message = ref('');
+const base = () => `contacts/${props.contactId}/agreements/${props.agreementId}/documents/`;
 async function load() {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
-    const result = await props.request(base() + `?page=${page.value}`)
-    linked.value = result.results
-    count.value = result.count
-    revision.value = result.agreement_revision
-    const candidates = await props.request(base() + `?view=available&page=${availablePage.value}`)
-    available.value = candidates.results
-    availableCount.value = candidates.count
-    choice.value = ''
+    const result = await props.request(base() + `?page=${page.value}`);
+    linked.value = result.results;
+    count.value = result.count;
+    revision.value = result.agreement_revision;
+    const candidates = await props.request(base() + `?view=available&page=${availablePage.value}`);
+    available.value = candidates.results;
+    availableCount.value = candidates.count;
+    choice.value = '';
   } catch (e: any) {
-    error.value = e.message
-    linked.value = []
-    available.value = []
+    error.value = e.message;
+    linked.value = [];
+    available.value = [];
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function change(id: number, enabled: boolean) {
-  busy.value = true
-  error.value = ''
-  message.value = ''
+  busy.value = true;
+  error.value = '';
+  message.value = '';
   try {
     const result = await props.request(base(), {
       token: props.leaseToken,
@@ -54,37 +54,129 @@ async function change(id: number, enabled: boolean) {
       document_id: id,
       enabled,
       reason: reason.value,
-    })
-    emit('saved', result.contact_revision)
-    reason.value = ''
-    page.value = 1
-    availablePage.value = 1
-    await load()
-    message.value = enabled ? 'Document lié.' : 'Lien retiré ; fichier conservé.'
+    });
+    emit('saved', result.contact_revision);
+    reason.value = '';
+    page.value = 1;
+    availablePage.value = 1;
+    await load();
+    message.value = enabled ? 'Document lié.' : 'Lien retiré ; fichier conservé.';
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function download(row: any) {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
-    const blob = await props.request(`contacts/${props.contactId}/documents/${row.id}/download/`)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = row.filename
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    const blob = await props.request(`contacts/${props.contactId}/documents/${row.id}/download/`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = row.filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
-onMounted(load)
+onMounted(load);
 </script>
-<!-- prettier-ignore -->
-<template><section><h4>Pièces liées au suivi {{agreementId}}</h4><p>Documents internes de cette fiche uniquement. Le lien ne copie pas le fichier et ne change pas son partage au conseiller. Retirer un lien conserve le document original.</p><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status">{{message}}</p><label>Motif de l’association ou du retrait<input v-model="reason" maxlength="1000" :disabled="busy||blocked||!leaseToken"></label><article v-for="row in linked" :key="row.id"><strong>{{row.filename}}</strong> · {{Math.ceil(row.size/1024)}} Ko <button class="secondary" :disabled="busy" @click="download(row)">Télécharger</button><button class="secondary" :disabled="busy||blocked||!leaseToken||!reason.trim()" @click="change(row.id,false)">Retirer le lien</button></article><p v-if="!linked.length">Aucune pièce liée sur cette page.</p><button class="secondary" :disabled="busy||page===1" @click="page--;load()">Précédent</button> Liens · page {{page}} <button class="secondary" :disabled="busy||page*25>=count" @click="page++;load()">Suivant</button><form @submit.prevent="change(Number(choice),true)"><label>Document disponible<select v-model="choice" :disabled="busy||blocked||!leaseToken" required><option value="">Sélectionner</option><option v-for="row in available" :key="row.id" :value="String(row.id)">{{row.filename}} · réf. {{row.id}}</option></select></label><button class="secondary" :disabled="busy||blocked||!leaseToken||!choice||!reason.trim()">Associer au suivi</button></form><p>Pour ajouter un nouveau fichier, utiliser Documents du dossier puis actualiser ici. Maximum 50 pièces actives par suivi.</p><button class="secondary" :disabled="busy||availablePage===1" @click="availablePage--;load()">Précédent</button> Documents disponibles · page {{availablePage}} <button class="secondary" :disabled="busy||availablePage*25>=availableCount" @click="availablePage++;load()">Suivant</button><button class="secondary" :disabled="busy" @click="load">Actualiser</button></section></template>
+<template>
+  <section>
+    <h4>Pièces liées au suivi {{ agreementId }}</h4>
+    <p>
+      Documents internes de cette fiche uniquement. Le lien ne copie pas le fichier et ne change pas
+      son partage au conseiller. Retirer un lien conserve le document original.
+    </p>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
+    <label
+      >Motif de l’association ou du retrait<input
+        v-model="reason"
+        maxlength="1000"
+        :disabled="busy || blocked || !leaseToken"
+    /></label>
+    <article v-for="row in linked" :key="row.id">
+      <strong>{{ row.filename }}</strong> · {{ Math.ceil(row.size / 1024) }} Ko
+      <button class="secondary" :disabled="busy" @click="download(row)">Télécharger</button
+      ><button
+        class="secondary"
+        :disabled="busy || blocked || !leaseToken || !reason.trim()"
+        @click="change(row.id, false)"
+      >
+        Retirer le lien
+      </button>
+    </article>
+    <p v-if="!linked.length">Aucune pièce liée sur cette page.</p>
+    <button
+      class="secondary"
+      :disabled="busy || page === 1"
+      @click="
+        page--;
+        load();
+      "
+    >
+      Précédent
+    </button>
+    Liens · page {{ page }}
+    <button
+      class="secondary"
+      :disabled="busy || page * 25 >= count"
+      @click="
+        page++;
+        load();
+      "
+    >
+      Suivant
+    </button>
+    <form @submit.prevent="change(Number(choice), true)">
+      <label
+        >Document disponible<select
+          v-model="choice"
+          :disabled="busy || blocked || !leaseToken"
+          required
+        >
+          <option value="">Sélectionner</option>
+          <option v-for="row in available" :key="row.id" :value="String(row.id)">
+            {{ row.filename }} · réf. {{ row.id }}
+          </option>
+        </select></label
+      ><button
+        class="secondary"
+        :disabled="busy || blocked || !leaseToken || !choice || !reason.trim()"
+      >
+        Associer au suivi
+      </button>
+    </form>
+    <p>
+      Pour ajouter un nouveau fichier, utiliser Documents du dossier puis actualiser ici. Maximum 50
+      pièces actives par suivi.
+    </p>
+    <button
+      class="secondary"
+      :disabled="busy || availablePage === 1"
+      @click="
+        availablePage--;
+        load();
+      "
+    >
+      Précédent
+    </button>
+    Documents disponibles · page {{ availablePage }}
+    <button
+      class="secondary"
+      :disabled="busy || availablePage * 25 >= availableCount"
+      @click="
+        availablePage++;
+        load();
+      "
+    >
+      Suivant</button
+    ><button class="secondary" :disabled="busy" @click="load">Actualiser</button>
+  </section>
+</template>

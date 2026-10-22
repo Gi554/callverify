@@ -1,41 +1,62 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onBeforeUnmount, useId } from 'vue'
-import { X, PanelRight } from 'lucide-vue-next'
+import { ref, watch, nextTick, onBeforeUnmount, useId } from 'vue';
+import { X, PanelRight } from 'lucide-vue-next';
 const props = withDefaults(
   defineProps<{
-    open: boolean
-    title: string
-    subtitle?: string
-    eyebrow?: string
-    closeDisabled?: boolean
-    scrollable?: boolean
+    open: boolean;
+    title: string;
+    subtitle?: string;
+    eyebrow?: string;
+    closeDisabled?: boolean;
+    scrollable?: boolean;
   }>(),
   { eyebrow: 'MON ESPACE', scrollable: true },
-)
-const emit = defineEmits<{ requestClose: [] }>()
+);
+const emit = defineEmits<{ requestClose: [] }>();
 const dialog = ref<HTMLDialogElement | null>(null),
-  headingId = useId()
+  headingId = useId();
 function requestClose() {
-  if (!props.closeDisabled) emit('requestClose')
+  if (!props.closeDisabled) emit('requestClose');
 }
 watch(
   () => props.open,
   async (open) => {
-    await nextTick()
-    if (open && props.open && !dialog.value?.open) dialog.value?.showModal()
-    else if (!props.open) dialog.value?.close()
+    await nextTick();
+    if (open && props.open && !dialog.value?.open) dialog.value?.showModal();
+    else if (!props.open) dialog.value?.close();
   },
   { immediate: true, flush: 'post' },
-)
-onBeforeUnmount(() => dialog.value?.close())
+);
+onBeforeUnmount(() => dialog.value?.close());
 </script>
-<!-- prettier-ignore -->
 <template>
- <dialog ref="dialog" class="side-panel" :aria-labelledby="headingId" @cancel.prevent="requestClose">
-  <header class="side-panel-heading"><div class="panel-heading-icon"><PanelRight :size="21"/></div><div class="panel-heading-text"><span>{{eyebrow}}</span><h2 :id="headingId">{{title}}</h2><p v-if="subtitle">{{subtitle}}</p></div><button type="button" class="panel-close" :disabled="closeDisabled" aria-label="Fermer le panneau" title="Fermer" @click="requestClose"><X :size="21"/></button></header>
-  <div class="side-panel-body" :class="{'panel-body-scroll':scrollable}"><slot/></div>
-  <footer v-if="$slots.footer" class="side-panel-footer"><slot name="footer"/></footer>
- </dialog>
+  <dialog
+    ref="dialog"
+    class="side-panel"
+    :aria-labelledby="headingId"
+    @cancel.prevent="requestClose"
+  >
+    <header class="side-panel-heading">
+      <div class="panel-heading-icon"><PanelRight :size="21" /></div>
+      <div class="panel-heading-text">
+        <span>{{ eyebrow }}</span>
+        <h2 :id="headingId">{{ title }}</h2>
+        <p v-if="subtitle">{{ subtitle }}</p>
+      </div>
+      <button
+        type="button"
+        class="panel-close"
+        :disabled="closeDisabled"
+        aria-label="Fermer le panneau"
+        title="Fermer"
+        @click="requestClose"
+      >
+        <X :size="21" />
+      </button>
+    </header>
+    <div class="side-panel-body" :class="{ 'panel-body-scroll': scrollable }"><slot /></div>
+    <footer v-if="$slots.footer" class="side-panel-footer"><slot name="footer" /></footer>
+  </dialog>
 </template>
 <style scoped>
 .side-panel {

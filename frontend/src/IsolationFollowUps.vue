@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { bookingInterval } from './booking-time'
+import { ref, onMounted, watch } from 'vue';
+import { bookingInterval } from './booking-time';
 const props = defineProps<{
-  prospectId?: number
-  request: (path: string, body?: any) => Promise<any>
-  blocked?: boolean
-  editorOnly?: boolean
-  initialTask?: any
-  initialClose?: boolean
-}>()
+  prospectId?: number;
+  request: (path: string, body?: any) => Promise<any>;
+  blocked?: boolean;
+  editorOnly?: boolean;
+  initialTask?: any;
+  initialClose?: boolean;
+}>();
 const emit = defineEmits<{
-  saved: []
-  close: []
-  busy: [value: boolean]
-  dirty: [value: boolean]
-}>()
+  saved: [];
+  close: [];
+  busy: [value: boolean];
+  dirty: [value: boolean];
+}>();
 const rows = ref<any[]>([]),
   page = ref(1),
   count = ref(0),
@@ -27,7 +27,7 @@ const rows = ref<any[]>([]),
   zone = ref('America/Toronto'),
   note = ref(''),
   resolution = ref(''),
-  closing = ref(false)
+  closing = ref(false);
 function date(value: string) {
   return (
     new Intl.DateTimeFormat('fr-FR', {
@@ -35,104 +35,206 @@ function date(value: string) {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value)) + ' · Montréal'
-  )
+  );
 }
-let draftDirty = false
-let requestId = crypto.randomUUID()
+let draftDirty = false;
+let requestId = crypto.randomUUID();
 function changed() {
-  draftDirty = true
-  requestId = crypto.randomUUID()
-  emit('dirty', true)
+  draftDirty = true;
+  requestId = crypto.randomUUID();
+  emit('dirty', true);
 }
 function reset() {
-  draftDirty = false
-  editing.value = null
-  creating.value = false
-  closing.value = false
-  local.value = ''
-  note.value = ''
-  resolution.value = ''
-  requestId = crypto.randomUUID()
-  emit('dirty', false)
+  draftDirty = false;
+  editing.value = null;
+  creating.value = false;
+  closing.value = false;
+  local.value = '';
+  note.value = '';
+  resolution.value = '';
+  requestId = crypto.randomUUID();
+  emit('dirty', false);
 }
-watch(busy, (value) => emit('busy', value), { flush: 'sync' })
+watch(busy, (value) => emit('busy', value), { flush: 'sync' });
 async function run(action: () => Promise<void>) {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
+  if (busy.value) return;
+  busy.value = true;
+  error.value = '';
   try {
-    await action()
+    await action();
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function load() {
   const data = await props.request(
     `follow-ups/?state=${state.value}&page=${page.value}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
-  )
-  rows.value = data.results
-  count.value = data.count
+  );
+  rows.value = data.results;
+  count.value = data.count;
 }
 function create() {
-  if (draftDirty && !window.confirm('Abandonner la saisie du rappel ?')) return
-  reset()
-  creating.value = true
+  if (draftDirty && !window.confirm('Abandonner la saisie du rappel ?')) return;
+  reset();
+  creating.value = true;
 }
 function open(row: any, close = false) {
-  if (draftDirty && !window.confirm('Abandonner la saisie du rappel ?')) return
-  reset()
-  editing.value = row
-  note.value = row.note
-  closing.value = close
+  if (draftDirty && !window.confirm('Abandonner la saisie du rappel ?')) return;
+  reset();
+  editing.value = row;
+  note.value = row.note;
+  closing.value = close;
 }
 async function save() {
   await run(async () => {
     if (creating.value) {
-      const current = await props.request(`work-queue/${props.prospectId}/`)
+      const current = await props.request(`work-queue/${props.prospectId}/`);
       await props.request(`work-queue/${props.prospectId}/follow-ups/`, {
         request_id: requestId,
         revision: current.revision,
         note: note.value,
         due_at: bookingInterval(local.value, zone.value, 15).starts_at,
-      })
+      });
     } else if (closing.value) {
       await props.request(`follow-ups/${editing.value.id}/close/`, {
         revision: editing.value.revision,
         resolution: resolution.value,
-      })
+      });
     } else {
       await props.request(`follow-ups/${editing.value.id}/edit/`, {
         revision: editing.value.revision,
         note: note.value,
         due_at: bookingInterval(local.value, zone.value, 15).starts_at,
-      })
+      });
     }
-    reset()
-    page.value = 1
-    await load()
-    emit('saved')
-  })
+    reset();
+    page.value = 1;
+    await load();
+    emit('saved');
+  });
 }
 function close() {
-  if (busy.value || props.blocked) return
-  if (draftDirty && !window.confirm('Quitter sans enregistrer ce rappel ?')) return
-  reset()
-  emit('close')
+  if (busy.value || props.blocked) return;
+  if (draftDirty && !window.confirm('Quitter sans enregistrer ce rappel ?')) return;
+  reset();
+  emit('close');
 }
 function cancelInput() {
-  reset()
-  if (props.editorOnly) emit('close')
+  reset();
+  if (props.editorOnly) emit('close');
 }
-defineExpose({ close })
+defineExpose({ close });
 onMounted(() => {
-  if (props.initialTask) open(props.initialTask, !!props.initialClose)
-  else if (!props.editorOnly) void run(load)
-})
+  if (props.initialTask) open(props.initialTask, !!props.initialClose);
+  else if (!props.editorOnly) void run(load);
+});
 </script>
-<!-- prettier-ignore -->
-<template><section class="isolation-followups"><template v-if="!editorOnly"><h3>{{prospectId?'Rappels du prospect':'Mes tâches de rappel Isolation'}}</h3><p>Les tâches restent ouvertes jusqu’à leur clôture. Elles suivent l’affectation actuelle du prospect.</p><p v-if="error" role="alert">{{error}}</p><label>Afficher<select v-model="state" :disabled="busy||blocked" @change="run(async()=>{page=1;await load()})"><option value="open">Ouverts</option><option value="overdue">En retard</option><option value="upcoming">À venir</option><option value="closed">Terminés</option><option value="all">Tous</option></select></label><button class="secondary" :disabled="busy||blocked" @click="run(load)">Actualiser les rappels</button><button v-if="prospectId" class="secondary" :disabled="busy||blocked" @click="create">Créer un rappel manuel</button></template><form v-if="creating||editing" @submit.prevent="save" @input="changed" @change="changed"><fieldset :disabled="busy||blocked"><h4>{{closing?'Terminer le rappel':creating?'Nouveau rappel':'Modifier le rappel'}}</h4><template v-if="!closing"><p v-if="editing">Échéance actuelle : {{date(editing.due_at)}}. Choisissez le nouveau créneau.</p><label>Date et heure<input v-model="local" type="datetime-local" required></label><label>Heure locale<select v-model="zone"><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Halifax">Halifax</option></select></label><label>Note facultative<textarea v-model="note" maxlength="3000"></textarea></label></template><label v-else>Résolution obligatoire<textarea v-model="resolution" required maxlength="3000"></textarea></label><button class="primary">Enregistrer</button><button type="button" class="secondary" @click="cancelInput">Annuler la saisie</button></fieldset></form><template v-if="!editorOnly"><article v-for="row in rows" :key="row.id"><h4>{{row.prospect_name||'Prospect '+row.prospect_id}}</h4><p>{{date(row.due_at)}} · {{row.closed_at?'Terminé':row.overdue?'En retard':'À venir'}}</p><p style="white-space:pre-wrap">{{row.note}}</p><p v-if="row.closed_at">Résolution : {{row.resolution}}</p><template v-else><button class="secondary" :disabled="busy||blocked" @click="open(row)">Modifier</button><button class="secondary" :disabled="busy||blocked" @click="open(row,true)">Terminer</button></template></article><p v-if="!rows.length">Aucun rappel dans cette sélection.</p><p>{{count}} rappel(s) · page {{page}}</p><button class="secondary" :disabled="busy||blocked||page===1" @click="run(async()=>{page--;await load()})">Précédent</button><button class="secondary" :disabled="busy||blocked||page*25>=count" @click="run(async()=>{page++;await load()})">Suivant</button></template></section></template>
+<template>
+  <section class="isolation-followups">
+    <template v-if="!editorOnly"
+      ><h3>{{ prospectId ? 'Rappels du prospect' : 'Mes tâches de rappel Isolation' }}</h3>
+      <p>
+        Les tâches restent ouvertes jusqu’à leur clôture. Elles suivent l’affectation actuelle du
+        prospect.
+      </p>
+      <p v-if="error" role="alert">{{ error }}</p>
+      <label
+        >Afficher<select
+          v-model="state"
+          :disabled="busy || blocked"
+          @change="
+            run(async () => {
+              page = 1;
+              await load();
+            })
+          "
+        >
+          <option value="open">Ouverts</option>
+          <option value="overdue">En retard</option>
+          <option value="upcoming">À venir</option>
+          <option value="closed">Terminés</option>
+          <option value="all">Tous</option>
+        </select></label
+      ><button class="secondary" :disabled="busy || blocked" @click="run(load)">
+        Actualiser les rappels</button
+      ><button v-if="prospectId" class="secondary" :disabled="busy || blocked" @click="create">
+        Créer un rappel manuel
+      </button></template
+    >
+    <form v-if="creating || editing" @submit.prevent="save" @input="changed" @change="changed">
+      <fieldset :disabled="busy || blocked">
+        <h4>
+          {{ closing ? 'Terminer le rappel' : creating ? 'Nouveau rappel' : 'Modifier le rappel' }}
+        </h4>
+        <template v-if="!closing"
+          ><p v-if="editing">
+            Échéance actuelle : {{ date(editing.due_at) }}. Choisissez le nouveau créneau.
+          </p>
+          <label>Date et heure<input v-model="local" type="datetime-local" required /></label
+          ><label
+            >Heure locale<select v-model="zone">
+              <option value="America/Toronto">Toronto / Montréal</option>
+              <option value="America/Vancouver">Vancouver</option>
+              <option value="America/Halifax">Halifax</option>
+            </select></label
+          ><label
+            >Note facultative<textarea v-model="note" maxlength="3000"></textarea></label></template
+        ><label v-else
+          >Résolution obligatoire<textarea
+            v-model="resolution"
+            required
+            maxlength="3000"
+          ></textarea></label
+        ><button class="primary">Enregistrer</button
+        ><button type="button" class="secondary" @click="cancelInput">Annuler la saisie</button>
+      </fieldset>
+    </form>
+    <template v-if="!editorOnly"
+      ><article v-for="row in rows" :key="row.id">
+        <h4>{{ row.prospect_name || 'Prospect ' + row.prospect_id }}</h4>
+        <p>
+          {{ date(row.due_at) }} ·
+          {{ row.closed_at ? 'Terminé' : row.overdue ? 'En retard' : 'À venir' }}
+        </p>
+        <p style="white-space: pre-wrap">{{ row.note }}</p>
+        <p v-if="row.closed_at">Résolution : {{ row.resolution }}</p>
+        <template v-else
+          ><button class="secondary" :disabled="busy || blocked" @click="open(row)">Modifier</button
+          ><button class="secondary" :disabled="busy || blocked" @click="open(row, true)">
+            Terminer
+          </button></template
+        >
+      </article>
+      <p v-if="!rows.length">Aucun rappel dans cette sélection.</p>
+      <p>{{ count }} rappel(s) · page {{ page }}</p>
+      <button
+        class="secondary"
+        :disabled="busy || blocked || page === 1"
+        @click="
+          run(async () => {
+            page--;
+            await load();
+          })
+        "
+      >
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="busy || blocked || page * 25 >= count"
+        @click="
+          run(async () => {
+            page++;
+            await load();
+          })
+        "
+      >
+        Suivant
+      </button></template
+    >
+  </section>
+</template>
 
 <style scoped>
 .isolation-followups form,

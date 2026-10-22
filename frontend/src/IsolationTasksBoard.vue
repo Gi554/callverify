@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, markRaw } from 'vue';
 import {
   Rocket,
   Clock3,
@@ -8,24 +8,24 @@ import {
   Search,
   RefreshCw,
   ArrowUpRight,
-} from 'lucide-vue-next'
-import SidePanel from './SidePanel.vue'
-import IsolationFollowUps from './IsolationFollowUps.vue'
-const props = defineProps<{ role: string; request: (path: string, body?: any) => Promise<any> }>()
-const emit = defineEmits<{ saved: []; navigate: [value: string] }>()
+} from 'lucide-vue-next';
+import SidePanel from './SidePanel.vue';
+import IsolationFollowUps from './IsolationFollowUps.vue';
+const props = defineProps<{ role: string; request: (path: string, body?: any) => Promise<any> }>();
+const emit = defineEmits<{ saved: []; navigate: [value: string] }>();
 type Column = {
-  key: string
-  label: string
-  hint: string
-  tone: string
-  icon: any
-  rows: any[]
-  count: number
-  page: number
-  next: boolean
-  busy: boolean
-  error: string
-}
+  key: string;
+  label: string;
+  hint: string;
+  tone: string;
+  icon: any;
+  rows: any[];
+  count: number;
+  page: number;
+  next: boolean;
+  busy: boolean;
+  error: string;
+};
 const columns = ref<Column[]>([
   {
     key: 'upcoming',
@@ -66,7 +66,7 @@ const columns = ref<Column[]>([
     busy: false,
     error: '',
   },
-])
+]);
 const search = ref(''),
   applied = ref(''),
   selected = ref<any>(null),
@@ -74,16 +74,16 @@ const search = ref(''),
   opening = ref(false),
   detailBusy = ref(false),
   error = ref(''),
-  editor = ref<any>(null)
+  editor = ref<any>(null);
 const busy = computed(() => columns.value.some((c) => c.busy)),
-  complete = computed(() => columns.value.every((c) => !c.busy && !c.error))
+  complete = computed(() => columns.value.every((c) => !c.busy && !c.error));
 const total = computed(() => columns.value.reduce((n, c) => n + c.count, 0)),
-  closed = computed(() => columns.value[2]!.count)
+  closed = computed(() => columns.value[2]!.count);
 const percent = computed(() =>
   total.value ? Math.round((100 * closed.value) / total.value) : null,
-)
+);
 let generation = 0,
-  disposed = false
+  disposed = false;
 function date(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
     timeZone: 'America/Toronto',
@@ -91,82 +91,226 @@ function date(value: string) {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+  }).format(new Date(value));
 }
 async function loadColumn(column: Column, version: number, append = false) {
-  if (append && column.busy) return
-  column.busy = true
-  column.error = ''
+  if (append && column.busy) return;
+  column.busy = true;
+  column.error = '';
   try {
     const q = new URLSearchParams({
       state: column.key,
       search: applied.value,
       page: String(append ? column.page + 1 : 1),
-    })
-    const data = await props.request(`follow-ups/?${q}`)
-    if (version !== generation || disposed) return
-    column.rows = append ? [...column.rows, ...data.results] : data.results
-    column.count = data.count
-    column.next = !!data.next
-    column.page = append ? column.page + 1 : 1
+    });
+    const data = await props.request(`follow-ups/?${q}`);
+    if (version !== generation || disposed) return;
+    column.rows = append ? [...column.rows, ...data.results] : data.results;
+    column.count = data.count;
+    column.next = !!data.next;
+    column.page = append ? column.page + 1 : 1;
   } catch (e: any) {
-    if (version === generation) column.error = e.message
+    if (version === generation) column.error = e.message;
   } finally {
-    if (version === generation) column.busy = false
+    if (version === generation) column.busy = false;
   }
 }
 async function load() {
-  const version = ++generation
-  applied.value = search.value.trim()
+  const version = ++generation;
+  applied.value = search.value.trim();
   for (const column of columns.value) {
-    column.rows = []
-    column.count = 0
-    column.page = 0
-    column.next = false
+    column.rows = [];
+    column.count = 0;
+    column.page = 0;
+    column.next = false;
   }
-  await Promise.all(columns.value.map((c) => loadColumn(c, version)))
+  await Promise.all(columns.value.map((c) => loadColumn(c, version)));
 }
 async function open(row: any, finish = false) {
-  if (opening.value || selected.value) return
-  opening.value = true
-  error.value = ''
+  if (opening.value || selected.value) return;
+  opening.value = true;
+  error.value = '';
   try {
-    const data = await props.request(`follow-ups/${row.id}/?state=all`)
-    if (disposed) return
-    selected.value = data
-    closing.value = finish
+    const data = await props.request(`follow-ups/${row.id}/?state=all`);
+    if (disposed) return;
+    selected.value = data;
+    closing.value = finish;
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    opening.value = false
+    opening.value = false;
   }
 }
 function saved() {
-  selected.value = null
-  emit('saved')
-  void load()
+  selected.value = null;
+  emit('saved');
+  void load();
 }
-onMounted(load)
+onMounted(load);
 onBeforeUnmount(() => {
-  disposed = true
-  generation++
-})
+  disposed = true;
+  generation++;
+});
 </script>
-<!-- prettier-ignore -->
 <template>
- <section class="setter-tasks">
-  <header class="tasks-heading"><div><span>ESPACE ISOLATION · {{role==='administrator'?'ADMINISTRATION':'SETTER'}}</span><h1>{{role==='administrator'?'Tâches de l’équipe':'Mes tâches'}}</h1><p>Un suivi après l’autre, faites avancer vos prospects.</p></div><button class="tasks-agenda" @click="emit('navigate','appointments')"><CalendarDays :size="16"/>Voir les visites<ArrowUpRight :size="16"/></button></header>
-  <form class="tasks-toolbar" @submit.prevent="load"><label class="tasks-search"><Search :size="17"/><input v-model="search" aria-label="Rechercher un rappel Isolation" placeholder="Prospect, téléphone ou note…"></label><button class="tasks-filter" :disabled="busy">Rechercher</button><button type="button" class="tasks-refresh" :disabled="busy" @click="load"><RefreshCw :size="15"/>Actualiser</button><span class="tasks-scope">{{applied?'Vue filtrée':'Tous les rappels'}} · Heures de Montréal</span></form>
-  <p v-if="error" class="tasks-error" role="alert">{{error}}</p>
-  <div class="tasks-layout"><div class="tasks-columns" role="region" tabindex="0" aria-label="Tableau des rappels par état"><section v-for="column in columns" :key="column.key" class="task-column" :class="column.tone">
-   <header class="task-column-heading"><component :is="column.icon" :size="18"/><h2>{{column.label}}</h2><span>{{column.busy&&!column.page?'…':column.count}}</span></header><p class="task-column-hint">{{column.hint}}</p>
-   <div class="task-column-stack"><p v-if="column.error" role="alert" class="tasks-error">{{column.error}}<button @click="loadColumn(column,generation,column.page>0)">Réessayer</button></p><p v-if="!column.busy&&!column.error&&!column.count" class="task-empty">Aucun rappel ici.</p>
-    <article v-for="row in column.rows" :key="row.id" class="task-card"><button class="task-title" @click="open(row)">{{row.prospect_name||'Prospect '+row.prospect_id}}</button><p class="task-deadline"><Clock3 :size="13"/>{{date(row.due_at)}}</p><p class="task-description">{{row.note||'Aucune note complémentaire.'}}</p><small v-if="role==='administrator'">{{row.owner_name||'Setter non affecté'}}</small><span class="task-tag">{{row.closed_at?'Résolu':row.overdue?'À prioriser':'Rappel prospect'}}</span><p v-if="row.closed_at" class="task-description">{{row.resolution}}</p><footer><button :disabled="opening" @click="open(row)">{{row.closed_at?'Consulter':'Modifier'}}</button><button v-if="!row.closed_at" :disabled="opening" @click="open(row,true)">Terminer<ArrowUpRight :size="14"/></button></footer></article>
-    <button v-if="column.next" class="task-load-more" :disabled="column.busy" @click="loadColumn(column,generation,true)">{{column.busy?'Chargement…':'Afficher plus'}} · {{column.rows.length}} / {{column.count}}</button>
-   </div>
-  </section></div><aside class="tasks-sidebar"><div class="task-progress"><h2>Progression des suivis</h2><p v-if="!complete">{{busy?'Chargement des totaux…':'Totaux indisponibles : actualisez les colonnes en erreur.'}}</p><template v-else><div class="progress-main"><div class="task-donut" :style="{'--progress':`${percent??0}%`}" role="img" :aria-label="percent===null?'Aucune tâche':percent+' % terminées'"><strong>{{percent===null?'—':percent+'%'}}</strong><small>Terminées</small></div><div><strong>{{total-closed}}</strong><span>rappels ouverts</span></div></div><div class="progress-stat"><span>Terminées</span><strong>{{closed}} / {{total}}</strong></div><div class="progress-track"><span :style="{width:`${percent??0}%`}"></span></div></template></div><div class="task-priorities"><header><h2>Le bon réflexe</h2><Clock3 :size="18"/></header><p>Traitez les rappels en retard et renseignez leur résolution. Les tâches suivent toujours le responsable actuel du prospect.</p><button class="secondary" @click="emit('navigate','contacts')">Retrouver un prospect</button></div></aside></div>
-  <SidePanel :open="!!selected" :title="selected?.prospect_name||'Rappel du prospect'" eyebrow="ISOLATION · SUIVI" :close-disabled="detailBusy" @request-close="selected?.closed_at?selected=null:editor?.close()"><IsolationFollowUps v-if="selected&&!selected.closed_at" ref="editor" :key="selected.id" :editor-only="true" :initial-task="selected" :initial-close="closing" :request="request" @busy="detailBusy=$event" @saved="saved" @close="selected=null"/><div v-else-if="selected" class="resolved-task"><h3>Rappel terminé</h3><p>{{selected.note}}</p><p>{{selected.resolution}}</p><button class="secondary" @click="selected=null">Fermer</button></div></SidePanel>
- </section>
+  <section class="setter-tasks">
+    <header class="tasks-heading">
+      <div>
+        <span>ESPACE ISOLATION · {{ role === 'administrator' ? 'ADMINISTRATION' : 'SETTER' }}</span>
+        <h1>{{ role === 'administrator' ? 'Tâches de l’équipe' : 'Mes tâches' }}</h1>
+        <p>Un suivi après l’autre, faites avancer vos prospects.</p>
+      </div>
+      <button class="tasks-agenda" @click="emit('navigate', 'appointments')">
+        <CalendarDays :size="16" />Voir les visites<ArrowUpRight :size="16" />
+      </button>
+    </header>
+    <form class="tasks-toolbar" @submit.prevent="load">
+      <label class="tasks-search"
+        ><Search :size="17" /><input
+          v-model="search"
+          aria-label="Rechercher un rappel Isolation"
+          placeholder="Prospect, téléphone ou note…" /></label
+      ><button class="tasks-filter" :disabled="busy">Rechercher</button
+      ><button type="button" class="tasks-refresh" :disabled="busy" @click="load">
+        <RefreshCw :size="15" />Actualiser</button
+      ><span class="tasks-scope"
+        >{{ applied ? 'Vue filtrée' : 'Tous les rappels' }} · Heures de Montréal</span
+      >
+    </form>
+    <p v-if="error" class="tasks-error" role="alert">{{ error }}</p>
+    <div class="tasks-layout">
+      <div
+        class="tasks-columns"
+        role="region"
+        tabindex="0"
+        aria-label="Tableau des rappels par état"
+      >
+        <section
+          v-for="column in columns"
+          :key="column.key"
+          class="task-column"
+          :class="column.tone"
+        >
+          <header class="task-column-heading">
+            <component :is="column.icon" :size="18" />
+            <h2>{{ column.label }}</h2>
+            <span>{{ column.busy && !column.page ? '…' : column.count }}</span>
+          </header>
+          <p class="task-column-hint">{{ column.hint }}</p>
+          <div class="task-column-stack">
+            <p v-if="column.error" role="alert" class="tasks-error">
+              {{ column.error
+              }}<button @click="loadColumn(column, generation, column.page > 0)">Réessayer</button>
+            </p>
+            <p v-if="!column.busy && !column.error && !column.count" class="task-empty">
+              Aucun rappel ici.
+            </p>
+            <article v-for="row in column.rows" :key="row.id" class="task-card">
+              <button class="task-title" @click="open(row)">
+                {{ row.prospect_name || 'Prospect ' + row.prospect_id }}
+              </button>
+              <p class="task-deadline"><Clock3 :size="13" />{{ date(row.due_at) }}</p>
+              <p class="task-description">{{ row.note || 'Aucune note complémentaire.' }}</p>
+              <small v-if="role === 'administrator'">{{
+                row.owner_name || 'Setter non affecté'
+              }}</small
+              ><span class="task-tag">{{
+                row.closed_at ? 'Résolu' : row.overdue ? 'À prioriser' : 'Rappel prospect'
+              }}</span>
+              <p v-if="row.closed_at" class="task-description">{{ row.resolution }}</p>
+              <footer>
+                <button :disabled="opening" @click="open(row)">
+                  {{ row.closed_at ? 'Consulter' : 'Modifier' }}</button
+                ><button v-if="!row.closed_at" :disabled="opening" @click="open(row, true)">
+                  Terminer<ArrowUpRight :size="14" />
+                </button>
+              </footer>
+            </article>
+            <button
+              v-if="column.next"
+              class="task-load-more"
+              :disabled="column.busy"
+              @click="loadColumn(column, generation, true)"
+            >
+              {{ column.busy ? 'Chargement…' : 'Afficher plus' }} · {{ column.rows.length }} /
+              {{ column.count }}
+            </button>
+          </div>
+        </section>
+      </div>
+      <aside class="tasks-sidebar">
+        <div class="task-progress">
+          <h2>Progression des suivis</h2>
+          <p v-if="!complete">
+            {{
+              busy
+                ? 'Chargement des totaux…'
+                : 'Totaux indisponibles : actualisez les colonnes en erreur.'
+            }}
+          </p>
+          <template v-else
+            ><div class="progress-main">
+              <div
+                class="task-donut"
+                :style="{ '--progress': `${percent ?? 0}%` }"
+                role="img"
+                :aria-label="percent === null ? 'Aucune tâche' : percent + ' % terminées'"
+              >
+                <strong>{{ percent === null ? '—' : percent + '%' }}</strong
+                ><small>Terminées</small>
+              </div>
+              <div>
+                <strong>{{ total - closed }}</strong
+                ><span>rappels ouverts</span>
+              </div>
+            </div>
+            <div class="progress-stat">
+              <span>Terminées</span><strong>{{ closed }} / {{ total }}</strong>
+            </div>
+            <div class="progress-track"><span :style="{ width: `${percent ?? 0}%` }"></span></div
+          ></template>
+        </div>
+        <div class="task-priorities">
+          <header>
+            <h2>Le bon réflexe</h2>
+            <Clock3 :size="18" />
+          </header>
+          <p>
+            Traitez les rappels en retard et renseignez leur résolution. Les tâches suivent toujours
+            le responsable actuel du prospect.
+          </p>
+          <button class="secondary" @click="emit('navigate', 'contacts')">
+            Retrouver un prospect
+          </button>
+        </div>
+      </aside>
+    </div>
+    <SidePanel
+      :open="!!selected"
+      :title="selected?.prospect_name || 'Rappel du prospect'"
+      eyebrow="ISOLATION · SUIVI"
+      :close-disabled="detailBusy"
+      @request-close="selected?.closed_at ? (selected = null) : editor?.close()"
+      ><IsolationFollowUps
+        v-if="selected && !selected.closed_at"
+        ref="editor"
+        :key="selected.id"
+        :editor-only="true"
+        :initial-task="selected"
+        :initial-close="closing"
+        :request="request"
+        @busy="detailBusy = $event"
+        @saved="saved"
+        @close="selected = null"
+      />
+      <div v-else-if="selected" class="resolved-task">
+        <h3>Rappel terminé</h3>
+        <p>{{ selected.note }}</p>
+        <p>{{ selected.resolution }}</p>
+        <button class="secondary" @click="selected = null">Fermer</button>
+      </div></SidePanel
+    >
+  </section>
 </template>
 
 <style scoped>

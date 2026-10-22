@@ -3,9 +3,3 @@ node_modules
 pnpm-lock.yaml
 public
 *.md
-# Template parsing fails on inline TypeScript casts (as Record<string,string>).
-src/AssuranceContacts.vue
-src/AssuranceQualification.vue
-src/AssuranceQualificationSnapshot.vue
-src/IsolationProspectActivity.vue
-src/Portal.vue

@@ -1,40 +1,479 @@
 <script setup lang="ts">
-import {ref,computed,watch,onBeforeUnmount} from 'vue'
-import {ClipboardCheck,Save,ShieldCheck,RefreshCw} from 'lucide-vue-next'
-const props=defineProps<{contactId:number;role:string;request:(path:string,body?:any,method?:string)=>Promise<any>;leaseToken?:string;contactRevision?:number;blocked?:boolean;prepare?:()=>Promise<void>}>()
-const emit=defineEmits<{saved:[revision:number];busy:[value:boolean];dirty:[value:boolean]}>()
-const fields=ref<any[]>([]),draft=ref<Record<string,any>>({}),base=ref(''),loaded=ref(false),busy=ref(false),error=ref(''),message=ref(''),snapshot=ref<any>(null),appointmentId=ref<number|null>(null),mustReload=ref(false)
-const readonly=computed(()=>props.role==='advisor')
-const dirty=computed(()=>loaded.value&&!readonly.value&&JSON.stringify(draft.value)!==base.value)
-watch(dirty,value=>emit('dirty',value),{immediate:true});watch(busy,value=>emit('busy',value),{flush:'sync'})
-let version=0,disposed=false,pendingSave:Promise<void>|null=null
-function defaults(list:any[],data:any){return Object.fromEntries(list.map(field=>[field.key,data?.[field.key]??(field.type==='boolean'||field.type==='number'?null:field.type==='multiple'?[]:'')]))}
-async function load(){
- const current=++version;busy.value=true;error.value=''
- try{const data=await props.request(`contacts/${props.contactId}/qualification/`);if(current!==version||disposed)return;fields.value=data.fields;snapshot.value=data.snapshot||null;appointmentId.value=data.appointment_id||null;draft.value=defaults(fields.value,readonly.value?data.snapshot?.qualification:data.qualification);base.value=JSON.stringify(draft.value);loaded.value=true;mustReload.value=false}
- catch(e:any){if(current===version&&!disposed)error.value=e.message}
- finally{if(current===version&&!disposed)busy.value=false}
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { ClipboardCheck, Save, ShieldCheck, RefreshCw } from 'lucide-vue-next';
+const props = defineProps<{
+  contactId: number;
+  role: string;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+  leaseToken?: string;
+  contactRevision?: number;
+  blocked?: boolean;
+  prepare?: () => Promise<void>;
+}>();
+const emit = defineEmits<{
+  saved: [revision: number];
+  busy: [value: boolean];
+  dirty: [value: boolean];
+}>();
+const fields = ref<any[]>([]),
+  draft = ref<Record<string, any>>({}),
+  base = ref(''),
+  loaded = ref(false),
+  busy = ref(false),
+  error = ref(''),
+  message = ref(''),
+  snapshot = ref<any>(null),
+  appointmentId = ref<number | null>(null),
+  mustReload = ref(false);
+const readonly = computed(() => props.role === 'advisor');
+const dirty = computed(
+  () => loaded.value && !readonly.value && JSON.stringify(draft.value) !== base.value,
+);
+watch(dirty, (value) => emit('dirty', value), { immediate: true });
+watch(busy, (value) => emit('busy', value), { flush: 'sync' });
+let version = 0,
+  disposed = false,
+  pendingSave: Promise<void> | null = null;
+function defaults(list: any[], data: any) {
+  return Object.fromEntries(
+    list.map((field) => [
+      field.key,
+      data?.[field.key] ??
+        (field.type === 'boolean' || field.type === 'number'
+          ? null
+          : field.type === 'multiple'
+            ? []
+            : ''),
+    ]),
+  );
 }
-async function ensureSaved(){
- if(pendingSave)return pendingSave
- if(readonly.value)return
- if(!loaded.value)throw new Error('Chargez la qualification Assurance avant de réserver.')
- if(mustReload.value)throw new Error('Reprenez la qualification après rechargement de la fiche.')
- if(!dirty.value)return
- if(!props.leaseToken)throw new Error('Prenez en charge la fiche avant de qualifier.')
- pendingSave=(async()=>{busy.value=true;error.value='';message.value='';try{await props.prepare?.();const values=JSON.parse(JSON.stringify(draft.value));if(values.age==='')values.age=null;const data=await props.request(`contacts/${props.contactId}/qualification/`,{token:props.leaseToken,contact_revision:props.contactRevision,qualification:values});if(disposed)return;draft.value=defaults(fields.value,data.qualification);base.value=JSON.stringify(draft.value);emit('saved',data.contact_revision);message.value='Qualification enregistrée. Elle sera transmise avec le prochain rendez-vous.'}catch(e:any){error.value=e.message;throw e}finally{busy.value=false;pendingSave=null}})()
- return pendingSave
+async function load() {
+  const current = ++version;
+  busy.value = true;
+  error.value = '';
+  try {
+    const data = await props.request(`contacts/${props.contactId}/qualification/`);
+    if (current !== version || disposed) return;
+    fields.value = data.fields;
+    snapshot.value = data.snapshot || null;
+    appointmentId.value = data.appointment_id || null;
+    draft.value = defaults(
+      fields.value,
+      readonly.value ? data.snapshot?.qualification : data.qualification,
+    );
+    base.value = JSON.stringify(draft.value);
+    loaded.value = true;
+    mustReload.value = false;
+  } catch (e: any) {
+    if (current === version && !disposed) error.value = e.message;
+  } finally {
+    if (current === version && !disposed) busy.value = false;
+  }
 }
-async function save(){try{await ensureSaved()}catch{/* Error is displayed without discarding the draft. */}}
-async function reload(){if(dirty.value){mustReload.value=true;return}await load()}
-function display(field:any){const value=draft.value[field.key];if(value===null||value===undefined||value===''||Array.isArray(value)&&!value.length)return 'Non renseigné';if(field.type==='boolean')return value?'Oui':'Non';if(field.type==='choice')return field.choices[value]||value;if(field.type==='multiple')return value.map((key:string)=>field.choices[key]||key).join(', ');return value}
-function toggleInsurance(value:string){const current=draft.value.insurances as string[];if(current.includes(value))draft.value.insurances=current.filter(key=>key!==value);else if(value==='none_known')draft.value.insurances=['none_known'];else draft.value.insurances=[...current.filter(key=>key!=='none_known'),value]}
-watch(()=>props.leaseToken,(value,old)=>{if(value!==old&&dirty.value){mustReload.value=true;return}void load()},{immediate:true})
-onBeforeUnmount(()=>{disposed=true;version++})
-defineExpose({ensureSaved})
+async function ensureSaved() {
+  if (pendingSave) return pendingSave;
+  if (readonly.value) return;
+  if (!loaded.value) throw new Error('Chargez la qualification Assurance avant de réserver.');
+  if (mustReload.value)
+    throw new Error('Reprenez la qualification après rechargement de la fiche.');
+  if (!dirty.value) return;
+  if (!props.leaseToken) throw new Error('Prenez en charge la fiche avant de qualifier.');
+  pendingSave = (async () => {
+    busy.value = true;
+    error.value = '';
+    message.value = '';
+    try {
+      await props.prepare?.();
+      const values = JSON.parse(JSON.stringify(draft.value));
+      if (values.age === '') values.age = null;
+      const data = await props.request(`contacts/${props.contactId}/qualification/`, {
+        token: props.leaseToken,
+        contact_revision: props.contactRevision,
+        qualification: values,
+      });
+      if (disposed) return;
+      draft.value = defaults(fields.value, data.qualification);
+      base.value = JSON.stringify(draft.value);
+      emit('saved', data.contact_revision);
+      message.value =
+        'Qualification enregistrée. Elle sera transmise avec le prochain rendez-vous.';
+    } catch (e: any) {
+      error.value = e.message;
+      throw e;
+    } finally {
+      busy.value = false;
+      pendingSave = null;
+    }
+  })();
+  return pendingSave;
+}
+async function save() {
+  try {
+    await ensureSaved();
+  } catch {
+    /* Error is displayed without discarding the draft. */
+  }
+}
+async function reload() {
+  if (dirty.value) {
+    mustReload.value = true;
+    return;
+  }
+  await load();
+}
+function display(field: any) {
+  const value = draft.value[field.key];
+  if (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    (Array.isArray(value) && !value.length)
+  )
+    return 'Non renseigné';
+  if (field.type === 'boolean') return value ? 'Oui' : 'Non';
+  if (field.type === 'choice') return field.choices[value] || value;
+  if (field.type === 'multiple')
+    return value.map((key: string) => field.choices[key] || key).join(', ');
+  return value;
+}
+function toggleInsurance(value: string) {
+  const current = draft.value.insurances as string[];
+  if (current.includes(value)) draft.value.insurances = current.filter((key) => key !== value);
+  else if (value === 'none_known') draft.value.insurances = ['none_known'];
+  else draft.value.insurances = [...current.filter((key) => key !== 'none_known'), value];
+}
+watch(
+  () => props.leaseToken,
+  (value, old) => {
+    if (value !== old && dirty.value) {
+      mustReload.value = true;
+      return;
+    }
+    void load();
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  disposed = true;
+  version++;
+});
+defineExpose({ ensureSaved });
+const contactLabels: Record<string, string> = {
+  name: 'Nom et prénom',
+  phone: 'Téléphone',
+  email: 'Courriel',
+};
 </script>
-<template><section class="assurance-qualification"><header><span><ClipboardCheck :size="21"/></span><div><h3>Qualification Assurance</h3><p>{{readonly?'Les informations transmises avec votre rendez-vous.':'Une fiche complète pour préparer la rencontre.'}}</p></div></header><div class="qualification-sharing"><ShieldCheck :size="17"/><p>{{readonly?'Copie conservée lors de la réservation. Les modifications internes ultérieures ne changent pas cette transmission.':'Ces informations, y compris les notes ci-dessous, seront transmises au conseiller assigné lors de la réservation. Les notes internes de l’échange restent séparées.'}}</p></div><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status" class="qualification-saved">{{message}}</p><p v-if="busy&&!loaded" role="status">Chargement de la qualification…</p><div v-if="mustReload" class="qualification-reload"><p>La fiche a été reprise ou une actualisation a été demandée. Rechargez pour repartir des informations enregistrées ; votre brouillon sera remplacé.</p><button class="secondary" :disabled="busy" @click="load">Recharger et remplacer ce brouillon</button></div><template v-if="readonly"><p v-if="loaded&&!snapshot">Aucune qualification transmise sur un rendez-vous de votre périmètre.</p><template v-if="snapshot"><div class="qualification-snapshot-meta">RDV #{{appointmentId}} · {{new Date(snapshot.captured_at).toLocaleString('fr-FR',{timeZone:'America/Toronto'})}} · Montréal</div><dl class="qualification-read"><div v-for="(value,key) in snapshot.contact" :key="key"><dt>{{({name:'Nom et prénom',phone:'Téléphone',email:'Courriel'} as Record<string,string>)[key]||key}}</dt><dd>{{value||'Non renseigné'}}</dd></div><div v-for="field in fields" :key="field.key"><dt>{{field.label}}</dt><dd>{{display(field)}}</dd></div></dl></template></template><form v-else-if="loaded" class="qualification-form" @submit.prevent="save"><fieldset :disabled="busy||blocked||!leaseToken||mustReload"><p class="qualification-unknown">Laissez « Non renseigné » lorsque l’information n’est pas connue.</p><template v-for="field in fields" :key="field.key"><label v-if="field.type==='number'">{{field.label}}<input v-model.number="draft[field.key]" type="number" :min="field.min" :max="field.max" step="1" placeholder="Non renseigné" @change="draft[field.key]=draft[field.key]===''?null:draft[field.key]"></label><label v-else-if="field.type==='choice'">{{field.label}}<select v-model="draft[field.key]"><option value="">Non renseigné</option><option v-for="(label,key) in field.choices" :key="key" :value="key">{{label}}</option></select></label><label v-else-if="field.type==='boolean'">{{field.label}}<select v-model="draft[field.key]"><option :value="null">Non renseigné</option><option :value="true">Oui</option><option :value="false">Non</option></select></label><div v-else-if="field.type==='multiple'" class="qualification-insurances"><strong>{{field.label}}</strong><label v-for="(label,key) in field.choices" :key="key"><input type="checkbox" :checked="draft.insurances.includes(key)" @change="toggleInsurance(String(key))">{{label}}</label></div><label v-else>{{field.label}}<textarea v-model="draft[field.key]" maxlength="3000" :placeholder="field.key==='advisor_notes'?'Points à préparer pour le conseiller…':'Informations complémentaires utiles à la rencontre…'"></textarea></label></template><button class="primary" :disabled="!dirty"><Save :size="16"/>Enregistrer la qualification</button></fieldset></form><button v-if="!busy" type="button" class="secondary qualification-refresh" :disabled="blocked" @click="reload"><RefreshCw :size="14"/>Actualiser la qualification</button></section></template>
+<template>
+  <section class="assurance-qualification">
+    <header>
+      <span><ClipboardCheck :size="21" /></span>
+      <div>
+        <h3>Qualification Assurance</h3>
+        <p>
+          {{
+            readonly
+              ? 'Les informations transmises avec votre rendez-vous.'
+              : 'Une fiche complète pour préparer la rencontre.'
+          }}
+        </p>
+      </div>
+    </header>
+    <div class="qualification-sharing">
+      <ShieldCheck :size="17" />
+      <p>
+        {{
+          readonly
+            ? 'Copie conservée lors de la réservation. Les modifications internes ultérieures ne changent pas cette transmission.'
+            : 'Ces informations, y compris les notes ci-dessous, seront transmises au conseiller assigné lors de la réservation. Les notes internes de l’échange restent séparées.'
+        }}
+      </p>
+    </div>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="message" role="status" class="qualification-saved">{{ message }}</p>
+    <p v-if="busy && !loaded" role="status">Chargement de la qualification…</p>
+    <div v-if="mustReload" class="qualification-reload">
+      <p>
+        La fiche a été reprise ou une actualisation a été demandée. Rechargez pour repartir des
+        informations enregistrées ; votre brouillon sera remplacé.
+      </p>
+      <button class="secondary" :disabled="busy" @click="load">
+        Recharger et remplacer ce brouillon
+      </button>
+    </div>
+    <template v-if="readonly"
+      ><p v-if="loaded && !snapshot">
+        Aucune qualification transmise sur un rendez-vous de votre périmètre.
+      </p>
+      <template v-if="snapshot"
+        ><div class="qualification-snapshot-meta">
+          RDV #{{ appointmentId }} ·
+          {{
+            new Date(snapshot.captured_at).toLocaleString('fr-FR', { timeZone: 'America/Toronto' })
+          }}
+          · Montréal
+        </div>
+        <dl class="qualification-read">
+          <div v-for="(value, key) in snapshot.contact" :key="key">
+            <dt>{{ contactLabels[key] || key }}</dt>
+            <dd>{{ value || 'Non renseigné' }}</dd>
+          </div>
+          <div v-for="field in fields" :key="field.key">
+            <dt>{{ field.label }}</dt>
+            <dd>{{ display(field) }}</dd>
+          </div>
+        </dl></template
+      ></template
+    >
+    <form v-else-if="loaded" class="qualification-form" @submit.prevent="save">
+      <fieldset :disabled="busy || blocked || !leaseToken || mustReload">
+        <p class="qualification-unknown">
+          Laissez « Non renseigné » lorsque l’information n’est pas connue.
+        </p>
+        <template v-for="field in fields" :key="field.key"
+          ><label v-if="field.type === 'number'"
+            >{{ field.label
+            }}<input
+              v-model.number="draft[field.key]"
+              type="number"
+              :min="field.min"
+              :max="field.max"
+              step="1"
+              placeholder="Non renseigné"
+              @change="
+                draft[field.key] = draft[field.key] === '' ? null : draft[field.key]
+              " /></label
+          ><label v-else-if="field.type === 'choice'"
+            >{{ field.label
+            }}<select v-model="draft[field.key]">
+              <option value="">Non renseigné</option>
+              <option v-for="(label, key) in field.choices" :key="key" :value="key">
+                {{ label }}
+              </option>
+            </select></label
+          ><label v-else-if="field.type === 'boolean'"
+            >{{ field.label
+            }}<select v-model="draft[field.key]">
+              <option :value="null">Non renseigné</option>
+              <option :value="true">Oui</option>
+              <option :value="false">Non</option>
+            </select></label
+          >
+          <div v-else-if="field.type === 'multiple'" class="qualification-insurances">
+            <strong>{{ field.label }}</strong
+            ><label v-for="(label, key) in field.choices" :key="key"
+              ><input
+                type="checkbox"
+                :checked="draft.insurances.includes(key)"
+                @change="toggleInsurance(String(key))"
+              />{{ label }}</label
+            >
+          </div>
+          <label v-else
+            >{{ field.label
+            }}<textarea
+              v-model="draft[field.key]"
+              maxlength="3000"
+              :placeholder="
+                field.key === 'advisor_notes'
+                  ? 'Points à préparer pour le conseiller…'
+                  : 'Informations complémentaires utiles à la rencontre…'
+              "
+            ></textarea></label></template
+        ><button class="primary" :disabled="!dirty">
+          <Save :size="16" />Enregistrer la qualification
+        </button>
+      </fieldset>
+    </form>
+    <button
+      v-if="!busy"
+      type="button"
+      class="secondary qualification-refresh"
+      :disabled="blocked"
+      @click="reload"
+    >
+      <RefreshCw :size="14" />Actualiser la qualification
+    </button>
+  </section>
+</template>
 <style scoped>
-.assurance-qualification{background:#fff;border:1px solid #e2e8f3;border-radius:15px;padding:22px;margin:16px 0 22px;color:#62758f}.assurance-qualification>header{display:flex;align-items:center;gap:13px}.assurance-qualification header>span{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;color:#9680c1;background:#f2edfb;flex-shrink:0}.assurance-qualification h3{font-size:17px!important;margin:0 0 7px;color:#5e6e88}.assurance-qualification header p{font-size:11px;color:#8d9ab0;margin:0;line-height:1.6}.qualification-sharing{display:flex;align-items:flex-start;gap:9px;padding:13px;background:#f0f6fd;border-radius:10px;margin-top:18px;color:#7e99b9}.qualification-sharing>svg{flex-shrink:0;margin-top:3px}.qualification-sharing p{font-size:11px;line-height:1.8;margin:0}.qualification-form{margin:20px 0!important}.qualification-form fieldset{display:grid!important;grid-template-columns:1fr 1fr;gap:17px!important;padding:0;border:0;min-width:0}.qualification-form label{display:flex;flex-direction:column;font-size:12px;line-height:1.6;gap:8px;color:#7d8da4;min-width:0}.qualification-form input,.qualification-form select,.qualification-form textarea{box-sizing:border-box;width:100%}.qualification-form label:has(textarea),.qualification-insurances,.qualification-unknown,.qualification-form button{grid-column:1/-1}.qualification-unknown{font-size:10px;line-height:1.8;color:#99a5b8;margin:0}.qualification-insurances{padding:16px;background:#faf9fd;border:1px solid #ece8f3;border-radius:12px;display:grid;gap:11px}.qualification-insurances>strong{font-size:12px;color:#8a7b9f;font-weight:550;margin-bottom:4px}.qualification-insurances label{flex-direction:row;align-items:center;gap:9px;font-size:12px;color:#8c819e}.qualification-insurances input{width:16px!important;height:16px;accent-color:#9e85d2}.qualification-saved{font-size:12px;background:#edf7f0;color:#81a58e;padding:13px;border-radius:9px;line-height:1.7}.qualification-refresh{font-size:11px!important}.qualification-reload{font-size:12px;line-height:1.8;background:#fff5e9;color:#b69b7b;padding:14px;border-radius:10px;margin:15px 0}.qualification-read{margin:20px 0}.qualification-read>div{display:grid;grid-template-columns:1fr 1.3fr;gap:18px;padding:12px 0;border-bottom:1px solid #e9eef6;font-size:12px;line-height:1.8}.qualification-read dt{color:#96a1b4}.qualification-read dd{margin:0;color:#788ba5;white-space:pre-wrap;overflow-wrap:anywhere}.qualification-snapshot-meta{font-size:10px;color:#9b8eaf;line-height:1.8;margin:18px 0}.qualification-form textarea{min-height:100px}
-@media(max-width:550px){.assurance-qualification{padding:17px}.qualification-form fieldset{grid-template-columns:1fr}.qualification-read>div{grid-template-columns:1fr;gap:4px}}
+.assurance-qualification {
+  background: #fff;
+  border: 1px solid #e2e8f3;
+  border-radius: 15px;
+  padding: 22px;
+  margin: 16px 0 22px;
+  color: #62758f;
+}
+.assurance-qualification > header {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.assurance-qualification header > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: #9680c1;
+  background: #f2edfb;
+  flex-shrink: 0;
+}
+.assurance-qualification h3 {
+  font-size: 17px !important;
+  margin: 0 0 7px;
+  color: #5e6e88;
+}
+.assurance-qualification header p {
+  font-size: 11px;
+  color: #8d9ab0;
+  margin: 0;
+  line-height: 1.6;
+}
+.qualification-sharing {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 13px;
+  background: #f0f6fd;
+  border-radius: 10px;
+  margin-top: 18px;
+  color: #7e99b9;
+}
+.qualification-sharing > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.qualification-sharing p {
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 0;
+}
+.qualification-form {
+  margin: 20px 0 !important;
+}
+.qualification-form fieldset {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 17px !important;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.qualification-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  line-height: 1.6;
+  gap: 8px;
+  color: #7d8da4;
+  min-width: 0;
+}
+.qualification-form input,
+.qualification-form select,
+.qualification-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+.qualification-form label:has(textarea),
+.qualification-insurances,
+.qualification-unknown,
+.qualification-form button {
+  grid-column: 1/-1;
+}
+.qualification-unknown {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #99a5b8;
+  margin: 0;
+}
+.qualification-insurances {
+  padding: 16px;
+  background: #faf9fd;
+  border: 1px solid #ece8f3;
+  border-radius: 12px;
+  display: grid;
+  gap: 11px;
+}
+.qualification-insurances > strong {
+  font-size: 12px;
+  color: #8a7b9f;
+  font-weight: 550;
+  margin-bottom: 4px;
+}
+.qualification-insurances label {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: #8c819e;
+}
+.qualification-insurances input {
+  width: 16px !important;
+  height: 16px;
+  accent-color: #9e85d2;
+}
+.qualification-saved {
+  font-size: 12px;
+  background: #edf7f0;
+  color: #81a58e;
+  padding: 13px;
+  border-radius: 9px;
+  line-height: 1.7;
+}
+.qualification-refresh {
+  font-size: 11px !important;
+}
+.qualification-reload {
+  font-size: 12px;
+  line-height: 1.8;
+  background: #fff5e9;
+  color: #b69b7b;
+  padding: 14px;
+  border-radius: 10px;
+  margin: 15px 0;
+}
+.qualification-read {
+  margin: 20px 0;
+}
+.qualification-read > div {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9eef6;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.qualification-read dt {
+  color: #96a1b4;
+}
+.qualification-read dd {
+  margin: 0;
+  color: #788ba5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.qualification-snapshot-meta {
+  font-size: 10px;
+  color: #9b8eaf;
+  line-height: 1.8;
+  margin: 18px 0;
+}
+.qualification-form textarea {
+  min-height: 100px;
+}
+@media (max-width: 550px) {
+  .assurance-qualification {
+    padding: 17px;
+  }
+  .qualification-form fieldset {
+    grid-template-columns: 1fr;
+  }
+  .qualification-read > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
 </style>

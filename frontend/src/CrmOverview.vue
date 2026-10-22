@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue';
 import {
   Users,
   ListTodo,
@@ -13,16 +13,16 @@ import {
   Sparkles,
   Clock3,
   BarChart3,
-} from 'lucide-vue-next'
+} from 'lucide-vue-next';
 const props = defineProps<{
-  workspace: string
-  role: string
-  summary: any
-  username: string
-  request: (path: string) => Promise<any>
-}>()
-defineEmits<{ navigate: [value: string]; refresh: [] }>()
-const assurance = computed(() => props.workspace === 'assurance')
+  workspace: string;
+  role: string;
+  summary: any;
+  username: string;
+  request: (path: string) => Promise<any>;
+}>();
+defineEmits<{ navigate: [value: string]; refresh: [] }>();
+const assurance = computed(() => props.workspace === 'assurance');
 const metrics = computed(() => [
   {
     label: assurance.value ? 'Contacts dans votre périmètre' : 'Prospects dans votre périmètre',
@@ -53,24 +53,24 @@ const metrics = computed(() => [
         },
       ]
     : []),
-])
+]);
 const upcoming = ref<any[]>([]),
   loading = ref(true),
-  error = ref('')
+  error = ref('');
 async function loadUpcoming() {
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = '';
   try {
     const data = await props.request(
       assurance.value
         ? 'appointments/?period=upcoming&status=scheduled'
         : 'visits/?period=upcoming',
-    )
-    upcoming.value = data.results.filter((row: any) => row.status === 'scheduled').slice(0, 3)
+    );
+    upcoming.value = data.results.filter((row: any) => row.status === 'scheduled').slice(0, 3);
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 function date(row: any) {
@@ -80,27 +80,27 @@ function date(row: any) {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(row.starts_at))
+  }).format(new Date(row.starts_at));
 }
 const activity = ref<any>(null),
   activityError = ref(''),
-  activityLoading = ref(false)
-let activityVersion = 0
+  activityLoading = ref(false);
+let activityVersion = 0;
 async function loadActivity() {
-  if (!assurance.value || props.role !== 'setter') return
-  const version = ++activityVersion
-  activityLoading.value = true
-  activityError.value = ''
+  if (!assurance.value || props.role !== 'setter') return;
+  const version = ++activityVersion;
+  activityLoading.value = true;
+  activityError.value = '';
   try {
-    const data = await props.request('statistics/')
-    if (version === activityVersion) activity.value = data
+    const data = await props.request('statistics/');
+    if (version === activityVersion) activity.value = data;
   } catch (e: any) {
     if (version === activityVersion) {
-      activity.value = null
-      activityError.value = e.message
+      activity.value = null;
+      activityError.value = e.message;
     }
   } finally {
-    if (version === activityVersion) activityLoading.value = false
+    if (version === activityVersion) activityLoading.value = false;
   }
 }
 const bars = computed(() =>
@@ -112,120 +112,508 @@ const bars = computed(() =>
         { label: 'À venir', value: activity.value.totals.upcoming, color: '#a4c5f3' },
       ]
     : [],
-)
-const barMax = computed(() => Math.max(1, ...bars.value.map((b) => b.value)))
+);
+const barMax = computed(() => Math.max(1, ...bars.value.map((b) => b.value)));
 const activityPeriod = computed(() =>
   activity.value
     ? `${activity.value.from.split('-').reverse().join('/')} – ${activity.value.to.split('-').reverse().join('/')}`
     : '30 derniers jours',
-)
-const admin = computed(() => props.role === 'administrator')
+);
+const admin = computed(() => props.role === 'administrator');
 // Isolation exposes no task summary endpoint: open tasks come from the dashboard summary.
 const teamTasks = ref<{ open: number | null; overdue: number } | null>(null),
   teamTasksLoading = ref(false),
-  teamTasksError = ref('')
+  teamTasksError = ref('');
 const teamOpen = computed(() =>
   assurance.value ? teamTasks.value?.open : props.summary.open_follow_ups,
-)
-let teamTasksVersion = 0
+);
+let teamTasksVersion = 0;
 async function loadTeamTasks() {
-  if (!admin.value) return
-  const version = ++teamTasksVersion
-  teamTasksLoading.value = true
-  teamTasksError.value = ''
+  if (!admin.value) return;
+  const version = ++teamTasksVersion;
+  teamTasksLoading.value = true;
+  teamTasksError.value = '';
   try {
-    let counts: { open: number | null; overdue: number }
+    let counts: { open: number | null; overdue: number };
     if (assurance.value) {
-      const data = await props.request('follow-ups/summary/')
-      counts = { open: data.open, overdue: data.overdue }
+      const data = await props.request('follow-ups/summary/');
+      counts = { open: data.open, overdue: data.overdue };
     } else {
-      const data = await props.request('follow-ups/?state=overdue')
-      counts = { open: null, overdue: data.count }
+      const data = await props.request('follow-ups/?state=overdue');
+      counts = { open: null, overdue: data.count };
     }
-    if (version === teamTasksVersion) teamTasks.value = counts
+    if (version === teamTasksVersion) teamTasks.value = counts;
   } catch (e: any) {
     if (version === teamTasksVersion) {
-      teamTasks.value = null
-      teamTasksError.value = e.message
+      teamTasks.value = null;
+      teamTasksError.value = e.message;
     }
   } finally {
-    if (version === teamTasksVersion) teamTasksLoading.value = false
+    if (version === teamTasksVersion) teamTasksLoading.value = false;
   }
 }
 function refreshHome() {
-  void loadUpcoming()
-  void loadActivity()
-  void loadTeamTasks()
+  void loadUpcoming();
+  void loadActivity();
+  void loadTeamTasks();
 }
-onMounted(refreshHome)
+onMounted(refreshHome);
 </script>
-<!-- prettier-ignore -->
 <template>
- <section v-if="role==='setter'" class="setter-homepage">
-  <div class="home-topline"><span class="home-workspace"><span></span>{{assurance?'Assurance':'Isolation'}} · Mon espace</span><button class="home-refresh" :disabled="loading||activityLoading" @click="$emit('refresh');refreshHome()"><RefreshCw :size="15"/>Actualiser</button></div>
-  <div class="home-hero">
-   <div class="home-main-snapshot"><header class="home-welcome"><h1>Bonjour {{username}} <span aria-hidden="true">✦</span></h1><p>Une vue claire sur votre journée. À vous de jouer.</p></header>
-    <div class="home-highlights">
-     <button class="home-highlight peach" @click="$emit('navigate','contacts')"><span class="highlight-label">Mes prospects</span><small>Vos fiches, au même endroit</small><Users class="metric-decoration" :size="40"/><strong>{{summary.contacts??summary.prospects??0}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
-     <button class="home-highlight blue" @click="$emit('navigate',assurance?'followups':'contacts')"><span class="highlight-label">{{assurance?'Tâches ouvertes':'Rappels à traiter'}}</span><small>Les prochaines actions</small><ListTodo class="metric-decoration" :size="40"/><strong>{{(assurance?summary.open_follow_ups:summary.callbacks_due)??0}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
-     <button class="home-highlight lilac" @click="$emit('navigate','appointments')"><span class="highlight-label">Prochain {{assurance?'rendez-vous':'créneau'}}</span><small>Gardez le fil de votre agenda</small><CalendarCheck class="metric-decoration" :size="40"/><strong class="next-slot">{{loading?'Chargement…':error?'Indisponible':upcoming.length?date(upcoming[0]):'À organiser'}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
+  <section v-if="role === 'setter'" class="setter-homepage">
+    <div class="home-topline">
+      <span class="home-workspace"
+        ><span></span>{{ assurance ? 'Assurance' : 'Isolation' }} · Mon espace</span
+      ><button
+        class="home-refresh"
+        :disabled="loading || activityLoading"
+        @click="
+          $emit('refresh');
+          refreshHome();
+        "
+      >
+        <RefreshCw :size="15" />Actualiser
+      </button>
     </div>
-   </div>
-   <aside class="home-hero-side"><button class="home-status-pill dark" @click="$emit('navigate',assurance?'followups':'contacts')"><span class="pill-icon"><Clock3 :size="19"/></span><span><strong>{{(assurance?summary.open_follow_ups:summary.callbacks_due)??0}} {{assurance?'tâche(s)':'rappel(s)'}}</strong><small>À traiter</small></span><ArrowUpRight :size="19"/></button><button class="home-status-pill" @click="$emit('navigate','appointments')"><span class="pill-icon"><CalendarCheck :size="19"/></span><span><strong>Mon agenda</strong><small>Rendez-vous et disponibilités</small></span><ArrowUpRight :size="19"/></button>
-    <button class="home-feature" @click="$emit('navigate','contacts')"><span class="feature-tag"><Sparkles :size="13"/>LE BON RÉFLEXE</span><strong>Votre prochain échange<br>commence ici.</strong><span>Retrouver mes prospects <ArrowUpRight :size="19"/></span></button>
-   </aside>
-  </div>
-  <div class="home-body">
-   <div class="home-left">
-    <section v-if="assurance" class="home-panel home-performance"><header class="panel-heading"><div><h2>Mes rendez-vous en un regard</h2><p>{{activityPeriod}} · dates en UTC</p></div><button class="round-link" aria-label="Ouvrir mes statistiques" @click="$emit('navigate','statistics')"><ArrowUpRight :size="18"/></button></header>
-     <p v-if="activityLoading" role="status" class="panel-feedback">Chargement des statistiques…</p><div v-else-if="activityError" class="panel-feedback" role="alert"><p>{{activityError}}</p><button class="home-refresh" @click="loadActivity">Réessayer</button></div>
-     <div v-else-if="activity" class="performance-content"><div class="performance-total"><span>Rendez-vous sur la période</span><strong>{{activity.totals.appointments}}</strong><small>{{activity.totals.reported}} compte(s) rendu(s)</small></div><div class="home-chart" role="img" :aria-label="bars.map(b=>`${b.label} : ${b.value}`).join(', ')"><div v-for="bar in bars" :key="bar.label" class="chart-column"><span class="bar-value">{{bar.value}}</span><div class="bar-track"><span :style="{height:`${bar.value/barMax*100}%`,background:bar.color}"></span></div><span class="bar-label">{{bar.label}}</span></div></div></div>
-     <p v-if="activity&&!activityLoading&&!activityError" class="chart-caption">Selon la date du rendez-vous. Les rendez-vous passés sans compte rendu ne sont pas classés comme effectués.</p>
-    </section>
-    <section class="home-panel home-agenda"><header class="panel-heading"><div><h2>{{assurance?'Mes prochains rendez-vous':'Mes prochaines visites'}}</h2><p>Les trois prochains créneaux prévus</p></div><CalendarCheck :size="21"/></header><p v-if="loading" class="panel-feedback" role="status">Chargement de votre agenda…</p><div v-else-if="error" class="panel-feedback" role="alert"><p>{{error}}</p><button class="home-refresh" @click="loadUpcoming">Réessayer</button></div><div v-else-if="!upcoming.length" class="agenda-empty"><span><CalendarCheck :size="24"/></span><div><h3>La suite reste à écrire</h3><p>Aucun {{assurance?'rendez-vous':'créneau'}} à venir pour le moment.</p></div></div><div v-else class="agenda-table-wrap"><table class="home-agenda-table"><thead><tr><th>Prospect</th><th>Date et heure</th><th>Fuseau</th><th>Statut</th></tr></thead><tbody><tr v-for="row in upcoming" :key="row.id"><td>{{(assurance?row.contact:row.prospect)?.name||'Dossier sans nom'}}</td><td><time>{{date(row)}}</time></td><td>{{row.timezone||'America/Toronto'}}</td><td><span class="appointment-status">Prévu</span></td></tr></tbody></table></div><button class="text-link" @click="$emit('navigate','appointments')">Voir tout mon agenda<ArrowRight :size="16"/></button></section>
-   </div>
-   <aside class="home-panel home-actions"><header class="panel-heading"><div><h2>Ma boîte à outils</h2><p>L’essentiel, à portée de main.</p></div><Sparkles :size="20"/></header>
-    <button class="action-tile violet" @click="$emit('navigate','contacts')"><span class="action-tile-title"><span class="action-bubble"><Users :size="16"/></span>Mes prospects<ArrowUpRight :size="16"/></span><span class="action-tile-body">Retrouvez une fiche, complétez les informations et préparez votre échange.<span>Ouvrir les prospects <ArrowRight :size="14"/></span></span></button>
-    <button class="action-tile orange" @click="$emit('navigate','appointments')"><span class="action-tile-title"><span class="action-bubble"><CalendarCheck :size="16"/></span>Mon agenda<ArrowUpRight :size="16"/></span><span class="action-tile-body">Consultez les créneaux réservés et préparez vos prochains rendez-vous.<span>Consulter l’agenda <ArrowRight :size="14"/></span></span></button>
-    <button class="action-tile green" @click="$emit('navigate',assurance?'followups':'statistics')"><span class="action-tile-title"><span class="action-bubble"><component :is="assurance?ListTodo:BarChart3" :size="16"/></span>{{assurance?'Mes suivis':'Mes statistiques'}}<ArrowUpRight :size="16"/></span><span class="action-tile-body">{{assurance?'Gardez une longueur d’avance sur vos tâches et vos prochaines échéances.':'Consultez vos résultats et retrouvez le détail de votre activité.'}}<span>{{assurance?'Traiter mes tâches':'Voir mes résultats'}} <ArrowRight :size="14"/></span></span></button>
-   </aside>
-  </div>
-  <details v-if="assurance" class="home-followup-details"><summary><span class="followup-summary-icon"><ListTodo :size="18"/></span><span><strong>Rappels et notifications</strong><small>Le détail de mes suivis</small></span><ChevronDown :size="18"/></summary><div class="home-followup-content"><slot/></div></details>
- </section>
- <section v-else-if="admin" class="setter-homepage admin-homepage">
-  <div class="home-topline"><span class="home-workspace"><span></span>{{assurance?'Assurance':'Isolation'}} · Administration</span><button class="home-refresh" :disabled="loading||teamTasksLoading" @click="$emit('refresh');refreshHome()"><RefreshCw :size="15"/>Actualiser</button></div>
-  <div class="home-hero">
-   <div class="home-main-snapshot">
-    <header class="home-welcome"><h1>Bonjour {{username}} <span aria-hidden="true">✦</span></h1><p>Le pilotage de votre équipe, en un coup d’œil.</p></header>
-    <div class="home-highlights">
-     <button class="home-highlight peach" @click="$emit('navigate','contacts')"><span class="highlight-label">Prospects</span><small>Tout le périmètre de l’équipe</small><Users class="metric-decoration" :size="40"/><strong>{{summary.contacts??summary.prospects??0}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
-     <button class="home-highlight blue" @click="$emit('navigate','followups')"><span class="highlight-label">Tâches ouvertes</span><small>Les suivis en cours de l’équipe</small><ListTodo class="metric-decoration" :size="40"/><strong>{{teamOpen??(teamTasksError?'Indisponible':'…')}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
-     <button class="home-highlight lilac" @click="$emit('navigate','followups')"><span class="highlight-label">Tâches en retard</span><small>À relancer ou réattribuer</small><Clock3 class="metric-decoration" :size="40"/><strong>{{teamTasksError?'Indisponible':teamTasks?teamTasks.overdue:'…'}}</strong><span class="metric-arrow"><ArrowUpRight :size="21"/></span></button>
+    <div class="home-hero">
+      <div class="home-main-snapshot">
+        <header class="home-welcome">
+          <h1>Bonjour {{ username }} <span aria-hidden="true">✦</span></h1>
+          <p>Une vue claire sur votre journée. À vous de jouer.</p>
+        </header>
+        <div class="home-highlights">
+          <button class="home-highlight peach" @click="$emit('navigate', 'contacts')">
+            <span class="highlight-label">Mes prospects</span
+            ><small>Vos fiches, au même endroit</small
+            ><Users class="metric-decoration" :size="40" /><strong>{{
+              summary.contacts ?? summary.prospects ?? 0
+            }}</strong
+            ><span class="metric-arrow"><ArrowUpRight :size="21" /></span>
+          </button>
+          <button
+            class="home-highlight blue"
+            @click="$emit('navigate', assurance ? 'followups' : 'contacts')"
+          >
+            <span class="highlight-label">{{
+              assurance ? 'Tâches ouvertes' : 'Rappels à traiter'
+            }}</span
+            ><small>Les prochaines actions</small
+            ><ListTodo class="metric-decoration" :size="40" /><strong>{{
+              (assurance ? summary.open_follow_ups : summary.callbacks_due) ?? 0
+            }}</strong
+            ><span class="metric-arrow"><ArrowUpRight :size="21" /></span>
+          </button>
+          <button class="home-highlight lilac" @click="$emit('navigate', 'appointments')">
+            <span class="highlight-label">Prochain {{ assurance ? 'rendez-vous' : 'créneau' }}</span
+            ><small>Gardez le fil de votre agenda</small
+            ><CalendarCheck class="metric-decoration" :size="40" /><strong class="next-slot">{{
+              loading
+                ? 'Chargement…'
+                : error
+                  ? 'Indisponible'
+                  : upcoming.length
+                    ? date(upcoming[0])
+                    : 'À organiser'
+            }}</strong
+            ><span class="metric-arrow"><ArrowUpRight :size="21" /></span>
+          </button>
+        </div>
+      </div>
+      <aside class="home-hero-side">
+        <button
+          class="home-status-pill dark"
+          @click="$emit('navigate', assurance ? 'followups' : 'contacts')"
+        >
+          <span class="pill-icon"><Clock3 :size="19" /></span
+          ><span
+            ><strong
+              >{{ (assurance ? summary.open_follow_ups : summary.callbacks_due) ?? 0 }}
+              {{ assurance ? 'tâche(s)' : 'rappel(s)' }}</strong
+            ><small>À traiter</small></span
+          ><ArrowUpRight :size="19" /></button
+        ><button class="home-status-pill" @click="$emit('navigate', 'appointments')">
+          <span class="pill-icon"><CalendarCheck :size="19" /></span
+          ><span><strong>Mon agenda</strong><small>Rendez-vous et disponibilités</small></span
+          ><ArrowUpRight :size="19" />
+        </button>
+        <button class="home-feature" @click="$emit('navigate', 'contacts')">
+          <span class="feature-tag"><Sparkles :size="13" />LE BON RÉFLEXE</span
+          ><strong>Votre prochain échange<br />commence ici.</strong
+          ><span>Retrouver mes prospects <ArrowUpRight :size="19" /></span>
+        </button>
+      </aside>
     </div>
-    <p v-if="teamTasksError" class="panel-feedback" role="alert">Compteurs de tâches indisponibles : {{teamTasksError}} <button class="home-refresh" @click="loadTeamTasks">Réessayer</button></p>
-   </div>
-   <aside class="home-hero-side">
-    <button v-if="assurance" class="home-status-pill dark" @click="$emit('navigate','assignments')"><span class="pill-icon"><UserRoundCheck :size="19"/></span><span><strong>Affectations</strong><small>Setters et conseillers</small></span><ArrowUpRight :size="19"/></button>
-    <button v-else class="home-status-pill dark" @click="$emit('navigate','contacts')"><span class="pill-icon"><UserRoundCheck :size="19"/></span><span><strong>{{summary.unassigned??0}} prospect(s)</strong><small>Sans affectation</small></span><ArrowUpRight :size="19"/></button>
-    <button class="home-status-pill" @click="$emit('navigate','appointments')"><span class="pill-icon"><CalendarCheck :size="19"/></span><span><strong>Agenda de l’équipe</strong><small>{{assurance?'Rendez-vous':'Visites'}} planifiés</small></span><ArrowUpRight :size="19"/></button>
-    <button class="home-feature" @click="$emit('navigate','statistics')"><span class="feature-tag"><BarChart3 :size="13"/>PILOTAGE</span><strong>Suivez l’activité<br>de votre équipe.</strong><span>Ouvrir les statistiques <ArrowUpRight :size="19"/></span></button>
-   </aside>
-  </div>
-  <section class="home-panel home-agenda">
-   <header class="panel-heading"><div><h2>{{assurance?'Prochains rendez-vous de l’équipe':'Prochaines visites de l’équipe'}}</h2><p>Les trois prochains créneaux prévus</p></div><CalendarCheck :size="21"/></header>
-   <p v-if="loading" class="panel-feedback" role="status">Chargement de l’agenda…</p>
-   <div v-else-if="error" class="panel-feedback" role="alert"><p>{{error}}</p><button class="home-refresh" @click="loadUpcoming">Réessayer</button></div>
-   <div v-else-if="!upcoming.length" class="agenda-empty"><span><CalendarCheck :size="24"/></span><div><h3>Agenda libre</h3><p>Aucun {{assurance?'rendez-vous':'créneau'}} à venir dans l’équipe.</p></div></div>
-   <div v-else class="agenda-table-wrap"><table class="home-agenda-table"><thead><tr><th>Prospect</th><th>Date et heure</th><th>Fuseau</th><th>Statut</th></tr></thead><tbody><tr v-for="row in upcoming" :key="row.id"><td>{{(assurance?row.contact:row.prospect)?.name||'Dossier sans nom'}}</td><td><time>{{date(row)}}</time></td><td>{{row.timezone||'America/Toronto'}}</td><td><span class="appointment-status">Prévu</span></td></tr></tbody></table></div>
-   <button class="text-link" @click="$emit('navigate','appointments')">Voir l’agenda de l’équipe<ArrowRight :size="16"/></button>
+    <div class="home-body">
+      <div class="home-left">
+        <section v-if="assurance" class="home-panel home-performance">
+          <header class="panel-heading">
+            <div>
+              <h2>Mes rendez-vous en un regard</h2>
+              <p>{{ activityPeriod }} · dates en UTC</p>
+            </div>
+            <button
+              class="round-link"
+              aria-label="Ouvrir mes statistiques"
+              @click="$emit('navigate', 'statistics')"
+            >
+              <ArrowUpRight :size="18" />
+            </button>
+          </header>
+          <p v-if="activityLoading" role="status" class="panel-feedback">
+            Chargement des statistiques…
+          </p>
+          <div v-else-if="activityError" class="panel-feedback" role="alert">
+            <p>{{ activityError }}</p>
+            <button class="home-refresh" @click="loadActivity">Réessayer</button>
+          </div>
+          <div v-else-if="activity" class="performance-content">
+            <div class="performance-total">
+              <span>Rendez-vous sur la période</span
+              ><strong>{{ activity.totals.appointments }}</strong
+              ><small>{{ activity.totals.reported }} compte(s) rendu(s)</small>
+            </div>
+            <div
+              class="home-chart"
+              role="img"
+              :aria-label="bars.map((b) => `${b.label} : ${b.value}`).join(', ')"
+            >
+              <div v-for="bar in bars" :key="bar.label" class="chart-column">
+                <span class="bar-value">{{ bar.value }}</span>
+                <div class="bar-track">
+                  <span
+                    :style="{ height: `${(bar.value / barMax) * 100}%`, background: bar.color }"
+                  ></span>
+                </div>
+                <span class="bar-label">{{ bar.label }}</span>
+              </div>
+            </div>
+          </div>
+          <p v-if="activity && !activityLoading && !activityError" class="chart-caption">
+            Selon la date du rendez-vous. Les rendez-vous passés sans compte rendu ne sont pas
+            classés comme effectués.
+          </p>
+        </section>
+        <section class="home-panel home-agenda">
+          <header class="panel-heading">
+            <div>
+              <h2>{{ assurance ? 'Mes prochains rendez-vous' : 'Mes prochaines visites' }}</h2>
+              <p>Les trois prochains créneaux prévus</p>
+            </div>
+            <CalendarCheck :size="21" />
+          </header>
+          <p v-if="loading" class="panel-feedback" role="status">Chargement de votre agenda…</p>
+          <div v-else-if="error" class="panel-feedback" role="alert">
+            <p>{{ error }}</p>
+            <button class="home-refresh" @click="loadUpcoming">Réessayer</button>
+          </div>
+          <div v-else-if="!upcoming.length" class="agenda-empty">
+            <span><CalendarCheck :size="24" /></span>
+            <div>
+              <h3>La suite reste à écrire</h3>
+              <p>Aucun {{ assurance ? 'rendez-vous' : 'créneau' }} à venir pour le moment.</p>
+            </div>
+          </div>
+          <div v-else class="agenda-table-wrap">
+            <table class="home-agenda-table">
+              <thead>
+                <tr>
+                  <th>Prospect</th>
+                  <th>Date et heure</th>
+                  <th>Fuseau</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in upcoming" :key="row.id">
+                  <td>
+                    {{ (assurance ? row.contact : row.prospect)?.name || 'Dossier sans nom' }}
+                  </td>
+                  <td>
+                    <time>{{ date(row) }}</time>
+                  </td>
+                  <td>{{ row.timezone || 'America/Toronto' }}</td>
+                  <td><span class="appointment-status">Prévu</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="text-link" @click="$emit('navigate', 'appointments')">
+            Voir tout mon agenda<ArrowRight :size="16" />
+          </button>
+        </section>
+      </div>
+      <aside class="home-panel home-actions">
+        <header class="panel-heading">
+          <div>
+            <h2>Ma boîte à outils</h2>
+            <p>L’essentiel, à portée de main.</p>
+          </div>
+          <Sparkles :size="20" />
+        </header>
+        <button class="action-tile violet" @click="$emit('navigate', 'contacts')">
+          <span class="action-tile-title"
+            ><span class="action-bubble"><Users :size="16" /></span>Mes prospects<ArrowUpRight
+              :size="16" /></span
+          ><span class="action-tile-body"
+            >Retrouvez une fiche, complétez les informations et préparez votre échange.<span
+              >Ouvrir les prospects <ArrowRight :size="14" /></span
+          ></span>
+        </button>
+        <button class="action-tile orange" @click="$emit('navigate', 'appointments')">
+          <span class="action-tile-title"
+            ><span class="action-bubble"><CalendarCheck :size="16" /></span>Mon agenda<ArrowUpRight
+              :size="16" /></span
+          ><span class="action-tile-body"
+            >Consultez les créneaux réservés et préparez vos prochains rendez-vous.<span
+              >Consulter l’agenda <ArrowRight :size="14" /></span
+          ></span>
+        </button>
+        <button
+          class="action-tile green"
+          @click="$emit('navigate', assurance ? 'followups' : 'statistics')"
+        >
+          <span class="action-tile-title"
+            ><span class="action-bubble"
+              ><component :is="assurance ? ListTodo : BarChart3" :size="16" /></span
+            >{{ assurance ? 'Mes suivis' : 'Mes statistiques' }}<ArrowUpRight :size="16" /></span
+          ><span class="action-tile-body"
+            >{{
+              assurance
+                ? 'Gardez une longueur d’avance sur vos tâches et vos prochaines échéances.'
+                : 'Consultez vos résultats et retrouvez le détail de votre activité.'
+            }}<span
+              >{{ assurance ? 'Traiter mes tâches' : 'Voir mes résultats' }}
+              <ArrowRight :size="14" /></span
+          ></span>
+        </button>
+      </aside>
+    </div>
+    <details v-if="assurance" class="home-followup-details">
+      <summary>
+        <span class="followup-summary-icon"><ListTodo :size="18" /></span
+        ><span><strong>Rappels et notifications</strong><small>Le détail de mes suivis</small></span
+        ><ChevronDown :size="18" />
+      </summary>
+      <div class="home-followup-content"><slot /></div>
+    </details>
   </section>
-  <details v-if="assurance" class="home-followup-details" open><summary><span class="followup-summary-icon"><ListTodo :size="18"/></span><span><strong>Alertes et notifications</strong><small>Échéances des mandats, rappels et suivis</small></span><ChevronDown :size="18"/></summary><div class="home-followup-content"><slot/></div></details>
- </section>
- <section v-else class="crm-overview">
-  <div class="crm-metrics"><div v-for="metric in metrics" :key="metric.label" class="crm-metric"><span class="metric-icon" :class="metric.tone"><component :is="metric.icon" :size="20"/></span><div><p>{{metric.label}}</p><strong>{{metric.value??0}}</strong></div></div></div>
-  <div class="crm-overview-grid"><section class="crm-priorities"><div class="overview-section-title"><h3>Votre activité</h3><span>{{workspace==='assurance'?'Assurance':'Isolation'}}</span></div><button class="overview-action" @click="$emit('navigate','contacts')"><span class="action-icon"><Users :size="20"/></span><span><strong>{{role==='client'?'Consulter mes dossiers':'Retrouver mes contacts'}}</strong><small>{{role==='client'?'Voir les visites et les setters à l’origine des réservations.':'Ouvrir les fiches, qualifier et préparer les prochains échanges.'}}</small></span><ArrowUpRight :size="18"/></button><button v-if="role!=='client'" class="overview-action" @click="$emit('navigate','appointments')"><span class="action-icon purple"><CalendarCheck :size="20"/></span><span><strong>{{assurance?'Gérer les rendez-vous':'Gérer les visites'}}</strong><small>Consulter les créneaux et suivre les comptes rendus.</small></span><ArrowUpRight :size="18"/></button><button v-if="assurance&&role!=='advisor'" class="overview-action" @click="$emit('navigate','followups')"><span class="action-icon orange"><ListTodo :size="20"/></span><span><strong>Traiter les tâches de suivi</strong><small>Retrouver les actions ouvertes et les prochaines échéances.</small></span><ArrowUpRight :size="18"/></button></section><aside class="crm-workspace-note"><span class="note-tag">VOTRE AGENDA</span><h3>{{assurance?'Prochains rendez-vous':'Prochaines visites'}}</h3><p v-if="loading">Chargement de l’agenda…</p><p v-else-if="error" role="alert">{{error}} <button class="secondary" @click="loadUpcoming">Réessayer</button></p><p v-else-if="!upcoming.length">Aucun créneau à venir dans votre périmètre.</p><ol v-else class="upcoming-list"><li v-for="row in upcoming" :key="row.id"><span>{{date(row)}}</span><strong>{{(assurance?row.contact:row.prospect)?.name||'Dossier sans nom'}}</strong></li></ol><button class="agenda-link" @click="$emit('navigate','appointments')">Ouvrir l’agenda<ArrowUpRight :size="16"/></button></aside></div>
-  <div class="crm-dashboard-details"><slot/></div>
- </section>
+  <section v-else-if="admin" class="setter-homepage admin-homepage">
+    <div class="home-topline">
+      <span class="home-workspace"
+        ><span></span>{{ assurance ? 'Assurance' : 'Isolation' }} · Administration</span
+      ><button
+        class="home-refresh"
+        :disabled="loading || teamTasksLoading"
+        @click="
+          $emit('refresh');
+          refreshHome();
+        "
+      >
+        <RefreshCw :size="15" />Actualiser
+      </button>
+    </div>
+    <div class="home-hero">
+      <div class="home-main-snapshot">
+        <header class="home-welcome">
+          <h1>Bonjour {{ username }} <span aria-hidden="true">✦</span></h1>
+          <p>Le pilotage de votre équipe, en un coup d’œil.</p>
+        </header>
+        <div class="home-highlights">
+          <button class="home-highlight peach" @click="$emit('navigate', 'contacts')">
+            <span class="highlight-label">Prospects</span
+            ><small>Tout le périmètre de l’équipe</small
+            ><Users class="metric-decoration" :size="40" /><strong>{{
+              summary.contacts ?? summary.prospects ?? 0
+            }}</strong
+            ><span class="metric-arrow"><ArrowUpRight :size="21" /></span>
+          </button>
+          <button class="home-highlight blue" @click="$emit('navigate', 'followups')">
+            <span class="highlight-label">Tâches ouvertes</span
+            ><small>Les suivis en cours de l’équipe</small
+            ><ListTodo class="metric-decoration" :size="40" /><strong>{{
+              teamOpen ?? (teamTasksError ? 'Indisponible' : '…')
+            }}</strong
+            ><span class="metric-arrow"><ArrowUpRight :size="21" /></span>
+          </button>
+          <button class="home-highlight lilac" @click="$emit('navigate', 'followups')">
+            <span class="highlight-label">Tâches en retard</span
+            ><small>À relancer ou réattribuer</small
+            ><Clock3 class="metric-decoration" :size="40" /><strong>{{
+              teamTasksError ? 'Indisponible' : teamTasks ? teamTasks.overdue : '…'
+            }}</strong
+            ><span class="metric-arrow"><ArrowUpRight :size="21" /></span>
+          </button>
+        </div>
+        <p v-if="teamTasksError" class="panel-feedback" role="alert">
+          Compteurs de tâches indisponibles : {{ teamTasksError }}
+          <button class="home-refresh" @click="loadTeamTasks">Réessayer</button>
+        </p>
+      </div>
+      <aside class="home-hero-side">
+        <button
+          v-if="assurance"
+          class="home-status-pill dark"
+          @click="$emit('navigate', 'assignments')"
+        >
+          <span class="pill-icon"><UserRoundCheck :size="19" /></span
+          ><span><strong>Affectations</strong><small>Setters et conseillers</small></span
+          ><ArrowUpRight :size="19" />
+        </button>
+        <button v-else class="home-status-pill dark" @click="$emit('navigate', 'contacts')">
+          <span class="pill-icon"><UserRoundCheck :size="19" /></span
+          ><span
+            ><strong>{{ summary.unassigned ?? 0 }} prospect(s)</strong
+            ><small>Sans affectation</small></span
+          ><ArrowUpRight :size="19" />
+        </button>
+        <button class="home-status-pill" @click="$emit('navigate', 'appointments')">
+          <span class="pill-icon"><CalendarCheck :size="19" /></span
+          ><span
+            ><strong>Agenda de l’équipe</strong
+            ><small>{{ assurance ? 'Rendez-vous' : 'Visites' }} planifiés</small></span
+          ><ArrowUpRight :size="19" />
+        </button>
+        <button class="home-feature" @click="$emit('navigate', 'statistics')">
+          <span class="feature-tag"><BarChart3 :size="13" />PILOTAGE</span
+          ><strong>Suivez l’activité<br />de votre équipe.</strong
+          ><span>Ouvrir les statistiques <ArrowUpRight :size="19" /></span>
+        </button>
+      </aside>
+    </div>
+    <section class="home-panel home-agenda">
+      <header class="panel-heading">
+        <div>
+          <h2>
+            {{ assurance ? 'Prochains rendez-vous de l’équipe' : 'Prochaines visites de l’équipe' }}
+          </h2>
+          <p>Les trois prochains créneaux prévus</p>
+        </div>
+        <CalendarCheck :size="21" />
+      </header>
+      <p v-if="loading" class="panel-feedback" role="status">Chargement de l’agenda…</p>
+      <div v-else-if="error" class="panel-feedback" role="alert">
+        <p>{{ error }}</p>
+        <button class="home-refresh" @click="loadUpcoming">Réessayer</button>
+      </div>
+      <div v-else-if="!upcoming.length" class="agenda-empty">
+        <span><CalendarCheck :size="24" /></span>
+        <div>
+          <h3>Agenda libre</h3>
+          <p>Aucun {{ assurance ? 'rendez-vous' : 'créneau' }} à venir dans l’équipe.</p>
+        </div>
+      </div>
+      <div v-else class="agenda-table-wrap">
+        <table class="home-agenda-table">
+          <thead>
+            <tr>
+              <th>Prospect</th>
+              <th>Date et heure</th>
+              <th>Fuseau</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in upcoming" :key="row.id">
+              <td>{{ (assurance ? row.contact : row.prospect)?.name || 'Dossier sans nom' }}</td>
+              <td>
+                <time>{{ date(row) }}</time>
+              </td>
+              <td>{{ row.timezone || 'America/Toronto' }}</td>
+              <td><span class="appointment-status">Prévu</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="text-link" @click="$emit('navigate', 'appointments')">
+        Voir l’agenda de l’équipe<ArrowRight :size="16" />
+      </button>
+    </section>
+    <details v-if="assurance" class="home-followup-details" open>
+      <summary>
+        <span class="followup-summary-icon"><ListTodo :size="18" /></span
+        ><span
+          ><strong>Alertes et notifications</strong
+          ><small>Échéances des mandats, rappels et suivis</small></span
+        ><ChevronDown :size="18" />
+      </summary>
+      <div class="home-followup-content"><slot /></div>
+    </details>
+  </section>
+  <section v-else class="crm-overview">
+    <div class="crm-metrics">
+      <div v-for="metric in metrics" :key="metric.label" class="crm-metric">
+        <span class="metric-icon" :class="metric.tone"
+          ><component :is="metric.icon" :size="20"
+        /></span>
+        <div>
+          <p>{{ metric.label }}</p>
+          <strong>{{ metric.value ?? 0 }}</strong>
+        </div>
+      </div>
+    </div>
+    <div class="crm-overview-grid">
+      <section class="crm-priorities">
+        <div class="overview-section-title">
+          <h3>Votre activité</h3>
+          <span>{{ workspace === 'assurance' ? 'Assurance' : 'Isolation' }}</span>
+        </div>
+        <button class="overview-action" @click="$emit('navigate', 'contacts')">
+          <span class="action-icon"><Users :size="20" /></span
+          ><span
+            ><strong>{{
+              role === 'client' ? 'Consulter mes dossiers' : 'Retrouver mes contacts'
+            }}</strong
+            ><small>{{
+              role === 'client'
+                ? 'Voir les visites et les setters à l’origine des réservations.'
+                : 'Ouvrir les fiches, qualifier et préparer les prochains échanges.'
+            }}</small></span
+          ><ArrowUpRight :size="18" /></button
+        ><button
+          v-if="role !== 'client'"
+          class="overview-action"
+          @click="$emit('navigate', 'appointments')"
+        >
+          <span class="action-icon purple"><CalendarCheck :size="20" /></span
+          ><span
+            ><strong>{{ assurance ? 'Gérer les rendez-vous' : 'Gérer les visites' }}</strong
+            ><small>Consulter les créneaux et suivre les comptes rendus.</small></span
+          ><ArrowUpRight :size="18" /></button
+        ><button
+          v-if="assurance && role !== 'advisor'"
+          class="overview-action"
+          @click="$emit('navigate', 'followups')"
+        >
+          <span class="action-icon orange"><ListTodo :size="20" /></span
+          ><span
+            ><strong>Traiter les tâches de suivi</strong
+            ><small>Retrouver les actions ouvertes et les prochaines échéances.</small></span
+          ><ArrowUpRight :size="18" />
+        </button>
+      </section>
+      <aside class="crm-workspace-note">
+        <span class="note-tag">VOTRE AGENDA</span>
+        <h3>{{ assurance ? 'Prochains rendez-vous' : 'Prochaines visites' }}</h3>
+        <p v-if="loading">Chargement de l’agenda…</p>
+        <p v-else-if="error" role="alert">
+          {{ error }} <button class="secondary" @click="loadUpcoming">Réessayer</button>
+        </p>
+        <p v-else-if="!upcoming.length">Aucun créneau à venir dans votre périmètre.</p>
+        <ol v-else class="upcoming-list">
+          <li v-for="row in upcoming" :key="row.id">
+            <span>{{ date(row) }}</span
+            ><strong>{{
+              (assurance ? row.contact : row.prospect)?.name || 'Dossier sans nom'
+            }}</strong>
+          </li>
+        </ol>
+        <button class="agenda-link" @click="$emit('navigate', 'appointments')">
+          Ouvrir l’agenda<ArrowUpRight :size="16" />
+        </button>
+      </aside>
+    </div>
+    <div class="crm-dashboard-details"><slot /></div>
+  </section>
 </template>
 <style scoped>
 .crm-welcome {

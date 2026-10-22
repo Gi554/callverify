@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue';
 const props = defineProps<{
-  request: (path: string, body?: any, method?: string) => Promise<any>
-}>()
-const emit = defineEmits<{ busy: [value: boolean]; close: [] }>()
-const baseline = ref('')
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+}>();
+const emit = defineEmits<{ busy: [value: boolean]; close: [] }>();
+const baseline = ref('');
 const rules = ref<any>(null),
   reason = ref(''),
   busy = ref(false),
@@ -13,60 +13,141 @@ const rules = ref<any>(null),
   history = ref<any[]>([]),
   page = ref(1),
   count = ref(0),
-  showHistory = ref(false)
+  showHistory = ref(false);
 async function load() {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
-    rules.value = await props.request('follow-up-policy/')
-    baseline.value = JSON.stringify(rules.value)
+    rules.value = await props.request('follow-up-policy/');
+    baseline.value = JSON.stringify(rules.value);
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function save() {
-  busy.value = true
-  error.value = ''
-  message.value = ''
+  busy.value = true;
+  error.value = '';
+  message.value = '';
   try {
-    rules.value = await props.request('follow-up-policy/', { ...rules.value, reason: reason.value })
-    reason.value = ''
-    baseline.value = JSON.stringify(rules.value)
-    message.value = 'Règles enregistrées. Les tâches déjà planifiées sont conservées.'
+    rules.value = await props.request('follow-up-policy/', {
+      ...rules.value,
+      reason: reason.value,
+    });
+    reason.value = '';
+    baseline.value = JSON.stringify(rules.value);
+    message.value = 'Règles enregistrées. Les tâches déjà planifiées sont conservées.';
     if (showHistory.value) {
-      page.value = 1
-      await loadHistory()
+      page.value = 1;
+      await loadHistory();
     }
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function loadHistory() {
   try {
-    const data = await props.request(`follow-up-policy/history/?page=${page.value}`)
-    history.value = data.results
-    count.value = data.count
-    showHistory.value = true
+    const data = await props.request(`follow-up-policy/history/?page=${page.value}`);
+    history.value = data.results;
+    count.value = data.count;
+    showHistory.value = true;
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   }
 }
-watch(busy, (value) => emit('busy', value), { flush: 'sync' })
+watch(busy, (value) => emit('busy', value), { flush: 'sync' });
 function close() {
-  if (busy.value) return
+  if (busy.value) return;
   if (
     (reason.value || JSON.stringify(rules.value) !== baseline.value) &&
     !window.confirm('Quitter sans enregistrer les règles ?')
   )
-    return
-  emit('close')
+    return;
+  emit('close');
 }
-defineExpose({ close })
-onMounted(load)
+defineExpose({ close });
+onMounted(load);
 </script>
-<!-- prettier-ignore -->
-<template><section><h3>Règles de suivi Assurance</h3><p>Ces règles concernent les nouvelles tâches et les prochaines réouvertures. Les tâches ouvertes conservent leur planification. Délais en heures écoulées, sans calendrier de jours ouvrés.</p><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status">{{message}}</p><form v-if="rules" @submit.prevent="save"><label>Délai initial (heures)<input v-model.number="rules.initial_hours" type="number" min="1" max="720" required></label><label>Délai à la réouverture (heures)<input v-model.number="rules.reopen_hours" type="number" min="1" max="720" required></label><label>Priorité initiale<select v-model="rules.default_priority"><option value="low">Basse</option><option value="normal">Normale</option><option value="high">Haute</option><option value="urgent">Urgente</option></select></label><label>Motif de modification<textarea v-model="reason" required maxlength="1000"></textarea></label><button class="primary" :disabled="busy">Enregistrer les règles</button></form><button class="secondary" :disabled="busy" @click="load">Recharger les règles</button><button class="secondary" :disabled="busy" @click="page=1;loadHistory()">Historique</button><section v-if="showHistory"><article v-for="entry in history" :key="entry.id"><p>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur {{entry.actor_id}}</p><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><button class="secondary" :disabled="page===1" @click="page--;loadHistory()">Précédent</button><button class="secondary" :disabled="page*25>=count" @click="page++;loadHistory()">Suivant</button><button class="secondary" @click="showHistory=false">Fermer</button></section></section></template>
+<template>
+  <section>
+    <h3>Règles de suivi Assurance</h3>
+    <p>
+      Ces règles concernent les nouvelles tâches et les prochaines réouvertures. Les tâches ouvertes
+      conservent leur planification. Délais en heures écoulées, sans calendrier de jours ouvrés.
+    </p>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
+    <form v-if="rules" @submit.prevent="save">
+      <label
+        >Délai initial (heures)<input
+          v-model.number="rules.initial_hours"
+          type="number"
+          min="1"
+          max="720"
+          required /></label
+      ><label
+        >Délai à la réouverture (heures)<input
+          v-model.number="rules.reopen_hours"
+          type="number"
+          min="1"
+          max="720"
+          required /></label
+      ><label
+        >Priorité initiale<select v-model="rules.default_priority">
+          <option value="low">Basse</option>
+          <option value="normal">Normale</option>
+          <option value="high">Haute</option>
+          <option value="urgent">Urgente</option>
+        </select></label
+      ><label
+        >Motif de modification<textarea
+          v-model="reason"
+          required
+          maxlength="1000"
+        ></textarea></label
+      ><button class="primary" :disabled="busy">Enregistrer les règles</button>
+    </form>
+    <button class="secondary" :disabled="busy" @click="load">Recharger les règles</button
+    ><button
+      class="secondary"
+      :disabled="busy"
+      @click="
+        page = 1;
+        loadHistory();
+      "
+    >
+      Historique
+    </button>
+    <section v-if="showHistory">
+      <article v-for="entry in history" :key="entry.id">
+        <p>
+          {{ new Date(entry.created_at).toLocaleString('fr-FR') }} · utilisateur
+          {{ entry.actor_id }}
+        </p>
+        <pre>{{ JSON.stringify(entry.metadata, null, 2) }}</pre>
+      </article>
+      <button
+        class="secondary"
+        :disabled="page === 1"
+        @click="
+          page--;
+          loadHistory();
+        "
+      >
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="page * 25 >= count"
+        @click="
+          page++;
+          loadHistory();
+        "
+      >
+        Suivant</button
+      ><button class="secondary" @click="showHistory = false">Fermer</button>
+    </section>
+  </section>
+</template>
