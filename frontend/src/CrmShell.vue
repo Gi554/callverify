@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref } from 'vue';
 import {
   Layers,
   ChevronDown,
@@ -22,41 +22,41 @@ import {
   Phone,
   Bell,
   HelpCircle,
-} from 'lucide-vue-next'
+} from 'lucide-vue-next';
 const props = defineProps<{
-  username: string
-  workspace: string
-  role: string
-  spaces: { workspace: string; role: string }[]
-  items: { id: string; label: string; icon: string }[]
-  active: string
-  pageTitle: string
-  accountOpen: boolean
-  accessOpen: boolean
-  canManage: boolean
-}>()
+  username: string;
+  workspace: string;
+  role: string;
+  spaces: { workspace: string; role: string }[];
+  items: { id: string; label: string; icon: string }[];
+  active: string;
+  pageTitle: string;
+  accountOpen: boolean;
+  accessOpen: boolean;
+  canManage: boolean;
+}>();
 const emit = defineEmits<{
-  workspace: [value: string]
-  navigate: [value: string]
-  account: []
-  access: []
-  logout: []
-}>()
-const mobile = ref(false)
-const profileOpen = ref(false)
-const admin = computed(() => props.role === 'administrator')
+  workspace: [value: string];
+  navigate: [value: string];
+  account: [];
+  access: [];
+  logout: [];
+}>();
+const mobile = ref(false);
+const profileOpen = ref(false);
+const admin = computed(() => props.role === 'administrator');
 // Modules opened from the "Pilotage" block of the administrator sidebar.
-const steeringIds = ['statistics', 'assignments', 'agreements', 'fields', 'qualification']
+const steeringIds = ['statistics', 'assignments', 'agreements', 'fields', 'qualification'];
 const mainItems = computed(() =>
   props.items.filter((item) =>
     admin.value ? !steeringIds.includes(item.id) : item.id !== 'statistics',
   ),
-)
+);
 const steeringItems = computed(() =>
   props.items.filter((item) =>
     admin.value ? steeringIds.includes(item.id) : item.id === 'statistics',
   ),
-)
+);
 const setterLabel = (item: { id: string; label: string }) =>
   (
     ({
@@ -65,7 +65,7 @@ const setterLabel = (item: { id: string; label: string }) =>
       followups: 'Tâches',
       statistics: admin.value ? 'Statistiques' : 'Mes statistiques',
     }) as Record<string, string>
-  )[item.id] || item.label
+  )[item.id] || item.label;
 const icons: Record<string, any> = {
   overview: LayoutDashboard,
   contacts: ContactRound,
@@ -76,51 +76,306 @@ const icons: Record<string, any> = {
   agreements: Files,
   fields: Settings2,
   qualification: ShieldCheck,
-}
+};
 const roles: Record<string, string> = {
   administrator: 'Administrateur',
   setter: 'Setter',
   advisor: 'Conseiller',
   client: 'Client',
   closer: 'Closer',
-}
+};
 function navigate(id: string) {
-  emit('navigate', id)
-  mobile.value = false
+  emit('navigate', id);
+  mobile.value = false;
 }
 </script>
-<!-- prettier-ignore -->
 <template>
- <div v-if="username&&(role==='setter'||admin)" class="crm-shell crm-connected setter-shell" :class="{'admin-shell':admin}">
-  <header class="setter-header">
-   <button class="setter-mobile" :aria-expanded="mobile" aria-label="Ouvrir ou fermer le menu" @click="mobile=!mobile"><Menu :size="23"/></button>
-   <a class="setter-brand" href="/crm" aria-label="AMX CRM, accueil"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M3 42 24 5l21 37H30l-6-11-6 11H3Z" fill="#0875ed"/><path d="m14 35 10-18 10 18h-6l-4-7-4 7Z" fill="white"/></svg><span><strong>AMX</strong><small>CRM</small></span></a>
-   <button class="setter-search" aria-label="Rechercher un prospect" @click="navigate('contacts')"><Search :size="22"/><span>Rechercher un contact, un numéro…</span></button>
-   <div class="setter-tools"><button v-if="!admin" class="setter-phone" disabled title="Appels : ouvrez une fiche prospect pour appeler" aria-label="Appels, accessibles depuis une fiche prospect"><Phone :size="22"/></button><button v-if="items.some(item=>item.id==='followups')" :title="admin?'Tâches de l’équipe':'Mes tâches'" :aria-label="admin?'Consulter les tâches de l’équipe':'Consulter mes tâches'" @click="navigate('followups')"><Bell :size="22"/></button><button disabled title="Centre d’aide à venir" aria-label="Centre d’aide indisponible"><HelpCircle :size="24"/></button></div>
-   <div class="setter-profile"><button class="setter-profile-trigger" :aria-expanded="profileOpen" aria-controls="setter-profile-menu" @click="profileOpen=!profileOpen"><span class="setter-avatar">{{username.slice(0,2).toUpperCase()}}</span><span><strong>{{username}}</strong><small>{{workspace==='assurance'?'Assurance':workspace==='isolation'?'Isolation':'Mes espaces'}}{{admin?' · Administration':''}}</small></span><ChevronDown :size="17"/></button>
-    <div v-show="profileOpen" id="setter-profile-menu" class="setter-profile-menu" @keydown.esc="profileOpen=false"><label v-if="spaces.length>1">Espace de travail<select :value="workspace" @change="emit('workspace',($event.target as HTMLSelectElement).value);profileOpen=false"><option disabled value="">Choisir un espace</option><option v-for="space in spaces" :key="space.workspace" :value="space.workspace">{{space.workspace==='assurance'?'Assurance':'Isolation'}}</option></select></label><button @click="emit('account');profileOpen=false"><Settings2 :size="17"/>Mon compte</button><button @click="emit('logout')"><LogOut :size="17"/>Se déconnecter</button></div>
-   </div>
-  </header>
-  <aside class="setter-sidebar" :class="{'is-open':mobile}" aria-label="Navigation principale"><nav><button v-for="item in mainItems" :key="item.id" :style="{order:({overview:1,contacts:2,appointments:4,pipeline:5,followups:6} as Record<string,number>)[item.id]||7}" :class="{'is-active':active===item.id&&!accountOpen&&!accessOpen}" :aria-current="active===item.id&&!accountOpen&&!accessOpen?'page':undefined" @click="navigate(item.id)"><Home v-if="item.id==='overview'" :size="26"/><component v-else :is="icons[item.icon]||ContactRound" :size="26"/><span>{{setterLabel(item)}}</span></button><button v-if="!admin" style="order:3" disabled title="Les appels se lancent depuis une fiche prospect"><Phone :size="26"/><span>Appels</span></button></nav><div class="setter-statistics"><p v-if="admin" class="setter-group-label">Pilotage</p><button v-for="item in steeringItems" :key="item.id" :class="{'is-active':active===item.id&&!accountOpen&&!accessOpen}" :aria-current="active===item.id&&!accountOpen&&!accessOpen?'page':undefined" @click="navigate(item.id)"><component :is="icons[item.icon]||BarChart3" :size="26"/><span>{{setterLabel(item)}}</span></button><button v-if="admin&&canManage" :class="{'is-active':accessOpen}" :aria-current="accessOpen?'page':undefined" @click="emit('access');mobile=false"><Users :size="26"/><span>Utilisateurs et accès</span></button></div></aside>
-  <button v-if="mobile" class="setter-backdrop" aria-label="Fermer le menu" @click="mobile=false"></button>
-  <div class="crm-stage setter-stage"><slot/></div>
- </div>
- <div v-else class="crm-shell" :class="{'crm-connected':!!username}">
-  <aside v-if="username" class="crm-sidebar" :class="{'is-open':mobile}" aria-label="Navigation principale">
-   <a class="crm-logo" href="/crm"><span><Layers :size="23"/></span>amx<span class="crm-logo-dot">.</span><small>CRM</small></a>
-   <div class="crm-space-switch"><label :for="spaces.length>1?'crm-space':undefined">ESPACE DE TRAVAIL</label><div v-if="spaces.length>1"><select id="crm-space" :value="workspace" @change="emit('workspace',($event.target as HTMLSelectElement).value)"><option disabled value="">Choisir un espace</option><option v-for="space in spaces" :key="space.workspace" :value="space.workspace">{{space.workspace==='assurance'?'Assurance':'Isolation'}}</option></select><ChevronDown :size="15"/></div><strong v-else class="crm-single-space">{{workspace==='assurance'?'Assurance':workspace==='isolation'?'Isolation':'Aucun espace actif'}}</strong><small v-if="role">{{roles[role]||role}}</small></div>
-   <p class="crm-nav-label">VOTRE ACTIVITÉ</p>
-   <nav><button v-for="item in items" :key="item.id" class="crm-nav-item" :class="{'is-active':active===item.id&&!accountOpen&&!accessOpen}" :aria-current="active===item.id&&!accountOpen&&!accessOpen?'page':undefined" @click="navigate(item.id)"><component :is="icons[item.icon]||ContactRound" :size="19"/><span>{{item.label}}</span><ChevronRight v-if="active===item.id&&!accountOpen&&!accessOpen" :size="14" class="crm-nav-arrow"/></button></nav>
-   <div class="crm-nav-bottom"><p class="crm-nav-label">ESPACE PERSONNEL</p><button v-if="canManage" class="crm-nav-item" :class="{'is-active':accessOpen}" @click="emit('access');mobile=false"><Users :size="19"/>Utilisateurs et accès</button><button class="crm-nav-item" :class="{'is-active':accountOpen}" @click="emit('account');mobile=false"><Settings2 :size="19"/>Mon compte</button></div>
-   <div class="crm-profile"><span class="crm-avatar">{{username.slice(0,2).toUpperCase()}}</span><span><strong>{{username}}</strong><small>{{roles[role]||'Compte connecté'}}</small></span><button aria-label="Se déconnecter" title="Se déconnecter" @click="emit('logout')"><LogOut :size="18"/></button></div>
-  </aside>
-  <button v-if="mobile" class="crm-backdrop" aria-label="Fermer le menu" @click="mobile=false"></button>
-  <div class="crm-stage">
-   <header class="crm-topbar" v-if="username"><button class="crm-mobile-toggle" :aria-expanded="mobile" aria-label="Ouvrir ou fermer le menu" @click="mobile=!mobile"><X v-if="mobile" :size="22"/><Menu v-else :size="22"/></button><div class="crm-breadcrumb"><span>{{workspace?(workspace==='assurance'?'Assurance':'Isolation'):'Mes espaces'}}</span><ChevronRight :size="14"/><strong>{{accountOpen?'Mon compte':accessOpen?'Utilisateurs et accès':pageTitle}}</strong></div><span class="crm-connected-status"><i></i>Espace privé</span><span class="crm-avatar crm-top-avatar">{{username.slice(0,2).toUpperCase()}}</span></header>
-   <header v-else class="crm-public-header"><a class="crm-logo" href="/crm"><span><Layers :size="23"/></span>amx<span class="crm-logo-dot">.</span><small>CRM</small></a><span>Vos équipes. Vos contacts. Un seul espace.</span></header>
-   <slot/>
+  <div
+    v-if="username && (role === 'setter' || admin)"
+    class="crm-shell crm-connected setter-shell"
+    :class="{ 'admin-shell': admin }"
+  >
+    <header class="setter-header">
+      <button
+        class="setter-mobile"
+        :aria-expanded="mobile"
+        aria-label="Ouvrir ou fermer le menu"
+        @click="mobile = !mobile"
+      >
+        <Menu :size="23" />
+      </button>
+      <a class="setter-brand" href="/crm" aria-label="AMX CRM, accueil"
+        ><svg viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M3 42 24 5l21 37H30l-6-11-6 11H3Z" fill="#0875ed" />
+          <path d="m14 35 10-18 10 18h-6l-4-7-4 7Z" fill="white" /></svg
+        ><span><strong>AMX</strong><small>CRM</small></span></a
+      >
+      <button
+        class="setter-search"
+        aria-label="Rechercher un prospect"
+        @click="navigate('contacts')"
+      >
+        <Search :size="22" /><span>Rechercher un contact, un numéro…</span>
+      </button>
+      <div class="setter-tools">
+        <button
+          v-if="!admin"
+          class="setter-phone"
+          disabled
+          title="Appels : ouvrez une fiche prospect pour appeler"
+          aria-label="Appels, accessibles depuis une fiche prospect"
+        >
+          <Phone :size="22" /></button
+        ><button
+          v-if="items.some((item) => item.id === 'followups')"
+          :title="admin ? 'Tâches de l’équipe' : 'Mes tâches'"
+          :aria-label="admin ? 'Consulter les tâches de l’équipe' : 'Consulter mes tâches'"
+          @click="navigate('followups')"
+        >
+          <Bell :size="22" /></button
+        ><button disabled title="Centre d’aide à venir" aria-label="Centre d’aide indisponible">
+          <HelpCircle :size="24" />
+        </button>
+      </div>
+      <div class="setter-profile">
+        <button
+          class="setter-profile-trigger"
+          :aria-expanded="profileOpen"
+          aria-controls="setter-profile-menu"
+          @click="profileOpen = !profileOpen"
+        >
+          <span class="setter-avatar">{{ username.slice(0, 2).toUpperCase() }}</span
+          ><span
+            ><strong>{{ username }}</strong
+            ><small
+              >{{
+                workspace === 'assurance'
+                  ? 'Assurance'
+                  : workspace === 'isolation'
+                    ? 'Isolation'
+                    : 'Mes espaces'
+              }}{{ admin ? ' · Administration' : '' }}</small
+            ></span
+          ><ChevronDown :size="17" />
+        </button>
+        <div
+          v-show="profileOpen"
+          id="setter-profile-menu"
+          class="setter-profile-menu"
+          @keydown.esc="profileOpen = false"
+        >
+          <label v-if="spaces.length > 1"
+            >Espace de travail<select
+              :value="workspace"
+              @change="
+                emit('workspace', ($event.target as HTMLSelectElement).value);
+                profileOpen = false;
+              "
+            >
+              <option disabled value="">Choisir un espace</option>
+              <option v-for="space in spaces" :key="space.workspace" :value="space.workspace">
+                {{ space.workspace === 'assurance' ? 'Assurance' : 'Isolation' }}
+              </option>
+            </select></label
+          ><button
+            @click="
+              emit('account');
+              profileOpen = false;
+            "
+          >
+            <Settings2 :size="17" />Mon compte</button
+          ><button @click="emit('logout')"><LogOut :size="17" />Se déconnecter</button>
+        </div>
+      </div>
+    </header>
+    <aside class="setter-sidebar" :class="{ 'is-open': mobile }" aria-label="Navigation principale">
+      <nav>
+        <button
+          v-for="item in mainItems"
+          :key="item.id"
+          :style="{
+            order:
+              (
+                { overview: 1, contacts: 2, appointments: 4, pipeline: 5, followups: 6 } as Record<
+                  string,
+                  number
+                >
+              )[item.id] || 7,
+          }"
+          :class="{ 'is-active': active === item.id && !accountOpen && !accessOpen }"
+          :aria-current="active === item.id && !accountOpen && !accessOpen ? 'page' : undefined"
+          @click="navigate(item.id)"
+        >
+          <Home v-if="item.id === 'overview'" :size="26" /><component
+            v-else
+            :is="icons[item.icon] || ContactRound"
+            :size="26"
+          /><span>{{ setterLabel(item) }}</span></button
+        ><button
+          v-if="!admin"
+          style="order: 3"
+          disabled
+          title="Les appels se lancent depuis une fiche prospect"
+        >
+          <Phone :size="26" /><span>Appels</span>
+        </button>
+      </nav>
+      <div class="setter-statistics">
+        <p v-if="admin" class="setter-group-label">Pilotage</p>
+        <button
+          v-for="item in steeringItems"
+          :key="item.id"
+          :class="{ 'is-active': active === item.id && !accountOpen && !accessOpen }"
+          :aria-current="active === item.id && !accountOpen && !accessOpen ? 'page' : undefined"
+          @click="navigate(item.id)"
+        >
+          <component :is="icons[item.icon] || BarChart3" :size="26" /><span>{{
+            setterLabel(item)
+          }}</span></button
+        ><button
+          v-if="admin && canManage"
+          :class="{ 'is-active': accessOpen }"
+          :aria-current="accessOpen ? 'page' : undefined"
+          @click="
+            emit('access');
+            mobile = false;
+          "
+        >
+          <Users :size="26" /><span>Utilisateurs et accès</span>
+        </button>
+      </div>
+    </aside>
+    <button
+      v-if="mobile"
+      class="setter-backdrop"
+      aria-label="Fermer le menu"
+      @click="mobile = false"
+    ></button>
+    <div class="crm-stage setter-stage"><slot /></div>
   </div>
- </div>
+  <div v-else class="crm-shell" :class="{ 'crm-connected': !!username }">
+    <aside
+      v-if="username"
+      class="crm-sidebar"
+      :class="{ 'is-open': mobile }"
+      aria-label="Navigation principale"
+    >
+      <a class="crm-logo" href="/crm"
+        ><span><Layers :size="23" /></span>amx<span class="crm-logo-dot">.</span
+        ><small>CRM</small></a
+      >
+      <div class="crm-space-switch">
+        <label :for="spaces.length > 1 ? 'crm-space' : undefined">ESPACE DE TRAVAIL</label>
+        <div v-if="spaces.length > 1">
+          <select
+            id="crm-space"
+            :value="workspace"
+            @change="emit('workspace', ($event.target as HTMLSelectElement).value)"
+          >
+            <option disabled value="">Choisir un espace</option>
+            <option v-for="space in spaces" :key="space.workspace" :value="space.workspace">
+              {{ space.workspace === 'assurance' ? 'Assurance' : 'Isolation' }}
+            </option></select
+          ><ChevronDown :size="15" />
+        </div>
+        <strong v-else class="crm-single-space">{{
+          workspace === 'assurance'
+            ? 'Assurance'
+            : workspace === 'isolation'
+              ? 'Isolation'
+              : 'Aucun espace actif'
+        }}</strong
+        ><small v-if="role">{{ roles[role] || role }}</small>
+      </div>
+      <p class="crm-nav-label">VOTRE ACTIVITÉ</p>
+      <nav>
+        <button
+          v-for="item in items"
+          :key="item.id"
+          class="crm-nav-item"
+          :class="{ 'is-active': active === item.id && !accountOpen && !accessOpen }"
+          :aria-current="active === item.id && !accountOpen && !accessOpen ? 'page' : undefined"
+          @click="navigate(item.id)"
+        >
+          <component :is="icons[item.icon] || ContactRound" :size="19" /><span>{{
+            item.label
+          }}</span
+          ><ChevronRight
+            v-if="active === item.id && !accountOpen && !accessOpen"
+            :size="14"
+            class="crm-nav-arrow"
+          />
+        </button>
+      </nav>
+      <div class="crm-nav-bottom">
+        <p class="crm-nav-label">ESPACE PERSONNEL</p>
+        <button
+          v-if="canManage"
+          class="crm-nav-item"
+          :class="{ 'is-active': accessOpen }"
+          @click="
+            emit('access');
+            mobile = false;
+          "
+        >
+          <Users :size="19" />Utilisateurs et accès</button
+        ><button
+          class="crm-nav-item"
+          :class="{ 'is-active': accountOpen }"
+          @click="
+            emit('account');
+            mobile = false;
+          "
+        >
+          <Settings2 :size="19" />Mon compte
+        </button>
+      </div>
+      <div class="crm-profile">
+        <span class="crm-avatar">{{ username.slice(0, 2).toUpperCase() }}</span
+        ><span
+          ><strong>{{ username }}</strong
+          ><small>{{ roles[role] || 'Compte connecté' }}</small></span
+        ><button aria-label="Se déconnecter" title="Se déconnecter" @click="emit('logout')">
+          <LogOut :size="18" />
+        </button>
+      </div>
+    </aside>
+    <button
+      v-if="mobile"
+      class="crm-backdrop"
+      aria-label="Fermer le menu"
+      @click="mobile = false"
+    ></button>
+    <div class="crm-stage">
+      <header class="crm-topbar" v-if="username">
+        <button
+          class="crm-mobile-toggle"
+          :aria-expanded="mobile"
+          aria-label="Ouvrir ou fermer le menu"
+          @click="mobile = !mobile"
+        >
+          <X v-if="mobile" :size="22" /><Menu v-else :size="22" />
+        </button>
+        <div class="crm-breadcrumb">
+          <span>{{
+            workspace ? (workspace === 'assurance' ? 'Assurance' : 'Isolation') : 'Mes espaces'
+          }}</span
+          ><ChevronRight :size="14" /><strong>{{
+            accountOpen ? 'Mon compte' : accessOpen ? 'Utilisateurs et accès' : pageTitle
+          }}</strong>
+        </div>
+        <span class="crm-connected-status"><i></i>Espace privé</span
+        ><span class="crm-avatar crm-top-avatar">{{ username.slice(0, 2).toUpperCase() }}</span>
+      </header>
+      <header v-else class="crm-public-header">
+        <a class="crm-logo" href="/crm"
+          ><span><Layers :size="23" /></span>amx<span class="crm-logo-dot">.</span
+          ><small>CRM</small></a
+        ><span>Vos équipes. Vos contacts. Un seul espace.</span>
+      </header>
+      <slot />
+    </div>
+  </div>
 </template>
 <style scoped>
 .crm-shell {

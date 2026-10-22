@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import IsolationStatistics from './IsolationStatistics.vue'
-import IsolationVisits from './IsolationVisits.vue'
-const showStatistics = ref(false)
+import { ref, onMounted } from 'vue';
+import IsolationStatistics from './IsolationStatistics.vue';
+import IsolationVisits from './IsolationVisits.vue';
+const showStatistics = ref(false);
 const props = defineProps<{
-  portal: (path: string, body?: any) => Promise<any>
-  request: (path: string, body?: any, method?: string) => Promise<any>
-}>()
-const visitsOpen = ref(true)
+  portal: (path: string, body?: any) => Promise<any>;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+}>();
+const visitsOpen = ref(true);
 const summary = ref<any>(null),
   rows = ref<any[]>([]),
   page = ref(1),
@@ -15,24 +15,124 @@ const summary = ref<any>(null),
   search = ref(''),
   prospect = ref<number | undefined>(undefined),
   busy = ref(false),
-  error = ref('')
+  error = ref('');
 async function load() {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
-    summary.value = await props.request('client-dashboard/')
+    summary.value = await props.request('client-dashboard/');
     const data = await props.request(
       `client-prospects/?page=${page.value}&search=${encodeURIComponent(search.value)}`,
-    )
-    rows.value = data.results
-    count.value = data.count
+    );
+    rows.value = data.results;
+    count.value = data.count;
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
-onMounted(load)
+onMounted(load);
 </script>
-<!-- prettier-ignore -->
-<template><section><button class="secondary" @click="showStatistics=!showStatistics">{{showStatistics?'Masquer les statistiques':'Voir les statistiques'}}</button><IsolationStatistics v-if="showStatistics" role="client" :request="request"/><h3>Mon espace client Isolation</h3><p v-if="error" role="alert">{{error}}</p><template v-if="summary"><p>{{summary.upcoming}} visite(s) à venir · {{summary.reported}} résultat(s) renseigné(s)</p><p v-if="summary.results_due" role="status">{{summary.results_due}} visite(s) passée(s) attendent votre résultat. La consultation ne supprime pas cette attente.</p></template><button class="secondary" :disabled="busy" @click="load">Actualiser mes compteurs et dossiers</button><form @submit.prevent="page=1;load()"><label>Rechercher un dossier par nom<input v-model="search"></label><button class="secondary" :disabled="busy">Rechercher</button></form><div class="table-scroll"><table><thead><tr><th>Dossier</th><th>Téléphone</th><th>Référence</th><th>Suivi</th></tr></thead><tbody><tr v-for="row in rows" :key="row.id"><td><strong>{{row.name||'Prospect sans nom'}}</strong></td><td>{{row.raw_phone}}</td><td>{{row.reference||'—'}}</td><td><button class="secondary" :disabled="busy" @click="prospect=row.id;visitsOpen=true">Visites et résultats →</button></td></tr><tr v-if="!rows.length"><td colspan="4">{{busy?'Chargement…':'Aucun dossier dans votre périmètre.'}}</td></tr></tbody></table></div><p>{{count}} dossier(s) · page {{page}}</p><button class="secondary" :disabled="busy||page===1" @click="page--;load()">Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="page++;load()">Suivant</button><button class="secondary" @click="prospect=undefined;visitsOpen=true">Toutes mes visites</button><IsolationVisits v-if="visitsOpen" :key="prospect||0" role="client" :prospect-id="prospect" :portal="portal" :request="request" @close="visitsOpen=false" @changed="load"/></section></template>
+<template>
+  <section>
+    <button class="secondary" @click="showStatistics = !showStatistics">
+      {{ showStatistics ? 'Masquer les statistiques' : 'Voir les statistiques' }}</button
+    ><IsolationStatistics v-if="showStatistics" role="client" :request="request" />
+    <h3>Mon espace client Isolation</h3>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <template v-if="summary"
+      ><p>
+        {{ summary.upcoming }} visite(s) à venir · {{ summary.reported }} résultat(s) renseigné(s)
+      </p>
+      <p v-if="summary.results_due" role="status">
+        {{ summary.results_due }} visite(s) passée(s) attendent votre résultat. La consultation ne
+        supprime pas cette attente.
+      </p></template
+    ><button class="secondary" :disabled="busy" @click="load">
+      Actualiser mes compteurs et dossiers
+    </button>
+    <form
+      @submit.prevent="
+        page = 1;
+        load();
+      "
+    >
+      <label>Rechercher un dossier par nom<input v-model="search" /></label
+      ><button class="secondary" :disabled="busy">Rechercher</button>
+    </form>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Dossier</th>
+            <th>Téléphone</th>
+            <th>Référence</th>
+            <th>Suivi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.id">
+            <td>
+              <strong>{{ row.name || 'Prospect sans nom' }}</strong>
+            </td>
+            <td>{{ row.raw_phone }}</td>
+            <td>{{ row.reference || '—' }}</td>
+            <td>
+              <button
+                class="secondary"
+                :disabled="busy"
+                @click="
+                  prospect = row.id;
+                  visitsOpen = true;
+                "
+              >
+                Visites et résultats →
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!rows.length">
+            <td colspan="4">{{ busy ? 'Chargement…' : 'Aucun dossier dans votre périmètre.' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>{{ count }} dossier(s) · page {{ page }}</p>
+    <button
+      class="secondary"
+      :disabled="busy || page === 1"
+      @click="
+        page--;
+        load();
+      "
+    >
+      Précédent</button
+    ><button
+      class="secondary"
+      :disabled="busy || page * 25 >= count"
+      @click="
+        page++;
+        load();
+      "
+    >
+      Suivant</button
+    ><button
+      class="secondary"
+      @click="
+        prospect = undefined;
+        visitsOpen = true;
+      "
+    >
+      Toutes mes visites</button
+    ><IsolationVisits
+      v-if="visitsOpen"
+      :key="prospect || 0"
+      role="client"
+      :prospect-id="prospect"
+      :portal="portal"
+      :request="request"
+      @close="visitsOpen = false"
+      @changed="load"
+    />
+  </section>
+</template>

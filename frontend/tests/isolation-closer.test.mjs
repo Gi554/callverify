@@ -131,7 +131,7 @@ function fixture({ fail = false, existing = false } = {}) {
 }
 async function open(f) {
   all(f.root)
-    .find((n) => n.tag === 'button' && n.text === 'Ouvrir la visite')
+    .find((n) => n.tag === 'button' && n.text?.trim() === 'Ouvrir la visite')
     .props.onClick()
   await flush()
 }
@@ -186,9 +186,11 @@ test('failed closer writes preserve the draft and a rejected close keeps the pan
       'Ne pas perdre',
     )
     await submit(f)
-    assert.ok(all(f.root).some((n) => n.props?.role === 'alert' && n.text === 'Visite modifiée'))
+    assert.ok(
+      all(f.root).some((n) => n.props?.role === 'alert' && n.text?.trim() === 'Visite modifiée'),
+    )
     all(f.root)
-      .find((n) => n.tag === 'button' && n.text === 'Fermer le panneau')
+      .find((n) => n.tag === 'button' && n.text?.trim() === 'Fermer le panneau')
       .props.onClick()
     await flush()
     assert.ok(all(f.root).some((n) => n.tag === 'form'))

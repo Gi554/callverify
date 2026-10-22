@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, markRaw } from 'vue';
 import {
   Rocket,
   Clock3,
@@ -12,35 +12,35 @@ import {
   AlertCircle,
   ListTodo,
   ShieldCheck,
-} from 'lucide-vue-next'
-import SidePanel from './SidePanel.vue'
-import AssuranceFollowUps from './AssuranceFollowUps.vue'
-import AssuranceFollowUpPolicy from './AssuranceFollowUpPolicy.vue'
-import { bookingInterval } from './booking-time'
+} from 'lucide-vue-next';
+import SidePanel from './SidePanel.vue';
+import AssuranceFollowUps from './AssuranceFollowUps.vue';
+import AssuranceFollowUpPolicy from './AssuranceFollowUpPolicy.vue';
+import { bookingInterval } from './booking-time';
 const props = defineProps<{
-  request: (path: string, body?: any, method?: string) => Promise<any>
-  role?: string
-  portal?: (path: string, body?: any) => Promise<any>
-}>()
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+  role?: string;
+  portal?: (path: string, body?: any) => Promise<any>;
+}>();
 const adminEditor = ref<any>(null),
   adminBusy = ref(false),
   policyOpen = ref(false),
   policyBusy = ref(false),
-  policyEditor = ref<any>(null)
-const emit = defineEmits<{ changed: []; navigate: [value: string] }>()
+  policyEditor = ref<any>(null);
+const emit = defineEmits<{ changed: []; navigate: [value: string] }>();
 type Column = {
-  key: string
-  label: string
-  hint: string
-  icon: any
-  tone: string
-  rows: any[]
-  count: number
-  page: number
-  next: boolean
-  busy: boolean
-  error: string
-}
+  key: string;
+  label: string;
+  hint: string;
+  icon: any;
+  tone: string;
+  rows: any[];
+  count: number;
+  page: number;
+  next: boolean;
+  busy: boolean;
+  error: string;
+};
 const columns = ref<Column[]>([
   {
     key: 'todo',
@@ -81,18 +81,18 @@ const columns = ref<Column[]>([
     busy: false,
     error: '',
   },
-])
+]);
 const summary = ref<any>(null),
   summaryError = ref(''),
   summaryBusy = ref(false),
   search = ref(''),
   priority = ref(''),
   appliedSearch = ref(''),
-  appliedPriority = ref('')
+  appliedPriority = ref('');
 const editing = ref(false),
   editReason = ref(''),
   editDue = ref(''),
-  editPriority = ref('normal')
+  editPriority = ref('normal');
 const selected = ref<any>(null),
   opening = ref(false),
   saving = ref(false),
@@ -100,33 +100,33 @@ const selected = ref<any>(null),
   boardMessage = ref(''),
   resolution = ref(''),
   discard = ref(false),
-  confirmed = ref(false)
-const busy = computed(() => summaryBusy.value || columns.value.some((c) => c.busy))
+  confirmed = ref(false);
+const busy = computed(() => summaryBusy.value || columns.value.some((c) => c.busy));
 const percentage = computed(() =>
   summary.value?.total ? Math.round((100 * summary.value.closed) / summary.value.total) : null,
-)
-const filtered = computed(() => !!appliedSearch.value || !!appliedPriority.value)
+);
+const filtered = computed(() => !!appliedSearch.value || !!appliedPriority.value);
 const priorityLabels: Record<string, string> = {
   urgent: 'Urgente',
   high: 'Haute',
   normal: 'Normale',
   low: 'Basse',
-}
+};
 const priorityRows = computed(() =>
   ['urgent', 'high', 'normal', 'low'].map((key) => ({
     key,
     label: priorityLabels[key],
     count: summary.value?.open_priorities?.[key] ?? 0,
   })),
-)
+);
 let generation = 0,
-  disposed = false
+  disposed = false;
 function query() {
   return new URLSearchParams({
     state: 'all',
     search: appliedSearch.value,
     priority: appliedPriority.value,
-  })
+  });
 }
 function date(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
@@ -135,102 +135,102 @@ function date(value: string) {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value))
+  }).format(new Date(value));
 }
 async function loadColumn(column: Column, version: number, append = false) {
-  if (append && column.busy) return
-  column.busy = true
-  column.error = ''
+  if (append && column.busy) return;
+  column.busy = true;
+  column.error = '';
   try {
     const data = await props.request(
       `follow-ups/?${query()}&bucket=${column.key}&page=${append ? column.page + 1 : 1}`,
-    )
-    if (version !== generation || disposed) return
-    column.rows = append ? [...column.rows, ...data.results] : data.results
-    column.count = data.count
-    column.next = !!data.next
-    column.page = append ? column.page + 1 : 1
+    );
+    if (version !== generation || disposed) return;
+    column.rows = append ? [...column.rows, ...data.results] : data.results;
+    column.count = data.count;
+    column.next = !!data.next;
+    column.page = append ? column.page + 1 : 1;
   } catch (e: any) {
-    if (version === generation && !disposed) column.error = e.message
+    if (version === generation && !disposed) column.error = e.message;
   } finally {
-    if (version === generation && !disposed) column.busy = false
+    if (version === generation && !disposed) column.busy = false;
   }
 }
 async function loadSummary(version: number) {
-  summaryBusy.value = true
-  summaryError.value = ''
-  summary.value = null
+  summaryBusy.value = true;
+  summaryError.value = '';
+  summary.value = null;
   try {
-    const data = await props.request(`follow-ups/summary/?${query()}`)
-    if (version === generation && !disposed) summary.value = data
+    const data = await props.request(`follow-ups/summary/?${query()}`);
+    if (version === generation && !disposed) summary.value = data;
   } catch (e: any) {
-    if (version === generation && !disposed) summaryError.value = e.message
+    if (version === generation && !disposed) summaryError.value = e.message;
   } finally {
-    if (version === generation && !disposed) summaryBusy.value = false
+    if (version === generation && !disposed) summaryBusy.value = false;
   }
 }
 async function load() {
-  const version = ++generation
-  appliedSearch.value = search.value.trim()
-  appliedPriority.value = priority.value
+  const version = ++generation;
+  appliedSearch.value = search.value.trim();
+  appliedPriority.value = priority.value;
   for (const column of columns.value) {
-    column.rows = []
-    column.count = 0
-    column.page = 0
-    column.next = false
+    column.rows = [];
+    column.count = 0;
+    column.page = 0;
+    column.next = false;
   }
   await Promise.allSettled([
     loadSummary(version),
     ...columns.value.map((column) => loadColumn(column, version)),
-  ])
+  ]);
 }
 async function open(row: any) {
-  if (opening.value || selected.value) return
-  opening.value = true
-  boardMessage.value = ''
+  if (opening.value || selected.value) return;
+  opening.value = true;
+  boardMessage.value = '';
   try {
-    const detail = await props.request(`follow-ups/${row.id}/?state=all`)
-    if (disposed) return
-    selected.value = detail
-    editing.value = false
-    resolution.value = ''
-    discard.value = false
-    confirmed.value = false
-    detailError.value = ''
+    const detail = await props.request(`follow-ups/${row.id}/?state=all`);
+    if (disposed) return;
+    selected.value = detail;
+    editing.value = false;
+    resolution.value = '';
+    discard.value = false;
+    confirmed.value = false;
+    detailError.value = '';
   } catch (e: any) {
-    boardMessage.value = e.message
+    boardMessage.value = e.message;
   } finally {
-    opening.value = false
+    opening.value = false;
   }
 }
 function closePanel() {
-  if (saving.value) return
+  if (saving.value) return;
   if ((editing.value || resolution.value.trim()) && !selected.value?.closed_at) {
-    discard.value = true
-    return
+    discard.value = true;
+    return;
   }
-  selected.value = null
-  resolution.value = ''
-  discard.value = false
+  selected.value = null;
+  resolution.value = '';
+  discard.value = false;
 }
 async function reloadSelected() {
-  if (saving.value || !selected.value) return
-  saving.value = true
-  detailError.value = ''
+  if (saving.value || !selected.value) return;
+  saving.value = true;
+  detailError.value = '';
   try {
-    const row = await props.request(`follow-ups/${selected.value.id}/?state=all`)
-    if (!disposed) selected.value = row
+    const row = await props.request(`follow-ups/${selected.value.id}/?state=all`);
+    if (!disposed) selected.value = row;
   } catch (e: any) {
-    if (!disposed) detailError.value = e.message
+    if (!disposed) detailError.value = e.message;
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 function editTask() {
-  const row = selected.value
-  editing.value = true
-  editReason.value = row.reason
-  editPriority.value = row.priority
+  const row = selected.value;
+  editing.value = true;
+  editReason.value = row.reason;
+  editPriority.value = row.priority;
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Toronto',
@@ -243,80 +243,461 @@ function editTask() {
     })
       .formatToParts(new Date(row.due_at))
       .map((p) => [p.type, p.value]),
-  )
-  editDue.value = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+  );
+  editDue.value = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 async function saveTask() {
-  if (saving.value) return
-  saving.value = true
-  detailError.value = ''
+  if (saving.value) return;
+  saving.value = true;
+  detailError.value = '';
   try {
     const row = await props.request(`follow-ups/${selected.value.id}/edit/?state=all`, {
       revision: selected.value.revision,
       reason: editReason.value,
       priority: editPriority.value,
       due_at: bookingInterval(editDue.value, 'America/Toronto', 30).starts_at,
-    })
-    if (disposed) return
-    selected.value = row
-    editing.value = false
-    emit('changed')
-    await load()
+    });
+    if (disposed) return;
+    selected.value = row;
+    editing.value = false;
+    emit('changed');
+    await load();
   } catch (e: any) {
-    detailError.value = e.message
+    detailError.value = e.message;
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 async function finish() {
   if (saving.value || !selected.value || selected.value.closed_at || !resolution.value.trim())
-    return
-  saving.value = true
-  detailError.value = ''
+    return;
+  saving.value = true;
+  detailError.value = '';
   try {
     const row = await props.request(`follow-ups/${selected.value.id}/close/?state=all`, {
       revision: selected.value.revision,
       resolution: resolution.value.trim(),
-    })
-    if (disposed) return
-    selected.value = row
-    resolution.value = ''
-    confirmed.value = true
-    emit('changed')
-    await load()
+    });
+    if (disposed) return;
+    selected.value = row;
+    resolution.value = '';
+    confirmed.value = true;
+    emit('changed');
+    await load();
   } catch (e: any) {
-    if (!disposed) detailError.value = e.message
+    if (!disposed) detailError.value = e.message;
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
-onMounted(load)
+onMounted(load);
 onBeforeUnmount(() => {
-  disposed = true
-  generation++
-})
+  disposed = true;
+  generation++;
+});
 </script>
-<!-- prettier-ignore -->
 <template>
- <section class="setter-tasks">
-  <header class="tasks-heading"><div><span>ESPACE ASSURANCE · {{role==='administrator'?'ADMINISTRATION':'SETTER'}}</span><h1>{{role==='administrator'?'Tâches de l’équipe':'Mes tâches'}}</h1><p>Un suivi après l’autre, faites avancer vos prospects.</p></div><button class="tasks-agenda" @click="emit('navigate','appointments')"><CalendarDays :size="16"/>{{role==='administrator'?'Voir l’agenda de l’équipe':'Voir mes rendez-vous'}}<ArrowUpRight :size="16"/></button></header>
-  <form class="tasks-toolbar" @submit.prevent="load"><label class="tasks-search"><Search :size="17"/><input v-model="search" aria-label="Rechercher une tâche par prospect ou motif" placeholder="Rechercher un prospect ou un suivi…"></label><label class="tasks-priority-select"><span>Priorité</span><select v-model="priority" :disabled="busy"><option value="">Toutes les priorités</option><option v-for="(label,key) in priorityLabels" :key="key" :value="key">{{label}}</option></select></label><button class="tasks-filter" :disabled="busy">Filtrer</button><button class="tasks-refresh" type="button" :disabled="busy" @click="load"><RefreshCw :size="15"/>Actualiser</button><span class="tasks-scope">{{filtered?'Vue filtrée':'Tous mes suivis'}} · Heures de Montréal</span></form>
-  <button v-if="role==='administrator'" class="tasks-refresh" @click="policyOpen=true">Règles des suivis</button><p v-if="boardMessage" role="alert" class="tasks-error">{{boardMessage}}</p>
-  <div class="tasks-layout"><div class="tasks-columns" role="region" tabindex="0" aria-label="Tableau des tâches par état">
-   <section v-for="column in columns" :key="column.key" class="task-column" :class="column.tone"><header class="task-column-heading"><component :is="column.icon" :size="18"/><h2>{{column.label}}</h2><span>{{column.busy&&!column.page?'…':column.error&&!column.page?'—':column.count}}</span></header><p class="task-column-hint">{{column.hint}}</p><div class="task-column-stack" role="region" tabindex="0" :aria-label="`Tâches ${column.label.toLocaleLowerCase('fr')}`">
-    <div v-if="column.error" class="tasks-error" role="alert"><p>{{column.error}}</p><button class="tasks-filter" :disabled="column.busy" @click="loadColumn(column,generation,column.page>0)">Réessayer</button></div>
-    <div v-if="column.busy&&!column.page" class="task-empty" role="status"><ListTodo :size="22"/><strong>Chargement des suivis…</strong></div>
-    <div v-else-if="!column.error&&!column.count" class="task-empty"><component :is="column.icon" :size="23"/><strong>{{filtered?'Aucun suivi correspondant':column.key==='closed'?'La suite s’écrit ici':column.key==='overdue'?'Tout est dans les temps':'Rien à traiter ici'}}</strong><p>{{filtered?'Aucune tâche pour ces filtres.':column.key==='closed'?'Vos tâches terminées apparaîtront ici.':column.key==='overdue'?'Aucune échéance dépassée pour le moment.':'Les rappels et suivis de rendez-vous apparaîtront ici.'}}</p></div>
-    <div v-for="row in column.rows" :key="row.id" class="task-card"><div class="task-card-top"><button :disabled="opening" @click="open(row)">{{row.contact_name||'Prospect sans nom'}}</button><span class="task-priority" :class="row.priority"><Flag :size="10"/>{{priorityLabels[row.priority]||row.priority}}</span></div><div class="task-deadline" :class="{'deadline-late':row.overdue}"><Clock3 :size="13"/><time :datetime="row.closed_at||row.due_at">{{row.closed_at?'Clôturée le ':'Échéance : '}}{{date(row.closed_at||row.due_at)}}</time></div><p class="task-reason">{{row.reason}}</p><div v-if="row.closed_at" class="task-completed"><CheckCircle2 :size="13"/>Suivi terminé</div><div v-else-if="row.latest_incident" class="task-incident"><AlertCircle :size="13"/>Signalement à consulter</div><span v-else class="task-context">{{row.appointment_id?'Suivi de rendez-vous':'Rappel du prospect'}}</span><footer class="task-card-footer"><span><CalendarDays :size="13"/>{{row.appointment_id?'RDV #'+row.appointment_id:'Rappel contact'}}</span><button :disabled="opening" :aria-label="`Ouvrir le suivi de ${row.contact_name||'ce prospect'}`" @click="open(row)">Ouvrir<ArrowUpRight :size="15"/></button></footer></div>
-    <button v-if="column.next" class="task-load-more" :disabled="column.busy" @click="loadColumn(column,generation,true)">{{column.busy?'Chargement…':'Afficher plus'}} · {{column.rows.length}} / {{column.count}}</button>
-   </div></section>
-  </div>
-  <aside class="tasks-sidebar"><div class="task-progress"><span class="progress-kicker">CHAQUE SUIVI COMPTE</span><h2>{{role==='administrator'?'Avancement de l’équipe':'Mon avancement'}}</h2><p>{{filtered?'Sur les tâches correspondant aux filtres':'Sur l’ensemble de mes tâches'}}</p><p v-if="summaryBusy" role="status">Chargement…</p><div v-else-if="summaryError" role="alert"><p>{{summaryError}}</p><button class="tasks-filter" @click="loadSummary(generation)">Réessayer</button></div><template v-else-if="summary"><div class="progress-main"><div class="task-donut" :style="{'--progress':`${percentage??0}%`}" role="img" :aria-label="percentage===null?'Aucune tâche à mesurer':`${percentage} % des tâches clôturées`"><strong>{{percentage===null?'—':percentage+'%'}}</strong><small>Clôturées</small></div><div><strong>{{summary.open}}</strong><span>suivi(s) ouvert(s)</span></div></div><div class="progress-stat"><span>Clôturées</span><strong>{{summary.total?summary.closed+' / '+summary.total:'Aucune tâche'}}</strong></div><div class="progress-track"><span :style="{width:`${percentage??0}%`}"></span></div><div class="progress-stat"><span>En retard</span><strong>{{summary.open?summary.overdue+' / '+summary.open:'Aucune ouverte'}}</strong></div><div class="progress-track warm"><span :style="{width:`${summary.open?100*summary.overdue/summary.open:0}%`}"></span></div></template></div>
-   <div class="task-priorities"><header><h2>{{role==='administrator'?'Priorités de l’équipe':'Mes priorités'}}</h2><Flag :size="17"/></header><p>Les tâches encore ouvertes</p><template v-if="summary&&!summaryBusy&&!summaryError"><div v-for="item in priorityRows" :key="item.key" class="priority-row"><span><i :class="item.key"></i>{{item.label}}</span><strong>{{item.count}}</strong></div></template><p v-else>{{summaryBusy?'Chargement…':'Le résumé des priorités est indisponible.'}}</p></div>
-   <div class="tasks-help"><ShieldCheck :size="23"/><strong>Un suivi bien terminé</strong><p>Renseignez ce qui a été fait avant de clôturer. Votre résolution reste conservée dans le dossier.</p></div>
-  </aside></div>
-  <SidePanel :open="!!selected" :title="selected?.contact_name||'Tâche de suivi'" eyebrow="MON SUIVI PROSPECT" :subtitle="selected?`Tâche #${selected.id}${selected.appointment_id?' · RDV #'+selected.appointment_id:' · Rappel contact'}`:''" :close-disabled="saving||adminBusy" @request-close="role==='administrator'?adminEditor?.close():closePanel()"><AssuranceFollowUps v-if="selected&&role==='administrator'&&portal" ref="adminEditor" :key="selected.id" role="administrator" :task-id="selected.id" :portal="portal" :request="request" @busy="adminBusy=$event" @changed="load();emit('changed')" @close="selected=null"/><div v-else-if="selected" class="task-detail"><p v-if="confirmed" role="status" class="task-success"><CheckCircle2 :size="18"/>Tâche clôturée. Votre résolution a été enregistrée.</p><p v-if="detailError" role="alert" class="tasks-error">{{detailError}}</p><div v-if="discard" class="task-discard"><strong>Garder votre justification ?</strong><p>Elle n’a pas encore été enregistrée.</p><button class="tasks-filter" @click="discard=false">Continuer la saisie</button><button class="tasks-filter" @click="resolution='';discard=false;selected=null">Abandonner et fermer</button></div><div class="task-detail-status"><span :class="selected.priority">{{priorityLabels[selected.priority]||selected.priority}}</span><strong>{{selected.closed_at?'Clôturée':selected.overdue?'Échéance dépassée':'À traiter'}}</strong></div><dl><div><dt>Échéance</dt><dd>{{date(selected.due_at)}} · Montréal</dd></div><div><dt>Origine</dt><dd>{{selected.appointment_id?'Rendez-vous #'+selected.appointment_id:'Rappel créé depuis le contact'}}</dd></div></dl><section class="task-detail-block"><h3>Le suivi à réaliser</h3><p>{{selected.reason}}</p></section><section v-if="selected.latest_incident" class="task-detail-block incident"><h3>Dernier signalement</h3><small>{{date(selected.latest_incident.created_at)}} · Montréal</small><p>{{selected.latest_incident.note}}</p></section><section v-if="selected.closed_at" class="task-detail-block resolved"><h3>Résolution enregistrée</h3><small>{{date(selected.closed_at)}} · Montréal</small><p>{{selected.resolution}}</p></section><template v-if="!selected.closed_at"><button class="tasks-filter" :disabled="saving" @click="editing?editing=false:editTask()">{{editing?'Annuler la modification':'Modifier le rappel'}}</button><form v-if="editing" class="task-resolution-form" @submit.prevent="saveTask"><h3>Modifier mon suivi</h3><label>Date et heure · Montréal<input v-model="editDue" type="datetime-local" required :disabled="saving"></label><label>Note<textarea v-model="editReason" maxlength="3000" required :disabled="saving"></textarea></label><label>Priorité<select v-model="editPriority" :disabled="saving"><option v-for="(label,key) in priorityLabels" :key="key" :value="key">{{label}}</option></select></label><button class="tasks-finish" :disabled="saving">Enregistrer les modifications</button></form></template><form v-if="!selected.closed_at&&!editing" id="task-resolution-form" class="task-resolution-form" @submit.prevent="finish"><h3>Terminer ce suivi</h3><p>Décrivez l’action réalisée et le résultat obtenu.</p><label>Votre résolution<textarea v-model="resolution" required maxlength="3000" :disabled="saving" placeholder="Ex. : prospect recontacté, informations complétées…"></textarea></label><span>{{resolution.length}} / 3 000</span></form><button v-if="detailError" class="tasks-filter" :disabled="saving" @click="reloadSelected">Actualiser la tâche</button></div><template #footer><div v-if="role==='administrator'" class="task-detail-footer"><button class="tasks-filter" :disabled="adminBusy" @click="adminEditor?.close()">Fermer</button></div><div v-else class="task-detail-footer"><button class="tasks-filter" :disabled="saving" @click="closePanel">Fermer</button><button v-if="selected&&!selected.closed_at&&!editing" class="tasks-finish" type="submit" form="task-resolution-form" :disabled="saving||!resolution.trim()"><CheckCircle2 :size="16"/>{{saving?'Enregistrement…':'Clôturer le suivi'}}</button></div></template></SidePanel><SidePanel :open="policyOpen" title="Règles des suivis" eyebrow="ASSURANCE · ADMINISTRATION" :close-disabled="policyBusy" @request-close="policyEditor?.close()"><AssuranceFollowUpPolicy ref="policyEditor" @busy="policyBusy=$event" @close="policyOpen=false" v-if="policyOpen&&role==='administrator'" :request="request"/></SidePanel>
- </section>
+  <section class="setter-tasks">
+    <header class="tasks-heading">
+      <div>
+        <span>ESPACE ASSURANCE · {{ role === 'administrator' ? 'ADMINISTRATION' : 'SETTER' }}</span>
+        <h1>{{ role === 'administrator' ? 'Tâches de l’équipe' : 'Mes tâches' }}</h1>
+        <p>Un suivi après l’autre, faites avancer vos prospects.</p>
+      </div>
+      <button class="tasks-agenda" @click="emit('navigate', 'appointments')">
+        <CalendarDays :size="16" />{{
+          role === 'administrator' ? 'Voir l’agenda de l’équipe' : 'Voir mes rendez-vous'
+        }}<ArrowUpRight :size="16" />
+      </button>
+    </header>
+    <form class="tasks-toolbar" @submit.prevent="load">
+      <label class="tasks-search"
+        ><Search :size="17" /><input
+          v-model="search"
+          aria-label="Rechercher une tâche par prospect ou motif"
+          placeholder="Rechercher un prospect ou un suivi…" /></label
+      ><label class="tasks-priority-select"
+        ><span>Priorité</span
+        ><select v-model="priority" :disabled="busy">
+          <option value="">Toutes les priorités</option>
+          <option v-for="(label, key) in priorityLabels" :key="key" :value="key">
+            {{ label }}
+          </option>
+        </select></label
+      ><button class="tasks-filter" :disabled="busy">Filtrer</button
+      ><button class="tasks-refresh" type="button" :disabled="busy" @click="load">
+        <RefreshCw :size="15" />Actualiser</button
+      ><span class="tasks-scope"
+        >{{ filtered ? 'Vue filtrée' : 'Tous mes suivis' }} · Heures de Montréal</span
+      >
+    </form>
+    <button v-if="role === 'administrator'" class="tasks-refresh" @click="policyOpen = true">
+      Règles des suivis
+    </button>
+    <p v-if="boardMessage" role="alert" class="tasks-error">{{ boardMessage }}</p>
+    <div class="tasks-layout">
+      <div
+        class="tasks-columns"
+        role="region"
+        tabindex="0"
+        aria-label="Tableau des tâches par état"
+      >
+        <section
+          v-for="column in columns"
+          :key="column.key"
+          class="task-column"
+          :class="column.tone"
+        >
+          <header class="task-column-heading">
+            <component :is="column.icon" :size="18" />
+            <h2>{{ column.label }}</h2>
+            <span>{{
+              column.busy && !column.page ? '…' : column.error && !column.page ? '—' : column.count
+            }}</span>
+          </header>
+          <p class="task-column-hint">{{ column.hint }}</p>
+          <div
+            class="task-column-stack"
+            role="region"
+            tabindex="0"
+            :aria-label="`Tâches ${column.label.toLocaleLowerCase('fr')}`"
+          >
+            <div v-if="column.error" class="tasks-error" role="alert">
+              <p>{{ column.error }}</p>
+              <button
+                class="tasks-filter"
+                :disabled="column.busy"
+                @click="loadColumn(column, generation, column.page > 0)"
+              >
+                Réessayer
+              </button>
+            </div>
+            <div v-if="column.busy && !column.page" class="task-empty" role="status">
+              <ListTodo :size="22" /><strong>Chargement des suivis…</strong>
+            </div>
+            <div v-else-if="!column.error && !column.count" class="task-empty">
+              <component :is="column.icon" :size="23" /><strong>{{
+                filtered
+                  ? 'Aucun suivi correspondant'
+                  : column.key === 'closed'
+                    ? 'La suite s’écrit ici'
+                    : column.key === 'overdue'
+                      ? 'Tout est dans les temps'
+                      : 'Rien à traiter ici'
+              }}</strong>
+              <p>
+                {{
+                  filtered
+                    ? 'Aucune tâche pour ces filtres.'
+                    : column.key === 'closed'
+                      ? 'Vos tâches terminées apparaîtront ici.'
+                      : column.key === 'overdue'
+                        ? 'Aucune échéance dépassée pour le moment.'
+                        : 'Les rappels et suivis de rendez-vous apparaîtront ici.'
+                }}
+              </p>
+            </div>
+            <div v-for="row in column.rows" :key="row.id" class="task-card">
+              <div class="task-card-top">
+                <button :disabled="opening" @click="open(row)">
+                  {{ row.contact_name || 'Prospect sans nom' }}</button
+                ><span class="task-priority" :class="row.priority"
+                  ><Flag :size="10" />{{ priorityLabels[row.priority] || row.priority }}</span
+                >
+              </div>
+              <div class="task-deadline" :class="{ 'deadline-late': row.overdue }">
+                <Clock3 :size="13" /><time :datetime="row.closed_at || row.due_at"
+                  >{{ row.closed_at ? 'Clôturée le ' : 'Échéance : '
+                  }}{{ date(row.closed_at || row.due_at) }}</time
+                >
+              </div>
+              <p class="task-reason">{{ row.reason }}</p>
+              <div v-if="row.closed_at" class="task-completed">
+                <CheckCircle2 :size="13" />Suivi terminé
+              </div>
+              <div v-else-if="row.latest_incident" class="task-incident">
+                <AlertCircle :size="13" />Signalement à consulter
+              </div>
+              <span v-else class="task-context">{{
+                row.appointment_id ? 'Suivi de rendez-vous' : 'Rappel du prospect'
+              }}</span>
+              <footer class="task-card-footer">
+                <span
+                  ><CalendarDays :size="13" />{{
+                    row.appointment_id ? 'RDV #' + row.appointment_id : 'Rappel contact'
+                  }}</span
+                ><button
+                  :disabled="opening"
+                  :aria-label="`Ouvrir le suivi de ${row.contact_name || 'ce prospect'}`"
+                  @click="open(row)"
+                >
+                  Ouvrir<ArrowUpRight :size="15" />
+                </button>
+              </footer>
+            </div>
+            <button
+              v-if="column.next"
+              class="task-load-more"
+              :disabled="column.busy"
+              @click="loadColumn(column, generation, true)"
+            >
+              {{ column.busy ? 'Chargement…' : 'Afficher plus' }} · {{ column.rows.length }} /
+              {{ column.count }}
+            </button>
+          </div>
+        </section>
+      </div>
+      <aside class="tasks-sidebar">
+        <div class="task-progress">
+          <span class="progress-kicker">CHAQUE SUIVI COMPTE</span>
+          <h2>{{ role === 'administrator' ? 'Avancement de l’équipe' : 'Mon avancement' }}</h2>
+          <p>
+            {{
+              filtered ? 'Sur les tâches correspondant aux filtres' : 'Sur l’ensemble de mes tâches'
+            }}
+          </p>
+          <p v-if="summaryBusy" role="status">Chargement…</p>
+          <div v-else-if="summaryError" role="alert">
+            <p>{{ summaryError }}</p>
+            <button class="tasks-filter" @click="loadSummary(generation)">Réessayer</button>
+          </div>
+          <template v-else-if="summary"
+            ><div class="progress-main">
+              <div
+                class="task-donut"
+                :style="{ '--progress': `${percentage ?? 0}%` }"
+                role="img"
+                :aria-label="
+                  percentage === null
+                    ? 'Aucune tâche à mesurer'
+                    : `${percentage} % des tâches clôturées`
+                "
+              >
+                <strong>{{ percentage === null ? '—' : percentage + '%' }}</strong
+                ><small>Clôturées</small>
+              </div>
+              <div>
+                <strong>{{ summary.open }}</strong
+                ><span>suivi(s) ouvert(s)</span>
+              </div>
+            </div>
+            <div class="progress-stat">
+              <span>Clôturées</span
+              ><strong>{{
+                summary.total ? summary.closed + ' / ' + summary.total : 'Aucune tâche'
+              }}</strong>
+            </div>
+            <div class="progress-track">
+              <span :style="{ width: `${percentage ?? 0}%` }"></span>
+            </div>
+            <div class="progress-stat">
+              <span>En retard</span
+              ><strong>{{
+                summary.open ? summary.overdue + ' / ' + summary.open : 'Aucune ouverte'
+              }}</strong>
+            </div>
+            <div class="progress-track warm">
+              <span
+                :style="{ width: `${summary.open ? (100 * summary.overdue) / summary.open : 0}%` }"
+              ></span></div
+          ></template>
+        </div>
+        <div class="task-priorities">
+          <header>
+            <h2>{{ role === 'administrator' ? 'Priorités de l’équipe' : 'Mes priorités' }}</h2>
+            <Flag :size="17" />
+          </header>
+          <p>Les tâches encore ouvertes</p>
+          <template v-if="summary && !summaryBusy && !summaryError"
+            ><div v-for="item in priorityRows" :key="item.key" class="priority-row">
+              <span><i :class="item.key"></i>{{ item.label }}</span
+              ><strong>{{ item.count }}</strong>
+            </div></template
+          >
+          <p v-else>
+            {{ summaryBusy ? 'Chargement…' : 'Le résumé des priorités est indisponible.' }}
+          </p>
+        </div>
+        <div class="tasks-help">
+          <ShieldCheck :size="23" /><strong>Un suivi bien terminé</strong>
+          <p>
+            Renseignez ce qui a été fait avant de clôturer. Votre résolution reste conservée dans le
+            dossier.
+          </p>
+        </div>
+      </aside>
+    </div>
+    <SidePanel
+      :open="!!selected"
+      :title="selected?.contact_name || 'Tâche de suivi'"
+      eyebrow="MON SUIVI PROSPECT"
+      :subtitle="
+        selected
+          ? `Tâche #${selected.id}${selected.appointment_id ? ' · RDV #' + selected.appointment_id : ' · Rappel contact'}`
+          : ''
+      "
+      :close-disabled="saving || adminBusy"
+      @request-close="role === 'administrator' ? adminEditor?.close() : closePanel()"
+      ><AssuranceFollowUps
+        v-if="selected && role === 'administrator' && portal"
+        ref="adminEditor"
+        :key="selected.id"
+        role="administrator"
+        :task-id="selected.id"
+        :portal="portal"
+        :request="request"
+        @busy="adminBusy = $event"
+        @changed="
+          load();
+          emit('changed');
+        "
+        @close="selected = null"
+      />
+      <div v-else-if="selected" class="task-detail">
+        <p v-if="confirmed" role="status" class="task-success">
+          <CheckCircle2 :size="18" />Tâche clôturée. Votre résolution a été enregistrée.
+        </p>
+        <p v-if="detailError" role="alert" class="tasks-error">{{ detailError }}</p>
+        <div v-if="discard" class="task-discard">
+          <strong>Garder votre justification ?</strong>
+          <p>Elle n’a pas encore été enregistrée.</p>
+          <button class="tasks-filter" @click="discard = false">Continuer la saisie</button
+          ><button
+            class="tasks-filter"
+            @click="
+              resolution = '';
+              discard = false;
+              selected = null;
+            "
+          >
+            Abandonner et fermer
+          </button>
+        </div>
+        <div class="task-detail-status">
+          <span :class="selected.priority">{{
+            priorityLabels[selected.priority] || selected.priority
+          }}</span
+          ><strong>{{
+            selected.closed_at ? 'Clôturée' : selected.overdue ? 'Échéance dépassée' : 'À traiter'
+          }}</strong>
+        </div>
+        <dl>
+          <div>
+            <dt>Échéance</dt>
+            <dd>{{ date(selected.due_at) }} · Montréal</dd>
+          </div>
+          <div>
+            <dt>Origine</dt>
+            <dd>
+              {{
+                selected.appointment_id
+                  ? 'Rendez-vous #' + selected.appointment_id
+                  : 'Rappel créé depuis le contact'
+              }}
+            </dd>
+          </div>
+        </dl>
+        <section class="task-detail-block">
+          <h3>Le suivi à réaliser</h3>
+          <p>{{ selected.reason }}</p>
+        </section>
+        <section v-if="selected.latest_incident" class="task-detail-block incident">
+          <h3>Dernier signalement</h3>
+          <small>{{ date(selected.latest_incident.created_at) }} · Montréal</small>
+          <p>{{ selected.latest_incident.note }}</p>
+        </section>
+        <section v-if="selected.closed_at" class="task-detail-block resolved">
+          <h3>Résolution enregistrée</h3>
+          <small>{{ date(selected.closed_at) }} · Montréal</small>
+          <p>{{ selected.resolution }}</p>
+        </section>
+        <template v-if="!selected.closed_at"
+          ><button
+            class="tasks-filter"
+            :disabled="saving"
+            @click="editing ? (editing = false) : editTask()"
+          >
+            {{ editing ? 'Annuler la modification' : 'Modifier le rappel' }}
+          </button>
+          <form v-if="editing" class="task-resolution-form" @submit.prevent="saveTask">
+            <h3>Modifier mon suivi</h3>
+            <label
+              >Date et heure · Montréal<input
+                v-model="editDue"
+                type="datetime-local"
+                required
+                :disabled="saving" /></label
+            ><label
+              >Note<textarea
+                v-model="editReason"
+                maxlength="3000"
+                required
+                :disabled="saving"
+              ></textarea></label
+            ><label
+              >Priorité<select v-model="editPriority" :disabled="saving">
+                <option v-for="(label, key) in priorityLabels" :key="key" :value="key">
+                  {{ label }}
+                </option>
+              </select></label
+            ><button class="tasks-finish" :disabled="saving">Enregistrer les modifications</button>
+          </form></template
+        >
+        <form
+          v-if="!selected.closed_at && !editing"
+          id="task-resolution-form"
+          class="task-resolution-form"
+          @submit.prevent="finish"
+        >
+          <h3>Terminer ce suivi</h3>
+          <p>Décrivez l’action réalisée et le résultat obtenu.</p>
+          <label
+            >Votre résolution<textarea
+              v-model="resolution"
+              required
+              maxlength="3000"
+              :disabled="saving"
+              placeholder="Ex. : prospect recontacté, informations complétées…"
+            ></textarea></label
+          ><span>{{ resolution.length }} / 3 000</span>
+        </form>
+        <button v-if="detailError" class="tasks-filter" :disabled="saving" @click="reloadSelected">
+          Actualiser la tâche
+        </button>
+      </div>
+      <template #footer
+        ><div v-if="role === 'administrator'" class="task-detail-footer">
+          <button class="tasks-filter" :disabled="adminBusy" @click="adminEditor?.close()">
+            Fermer
+          </button>
+        </div>
+        <div v-else class="task-detail-footer">
+          <button class="tasks-filter" :disabled="saving" @click="closePanel">Fermer</button
+          ><button
+            v-if="selected && !selected.closed_at && !editing"
+            class="tasks-finish"
+            type="submit"
+            form="task-resolution-form"
+            :disabled="saving || !resolution.trim()"
+          >
+            <CheckCircle2 :size="16" />{{ saving ? 'Enregistrement…' : 'Clôturer le suivi' }}
+          </button>
+        </div></template
+      ></SidePanel
+    ><SidePanel
+      :open="policyOpen"
+      title="Règles des suivis"
+      eyebrow="ASSURANCE · ADMINISTRATION"
+      :close-disabled="policyBusy"
+      @request-close="policyEditor?.close()"
+      ><AssuranceFollowUpPolicy
+        ref="policyEditor"
+        @busy="policyBusy = $event"
+        @close="policyOpen = false"
+        v-if="policyOpen && role === 'administrator'"
+        :request="request"
+    /></SidePanel>
+  </section>
 </template>
 <style scoped>
 .setter-tasks {

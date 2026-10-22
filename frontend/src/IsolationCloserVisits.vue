@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import SidePanel from './SidePanel.vue'
-import IsolationC2Snapshot from './IsolationC2Snapshot.vue'
-const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>()
+import { ref, onMounted } from 'vue';
+import SidePanel from './SidePanel.vue';
+import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
+const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -11,68 +11,68 @@ const rows = ref<any[]>([]),
   selected = ref<any>(null),
   history = ref<any[]>([]),
   historyPage = ref(1),
-  historyCount = ref(0)
+  historyCount = ref(0);
 const performed = ref(''),
   closed = ref(''),
   note = ref(''),
   reason = ref(''),
-  dirty = ref(false)
-let requestId = crypto.randomUUID()
+  dirty = ref(false);
+let requestId = crypto.randomUUID();
 function changed() {
-  dirty.value = true
-  requestId = crypto.randomUUID()
+  dirty.value = true;
+  requestId = crypto.randomUUID();
 }
 function date(row: any) {
   return new Intl.DateTimeFormat('fr-FR', {
     timeZone: row.timezone,
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(row.starts_at))
+  }).format(new Date(row.starts_at));
 }
 function close() {
-  if (busy.value) return
+  if (busy.value) return;
   if (!dirty.value || window.confirm('Quitter sans enregistrer le résultat ?')) {
-    selected.value = null
-    dirty.value = false
+    selected.value = null;
+    dirty.value = false;
   }
 }
 async function run(action: () => Promise<void>) {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
+  if (busy.value) return;
+  busy.value = true;
+  error.value = '';
   try {
-    await action()
+    await action();
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function load() {
-  const data = await props.request(`closer-visits/?page=${page.value}`)
-  rows.value = data.results
-  count.value = data.count
+  const data = await props.request(`closer-visits/?page=${page.value}`);
+  rows.value = data.results;
+  count.value = data.count;
 }
 async function loadHistory() {
   const data = await props.request(
     `closer-visits/${selected.value.id}/history/?page=${historyPage.value}`,
-  )
-  history.value = data.results
-  historyCount.value = data.count
+  );
+  history.value = data.results;
+  historyCount.value = data.count;
 }
 async function open(row: any) {
   await run(async () => {
-    selected.value = await props.request(`closer-visits/${row.id}/`)
-    const result = selected.value.result
-    performed.value = result ? (result.performed ? 'yes' : 'no') : ''
-    closed.value = result?.closed === true ? 'yes' : result?.closed === false ? 'no' : ''
-    note.value = result?.note || ''
-    reason.value = ''
-    dirty.value = false
-    requestId = crypto.randomUUID()
-    historyPage.value = 1
-    await loadHistory()
-  })
+    selected.value = await props.request(`closer-visits/${row.id}/`);
+    const result = selected.value.result;
+    performed.value = result ? (result.performed ? 'yes' : 'no') : '';
+    closed.value = result?.closed === true ? 'yes' : result?.closed === false ? 'no' : '';
+    note.value = result?.note || '';
+    reason.value = '';
+    dirty.value = false;
+    requestId = crypto.randomUUID();
+    historyPage.value = 1;
+    await loadHistory();
+  });
 }
 async function save() {
   await run(async () => {
@@ -83,16 +83,201 @@ async function save() {
       closed: closed.value === 'yes',
       note: note.value,
       reason: reason.value,
-    })
-    dirty.value = false
-    selected.value = await props.request(`closer-visits/${selected.value.id}/`)
-    requestId = crypto.randomUUID()
-    reason.value = ''
-    await loadHistory()
-    await load()
-  })
+    });
+    dirty.value = false;
+    selected.value = await props.request(`closer-visits/${selected.value.id}/`);
+    requestId = crypto.randomUUID();
+    reason.value = '';
+    await loadHistory();
+    await load();
+  });
 }
-onMounted(() => run(load))
+onMounted(() => run(load));
 </script>
-<!-- prettier-ignore -->
-<template><section><h2>Mes visites Isolation</h2><p>Consultez le C2 et renseignez les résultats des visites qui vous sont attribuées.</p><p v-if="error&&!selected" role="alert">{{error}}</p><button class="secondary" :disabled="busy" @click="run(load)">Actualiser</button><div class="table-scroll"><table><thead><tr><th>Prospect</th><th>Rendez-vous</th><th>Setter</th><th>Résultat</th><th>Action</th></tr></thead><tbody><tr v-for="row in rows" :key="row.id"><td>{{row.c2_snapshot?.fields?.full_name||row.prospect.name}}<small>{{row.c2_snapshot?.fields?.phone||row.prospect.phone}}</small></td><td>{{date(row)}}<small>{{row.timezone}}</small></td><td>{{row.original_setter.name}}</td><td>{{row.status==='cancelled'?'Annulée':!row.result?'À renseigner':row.result.performed?'Tenue':'Non tenue'}}<small v-if="row.result">Vente : {{row.result.closed===null?'non renseignée':row.result.closed?'conclue':'non conclue'}}</small></td><td><button class="secondary" :disabled="busy" @click="open(row)">Ouvrir la visite</button></td></tr><tr v-if="!rows.length"><td colspan="5">Aucune visite attribuée.</td></tr></tbody></table></div><p>{{count}} visite(s) · page {{page}}</p><button class="secondary" :disabled="busy||page===1" @click="run(async()=>{page--;await load()})">Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="run(async()=>{page++;await load()})">Suivant</button><SidePanel :open="!!selected" title="Compte rendu de visite" eyebrow="ISOLATION · CLOSER" :close-disabled="busy" @request-close="close"><template v-if="selected"><p v-if="error" role="alert">{{error}}</p><p>{{date(selected)}} · {{selected.timezone}}</p><p>Closer : {{selected.closer?.name}} · Setter : {{selected.original_setter.name}}</p><IsolationC2Snapshot :snapshot="selected.c2_snapshot"/><form v-if="selected.status==='scheduled'&&Date.parse(selected.ends_at)<=Date.now()" @submit.prevent="save" @input="changed" @change="changed"><fieldset :disabled="busy"><label>Rendez-vous tenu<select v-model="performed" required @change="closed=performed==='no'?'no':''"><option value="">Choisir</option><option value="yes">Oui</option><option value="no">Non</option></select></label><label>Vente conclue<select v-model="closed" required :disabled="performed!=='yes'"><option value="">Choisir</option><option value="yes">Oui</option><option value="no">Non</option></select></label><label>Notes facultatives<textarea v-model="note" maxlength="3000"></textarea></label><label v-if="selected.result">Motif de la correction<textarea v-model="reason" required maxlength="1000"></textarea></label><button class="primary" :disabled="!performed||!closed">{{selected.result?'Enregistrer la correction':'Enregistrer le résultat'}}</button></fieldset></form><p v-else>{{selected.status==='cancelled'?'Cette visite est annulée.':'Le résultat sera disponible après la fin du rendez-vous.'}}</p><h3>Historique des résultats closer</h3><article v-for="entry in history" :key="entry.id"><small>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · Closer {{entry.actor_id}}</small><p>Tenue : {{entry.after.performed?'Oui':'Non'}} · Vente : {{entry.after.closed?'Oui':'Non'}}</p><p>{{entry.after.note}}</p><p v-if="entry.reason">Motif : {{entry.reason}}</p><p v-if="entry.before">Avant correction : {{entry.before.performed?'tenue':'non tenue'}} · vente {{entry.before.closed===null?'non renseignée':entry.before.closed?'conclue':'non conclue'}} · {{entry.before.note}}</p></article><p v-if="!history.length">Aucun résultat closer enregistré.</p><button class="secondary" :disabled="busy||historyPage===1" @click="run(async()=>{historyPage--;await loadHistory()})">Précédent</button><button class="secondary" :disabled="busy||historyPage*25>=historyCount" @click="run(async()=>{historyPage++;await loadHistory()})">Suivant</button></template></SidePanel></section></template>
+<template>
+  <section>
+    <h2>Mes visites Isolation</h2>
+    <p>Consultez le C2 et renseignez les résultats des visites qui vous sont attribuées.</p>
+    <p v-if="error && !selected" role="alert">{{ error }}</p>
+    <button class="secondary" :disabled="busy" @click="run(load)">Actualiser</button>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Prospect</th>
+            <th>Rendez-vous</th>
+            <th>Setter</th>
+            <th>Résultat</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.id">
+            <td>
+              {{ row.c2_snapshot?.fields?.full_name || row.prospect.name
+              }}<small>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone }}</small>
+            </td>
+            <td>
+              {{ date(row) }}<small>{{ row.timezone }}</small>
+            </td>
+            <td>{{ row.original_setter.name }}</td>
+            <td>
+              {{
+                row.status === 'cancelled'
+                  ? 'Annulée'
+                  : !row.result
+                    ? 'À renseigner'
+                    : row.result.performed
+                      ? 'Tenue'
+                      : 'Non tenue'
+              }}<small v-if="row.result"
+                >Vente :
+                {{
+                  row.result.closed === null
+                    ? 'non renseignée'
+                    : row.result.closed
+                      ? 'conclue'
+                      : 'non conclue'
+                }}</small
+              >
+            </td>
+            <td>
+              <button class="secondary" :disabled="busy" @click="open(row)">
+                Ouvrir la visite
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!rows.length">
+            <td colspan="5">Aucune visite attribuée.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>{{ count }} visite(s) · page {{ page }}</p>
+    <button
+      class="secondary"
+      :disabled="busy || page === 1"
+      @click="
+        run(async () => {
+          page--;
+          await load();
+        })
+      "
+    >
+      Précédent</button
+    ><button
+      class="secondary"
+      :disabled="busy || page * 25 >= count"
+      @click="
+        run(async () => {
+          page++;
+          await load();
+        })
+      "
+    >
+      Suivant</button
+    ><SidePanel
+      :open="!!selected"
+      title="Compte rendu de visite"
+      eyebrow="ISOLATION · CLOSER"
+      :close-disabled="busy"
+      @request-close="close"
+      ><template v-if="selected"
+        ><p v-if="error" role="alert">{{ error }}</p>
+        <p>{{ date(selected) }} · {{ selected.timezone }}</p>
+        <p>Closer : {{ selected.closer?.name }} · Setter : {{ selected.original_setter.name }}</p>
+        <IsolationC2Snapshot :snapshot="selected.c2_snapshot" />
+        <form
+          v-if="selected.status === 'scheduled' && Date.parse(selected.ends_at) <= Date.now()"
+          @submit.prevent="save"
+          @input="changed"
+          @change="changed"
+        >
+          <fieldset :disabled="busy">
+            <label
+              >Rendez-vous tenu<select
+                v-model="performed"
+                required
+                @change="closed = performed === 'no' ? 'no' : ''"
+              >
+                <option value="">Choisir</option>
+                <option value="yes">Oui</option>
+                <option value="no">Non</option>
+              </select></label
+            ><label
+              >Vente conclue<select v-model="closed" required :disabled="performed !== 'yes'">
+                <option value="">Choisir</option>
+                <option value="yes">Oui</option>
+                <option value="no">Non</option>
+              </select></label
+            ><label>Notes facultatives<textarea v-model="note" maxlength="3000"></textarea></label
+            ><label v-if="selected.result"
+              >Motif de la correction<textarea
+                v-model="reason"
+                required
+                maxlength="1000"
+              ></textarea></label
+            ><button class="primary" :disabled="!performed || !closed">
+              {{ selected.result ? 'Enregistrer la correction' : 'Enregistrer le résultat' }}
+            </button>
+          </fieldset>
+        </form>
+        <p v-else>
+          {{
+            selected.status === 'cancelled'
+              ? 'Cette visite est annulée.'
+              : 'Le résultat sera disponible après la fin du rendez-vous.'
+          }}
+        </p>
+        <h3>Historique des résultats closer</h3>
+        <article v-for="entry in history" :key="entry.id">
+          <small
+            >{{ new Date(entry.created_at).toLocaleString('fr-FR') }} · Closer
+            {{ entry.actor_id }}</small
+          >
+          <p>
+            Tenue : {{ entry.after.performed ? 'Oui' : 'Non' }} · Vente :
+            {{ entry.after.closed ? 'Oui' : 'Non' }}
+          </p>
+          <p>{{ entry.after.note }}</p>
+          <p v-if="entry.reason">Motif : {{ entry.reason }}</p>
+          <p v-if="entry.before">
+            Avant correction : {{ entry.before.performed ? 'tenue' : 'non tenue' }} · vente
+            {{
+              entry.before.closed === null
+                ? 'non renseignée'
+                : entry.before.closed
+                  ? 'conclue'
+                  : 'non conclue'
+            }}
+            · {{ entry.before.note }}
+          </p>
+        </article>
+        <p v-if="!history.length">Aucun résultat closer enregistré.</p>
+        <button
+          class="secondary"
+          :disabled="busy || historyPage === 1"
+          @click="
+            run(async () => {
+              historyPage--;
+              await loadHistory();
+            })
+          "
+        >
+          Précédent</button
+        ><button
+          class="secondary"
+          :disabled="busy || historyPage * 25 >= historyCount"
+          @click="
+            run(async () => {
+              historyPage++;
+              await loadHistory();
+            })
+          "
+        >
+          Suivant
+        </button></template
+      ></SidePanel
+    >
+  </section>
+</template>

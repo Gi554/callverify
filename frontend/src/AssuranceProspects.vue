@@ -1,81 +1,81 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown } from 'lucide-vue-next'
-import AssuranceContactEditor from './AssuranceContactEditor.vue'
-import AssuranceContacts from './AssuranceContacts.vue'
-import SidePanel from './SidePanel.vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown } from 'lucide-vue-next';
+import AssuranceContactEditor from './AssuranceContactEditor.vue';
+import AssuranceContacts from './AssuranceContacts.vue';
+import SidePanel from './SidePanel.vue';
 const props = defineProps<{
-  request: (path: string, body?: any, method?: string) => Promise<any>
-  portal: (path: string, body?: any) => Promise<any>
-  role: string
-}>()
-const emit = defineEmits<{ imported: [count: number] }>()
-const admin = computed(() => props.role === 'administrator')
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+  portal: (path: string, body?: any) => Promise<any>;
+  role: string;
+}>();
+const emit = defineEmits<{ imported: [count: number] }>();
+const admin = computed(() => props.role === 'administrator');
 // Administrator only: the existing list keeps imports, filters and history.
-const listView = ref(false)
+const listView = ref(false);
 function showBoard() {
-  if (!listView.value) return
-  listView.value = false
-  void load()
+  if (!listView.value) return;
+  listView.value = false;
+  void load();
 }
 type Column = {
-  key: string
-  label: string
-  active: boolean
-  rows: any[]
-  count: number
-  page: number
-  next: boolean
-  busy: boolean
-  error: string
-}
+  key: string;
+  label: string;
+  active: boolean;
+  rows: any[];
+  count: number;
+  page: number;
+  next: boolean;
+  busy: boolean;
+  error: string;
+};
 const columns = ref<Column[]>([]),
   search = ref(''),
   applied = ref(''),
   stage = ref(''),
   busy = ref(false),
   error = ref(''),
-  opening = ref(false)
+  opening = ref(false);
 const selected = ref<any>(null),
   workflow = ref<'edit' | 'call'>('edit'),
   panelBusy = ref(false),
-  editor = ref<InstanceType<typeof AssuranceContactEditor> | null>(null)
+  editor = ref<InstanceType<typeof AssuranceContactEditor> | null>(null);
 const visible = computed(() =>
   columns.value.filter(
     (column) =>
       (!stage.value || column.key === stage.value) && (column.count > 0 || !!column.error),
   ),
-)
-const total = computed(() => visible.value.reduce((n, c) => n + c.count, 0))
+);
+const total = computed(() => visible.value.reduce((n, c) => n + c.count, 0));
 let generation = 0,
-  disposed = false
+  disposed = false;
 async function loadColumn(column: Column, version: number, append = false) {
-  if (append && column.busy) return
-  column.busy = true
-  column.error = ''
+  if (append && column.busy) return;
+  column.busy = true;
+  column.error = '';
   try {
     const data = await props.request(
       `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}`,
-    )
-    if (version !== generation || disposed) return
-    column.rows = append ? [...column.rows, ...data.results] : data.results
-    column.count = data.count
-    column.page = append ? column.page + 1 : 1
-    column.next = !!data.next
+    );
+    if (version !== generation || disposed) return;
+    column.rows = append ? [...column.rows, ...data.results] : data.results;
+    column.count = data.count;
+    column.page = append ? column.page + 1 : 1;
+    column.next = !!data.next;
   } catch (e: any) {
-    if (version === generation) column.error = e.message
+    if (version === generation) column.error = e.message;
   } finally {
-    if (version === generation) column.busy = false
+    if (version === generation) column.busy = false;
   }
 }
 async function load() {
-  const version = ++generation
-  busy.value = true
-  error.value = ''
-  applied.value = search.value.trim()
+  const version = ++generation;
+  busy.value = true;
+  error.value = '';
+  applied.value = search.value.trim();
   try {
-    const data = await props.request('pipeline/')
-    if (version !== generation || disposed) return
+    const data = await props.request('pipeline/');
+    if (version !== generation || disposed) return;
     columns.value = data.stages.map((s: any) => ({
       ...s,
       rows: [],
@@ -84,82 +84,230 @@ async function load() {
       next: false,
       busy: true,
       error: '',
-    }))
-    const queue = [...columns.value]
+    }));
+    const queue = [...columns.value];
     await Promise.all(
       Array.from({ length: 3 }, async () => {
         while (queue.length && version === generation && !disposed)
-          await loadColumn(queue.shift()!, version)
+          await loadColumn(queue.shift()!, version);
       }),
-    )
+    );
   } catch (e: any) {
-    if (version === generation) error.value = e.message
+    if (version === generation) error.value = e.message;
   } finally {
-    if (version === generation) busy.value = false
+    if (version === generation) busy.value = false;
   }
 }
 async function open(row: any, mode: 'edit' | 'call') {
-  if (opening.value || selected.value) return
-  opening.value = true
-  error.value = ''
+  if (opening.value || selected.value) return;
+  opening.value = true;
+  error.value = '';
   try {
-    const detail = await props.request(`contacts/${row.id}/`)
-    if (disposed) return
-    workflow.value = mode
-    selected.value = detail
+    const detail = await props.request(`contacts/${row.id}/`);
+    if (disposed) return;
+    workflow.value = mode;
+    selected.value = detail;
   } catch (e: any) {
-    selected.value = null
-    error.value = e.message
+    selected.value = null;
+    error.value = e.message;
   } finally {
-    opening.value = false
+    opening.value = false;
   }
 }
 function closed() {
-  const id = selected.value?.id
-  selected.value = null
-  panelBusy.value = false
+  const id = selected.value?.id;
+  selected.value = null;
+  panelBusy.value = false;
   void load().then(async () => {
-    await nextTick()
+    await nextTick();
     if (!selected.value && !disposed)
-      document.querySelector<HTMLButtonElement>(`[data-prospect-id="${Number(id)}"]`)?.focus()
-  })
+      document.querySelector<HTMLButtonElement>(`[data-prospect-id="${Number(id)}"]`)?.focus();
+  });
 }
-onMounted(load)
+onMounted(load);
 onBeforeUnmount(() => {
-  disposed = true
-  generation++
-})
+  disposed = true;
+  generation++;
+});
 </script>
-<!-- prettier-ignore -->
 <template>
- <section class="prospects-board">
-  <header class="prospects-heading"><div><span>{{admin?'ÉQUIPE ASSURANCE':'MON ESPACE ASSURANCE'}}</span><h1>Prospects</h1><p>{{admin?'Tous les prospects de l’équipe, par statut.':'Retrouvez vos prospects, appelez et préparez leurs rendez-vous.'}}</p></div><div class="prospects-heading-actions"><div v-if="admin" class="prospects-view-switch" role="group" aria-label="Affichage"><button :class="{'is-active':!listView}" :aria-pressed="!listView" @click="showBoard">Tableau</button><button :class="{'is-active':listView}" :aria-pressed="listView" @click="listView=true">Liste et imports</button></div><button v-if="!listView" class="secondary" :disabled="busy" @click="load"><RefreshCw :size="16"/>Actualiser</button></div></header>
-  <AssuranceContacts v-if="admin&&listView" :portal="portal" :request="request" :role="role" @imported="emit('imported',$event)"/>
-  <template v-else>
-  <div class="prospects-toolbar"><label class="stage-filter"><select v-model="stage" aria-label="Filtrer les prospects par statut"><option value="">Tous les statuts</option><option v-for="column in columns" :key="column.key" :value="column.key">{{column.label}}{{column.active?'':' (archivé)'}}</option></select><ChevronDown :size="15"/></label><span class="prospects-count" role="status">{{busy?'Chargement…':`${total} prospect(s)`}}{{columns.some(c=>c.error)?' · résultat partiel':''}}</span><form @submit.prevent="load"><Search :size="17"/><input v-model="search" aria-label="Rechercher un prospect" placeholder="Nom, téléphone ou e-mail"><button :disabled="busy">Rechercher</button></form></div>
-  <p v-if="error" role="alert" class="error">{{error}}</p>
-  <p v-if="!busy&&!error&&!columns.length" class="board-empty">Aucun statut configuré. Contactez votre administrateur.</p>
-  <p v-else-if="!busy&&!error&&!visible.length" class="board-empty" role="status">{{stage?'Aucun prospect pour ce statut et cette recherche.':'Aucun prospect ne correspond à votre recherche.'}}</p>
-  <div class="prospects-columns" :class="{'single-status':visible.length===1}" role="region" tabindex="0" aria-label="Prospects par statut">
-   <section v-for="column in visible" :key="column.key" class="prospect-column" :style="{'--stage-tone':['#f1ad54','#5b8def','#a18be2','#48b3be','#69b694'][columns.indexOf(column)%5]}">
-    <header><span class="stage-dot"></span><h2>{{column.label}}<small v-if="!column.active">Archivé</small></h2><span class="column-count">{{column.busy&&!column.page?'…':column.count}}</span></header>
-    <div class="prospect-stack">
-     <p v-if="column.error" role="alert">{{column.error}}<button class="secondary" @click="loadColumn(column,generation,column.page>0)">Réessayer</button></p>
-     <article v-for="row in column.rows" :key="row.id" class="prospect-card">
-      <button class="prospect-title" :data-prospect-id="row.id" :disabled="opening" @click="open(row,'edit')">{{row.name||'Prospect sans nom'}}</button>
-      <small class="prospect-updated">Mis à jour {{new Date(row.updated_at).toLocaleDateString('fr-FR')}}</small>
-      <div class="prospect-phone"><Phone :size="14"/><span>{{row.phone||'Non renseigné'}}</span><div class="number-actions"><button :disabled="opening" :aria-label="'Modifier le numéro de '+(row.name||'ce prospect')" title="Modifier la fiche et le numéro" @click="open(row,'edit')"><Pencil :size="15"/></button><button v-if="!admin" class="phone-button" :disabled="opening||!row.phone" :aria-label="'Préparer l’appel vers '+row.phone" title="Appeler et qualifier le prospect" @click="open(row,'call')"><Phone :size="15"/></button></div></div>
-      <p class="prospect-email"><Mail :size="14"/><span>{{row.email||'E-mail non renseigné'}}</span></p>
-      <footer><span class="prospect-stage">{{row.status_label||column.label}}</span></footer>
-     </article>
-     <p v-if="!column.busy&&!column.error&&!column.count" class="board-empty">Aucun prospect</p>
-     <button v-if="column.next" class="secondary more-prospects" :disabled="column.busy" @click="loadColumn(column,generation,true)">{{column.busy?'Chargement…':'Afficher plus'}} · {{column.rows.length}} / {{column.count}}</button>
-    </div>
-   </section>
-  </div>
-  </template>
-  <SidePanel :scrollable="false" :open="!!selected" :title="selected?.name||'Prospect sans nom'" :subtitle="selected?.status_label||selected?.status" eyebrow="FICHE PROSPECT" :close-disabled="panelBusy" @request-close="editor?.close()"><AssuranceContactEditor v-if="selected" ref="editor" :key="selected.id" :contact="selected" :portal="portal" :request="request" :role="role" :workflow="workflow" @busy="panelBusy=$event" @summary="selected={...selected,...$event}" @close="closed"/></SidePanel>
- </section>
+  <section class="prospects-board">
+    <header class="prospects-heading">
+      <div>
+        <span>{{ admin ? 'ÉQUIPE ASSURANCE' : 'MON ESPACE ASSURANCE' }}</span>
+        <h1>Prospects</h1>
+        <p>
+          {{
+            admin
+              ? 'Tous les prospects de l’équipe, par statut.'
+              : 'Retrouvez vos prospects, appelez et préparez leurs rendez-vous.'
+          }}
+        </p>
+      </div>
+      <div class="prospects-heading-actions">
+        <div v-if="admin" class="prospects-view-switch" role="group" aria-label="Affichage">
+          <button :class="{ 'is-active': !listView }" :aria-pressed="!listView" @click="showBoard">
+            Tableau</button
+          ><button
+            :class="{ 'is-active': listView }"
+            :aria-pressed="listView"
+            @click="listView = true"
+          >
+            Liste et imports
+          </button>
+        </div>
+        <button v-if="!listView" class="secondary" :disabled="busy" @click="load">
+          <RefreshCw :size="16" />Actualiser
+        </button>
+      </div>
+    </header>
+    <AssuranceContacts
+      v-if="admin && listView"
+      :portal="portal"
+      :request="request"
+      :role="role"
+      @imported="emit('imported', $event)"
+    />
+    <template v-else>
+      <div class="prospects-toolbar">
+        <label class="stage-filter"
+          ><select v-model="stage" aria-label="Filtrer les prospects par statut">
+            <option value="">Tous les statuts</option>
+            <option v-for="column in columns" :key="column.key" :value="column.key">
+              {{ column.label }}{{ column.active ? '' : ' (archivé)' }}
+            </option></select
+          ><ChevronDown :size="15" /></label
+        ><span class="prospects-count" role="status"
+          >{{ busy ? 'Chargement…' : `${total} prospect(s)`
+          }}{{ columns.some((c) => c.error) ? ' · résultat partiel' : '' }}</span
+        >
+        <form @submit.prevent="load">
+          <Search :size="17" /><input
+            v-model="search"
+            aria-label="Rechercher un prospect"
+            placeholder="Nom, téléphone ou e-mail"
+          /><button :disabled="busy">Rechercher</button>
+        </form>
+      </div>
+      <p v-if="error" role="alert" class="error">{{ error }}</p>
+      <p v-if="!busy && !error && !columns.length" class="board-empty">
+        Aucun statut configuré. Contactez votre administrateur.
+      </p>
+      <p v-else-if="!busy && !error && !visible.length" class="board-empty" role="status">
+        {{
+          stage
+            ? 'Aucun prospect pour ce statut et cette recherche.'
+            : 'Aucun prospect ne correspond à votre recherche.'
+        }}
+      </p>
+      <div
+        class="prospects-columns"
+        :class="{ 'single-status': visible.length === 1 }"
+        role="region"
+        tabindex="0"
+        aria-label="Prospects par statut"
+      >
+        <section
+          v-for="column in visible"
+          :key="column.key"
+          class="prospect-column"
+          :style="{
+            '--stage-tone': ['#f1ad54', '#5b8def', '#a18be2', '#48b3be', '#69b694'][
+              columns.indexOf(column) % 5
+            ],
+          }"
+        >
+          <header>
+            <span class="stage-dot"></span>
+            <h2>{{ column.label }}<small v-if="!column.active">Archivé</small></h2>
+            <span class="column-count">{{ column.busy && !column.page ? '…' : column.count }}</span>
+          </header>
+          <div class="prospect-stack">
+            <p v-if="column.error" role="alert">
+              {{ column.error
+              }}<button class="secondary" @click="loadColumn(column, generation, column.page > 0)">
+                Réessayer
+              </button>
+            </p>
+            <article v-for="row in column.rows" :key="row.id" class="prospect-card">
+              <button
+                class="prospect-title"
+                :data-prospect-id="row.id"
+                :disabled="opening"
+                @click="open(row, 'edit')"
+              >
+                {{ row.name || 'Prospect sans nom' }}
+              </button>
+              <small class="prospect-updated"
+                >Mis à jour {{ new Date(row.updated_at).toLocaleDateString('fr-FR') }}</small
+              >
+              <div class="prospect-phone">
+                <Phone :size="14" /><span>{{ row.phone || 'Non renseigné' }}</span>
+                <div class="number-actions">
+                  <button
+                    :disabled="opening"
+                    :aria-label="'Modifier le numéro de ' + (row.name || 'ce prospect')"
+                    title="Modifier la fiche et le numéro"
+                    @click="open(row, 'edit')"
+                  >
+                    <Pencil :size="15" /></button
+                  ><button
+                    v-if="!admin"
+                    class="phone-button"
+                    :disabled="opening || !row.phone"
+                    :aria-label="'Préparer l’appel vers ' + row.phone"
+                    title="Appeler et qualifier le prospect"
+                    @click="open(row, 'call')"
+                  >
+                    <Phone :size="15" />
+                  </button>
+                </div>
+              </div>
+              <p class="prospect-email">
+                <Mail :size="14" /><span>{{ row.email || 'E-mail non renseigné' }}</span>
+              </p>
+              <footer>
+                <span class="prospect-stage">{{ row.status_label || column.label }}</span>
+              </footer>
+            </article>
+            <p v-if="!column.busy && !column.error && !column.count" class="board-empty">
+              Aucun prospect
+            </p>
+            <button
+              v-if="column.next"
+              class="secondary more-prospects"
+              :disabled="column.busy"
+              @click="loadColumn(column, generation, true)"
+            >
+              {{ column.busy ? 'Chargement…' : 'Afficher plus' }} · {{ column.rows.length }} /
+              {{ column.count }}
+            </button>
+          </div>
+        </section>
+      </div>
+    </template>
+    <SidePanel
+      :scrollable="false"
+      :open="!!selected"
+      :title="selected?.name || 'Prospect sans nom'"
+      :subtitle="selected?.status_label || selected?.status"
+      eyebrow="FICHE PROSPECT"
+      :close-disabled="panelBusy"
+      @request-close="editor?.close()"
+      ><AssuranceContactEditor
+        v-if="selected"
+        ref="editor"
+        :key="selected.id"
+        :contact="selected"
+        :portal="portal"
+        :request="request"
+        :role="role"
+        :workflow="workflow"
+        @busy="panelBusy = $event"
+        @summary="selected = { ...selected, ...$event }"
+        @close="closed"
+    /></SidePanel>
+  </section>
 </template>
 <style scoped>
 .prospects-board {

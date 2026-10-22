@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import PortalInvitations from './PortalInvitations.vue'
-import PortalPhoneExtensions from './PortalPhoneExtensions.vue'
-import PortalAccessHistory from './PortalAccessHistory.vue'
-const activeSection = ref('users')
+import { ref, onMounted, watch } from 'vue';
+import PortalInvitations from './PortalInvitations.vue';
+import PortalPhoneExtensions from './PortalPhoneExtensions.vue';
+import PortalAccessHistory from './PortalAccessHistory.vue';
+const activeSection = ref('users');
 const sections = [
   { key: 'users', label: 'Utilisateurs' },
   { key: 'invitations', label: 'Invitations' },
   { key: 'phone', label: 'Postes téléphoniques' },
   { key: 'history', label: 'Journal des accès' },
-]
-import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+];
+import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 const props = defineProps<{
-  spaces: string[]
-  username: string
-  request: (path: string, body?: any, method?: string) => Promise<any>
-}>()
+  spaces: string[];
+  username: string;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+}>();
 const space = ref(props.spaces[0] || ''),
   search = ref(''),
   page = ref(1),
@@ -24,94 +24,302 @@ const space = ref(props.spaces[0] || ''),
   busy = ref(false),
   error = ref(''),
   message = ref(''),
-  adding = ref(false)
-const form = ref({ username: '', email: '', password: '', role: 'setter', existing: false })
+  adding = ref(false);
+const form = ref({ username: '', email: '', password: '', role: 'setter', existing: false });
 const roles = () =>
   space.value === 'assurance'
     ? ['administrator', 'setter', 'advisor']
-    : ['administrator', 'setter', 'client', 'closer']
+    : ['administrator', 'setter', 'client', 'closer'];
 const labels: Record<string, string> = {
   administrator: 'Administrateur',
   setter: 'Setter',
   advisor: 'Conseiller',
   client: 'Client',
   closer: 'Closer',
-}
-const base = () => `workspaces/${space.value}/users/`
+};
+const base = () => `workspaces/${space.value}/users/`;
 async function load() {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
     const data = await props.request(
       base() + `?search=${encodeURIComponent(search.value)}&page=${page.value}`,
-    )
-    rows.value = data.results
-    count.value = data.count
+    );
+    rows.value = data.results;
+    count.value = data.count;
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function update(row: any, changes: any) {
-  busy.value = true
-  error.value = ''
-  message.value = ''
+  busy.value = true;
+  error.value = '';
+  message.value = '';
   try {
-    await props.request(base() + row.id + '/', changes, 'PATCH')
-    message.value = 'Accès mis à jour.'
-    await load()
+    await props.request(base() + row.id + '/', changes, 'PATCH');
+    message.value = 'Accès mis à jour.';
+    await load();
   } catch (e: any) {
-    const detail = e.message
-    await load()
-    error.value = detail
+    const detail = e.message;
+    await load();
+    error.value = detail;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 function close() {
-  adding.value = false
-  form.value = { username: '', email: '', password: '', role: 'setter', existing: false }
+  adding.value = false;
+  form.value = { username: '', email: '', password: '', role: 'setter', existing: false };
 }
 async function create() {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
     const body = form.value.existing
       ? { username: form.value.username, role: form.value.role, existing: true }
-      : form.value
-    await props.request(base(), body)
-    close()
-    page.value = 1
-    search.value = ''
-    await load()
-    message.value = 'Utilisateur associé à cet espace.'
+      : form.value;
+    await props.request(base(), body);
+    close();
+    page.value = 1;
+    search.value = '';
+    await load();
+    message.value = 'Utilisateur associé à cet espace.';
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 watch(space, () => {
-  page.value = 1
-  close()
-  message.value = ''
-  load()
-})
-onMounted(load)
+  page.value = 1;
+  close();
+  message.value = '';
+  load();
+});
+onMounted(load);
 </script>
-<!-- prettier-ignore -->
 <template>
-<section class="access-panel"><header class="access-heading"><div><h1>Administration</h1><p>Gérez les utilisateurs et les accès de votre espace.</p></div><button v-if="activeSection==='users'" class="primary" :disabled="busy" @click="adding=true"><UserPlus :size="17"/>Ajouter un utilisateur</button></header>
-<nav class="access-navigation" aria-label="Rubriques de l’administration"><button v-for="section in sections" :key="section.key" :aria-current="activeSection===section.key?'page':undefined" :disabled="busy" @click="activeSection=section.key;close();message='';error=''">{{section.label}}</button></nav>
-<p v-if="error" role="alert" class="error">{{error}}</p><p v-if="message" role="status">{{message}}</p>
-<div class="access-toolbar"><label>Espace administré<select v-model="space" :disabled="busy"><option v-for="item in spaces" :key="item" :value="item">{{item==='assurance'?'Assurance':'Isolation'}}</option></select></label><form v-if="activeSection==='users'" @submit.prevent="page=1;load()"><label>Rechercher un utilisateur<input v-model="search" placeholder="Identifiant ou e-mail"></label><button class="secondary" :disabled="busy">Rechercher</button></form></div>
-<template v-if="activeSection==='users'">
-<div class="card table-scroll"><table><thead><tr><th>Utilisateur</th><th>Rôle dans cet espace</th><th>État</th><th>Actions</th></tr></thead><tbody><tr v-for="row in rows" :key="row.id"><td><strong>{{row.username}}</strong><small>{{row.email||'Aucun e-mail'}}</small><small v-if="row.username===username">Votre compte</small></td><td><select v-model="row.role" :disabled="busy||row.username===username" :aria-label="'Rôle de '+row.username"><option v-for="role in roles()" :key="role" :value="role">{{labels[role]}}</option></select></td><td><span :class="['access-status',row.active&&row.account_active?'enabled':'disabled']">{{!row.account_active?'Compte désactivé':row.active?'Actif':'Suspendu'}}</span></td><td><div class="access-actions"><button class="secondary" :disabled="busy||row.username===username" @click="update(row,{role:row.role})" :aria-label="'Enregistrer le rôle de '+row.username"><Save :size="16"/>Enregistrer</button><button class="secondary" :disabled="busy||row.username===username" @click="update(row,{active:!row.active})"><Pause v-if="row.active" :size="16"/><Play v-else :size="16"/>{{row.active?'Suspendre':'Réactiver'}}</button></div></td></tr><tr v-if="!rows.length"><td colspan="4">{{busy?'Chargement…':'Aucun utilisateur trouvé.'}}</td></tr></tbody></table></div>
-<div class="access-pagination"><span>{{count}} utilisateur(s) · page {{page}}</span><button class="secondary" :disabled="busy||page===1" @click="page--;load()"><ChevronLeft :size="16"/>Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="page++;load()">Suivant<ChevronRight :size="16"/></button></div><p class="subtle">Votre propre accès est protégé. Après une suspension, un accès métier déjà délivré peut rester valable pendant deux minutes.</p>
-<section v-if="adding" class="card access-form" aria-label="Ajouter un utilisateur"><h2>Ajouter à {{space==='assurance'?'Assurance':'Isolation'}}</h2><form @submit.prevent="create"><label>Type d’ajout<select v-model="form.existing" :disabled="busy" @change="form.password='';form.email=''"><option :value="false">Créer un nouveau compte</option><option :value="true">Associer un compte existant</option></select></label><label>Identifiant<input v-model="form.username" required maxlength="150" autocomplete="off"></label><template v-if="!form.existing"><label>E-mail (facultatif)<input v-model="form.email" type="email" autocomplete="off"></label><label>Mot de passe initial (12 caractères minimum)<input v-model="form.password" type="password" minlength="12" maxlength="256" required autocomplete="new-password"></label></template><label>Rôle<select v-model="form.role"><option v-for="role in roles()" :key="role" :value="role">{{labels[role]}}</option></select></label><p class="subtle">L’association d’un compte existant conserve ses autres accès et son mot de passe.</p><div class="access-actions"><button class="primary" :disabled="busy">Ajouter</button><button type="button" class="secondary" :disabled="busy" @click="close">Annuler</button></div></form></section>
-</template>
-<div v-else class="access-section"><PortalAccessHistory v-if="activeSection==='history'" :key="space" :space="space" :request="request"/><PortalPhoneExtensions v-else-if="activeSection==='phone'" :key="'phone-'+space" :space="space" :request="request"/><PortalInvitations v-else-if="activeSection==='invitations'" :key="space" :space="space" :request="request"/></div></section>
+  <section class="access-panel">
+    <header class="access-heading">
+      <div>
+        <h1>Administration</h1>
+        <p>Gérez les utilisateurs et les accès de votre espace.</p>
+      </div>
+      <button
+        v-if="activeSection === 'users'"
+        class="primary"
+        :disabled="busy"
+        @click="adding = true"
+      >
+        <UserPlus :size="17" />Ajouter un utilisateur
+      </button>
+    </header>
+    <nav class="access-navigation" aria-label="Rubriques de l’administration">
+      <button
+        v-for="section in sections"
+        :key="section.key"
+        :aria-current="activeSection === section.key ? 'page' : undefined"
+        :disabled="busy"
+        @click="
+          activeSection = section.key;
+          close();
+          message = '';
+          error = '';
+        "
+      >
+        {{ section.label }}
+      </button>
+    </nav>
+    <p v-if="error" role="alert" class="error">{{ error }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
+    <div class="access-toolbar">
+      <label
+        >Espace administré<select v-model="space" :disabled="busy">
+          <option v-for="item in spaces" :key="item" :value="item">
+            {{ item === 'assurance' ? 'Assurance' : 'Isolation' }}
+          </option>
+        </select></label
+      >
+      <form
+        v-if="activeSection === 'users'"
+        @submit.prevent="
+          page = 1;
+          load();
+        "
+      >
+        <label
+          >Rechercher un utilisateur<input
+            v-model="search"
+            placeholder="Identifiant ou e-mail" /></label
+        ><button class="secondary" :disabled="busy">Rechercher</button>
+      </form>
+    </div>
+    <template v-if="activeSection === 'users'">
+      <div class="card table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Rôle dans cet espace</th>
+              <th>État</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rows" :key="row.id">
+              <td>
+                <strong>{{ row.username }}</strong
+                ><small>{{ row.email || 'Aucun e-mail' }}</small
+                ><small v-if="row.username === username">Votre compte</small>
+              </td>
+              <td>
+                <select
+                  v-model="row.role"
+                  :disabled="busy || row.username === username"
+                  :aria-label="'Rôle de ' + row.username"
+                >
+                  <option v-for="role in roles()" :key="role" :value="role">
+                    {{ labels[role] }}
+                  </option>
+                </select>
+              </td>
+              <td>
+                <span
+                  :class="[
+                    'access-status',
+                    row.active && row.account_active ? 'enabled' : 'disabled',
+                  ]"
+                  >{{
+                    !row.account_active ? 'Compte désactivé' : row.active ? 'Actif' : 'Suspendu'
+                  }}</span
+                >
+              </td>
+              <td>
+                <div class="access-actions">
+                  <button
+                    class="secondary"
+                    :disabled="busy || row.username === username"
+                    @click="update(row, { role: row.role })"
+                    :aria-label="'Enregistrer le rôle de ' + row.username"
+                  >
+                    <Save :size="16" />Enregistrer</button
+                  ><button
+                    class="secondary"
+                    :disabled="busy || row.username === username"
+                    @click="update(row, { active: !row.active })"
+                  >
+                    <Pause v-if="row.active" :size="16" /><Play v-else :size="16" />{{
+                      row.active ? 'Suspendre' : 'Réactiver'
+                    }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="!rows.length">
+              <td colspan="4">{{ busy ? 'Chargement…' : 'Aucun utilisateur trouvé.' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="access-pagination">
+        <span>{{ count }} utilisateur(s) · page {{ page }}</span
+        ><button
+          class="secondary"
+          :disabled="busy || page === 1"
+          @click="
+            page--;
+            load();
+          "
+        >
+          <ChevronLeft :size="16" />Précédent</button
+        ><button
+          class="secondary"
+          :disabled="busy || page * 25 >= count"
+          @click="
+            page++;
+            load();
+          "
+        >
+          Suivant<ChevronRight :size="16" />
+        </button>
+      </div>
+      <p class="subtle">
+        Votre propre accès est protégé. Après une suspension, un accès métier déjà délivré peut
+        rester valable pendant deux minutes.
+      </p>
+      <section v-if="adding" class="card access-form" aria-label="Ajouter un utilisateur">
+        <h2>Ajouter à {{ space === 'assurance' ? 'Assurance' : 'Isolation' }}</h2>
+        <form @submit.prevent="create">
+          <label
+            >Type d’ajout<select
+              v-model="form.existing"
+              :disabled="busy"
+              @change="
+                form.password = '';
+                form.email = '';
+              "
+            >
+              <option :value="false">Créer un nouveau compte</option>
+              <option :value="true">Associer un compte existant</option>
+            </select></label
+          ><label
+            >Identifiant<input
+              v-model="form.username"
+              required
+              maxlength="150"
+              autocomplete="off" /></label
+          ><template v-if="!form.existing"
+            ><label
+              >E-mail (facultatif)<input
+                v-model="form.email"
+                type="email"
+                autocomplete="off" /></label
+            ><label
+              >Mot de passe initial (12 caractères minimum)<input
+                v-model="form.password"
+                type="password"
+                minlength="12"
+                maxlength="256"
+                required
+                autocomplete="new-password" /></label></template
+          ><label
+            >Rôle<select v-model="form.role">
+              <option v-for="role in roles()" :key="role" :value="role">{{ labels[role] }}</option>
+            </select></label
+          >
+          <p class="subtle">
+            L’association d’un compte existant conserve ses autres accès et son mot de passe.
+          </p>
+          <div class="access-actions">
+            <button class="primary" :disabled="busy">Ajouter</button
+            ><button type="button" class="secondary" :disabled="busy" @click="close">
+              Annuler
+            </button>
+          </div>
+        </form>
+      </section>
+    </template>
+    <div v-else class="access-section">
+      <PortalAccessHistory
+        v-if="activeSection === 'history'"
+        :key="space"
+        :space="space"
+        :request="request"
+      /><PortalPhoneExtensions
+        v-else-if="activeSection === 'phone'"
+        :key="'phone-' + space"
+        :space="space"
+        :request="request"
+      /><PortalInvitations
+        v-else-if="activeSection === 'invitations'"
+        :key="space"
+        :space="space"
+        :request="request"
+      />
+    </div>
+  </section>
 </template>
 <style scoped>
 .access-panel {

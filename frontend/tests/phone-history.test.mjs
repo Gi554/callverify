@@ -158,7 +158,7 @@ test('history is loaded only on explicit consultation with a read-only proof and
     set(inputs[0], '2026-10-01')
     await flush()
     await all(f.root)
-      .find((n) => n.tag === 'button' && n.text === 'Suivant')
+      .find((n) => n.tag === 'button' && n.text?.trim() === 'Suivant')
       .props.onClick()
     await flush()
     assert.equal(f.portalCalls[1].body.page, 2)
@@ -175,7 +175,9 @@ test('provider errors are displayed as unavailable, never as an empty successful
     await flush()
     await submit(f)
     assert.ok(
-      all(f.root).some((n) => n.props?.role === 'alert' && n.text === 'Historique indisponible'),
+      all(f.root).some(
+        (n) => n.props?.role === 'alert' && n.text?.trim() === 'Historique indisponible',
+      ),
     )
     assert.equal(
       all(f.root).some((n) => n.tag === 'table'),

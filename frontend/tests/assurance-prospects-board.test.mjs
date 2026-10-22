@@ -121,7 +121,7 @@ function fixture(role = 'administrator') {
   app.mount(root)
   return { root, requests, imported, close: () => app.unmount() }
 }
-const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n) === label)
+const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
 const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
 const callButtons = (f) =>
   all(f.root).filter((n) => String(n.props?.['aria-label'] || '').startsWith('Préparer l’appel'))

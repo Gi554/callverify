@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
-import { bookingInterval } from './booking-time'
-import { appointmentStatus, appointmentStatusLabels } from './appointment-status'
-import AssuranceQualificationSnapshot from './AssuranceQualificationSnapshot.vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { bookingInterval } from './booking-time';
+import { appointmentStatus, appointmentStatusLabels } from './appointment-status';
+import AssuranceQualificationSnapshot from './AssuranceQualificationSnapshot.vue';
 const props = defineProps<{
-  role: string
-  request: (path: string, body?: any, method?: string) => Promise<any>
-  portal: (path: string, body?: any) => Promise<any>
-  contactRevision?: number
-  appointmentId?: number
-  contactId?: number
-  leaseToken?: string
-  compact?: boolean
-  beforeBook?: () => Promise<void>
-  blocked?: boolean
-}>()
-const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; booked: [row: any] }>()
+  role: string;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+  portal: (path: string, body?: any) => Promise<any>;
+  contactRevision?: number;
+  appointmentId?: number;
+  contactId?: number;
+  leaseToken?: string;
+  compact?: boolean;
+  beforeBook?: () => Promise<void>;
+  blocked?: boolean;
+}>();
+const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; booked: [row: any] }>();
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -23,36 +23,36 @@ const rows = ref<any[]>([]),
   status = ref(''),
   busy = ref(false),
   error = ref(''),
-  message = ref('')
-watch(busy, (value) => emit('busy', value), { flush: 'sync' })
+  message = ref('');
+watch(busy, (value) => emit('busy', value), { flush: 'sync' });
 const choices = ref<any[]>([]),
   choicePage = ref(1),
   choiceCount = ref(0),
   choiceSearch = ref(''),
-  assignment = ref('')
+  assignment = ref('');
 const incidents = ref<any[]>([]),
   incidentPage = ref(1),
   incidentCount = ref(0),
-  incidentNote = ref('')
-let incidentRequestId = crypto.randomUUID()
+  incidentNote = ref('');
+let incidentRequestId = crypto.randomUUID();
 function resetIncidentId() {
-  incidentRequestId = crypto.randomUUID()
+  incidentRequestId = crypto.randomUUID();
 }
 const reportRow = ref<any>(null),
   performed = ref(''),
   problem = ref(false),
   note = ref(''),
-  savedReport = ref<any>(null)
+  savedReport = ref<any>(null);
 const editing = ref<any>(null),
   reason = ref(''),
   historyRow = ref<any>(null),
   history = ref<any[]>([]),
   historyPage = ref(1),
-  historyCount = ref(0)
-const qualificationRow = ref<any>(null)
-const canWrite = computed(() => ['setter', 'administrator'].includes(props.role))
+  historyCount = ref(0);
+const qualificationRow = ref<any>(null);
+const canWrite = computed(() => ['setter', 'administrator'].includes(props.role));
 function zonedISO(value: string | Date, zone: string) {
-  const date = new Date(value)
+  const date = new Date(value);
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: zone,
     year: 'numeric',
@@ -62,10 +62,10 @@ function zonedISO(value: string | Date, zone: string) {
     minute: '2-digit',
     second: '2-digit',
     hourCycle: 'h23',
-  })
+  });
   const parts = Object.fromEntries(
     formatter.formatToParts(date).map((part) => [part.type, part.value]),
-  )
+  );
   const offset = Math.round(
     (Date.UTC(
       +parts.year,
@@ -77,62 +77,62 @@ function zonedISO(value: string | Date, zone: string) {
     ) -
       date.getTime()) /
       60000,
-  )
-  const sign = offset >= 0 ? '+' : '-'
-  const minutes = Math.abs(offset)
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  );
+  const sign = offset >= 0 ? '+' : '-';
+  const minutes = Math.abs(offset);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
 const zone = ref('America/Toronto'),
   start = ref(zonedISO(new Date(Date.now() + 3600000), 'America/Toronto')),
-  end = ref(zonedISO(new Date(Date.now() + 5400000), 'America/Toronto'))
-const localEnd = ref('')
+  end = ref(zonedISO(new Date(Date.now() + 5400000), 'America/Toronto'));
+const localEnd = ref('');
 const localStart = ref(props.compact ? '' : start.value.slice(0, 16)),
   duration = ref(30),
-  historyVisible = ref(false)
-let requestId = crypto.randomUUID()
+  historyVisible = ref(false);
+let requestId = crypto.randomUUID();
 function resetId() {
-  requestId = crypto.randomUUID()
+  requestId = crypto.randomUUID();
 }
 function showDate(value: string, rowZone: string) {
   return new Intl.DateTimeFormat('fr-FR', {
     timeZone: rowZone,
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(value))
+  }).format(new Date(value));
 }
 async function run(action: () => Promise<void>) {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
-  message.value = ''
+  if (busy.value) return;
+  busy.value = true;
+  error.value = '';
+  message.value = '';
   try {
-    await action()
+    await action();
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function load() {
   if (props.appointmentId) {
-    rows.value = [await props.request(`appointments/${props.appointmentId}/`)]
-    count.value = 1
-    emit('updated', rows.value[0])
-    return
+    rows.value = [await props.request(`appointments/${props.appointmentId}/`)];
+    count.value = 1;
+    emit('updated', rows.value[0]);
+    return;
   }
   const result = await props.request(
     `appointments/?page=${page.value}&period=${period.value}&business_status=${status.value}${props.contactId ? '&contact_id=' + props.contactId : ''}`,
-  )
-  rows.value = result.results
-  count.value = result.count
+  );
+  rows.value = result.results;
+  count.value = result.count;
 }
 async function loadChoices() {
   const result = await props.request(
     `assignments/?active=true&page=${choicePage.value}&search=${encodeURIComponent(choiceSearch.value)}`,
-  )
-  choices.value = result.results
-  choiceCount.value = result.count
-  assignment.value = ''
+  );
+  choices.value = result.results;
+  choiceCount.value = result.count;
+  assignment.value = '';
 }
 async function bookingProof(row: any) {
   return (
@@ -140,18 +140,18 @@ async function bookingProof(row: any) {
       advisor_id: row.advisor.id,
       ...(props.role === 'administrator' ? { setter_id: row.setter.id } : {}),
     })
-  ).proof
+  ).proof;
 }
 async function book() {
   await run(async () => {
-    const selected = choices.value.find((row) => row.id === Number(assignment.value))
-    if (!selected) throw new Error('Choisissez une attribution active.')
+    const selected = choices.value.find((row) => row.id === Number(assignment.value));
+    if (!selected) throw new Error('Choisissez une attribution active.');
     const interval = props.compact
       ? bookingInterval(localStart.value, zone.value, duration.value)
-      : { starts_at: start.value, ends_at: end.value, timezone: zone.value }
-    await props.beforeBook?.()
-    await nextTick()
-    const proof = await bookingProof(selected)
+      : { starts_at: start.value, ends_at: end.value, timezone: zone.value };
+    await props.beforeBook?.();
+    await nextTick();
+    const proof = await bookingProof(selected);
     const bookedRow = await props.request('appointments/', {
       contact_id: props.contactId,
       ...(props.contactRevision !== undefined ? { contact_revision: props.contactRevision } : {}),
@@ -160,28 +160,28 @@ async function book() {
       request_id: requestId,
       token: props.leaseToken,
       proof,
-    })
-    emit('booked', bookedRow)
-    requestId = crypto.randomUUID()
-    page.value = 1
-    await load()
+    });
+    emit('booked', bookedRow);
+    requestId = crypto.randomUUID();
+    page.value = 1;
+    await load();
     message.value =
-      'Rendez-vous réservé dans l’agenda du conseiller. La synchronisation Google ou Microsoft dépend des connexions configurées.'
-  })
+      'Rendez-vous réservé dans l’agenda du conseiller. La synchronisation Google ou Microsoft dépend des connexions configurées.';
+  });
 }
 function edit(row: any) {
-  editing.value = row
-  zone.value = row.timezone
-  start.value = zonedISO(row.starts_at, row.timezone)
-  end.value = zonedISO(row.ends_at, row.timezone)
-  localStart.value = start.value.slice(0, 16)
-  localEnd.value = end.value.slice(0, 16)
-  reason.value = ''
+  editing.value = row;
+  zone.value = row.timezone;
+  start.value = zonedISO(row.starts_at, row.timezone);
+  end.value = zonedISO(row.ends_at, row.timezone);
+  localStart.value = start.value.slice(0, 16);
+  localEnd.value = end.value.slice(0, 16);
+  reason.value = '';
 }
 async function reschedule() {
   await run(async () => {
-    const row = editing.value
-    const proof = await bookingProof(row)
+    const row = editing.value;
+    const proof = await bookingProof(row);
     await props.request(`appointments/${row.id}/reschedule/`, {
       revision: row.revision,
       starts_at: props.appointmentId
@@ -193,56 +193,56 @@ async function reschedule() {
       timezone: zone.value,
       reason: reason.value,
       proof,
-    })
-    editing.value = null
-    await load()
-    message.value = 'Rendez-vous reprogrammé. Ancien créneau conservé dans l’historique.'
-  })
+    });
+    editing.value = null;
+    await load();
+    message.value = 'Rendez-vous reprogrammé. Ancien créneau conservé dans l’historique.';
+  });
 }
 async function cancel() {
   await run(async () => {
-    const row = editing.value
+    const row = editing.value;
     await props.request(`appointments/${row.id}/cancel/`, {
       revision: row.revision,
       reason: reason.value,
-    })
-    editing.value = null
-    await load()
-    message.value = 'Rendez-vous annulé. Historique conservé.'
-  })
+    });
+    editing.value = null;
+    await load();
+    message.value = 'Rendez-vous annulé. Historique conservé.';
+  });
 }
 async function openReport(row: any) {
   await run(async () => {
-    reportRow.value = row
-    performed.value = ''
-    problem.value = false
-    note.value = ''
-    savedReport.value = await props.request(`appointments/${row.id}/report/`)
-    incidentPage.value = 1
-    incidentNote.value = ''
-    incidentRequestId = crypto.randomUUID()
-    await loadIncidents()
-  })
+    reportRow.value = row;
+    performed.value = '';
+    problem.value = false;
+    note.value = '';
+    savedReport.value = await props.request(`appointments/${row.id}/report/`);
+    incidentPage.value = 1;
+    incidentNote.value = '';
+    incidentRequestId = crypto.randomUUID();
+    await loadIncidents();
+  });
 }
 async function loadIncidents() {
   const data = await props.request(
     `appointments/${reportRow.value.id}/incidents/?page=${incidentPage.value}`,
-  )
-  incidents.value = data.results
-  incidentCount.value = data.count
+  );
+  incidents.value = data.results;
+  incidentCount.value = data.count;
 }
 async function signal() {
   await run(async () => {
     await props.request(`appointments/${reportRow.value.id}/incidents/`, {
       request_id: incidentRequestId,
       note: incidentNote.value,
-    })
-    incidentRequestId = crypto.randomUUID()
-    incidentNote.value = ''
-    incidentPage.value = 1
-    await loadIncidents()
-    message.value = 'Signalement enregistré et suivi transmis.'
-  })
+    });
+    incidentRequestId = crypto.randomUUID();
+    incidentNote.value = '';
+    incidentPage.value = 1;
+    await loadIncidents();
+    message.value = 'Signalement enregistré et suivi transmis.';
+  });
 }
 async function submitReport() {
   await run(async () => {
@@ -252,35 +252,566 @@ async function submitReport() {
       outcome: performed.value,
       problem: problem.value,
       note: note.value,
-    })
-    reportRow.value = null
-    message.value = 'Compte rendu enregistré.'
-    await load()
-  })
+    });
+    reportRow.value = null;
+    message.value = 'Compte rendu enregistré.';
+    await load();
+  });
 }
 async function loadHistory() {
   const result = await props.request(
     `appointments/${historyRow.value.id}/history/?page=${historyPage.value}`,
-  )
-  history.value = result.results
-  historyCount.value = result.count
+  );
+  history.value = result.results;
+  historyCount.value = result.count;
 }
 onMounted(() =>
   run(async () => {
-    await load()
-    if (canWrite.value && props.contactId) await loadChoices()
+    await load();
+    if (canWrite.value && props.contactId) await loadChoices();
   }),
-)
+);
 </script>
-<!-- prettier-ignore -->
 <template>
-<section class="appointments" :class="{'compact-booking':compact,'appointment-detail-mode':!!appointmentId}"><h3 v-if="!appointmentId">{{compact?'Réserver un rendez-vous':contactId?'Rendez-vous du prospect':'Rendez-vous Assurance'}}</h3><p v-if="!appointmentId" class="subtle">Choisissez un conseiller et un créneau. Les disponibilités sont contrôlées lors de la confirmation.</p><p v-if="error" role="alert" class="error">{{error}}</p><p v-if="message" role="status" class="booking-feedback">{{message}}</p>
-<div v-if="compact&&!busy&&!error&&!choiceCount" class="booking-unavailable"><strong>Aucun conseiller attribué</strong><p>Aucun conseiller ne vous est encore attribué. L’administration doit vous en attribuer un pour réserver un créneau.</p><button class="secondary" :disabled="busy" @click="run(loadChoices)">Actualiser les conseillers</button></div><button v-if="compact&&error" class="secondary" :disabled="busy" @click="run(async()=>{await load();await loadChoices()})">Réessayer</button><template v-if="canWrite&&contactId&&!editing"><p v-if="!leaseToken">Prenez en charge la fiche pour réserver un rendez-vous.</p><form v-else-if="!compact||choiceCount>0" @submit.prevent="book" @input="resetId"><template v-if="!compact"><label>Rechercher une attribution<input v-model="choiceSearch" @keydown.enter.prevent="run(async()=>{choicePage=1;await loadChoices()})"></label><button class="secondary" type="button" :disabled="busy" @click="run(async()=>{choicePage=1;await loadChoices()})">Rechercher les conseillers attribués</button></template><label>Conseiller<select v-model="assignment" required :disabled="busy"><option value="">Choisir un conseiller</option><option v-for="row in choices" :key="row.id" :value="String(row.id)">{{role==='administrator'?row.setter.name+' → ':''}}{{row.advisor.name}}</option></select></label><p v-if="compact&&!busy&&!choiceCount" class="no-advisor">Aucun conseiller ne vous est attribué dans cet espace. Un administrateur doit vous en attribuer un pour réserver.</p><div class="appointment-actions" v-if="!compact||choiceCount>25"><button type="button" class="secondary" :disabled="busy||choicePage===1" @click="run(async()=>{choicePage--;await loadChoices()})">Précédent</button><span>{{choiceCount}} attribution(s) · page {{choicePage}}</span><button type="button" class="secondary" :disabled="busy||choicePage*25>=choiceCount" @click="run(async()=>{choicePage++;await loadChoices()})">Suivant</button></div><fieldset v-if="compact" class="friendly-slot" :disabled="busy||blocked"><label>Date et heure<input v-model="localStart" type="datetime-local" required></label><label>Durée<select v-model.number="duration"><option :value="15">15 minutes</option><option :value="30">30 minutes</option><option :value="45">45 minutes</option><option :value="60">1 heure</option><option :value="90">1 h 30</option><option :value="120">2 heures</option></select></label><label>Heure du rendez-vous<select v-model="zone"><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Edmonton">Edmonton</option><option value="America/Winnipeg">Winnipeg</option><option value="America/Halifax">Halifax</option><option value="America/St_Johns">Saint-Jean</option></select></label></fieldset><template v-else><label>Début avec décalage horaire<input v-model="start" placeholder="2026-10-21T10:00:00-04:00" required></label><label>Fin avec décalage horaire<input v-model="end" required></label><label>Fuseau IANA<input v-model="zone" placeholder="America/Toronto" required></label><small>Format ISO 8601 : date, heure et décalage correspondant au fuseau. Exemple : 2026-10-21T10:00:00-04:00 à Toronto.</small></template><button class="primary" :disabled="busy||blocked||!assignment">Réserver le rendez-vous</button></form></template>
-<button v-if="compact&&count>0" type="button" class="secondary booking-history-toggle" @click="historyVisible=!historyVisible">{{historyVisible?'Masquer les rendez-vous existants':'Voir les rendez-vous existants'}} ({{count}})</button><div v-show="!compact||historyVisible"><form v-if="!appointmentId" class="appointment-actions" @submit.prevent="run(async()=>{page=1;await load()})"><label>Période<select v-model="period"><option value="upcoming">À venir</option><option value="past">Passés</option><option value="">Tous</option></select></label><label>Statut<select v-model="status"><option value="">Tous</option><option v-for="(label,key) in appointmentStatusLabels" :key="key" :value="key">{{label}}</option></select></label><button class="secondary" :disabled="busy">Actualiser</button></form>
-<div v-if="appointmentId&&rows.length" class="appointment-detail"><div class="detail-person"><strong>{{rows[0].contact.name||'Prospect sans nom'}}</strong><span>{{rows[0].contact.phone||'Numéro non renseigné'}}</span></div><dl><div><dt>Conseiller</dt><dd>{{rows[0].advisor.name}}</dd></div><div><dt>Début</dt><dd>{{showDate(rows[0].starts_at,rows[0].timezone)}}</dd></div><div><dt>Fin</dt><dd>{{showDate(rows[0].ends_at,rows[0].timezone)}}</dd></div><div><dt>Fuseau</dt><dd>{{rows[0].timezone}}</dd></div><div><dt>Statut</dt><dd><span class="appointment-business-status" :class="rows[0].business_status">{{appointmentStatus(rows[0])}}</span></dd></div><div v-if="rows[0].reschedule_count"><dt>Reports</dt><dd>{{rows[0].reschedule_count}} · dernier le {{showDate(rows[0].rescheduled_at,rows[0].timezone)}}</dd></div></dl><AssuranceQualificationSnapshot :snapshot="rows[0].qualification_snapshot"/><div class="appointment-actions"><button v-if="canWrite&&rows[0].status==='scheduled'&&!['performed','absent','not_performed'].includes(rows[0].business_status)" class="secondary" :disabled="busy" @click="edit(rows[0])">Reporter ou annuler</button><button v-if="role==='advisor'&&rows[0].status==='scheduled'&&Date.parse(rows[0].ends_at)<=Date.now()" class="secondary" :disabled="busy" @click="openReport(rows[0])">Compte rendu</button><button v-if="role==='administrator'" class="secondary" :disabled="busy" @click="run(async()=>{historyRow=rows[0];historyPage=1;await loadHistory()})">Historique</button></div></div><div v-if="!appointmentId" class="table-scroll"><table><thead><tr><th>Prospect</th><th>Conseiller</th><th>Créneau</th><th>Statut</th><th>Actions</th></tr></thead><tbody><tr v-for="row in rows" :key="row.id"><td>{{row.contact.name||'Sans nom'}}<small>{{row.contact.phone}}</small></td><td>{{row.advisor.name}}</td><td>{{showDate(row.starts_at,row.timezone)}}<small>Fin : {{showDate(row.ends_at,row.timezone)}} · {{row.timezone}}</small></td><td><span class="appointment-business-status" :class="row.business_status">{{appointmentStatus(row)}}</span><small v-if="row.reschedule_count">{{row.reschedule_count}} report(s)</small></td><td><button class="secondary" @click="qualificationRow=row">Qualification transmise</button><button v-if="role==='advisor'&&row.status==='scheduled'&&Date.parse(row.ends_at)<=Date.now()" class="secondary" :disabled="busy" @click="openReport(row)">Compte rendu</button><button v-if="canWrite&&row.status==='scheduled'&&!['performed','absent','not_performed'].includes(row.business_status)" class="secondary" :disabled="busy" @click="edit(row)">Gérer ce rendez-vous</button><button v-if="role==='administrator'" class="secondary" :disabled="busy" @click="run(async()=>{historyRow=row;historyPage=1;await loadHistory()})">Historique</button></td></tr><tr v-if="!rows.length"><td colspan="5">{{busy?'Chargement…':'Aucun rendez-vous dans ce périmètre.'}}</td></tr></tbody></table></div><div v-if="!appointmentId" class="appointment-actions"><span>{{count}} rendez-vous · page {{page}}</span><button class="secondary" :disabled="busy||page===1" @click="run(async()=>{page--;await load()})">Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="run(async()=>{page++;await load()})">Suivant</button></div>
-</div><section v-if="qualificationRow"><AssuranceQualificationSnapshot :snapshot="qualificationRow.qualification_snapshot"/><button class="secondary" @click="qualificationRow=null">Fermer la qualification</button></section><section v-if="editing&&canWrite"><h4>Gérer le rendez-vous {{editing.id}}</h4><form @submit.prevent="reschedule"><template v-if="appointmentId"><label>Nouveau début<input v-model="localStart" type="datetime-local" required></label><label>Nouvelle fin<input v-model="localEnd" type="datetime-local" required></label><label>Heures du rendez-vous<select v-model="zone"><option v-if="!['UTC','America/Toronto','America/Vancouver','America/Edmonton','America/Winnipeg','America/Halifax','America/St_Johns'].includes(zone)" :value="zone">{{zone}}</option><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Edmonton">Edmonton</option><option value="America/Winnipeg">Winnipeg</option><option value="America/Halifax">Halifax</option><option value="America/St_Johns">Saint-Jean</option><option value="UTC">UTC</option></select></label></template><template v-else><label>Nouveau début (ISO 8601)<input v-model="start" required></label><label>Nouvelle fin (ISO 8601)<input v-model="end" required></label><label>Fuseau IANA<input v-model="zone" required></label></template><label>Motif interne obligatoire (réservé à l’administration)<input v-model="reason" required maxlength="1000"></label><div class="appointment-actions"><button class="primary" :disabled="busy">Reprogrammer</button><button class="secondary" type="button" :disabled="busy||!reason.trim()" @click="cancel">Annuler le rendez-vous</button><button class="secondary" type="button" :disabled="busy" @click="editing=null">Fermer</button></div></form></section>
-<section v-if="reportRow&&role==='advisor'"><h4>Compte rendu · RDV {{reportRow.id}}</h4><template v-if="savedReport"><p>Résultat : {{savedReport.outcome_label||(savedReport.performed?'Rendez-vous fait':'Non effectué — autre motif')}} · Problème : {{savedReport.problem?'Oui':'Non'}}</p><p>{{savedReport.note}}</p><form @submit.prevent="signal"><label>Signaler un problème ultérieur<textarea v-model="incidentNote" required maxlength="3000" @input="resetIncidentId"></textarea></label><button class="primary" :disabled="busy">Transmettre le signalement</button></form><h4>Signalements conservés</h4><article v-for="incident in incidents" :key="incident.id"><p>{{incident.note}}</p><small>{{new Date(incident.created_at).toLocaleString('fr-FR')}}</small></article><button class="secondary" :disabled="busy||incidentPage===1" @click="run(async()=>{incidentPage--;await loadIncidents()})">Précédent</button><button class="secondary" :disabled="busy||incidentPage*25>=incidentCount" @click="run(async()=>{incidentPage++;await loadIncidents()})">Suivant</button></template><form v-else @submit.prevent="submitReport"><label>Résultat du rendez-vous<select v-model="performed" required :disabled="busy"><option value="">Choisir le résultat</option><option value="performed">Rendez-vous fait</option><option value="absent">Absent</option><option value="not_performed">Non effectué — autre motif</option></select></label><label><input v-model="problem" type="checkbox">Signaler un problème</label><label>Précisions (obligatoires en cas d’absence, de non-réalisation ou de problème)<textarea v-model="note" maxlength="3000" :required="performed!=='performed'||problem"></textarea></label><button class="primary" :disabled="busy||!performed">Enregistrer le compte rendu</button></form><button class="secondary" @click="reportRow=null">Fermer</button></section><section v-if="role==='administrator'&&historyRow"><h4>Historique du rendez-vous {{historyRow.id}}</h4><button class="secondary" @click="historyRow=null">Fermer l’historique</button><article v-for="entry in history" :key="entry.id"><strong>{{entry.action}}</strong><small>{{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur interne {{entry.actor_id}}</small><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><div class="appointment-actions"><button class="secondary" :disabled="busy||historyPage===1" @click="run(async()=>{historyPage--;await loadHistory()})">Précédent</button><span>Page {{historyPage}}</span><button class="secondary" :disabled="busy||historyPage*25>=historyCount" @click="run(async()=>{historyPage++;await loadHistory()})">Suivant</button></div></section>
-</section>
+  <section
+    class="appointments"
+    :class="{ 'compact-booking': compact, 'appointment-detail-mode': !!appointmentId }"
+  >
+    <h3 v-if="!appointmentId">
+      {{
+        compact
+          ? 'Réserver un rendez-vous'
+          : contactId
+            ? 'Rendez-vous du prospect'
+            : 'Rendez-vous Assurance'
+      }}
+    </h3>
+    <p v-if="!appointmentId" class="subtle">
+      Choisissez un conseiller et un créneau. Les disponibilités sont contrôlées lors de la
+      confirmation.
+    </p>
+    <p v-if="error" role="alert" class="error">{{ error }}</p>
+    <p v-if="message" role="status" class="booking-feedback">{{ message }}</p>
+    <div v-if="compact && !busy && !error && !choiceCount" class="booking-unavailable">
+      <strong>Aucun conseiller attribué</strong>
+      <p>
+        Aucun conseiller ne vous est encore attribué. L’administration doit vous en attribuer un
+        pour réserver un créneau.
+      </p>
+      <button class="secondary" :disabled="busy" @click="run(loadChoices)">
+        Actualiser les conseillers
+      </button>
+    </div>
+    <button
+      v-if="compact && error"
+      class="secondary"
+      :disabled="busy"
+      @click="
+        run(async () => {
+          await load();
+          await loadChoices();
+        })
+      "
+    >
+      Réessayer</button
+    ><template v-if="canWrite && contactId && !editing"
+      ><p v-if="!leaseToken">Prenez en charge la fiche pour réserver un rendez-vous.</p>
+      <form v-else-if="!compact || choiceCount > 0" @submit.prevent="book" @input="resetId">
+        <template v-if="!compact"
+          ><label
+            >Rechercher une attribution<input
+              v-model="choiceSearch"
+              @keydown.enter.prevent="
+                run(async () => {
+                  choicePage = 1;
+                  await loadChoices();
+                })
+              " /></label
+          ><button
+            class="secondary"
+            type="button"
+            :disabled="busy"
+            @click="
+              run(async () => {
+                choicePage = 1;
+                await loadChoices();
+              })
+            "
+          >
+            Rechercher les conseillers attribués
+          </button></template
+        ><label
+          >Conseiller<select v-model="assignment" required :disabled="busy">
+            <option value="">Choisir un conseiller</option>
+            <option v-for="row in choices" :key="row.id" :value="String(row.id)">
+              {{ role === 'administrator' ? row.setter.name + ' → ' : '' }}{{ row.advisor.name }}
+            </option>
+          </select></label
+        >
+        <p v-if="compact && !busy && !choiceCount" class="no-advisor">
+          Aucun conseiller ne vous est attribué dans cet espace. Un administrateur doit vous en
+          attribuer un pour réserver.
+        </p>
+        <div class="appointment-actions" v-if="!compact || choiceCount > 25">
+          <button
+            type="button"
+            class="secondary"
+            :disabled="busy || choicePage === 1"
+            @click="
+              run(async () => {
+                choicePage--;
+                await loadChoices();
+              })
+            "
+          >
+            Précédent</button
+          ><span>{{ choiceCount }} attribution(s) · page {{ choicePage }}</span
+          ><button
+            type="button"
+            class="secondary"
+            :disabled="busy || choicePage * 25 >= choiceCount"
+            @click="
+              run(async () => {
+                choicePage++;
+                await loadChoices();
+              })
+            "
+          >
+            Suivant
+          </button>
+        </div>
+        <fieldset v-if="compact" class="friendly-slot" :disabled="busy || blocked">
+          <label>Date et heure<input v-model="localStart" type="datetime-local" required /></label
+          ><label
+            >Durée<select v-model.number="duration">
+              <option :value="15">15 minutes</option>
+              <option :value="30">30 minutes</option>
+              <option :value="45">45 minutes</option>
+              <option :value="60">1 heure</option>
+              <option :value="90">1 h 30</option>
+              <option :value="120">2 heures</option>
+            </select></label
+          ><label
+            >Heure du rendez-vous<select v-model="zone">
+              <option value="America/Toronto">Toronto / Montréal</option>
+              <option value="America/Vancouver">Vancouver</option>
+              <option value="America/Edmonton">Edmonton</option>
+              <option value="America/Winnipeg">Winnipeg</option>
+              <option value="America/Halifax">Halifax</option>
+              <option value="America/St_Johns">Saint-Jean</option>
+            </select></label
+          >
+        </fieldset>
+        <template v-else
+          ><label
+            >Début avec décalage horaire<input
+              v-model="start"
+              placeholder="2026-10-21T10:00:00-04:00"
+              required /></label
+          ><label>Fin avec décalage horaire<input v-model="end" required /></label
+          ><label>Fuseau IANA<input v-model="zone" placeholder="America/Toronto" required /></label
+          ><small
+            >Format ISO 8601 : date, heure et décalage correspondant au fuseau. Exemple :
+            2026-10-21T10:00:00-04:00 à Toronto.</small
+          ></template
+        ><button class="primary" :disabled="busy || blocked || !assignment">
+          Réserver le rendez-vous
+        </button>
+      </form></template
+    >
+    <button
+      v-if="compact && count > 0"
+      type="button"
+      class="secondary booking-history-toggle"
+      @click="historyVisible = !historyVisible"
+    >
+      {{ historyVisible ? 'Masquer les rendez-vous existants' : 'Voir les rendez-vous existants' }}
+      ({{ count }})
+    </button>
+    <div v-show="!compact || historyVisible">
+      <form
+        v-if="!appointmentId"
+        class="appointment-actions"
+        @submit.prevent="
+          run(async () => {
+            page = 1;
+            await load();
+          })
+        "
+      >
+        <label
+          >Période<select v-model="period">
+            <option value="upcoming">À venir</option>
+            <option value="past">Passés</option>
+            <option value="">Tous</option>
+          </select></label
+        ><label
+          >Statut<select v-model="status">
+            <option value="">Tous</option>
+            <option v-for="(label, key) in appointmentStatusLabels" :key="key" :value="key">
+              {{ label }}
+            </option>
+          </select></label
+        ><button class="secondary" :disabled="busy">Actualiser</button>
+      </form>
+      <div v-if="appointmentId && rows.length" class="appointment-detail">
+        <div class="detail-person">
+          <strong>{{ rows[0].contact.name || 'Prospect sans nom' }}</strong
+          ><span>{{ rows[0].contact.phone || 'Numéro non renseigné' }}</span>
+        </div>
+        <dl>
+          <div>
+            <dt>Conseiller</dt>
+            <dd>{{ rows[0].advisor.name }}</dd>
+          </div>
+          <div>
+            <dt>Début</dt>
+            <dd>{{ showDate(rows[0].starts_at, rows[0].timezone) }}</dd>
+          </div>
+          <div>
+            <dt>Fin</dt>
+            <dd>{{ showDate(rows[0].ends_at, rows[0].timezone) }}</dd>
+          </div>
+          <div>
+            <dt>Fuseau</dt>
+            <dd>{{ rows[0].timezone }}</dd>
+          </div>
+          <div>
+            <dt>Statut</dt>
+            <dd>
+              <span class="appointment-business-status" :class="rows[0].business_status">{{
+                appointmentStatus(rows[0])
+              }}</span>
+            </dd>
+          </div>
+          <div v-if="rows[0].reschedule_count">
+            <dt>Reports</dt>
+            <dd>
+              {{ rows[0].reschedule_count }} · dernier le
+              {{ showDate(rows[0].rescheduled_at, rows[0].timezone) }}
+            </dd>
+          </div>
+        </dl>
+        <AssuranceQualificationSnapshot :snapshot="rows[0].qualification_snapshot" />
+        <div class="appointment-actions">
+          <button
+            v-if="
+              canWrite &&
+              rows[0].status === 'scheduled' &&
+              !['performed', 'absent', 'not_performed'].includes(rows[0].business_status)
+            "
+            class="secondary"
+            :disabled="busy"
+            @click="edit(rows[0])"
+          >
+            Reporter ou annuler</button
+          ><button
+            v-if="
+              role === 'advisor' &&
+              rows[0].status === 'scheduled' &&
+              Date.parse(rows[0].ends_at) <= Date.now()
+            "
+            class="secondary"
+            :disabled="busy"
+            @click="openReport(rows[0])"
+          >
+            Compte rendu</button
+          ><button
+            v-if="role === 'administrator'"
+            class="secondary"
+            :disabled="busy"
+            @click="
+              run(async () => {
+                historyRow = rows[0];
+                historyPage = 1;
+                await loadHistory();
+              })
+            "
+          >
+            Historique
+          </button>
+        </div>
+      </div>
+      <div v-if="!appointmentId" class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Prospect</th>
+              <th>Conseiller</th>
+              <th>Créneau</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rows" :key="row.id">
+              <td>
+                {{ row.contact.name || 'Sans nom' }}<small>{{ row.contact.phone }}</small>
+              </td>
+              <td>{{ row.advisor.name }}</td>
+              <td>
+                {{ showDate(row.starts_at, row.timezone)
+                }}<small
+                  >Fin : {{ showDate(row.ends_at, row.timezone) }} · {{ row.timezone }}</small
+                >
+              </td>
+              <td>
+                <span class="appointment-business-status" :class="row.business_status">{{
+                  appointmentStatus(row)
+                }}</span
+                ><small v-if="row.reschedule_count">{{ row.reschedule_count }} report(s)</small>
+              </td>
+              <td>
+                <button class="secondary" @click="qualificationRow = row">
+                  Qualification transmise</button
+                ><button
+                  v-if="
+                    role === 'advisor' &&
+                    row.status === 'scheduled' &&
+                    Date.parse(row.ends_at) <= Date.now()
+                  "
+                  class="secondary"
+                  :disabled="busy"
+                  @click="openReport(row)"
+                >
+                  Compte rendu</button
+                ><button
+                  v-if="
+                    canWrite &&
+                    row.status === 'scheduled' &&
+                    !['performed', 'absent', 'not_performed'].includes(row.business_status)
+                  "
+                  class="secondary"
+                  :disabled="busy"
+                  @click="edit(row)"
+                >
+                  Gérer ce rendez-vous</button
+                ><button
+                  v-if="role === 'administrator'"
+                  class="secondary"
+                  :disabled="busy"
+                  @click="
+                    run(async () => {
+                      historyRow = row;
+                      historyPage = 1;
+                      await loadHistory();
+                    })
+                  "
+                >
+                  Historique
+                </button>
+              </td>
+            </tr>
+            <tr v-if="!rows.length">
+              <td colspan="5">
+                {{ busy ? 'Chargement…' : 'Aucun rendez-vous dans ce périmètre.' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="!appointmentId" class="appointment-actions">
+        <span>{{ count }} rendez-vous · page {{ page }}</span
+        ><button
+          class="secondary"
+          :disabled="busy || page === 1"
+          @click="
+            run(async () => {
+              page--;
+              await load();
+            })
+          "
+        >
+          Précédent</button
+        ><button
+          class="secondary"
+          :disabled="busy || page * 25 >= count"
+          @click="
+            run(async () => {
+              page++;
+              await load();
+            })
+          "
+        >
+          Suivant
+        </button>
+      </div>
+    </div>
+    <section v-if="qualificationRow">
+      <AssuranceQualificationSnapshot :snapshot="qualificationRow.qualification_snapshot" /><button
+        class="secondary"
+        @click="qualificationRow = null"
+      >
+        Fermer la qualification
+      </button>
+    </section>
+    <section v-if="editing && canWrite">
+      <h4>Gérer le rendez-vous {{ editing.id }}</h4>
+      <form @submit.prevent="reschedule">
+        <template v-if="appointmentId"
+          ><label>Nouveau début<input v-model="localStart" type="datetime-local" required /></label
+          ><label>Nouvelle fin<input v-model="localEnd" type="datetime-local" required /></label
+          ><label
+            >Heures du rendez-vous<select v-model="zone">
+              <option
+                v-if="
+                  ![
+                    'UTC',
+                    'America/Toronto',
+                    'America/Vancouver',
+                    'America/Edmonton',
+                    'America/Winnipeg',
+                    'America/Halifax',
+                    'America/St_Johns',
+                  ].includes(zone)
+                "
+                :value="zone"
+              >
+                {{ zone }}
+              </option>
+              <option value="America/Toronto">Toronto / Montréal</option>
+              <option value="America/Vancouver">Vancouver</option>
+              <option value="America/Edmonton">Edmonton</option>
+              <option value="America/Winnipeg">Winnipeg</option>
+              <option value="America/Halifax">Halifax</option>
+              <option value="America/St_Johns">Saint-Jean</option>
+              <option value="UTC">UTC</option>
+            </select></label
+          ></template
+        ><template v-else
+          ><label>Nouveau début (ISO 8601)<input v-model="start" required /></label
+          ><label>Nouvelle fin (ISO 8601)<input v-model="end" required /></label
+          ><label>Fuseau IANA<input v-model="zone" required /></label></template
+        ><label
+          >Motif interne obligatoire (réservé à l’administration)<input
+            v-model="reason"
+            required
+            maxlength="1000"
+        /></label>
+        <div class="appointment-actions">
+          <button class="primary" :disabled="busy">Reprogrammer</button
+          ><button
+            class="secondary"
+            type="button"
+            :disabled="busy || !reason.trim()"
+            @click="cancel"
+          >
+            Annuler le rendez-vous</button
+          ><button class="secondary" type="button" :disabled="busy" @click="editing = null">
+            Fermer
+          </button>
+        </div>
+      </form>
+    </section>
+    <section v-if="reportRow && role === 'advisor'">
+      <h4>Compte rendu · RDV {{ reportRow.id }}</h4>
+      <template v-if="savedReport"
+        ><p>
+          Résultat :
+          {{
+            savedReport.outcome_label ||
+            (savedReport.performed ? 'Rendez-vous fait' : 'Non effectué — autre motif')
+          }}
+          · Problème : {{ savedReport.problem ? 'Oui' : 'Non' }}
+        </p>
+        <p>{{ savedReport.note }}</p>
+        <form @submit.prevent="signal">
+          <label
+            >Signaler un problème ultérieur<textarea
+              v-model="incidentNote"
+              required
+              maxlength="3000"
+              @input="resetIncidentId"
+            ></textarea></label
+          ><button class="primary" :disabled="busy">Transmettre le signalement</button>
+        </form>
+        <h4>Signalements conservés</h4>
+        <article v-for="incident in incidents" :key="incident.id">
+          <p>{{ incident.note }}</p>
+          <small>{{ new Date(incident.created_at).toLocaleString('fr-FR') }}</small>
+        </article>
+        <button
+          class="secondary"
+          :disabled="busy || incidentPage === 1"
+          @click="
+            run(async () => {
+              incidentPage--;
+              await loadIncidents();
+            })
+          "
+        >
+          Précédent</button
+        ><button
+          class="secondary"
+          :disabled="busy || incidentPage * 25 >= incidentCount"
+          @click="
+            run(async () => {
+              incidentPage++;
+              await loadIncidents();
+            })
+          "
+        >
+          Suivant
+        </button></template
+      >
+      <form v-else @submit.prevent="submitReport">
+        <label
+          >Résultat du rendez-vous<select v-model="performed" required :disabled="busy">
+            <option value="">Choisir le résultat</option>
+            <option value="performed">Rendez-vous fait</option>
+            <option value="absent">Absent</option>
+            <option value="not_performed">Non effectué — autre motif</option>
+          </select></label
+        ><label><input v-model="problem" type="checkbox" />Signaler un problème</label
+        ><label
+          >Précisions (obligatoires en cas d’absence, de non-réalisation ou de problème)<textarea
+            v-model="note"
+            maxlength="3000"
+            :required="performed !== 'performed' || problem"
+          ></textarea></label
+        ><button class="primary" :disabled="busy || !performed">Enregistrer le compte rendu</button>
+      </form>
+      <button class="secondary" @click="reportRow = null">Fermer</button>
+    </section>
+    <section v-if="role === 'administrator' && historyRow">
+      <h4>Historique du rendez-vous {{ historyRow.id }}</h4>
+      <button class="secondary" @click="historyRow = null">Fermer l’historique</button>
+      <article v-for="entry in history" :key="entry.id">
+        <strong>{{ entry.action }}</strong
+        ><small
+          >{{ new Date(entry.created_at).toLocaleString('fr-FR') }} · utilisateur interne
+          {{ entry.actor_id }}</small
+        >
+        <pre>{{ JSON.stringify(entry.metadata, null, 2) }}</pre>
+      </article>
+      <div class="appointment-actions">
+        <button
+          class="secondary"
+          :disabled="busy || historyPage === 1"
+          @click="
+            run(async () => {
+              historyPage--;
+              await loadHistory();
+            })
+          "
+        >
+          Précédent</button
+        ><span>Page {{ historyPage }}</span
+        ><button
+          class="secondary"
+          :disabled="busy || historyPage * 25 >= historyCount"
+          @click="
+            run(async () => {
+              historyPage++;
+              await loadHistory();
+            })
+          "
+        >
+          Suivant
+        </button>
+      </div>
+    </section>
+  </section>
 </template>
 <style scoped>
 .appointments {

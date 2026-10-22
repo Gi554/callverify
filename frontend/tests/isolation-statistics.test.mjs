@@ -168,7 +168,7 @@ test('weekly Canadian report exports the applied grouping even when draft filter
     await flush()
     assert.equal(f.requests.length, 1)
     await all(f.root)
-      .find((n) => n.tag === 'button' && n.text === 'Télécharger CSV')
+      .find((n) => n.tag === 'button' && n.text?.trim() === 'Télécharger CSV')
       .props.onClick()
     await flush()
     const exported = new URL(f.requests.at(-1), 'http://test').searchParams
@@ -199,7 +199,7 @@ test('custom range replaces week and pagination keeps applied criteria', async (
     set(dates[0], '2026-09-01')
     await flush()
     await all(f.root)
-      .find((n) => n.tag === 'button' && n.text === 'Suivant')
+      .find((n) => n.tag === 'button' && n.text?.trim() === 'Suivant')
       .props.onClick()
     await flush()
     query = new URL(f.requests.at(-1), 'http://test').searchParams
@@ -217,10 +217,12 @@ test('a failed recalculation removes stale figures and download actions', async 
     f.state.fail = true
     await apply(f)
     assert.ok(
-      all(f.root).some((n) => n.props?.role === 'alert' && n.text === 'Rapport indisponible'),
+      all(f.root).some(
+        (n) => n.props?.role === 'alert' && n.text?.trim() === 'Rapport indisponible',
+      ),
     )
     assert.equal(
-      all(f.root).some((n) => n.tag === 'button' && n.text === 'Télécharger Excel'),
+      all(f.root).some((n) => n.tag === 'button' && n.text?.trim() === 'Télécharger Excel'),
       false,
     )
   } finally {

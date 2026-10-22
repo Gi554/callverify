@@ -1,63 +1,63 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
-import { Search, RefreshCw, ArrowUpRight, Phone, Mail } from 'lucide-vue-next'
-import AssuranceContactEditor from './AssuranceContactEditor.vue'
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
+import { Search, RefreshCw, ArrowUpRight, Phone, Mail } from 'lucide-vue-next';
+import AssuranceContactEditor from './AssuranceContactEditor.vue';
 const props = defineProps<{
-  request: (path: string, body?: any, method?: string) => Promise<any>
-  portal: (path: string, body?: any) => Promise<any>
-  role: string
-}>()
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+  portal: (path: string, body?: any) => Promise<any>;
+  role: string;
+}>();
 type Column = {
-  key: string
-  label: string
-  active: boolean
-  rows: any[]
-  count: number
-  page: number
-  next: boolean
-  busy: boolean
-  error: string
-}
+  key: string;
+  label: string;
+  active: boolean;
+  rows: any[];
+  count: number;
+  page: number;
+  next: boolean;
+  busy: boolean;
+  error: string;
+};
 const columns = ref<Column[]>([]),
   search = ref(''),
   applied = ref(''),
   busy = ref(false),
   error = ref(''),
-  selected = ref<any>(null)
-let version = 0
-const total = computed(() => columns.value.reduce((sum, column) => sum + column.count, 0))
-const incomplete = computed(() => columns.value.some((column) => column.error))
-const opening = ref(false)
+  selected = ref<any>(null);
+let version = 0;
+const total = computed(() => columns.value.reduce((sum, column) => sum + column.count, 0));
+const incomplete = computed(() => columns.value.some((column) => column.error));
+const opening = ref(false);
 onBeforeUnmount(() => {
-  version++
-})
+  version++;
+});
 async function loadColumn(column: Column, generation: number, append = false) {
-  column.busy = true
-  column.error = ''
-  const page = append ? column.page + 1 : 1
+  column.busy = true;
+  column.error = '';
+  const page = append ? column.page + 1 : 1;
   try {
     const data = await props.request(
       `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${page}`,
-    )
-    if (generation !== version) return
-    column.rows = append ? [...column.rows, ...data.results] : data.results
-    column.count = data.count
-    column.page = page
-    column.next = !!data.next
+    );
+    if (generation !== version) return;
+    column.rows = append ? [...column.rows, ...data.results] : data.results;
+    column.count = data.count;
+    column.page = page;
+    column.next = !!data.next;
   } catch (e: any) {
-    if (generation === version) column.error = e.message
+    if (generation === version) column.error = e.message;
   } finally {
-    if (generation === version) column.busy = false
+    if (generation === version) column.busy = false;
   }
 }
 async function load() {
-  const generation = ++version
-  busy.value = true
-  error.value = ''
-  applied.value = search.value.trim()
+  const generation = ++version;
+  busy.value = true;
+  error.value = '';
+  applied.value = search.value.trim();
   try {
-    const data = await props.request('pipeline/')
-    if (generation !== version) return
+    const data = await props.request('pipeline/');
+    if (generation !== version) return;
     columns.value = data.stages.map((stage: any) => ({
       ...stage,
       rows: [],
@@ -66,68 +66,139 @@ async function load() {
       next: false,
       busy: true,
       error: '',
-    }))
+    }));
     // Bound parallel requests even when administrators configure thirty stages.
-    const queue = [...columns.value]
+    const queue = [...columns.value];
     await Promise.all(
       Array.from({ length: 3 }, async () => {
         while (queue.length && generation === version) {
-          await loadColumn(queue.shift()!, generation)
+          await loadColumn(queue.shift()!, generation);
         }
       }),
-    )
+    );
   } catch (e: any) {
-    if (generation === version) error.value = e.message
+    if (generation === version) error.value = e.message;
   } finally {
-    if (generation === version) busy.value = false
+    if (generation === version) busy.value = false;
   }
 }
 async function open(id: number) {
-  if (opening.value) return
-  opening.value = true
-  error.value = ''
+  if (opening.value) return;
+  opening.value = true;
+  error.value = '';
   try {
-    selected.value = await props.request(`contacts/${id}/`)
+    selected.value = await props.request(`contacts/${id}/`);
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    opening.value = false
+    opening.value = false;
   }
 }
-onMounted(load)
+onMounted(load);
 </script>
-<!-- prettier-ignore -->
 <template>
- <section class="pipeline">
-  <p v-if="error" role="alert" class="error">{{error}}</p>
-  <AssuranceContactEditor v-if="selected" :key="selected.id" :contact="selected" :portal="portal" :request="request" :role="role" @close="selected=null;load()" @changed="load"/>
-  <template v-else>
-   <header class="pipeline-navigation"><h2>Opportunités</h2><span>Pipeline commercial</span></header>
-   <div class="pipeline-context"><strong>Assurance</strong><span class="pipeline-total" role="status">{{busy?'Chargement…':`${total} opportunités${incomplete?' · résultat partiel':''}`}}</span></div>
-   <form class="pipeline-toolbar" @submit.prevent="load">
-    <p>Ouvrez une fiche pour modifier son statut.</p>
-    <label><Search :size="17"/><input v-model="search" aria-label="Rechercher des opportunités" placeholder="Nom, téléphone ou e-mail"></label>
-    <button class="primary" :disabled="busy">Rechercher</button>
-    <button type="button" class="secondary" :disabled="busy" aria-label="Actualiser le pipeline" @click="load"><RefreshCw :size="17"/></button>
-   </form>
-   <p v-if="busy" role="status">Chargement du pipeline…</p>
-   <div class="pipeline-board" role="region" tabindex="0" aria-label="Opportunités par statut commercial, défilement horizontal">
-    <section v-for="(column,index) in columns" :key="column.key" class="pipeline-column" :style="{'--stage-color':['#299ed0','#e4b94f','#9290cf','#63a69c','#5f8fda'][index%5]}">
-     <header><h3>{{column.label}} <small v-if="!column.active">Archivé</small></h3><span>{{column.busy&&column.page===0?'…':column.count}} contact(s)</span></header>
-     <div class="pipeline-cards">
-      <p v-if="column.error" role="alert">{{column.error}} <button class="secondary" @click="loadColumn(column,version,column.page>0)">Réessayer</button></p>
-      <article v-for="row in column.rows" :key="row.id" class="pipeline-card">
-       <button class="pipeline-name" :disabled="opening" @click="open(row.id)"><strong>{{row.name||'Sans nom'}}</strong><ArrowUpRight :size="16"/></button>
-       <p><Phone :size="14"/>{{row.phone||'Téléphone non renseigné'}}</p><p v-if="row.email"><Mail :size="14"/>{{row.email}}</p>
-       <footer><span>Mis à jour {{new Date(row.updated_at).toLocaleDateString('fr-FR')}}</span><button class="text-button" :disabled="opening" @click="open(row.id)">Ouvrir la fiche</button></footer>
-      </article>
-      <p v-if="!column.busy&&!column.error&&!column.count" class="pipeline-empty">Aucun contact dans cette étape.</p>
-      <button v-if="column.next" class="secondary pipeline-more" :disabled="column.busy" @click="loadColumn(column,version,true)">{{column.busy?'Chargement…':'Afficher plus'}} ({{column.rows.length}} / {{column.count}})</button>
-     </div>
-    </section>
-   </div>
-  </template>
- </section>
+  <section class="pipeline">
+    <p v-if="error" role="alert" class="error">{{ error }}</p>
+    <AssuranceContactEditor
+      v-if="selected"
+      :key="selected.id"
+      :contact="selected"
+      :portal="portal"
+      :request="request"
+      :role="role"
+      @close="
+        selected = null;
+        load();
+      "
+      @changed="load"
+    />
+    <template v-else>
+      <header class="pipeline-navigation">
+        <h2>Opportunités</h2>
+        <span>Pipeline commercial</span>
+      </header>
+      <div class="pipeline-context">
+        <strong>Assurance</strong
+        ><span class="pipeline-total" role="status">{{
+          busy ? 'Chargement…' : `${total} opportunités${incomplete ? ' · résultat partiel' : ''}`
+        }}</span>
+      </div>
+      <form class="pipeline-toolbar" @submit.prevent="load">
+        <p>Ouvrez une fiche pour modifier son statut.</p>
+        <label
+          ><Search :size="17" /><input
+            v-model="search"
+            aria-label="Rechercher des opportunités"
+            placeholder="Nom, téléphone ou e-mail"
+        /></label>
+        <button class="primary" :disabled="busy">Rechercher</button>
+        <button
+          type="button"
+          class="secondary"
+          :disabled="busy"
+          aria-label="Actualiser le pipeline"
+          @click="load"
+        >
+          <RefreshCw :size="17" />
+        </button>
+      </form>
+      <p v-if="busy" role="status">Chargement du pipeline…</p>
+      <div
+        class="pipeline-board"
+        role="region"
+        tabindex="0"
+        aria-label="Opportunités par statut commercial, défilement horizontal"
+      >
+        <section
+          v-for="(column, index) in columns"
+          :key="column.key"
+          class="pipeline-column"
+          :style="{
+            '--stage-color': ['#299ed0', '#e4b94f', '#9290cf', '#63a69c', '#5f8fda'][index % 5],
+          }"
+        >
+          <header>
+            <h3>{{ column.label }} <small v-if="!column.active">Archivé</small></h3>
+            <span>{{ column.busy && column.page === 0 ? '…' : column.count }} contact(s)</span>
+          </header>
+          <div class="pipeline-cards">
+            <p v-if="column.error" role="alert">
+              {{ column.error }}
+              <button class="secondary" @click="loadColumn(column, version, column.page > 0)">
+                Réessayer
+              </button>
+            </p>
+            <article v-for="row in column.rows" :key="row.id" class="pipeline-card">
+              <button class="pipeline-name" :disabled="opening" @click="open(row.id)">
+                <strong>{{ row.name || 'Sans nom' }}</strong
+                ><ArrowUpRight :size="16" />
+              </button>
+              <p><Phone :size="14" />{{ row.phone || 'Téléphone non renseigné' }}</p>
+              <p v-if="row.email"><Mail :size="14" />{{ row.email }}</p>
+              <footer>
+                <span>Mis à jour {{ new Date(row.updated_at).toLocaleDateString('fr-FR') }}</span
+                ><button class="text-button" :disabled="opening" @click="open(row.id)">
+                  Ouvrir la fiche
+                </button>
+              </footer>
+            </article>
+            <p v-if="!column.busy && !column.error && !column.count" class="pipeline-empty">
+              Aucun contact dans cette étape.
+            </p>
+            <button
+              v-if="column.next"
+              class="secondary pipeline-more"
+              :disabled="column.busy"
+              @click="loadColumn(column, version, true)"
+            >
+              {{ column.busy ? 'Chargement…' : 'Afficher plus' }} ({{ column.rows.length }} /
+              {{ column.count }})
+            </button>
+          </div>
+        </section>
+      </div>
+    </template>
+  </section>
 </template>
 <style scoped>
 .pipeline {

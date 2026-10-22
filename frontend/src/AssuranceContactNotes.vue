@@ -1,70 +1,70 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue';
 const props = defineProps<{
-  contactId: number
-  role: string
-  leaseToken: string
-  compact?: boolean
-  request: (path: string, body?: any, method?: string) => Promise<any>
-}>()
-const emit = defineEmits<{ dirty: [value: boolean]; busy: [value: boolean] }>()
+  contactId: number;
+  role: string;
+  leaseToken: string;
+  compact?: boolean;
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+}>();
+const emit = defineEmits<{ dirty: [value: boolean]; busy: [value: boolean] }>();
 const rows = ref<any[]>([]),
   page = ref(1),
   count = ref(0),
   body = ref(''),
   busy = ref(false),
   error = ref(''),
-  message = ref('')
-watch(body, (value) => emit('dirty', !!value.trim()))
-watch(busy, (value) => emit('busy', value), { flush: 'sync' })
-let requestId = crypto.randomUUID()
+  message = ref('');
+watch(body, (value) => emit('dirty', !!value.trim()));
+watch(busy, (value) => emit('busy', value), { flush: 'sync' });
+let requestId = crypto.randomUUID();
 function changed() {
-  requestId = crypto.randomUUID()
+  requestId = crypto.randomUUID();
 }
 async function load() {
-  busy.value = true
-  error.value = ''
-  rows.value = []
-  count.value = 0
+  busy.value = true;
+  error.value = '';
+  rows.value = [];
+  count.value = 0;
   try {
-    const result = await props.request(`contacts/${props.contactId}/notes/?page=${page.value}`)
+    const result = await props.request(`contacts/${props.contactId}/notes/?page=${page.value}`);
     rows.value = result.results.map((row: any) => ({
       ...row,
       publicBody: row.advisor_body || '',
       shareReason: '',
       reviewed: false,
-    }))
-    count.value = result.count
+    }));
+    count.value = result.count;
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function add() {
-  busy.value = true
-  error.value = ''
-  message.value = ''
+  busy.value = true;
+  error.value = '';
+  message.value = '';
   try {
     await props.request(`contacts/${props.contactId}/notes/`, {
       request_id: requestId,
       body: body.value,
       ...(props.role !== 'advisor' ? { token: props.leaseToken } : {}),
-    })
-    body.value = ''
-    requestId = crypto.randomUUID()
-    page.value = 1
-    await load()
-    message.value = 'Note ajoutée à l’historique.'
+    });
+    body.value = '';
+    requestId = crypto.randomUUID();
+    page.value = 1;
+    await load();
+    message.value = 'Note ajoutée à l’historique.';
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 async function share(row: any) {
-  busy.value = true
-  error.value = ''
+  busy.value = true;
+  error.value = '';
   try {
     await props.request(`contacts/${props.contactId}/notes/${row.id}/sharing/`, {
       revision: row.sharing_revision,
@@ -72,16 +72,119 @@ async function share(row: any) {
       body: row.publicBody || undefined,
       reason: row.shareReason,
       reviewed: row.reviewed,
-    })
-    await load()
-    message.value = 'Partage mis à jour.'
+    });
+    await load();
+    message.value = 'Partage mis à jour.';
   } catch (e: any) {
-    error.value = e.message
+    error.value = e.message;
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
-onMounted(load)
+onMounted(load);
 </script>
-<!-- prettier-ignore -->
-<template><section :class="{'compact-notes':compact}"><h3>{{role==='advisor'?'Notes accessibles sur ce dossier':'Notes du dossier'}}</h3><p v-if="!compact">{{role==='advisor'?'Vos notes personnelles restent accessibles à vous et à l’administration. Les versions de notes internes explicitement publiées apparaissent aussi sur vos dossiers autorisés.':'Les notes internes restent privées ; l’administration peut publier séparément une version destinée aux conseillers autorisés. Les notes des conseillers sont visibles uniquement par leur auteur et l’administration.'}}</p><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status">{{message}}</p><form @submit.prevent="add"><label>{{role==='advisor'?'Ajouter ma note':'Ajouter une note interne'}}<textarea v-model="body" maxlength="5000" required :disabled="busy||(role!=='advisor'&&!leaseToken)" @input="changed"></textarea></label><p v-if="role!=='advisor'&&!leaseToken">Prenez en charge la fiche pour ajouter une note interne.</p><button class="primary" :disabled="busy||(role!=='advisor'&&!leaseToken)">Ajouter la note</button></form><p v-if="!compact">Les notes enregistrées sont conservées. Ajoutez une nouvelle note pour apporter un complément ou une correction.</p><article v-for="row in rows" :key="row.id"><small>{{new Date(row.created_at).toLocaleString('fr-FR')}} · {{row.channel==='shared'?'Version partagée':row.channel==='internal'?'Interne':'Conseiller'}}<span v-if="role==='administrator'"> · auteur interne {{row.author_id}}</span></small><p style="white-space:pre-wrap;overflow-wrap:anywhere">{{row.body}}</p><form v-if="role==='administrator'&&row.channel==='internal'" @submit.prevent="share(row)"><p>{{row.advisor_visible?'Version publiée : '+row.advisor_body:'Aucune version partagée'}}</p><label v-if="!row.advisor_visible">Version destinée aux conseillers autorisés<textarea v-model="row.publicBody" maxlength="5000" required :disabled="busy"></textarea></label><label v-if="!row.advisor_visible"><input v-model="row.reviewed" type="checkbox" required :disabled="busy">J’ai vérifié cette version ; elle ne révèle pas d’identité interne du setter.</label><label>Motif<input v-model="row.shareReason" maxlength="1000" required :disabled="busy"></label><button class="secondary" :disabled="busy">{{row.advisor_visible?'Retirer la version partagée':'Publier la version conseiller'}}</button></form></article><p v-if="!rows.length&&!compact">Aucune note visible.</p><div v-if="!compact||count>25"><p>{{count}} note(s) · page {{page}}</p><button class="secondary" :disabled="busy||page===1" @click="page--;load()">Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="page++;load()">Suivant</button><button class="secondary" :disabled="busy" @click="load">Actualiser</button></div></section></template>
+<template>
+  <section :class="{ 'compact-notes': compact }">
+    <h3>{{ role === 'advisor' ? 'Notes accessibles sur ce dossier' : 'Notes du dossier' }}</h3>
+    <p v-if="!compact">
+      {{
+        role === 'advisor'
+          ? 'Vos notes personnelles restent accessibles à vous et à l’administration. Les versions de notes internes explicitement publiées apparaissent aussi sur vos dossiers autorisés.'
+          : 'Les notes internes restent privées ; l’administration peut publier séparément une version destinée aux conseillers autorisés. Les notes des conseillers sont visibles uniquement par leur auteur et l’administration.'
+      }}
+    </p>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
+    <form @submit.prevent="add">
+      <label
+        >{{ role === 'advisor' ? 'Ajouter ma note' : 'Ajouter une note interne'
+        }}<textarea
+          v-model="body"
+          maxlength="5000"
+          required
+          :disabled="busy || (role !== 'advisor' && !leaseToken)"
+          @input="changed"
+        ></textarea>
+      </label>
+      <p v-if="role !== 'advisor' && !leaseToken">
+        Prenez en charge la fiche pour ajouter une note interne.
+      </p>
+      <button class="primary" :disabled="busy || (role !== 'advisor' && !leaseToken)">
+        Ajouter la note
+      </button>
+    </form>
+    <p v-if="!compact">
+      Les notes enregistrées sont conservées. Ajoutez une nouvelle note pour apporter un complément
+      ou une correction.
+    </p>
+    <article v-for="row in rows" :key="row.id">
+      <small
+        >{{ new Date(row.created_at).toLocaleString('fr-FR') }} ·
+        {{
+          row.channel === 'shared'
+            ? 'Version partagée'
+            : row.channel === 'internal'
+              ? 'Interne'
+              : 'Conseiller'
+        }}<span v-if="role === 'administrator'"> · auteur interne {{ row.author_id }}</span></small
+      >
+      <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ row.body }}</p>
+      <form
+        v-if="role === 'administrator' && row.channel === 'internal'"
+        @submit.prevent="share(row)"
+      >
+        <p>
+          {{
+            row.advisor_visible
+              ? 'Version publiée : ' + row.advisor_body
+              : 'Aucune version partagée'
+          }}
+        </p>
+        <label v-if="!row.advisor_visible"
+          >Version destinée aux conseillers autorisés<textarea
+            v-model="row.publicBody"
+            maxlength="5000"
+            required
+            :disabled="busy"
+          ></textarea></label
+        ><label v-if="!row.advisor_visible"
+          ><input v-model="row.reviewed" type="checkbox" required :disabled="busy" />J’ai vérifié
+          cette version ; elle ne révèle pas d’identité interne du setter.</label
+        ><label
+          >Motif<input
+            v-model="row.shareReason"
+            maxlength="1000"
+            required
+            :disabled="busy" /></label
+        ><button class="secondary" :disabled="busy">
+          {{
+            row.advisor_visible ? 'Retirer la version partagée' : 'Publier la version conseiller'
+          }}
+        </button>
+      </form>
+    </article>
+    <p v-if="!rows.length && !compact">Aucune note visible.</p>
+    <div v-if="!compact || count > 25">
+      <p>{{ count }} note(s) · page {{ page }}</p>
+      <button
+        class="secondary"
+        :disabled="busy || page === 1"
+        @click="
+          page--;
+          load();
+        "
+      >
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="busy || page * 25 >= count"
+        @click="
+          page++;
+          load();
+        "
+      >
+        Suivant</button
+      ><button class="secondary" :disabled="busy" @click="load">Actualiser</button>
+    </div>
+  </section>
+</template>

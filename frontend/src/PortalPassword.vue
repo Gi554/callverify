@@ -1,38 +1,80 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import PortalSessions from './PortalSessions.vue'
-import PortalCalendars from './PortalCalendars.vue'
+import { ref } from 'vue';
+import PortalSessions from './PortalSessions.vue';
+import PortalCalendars from './PortalCalendars.vue';
 const props = defineProps<{
-  request: (path: string, body?: any, method?: string) => Promise<any>
-}>()
+  request: (path: string, body?: any, method?: string) => Promise<any>;
+}>();
 const current = ref(''),
   password = ref(''),
   confirmation = ref(''),
   busy = ref(false),
   error = ref(''),
-  message = ref('')
+  message = ref('');
 async function save() {
-  busy.value = true
-  error.value = ''
-  message.value = ''
+  busy.value = true;
+  error.value = '';
+  message.value = '';
   try {
     await props.request('password/change/', {
       current_password: current.value,
       new_password: password.value,
       confirmation: confirmation.value,
-    })
-    current.value = ''
-    password.value = ''
-    confirmation.value = ''
+    });
+    current.value = '';
+    password.value = '';
+    confirmation.value = '';
     message.value =
-      'Mot de passe modifié. Votre session actuelle reste ouverte ; les autres sessions devront se reconnecter.'
+      'Mot de passe modifié. Votre session actuelle reste ouverte ; les autres sessions devront se reconnecter.';
   } catch (e: any) {
-    error.value = e.message
-    current.value = ''
+    error.value = e.message;
+    current.value = '';
   } finally {
-    busy.value = false
+    busy.value = false;
   }
 }
 </script>
-<!-- prettier-ignore -->
-<template><section><h3>Changer mon mot de passe</h3><p>Le changement concerne votre compte du portail AMX, commun à vos espaces autorisés. Utilisez au moins 12 caractères et un mot de passe différent du précédent.</p><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status">{{message}}</p><form @submit.prevent="save"><fieldset :disabled="busy"><label>Mot de passe actuel<input v-model="current" type="password" autocomplete="current-password" maxlength="256" required></label><label>Nouveau mot de passe<input v-model="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label><label>Confirmer le nouveau mot de passe<input v-model="confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label><button class="primary">Modifier mon mot de passe</button></fieldset></form><p>Les autorisations métier déjà délivrées peuvent rester valides au maximum deux minutes. Le compte de l’application historique conserve son mot de passe distinct.</p><PortalSessions :request="request"/><PortalCalendars :request="request"/></section></template>
+<template>
+  <section>
+    <h3>Changer mon mot de passe</h3>
+    <p>
+      Le changement concerne votre compte du portail AMX, commun à vos espaces autorisés. Utilisez
+      au moins 12 caractères et un mot de passe différent du précédent.
+    </p>
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
+    <form @submit.prevent="save">
+      <fieldset :disabled="busy">
+        <label
+          >Mot de passe actuel<input
+            v-model="current"
+            type="password"
+            autocomplete="current-password"
+            maxlength="256"
+            required /></label
+        ><label
+          >Nouveau mot de passe<input
+            v-model="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="12"
+            maxlength="256"
+            required /></label
+        ><label
+          >Confirmer le nouveau mot de passe<input
+            v-model="confirmation"
+            type="password"
+            autocomplete="new-password"
+            minlength="12"
+            maxlength="256"
+            required /></label
+        ><button class="primary">Modifier mon mot de passe</button>
+      </fieldset>
+    </form>
+    <p>
+      Les autorisations métier déjà délivrées peuvent rester valides au maximum deux minutes. Le
+      compte de l’application historique conserve son mot de passe distinct.
+    </p>
+    <PortalSessions :request="request" /><PortalCalendars :request="request" />
+  </section>
+</template>

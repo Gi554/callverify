@@ -147,7 +147,7 @@ test('manual reminders can be created from a prospect without an appointment', a
   try {
     await flush()
     all(f.root)
-      .find((n) => n.tag === 'button' && n.text === 'Créer un rappel manuel')
+      .find((n) => n.tag === 'button' && n.text?.trim() === 'Créer un rappel manuel')
       .props.onClick()
     await flush()
     set(
@@ -169,7 +169,7 @@ test('finishing a reminder sends its revision and explicit resolution', async ()
   try {
     await flush()
     all(f.root)
-      .find((n) => n.tag === 'button' && n.text === 'Terminer')
+      .find((n) => n.tag === 'button' && n.text?.trim() === 'Terminer')
       .props.onClick()
     await flush()
     set(
