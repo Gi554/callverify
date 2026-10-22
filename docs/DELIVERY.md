@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Formulaire C2 Isolation et copie conservée à la réservation
+
+Depuis Mes prospects Isolation, l’action calendrier ouvre Visites et formulaire C2 dans le panneau de droite. Le setter affecté et l’administrateur peuvent enregistrer un brouillon avec nom/prénom, téléphone, adresse, ville, code postal canadien, grenier accessible Oui/Non/Non renseigné, coût mensuel d’électricité facultatif, année de construction et âge. La nouvelle réservation exige tous ces champs sauf l’électricité ; zéro et Non restent des réponses explicites. Contrôles : âge 0–120, construction 1600–année courante, électricité positive ou nulle à deux décimales, syntaxe du téléphone et du code postal. Ce contrôle de saisie ne prouve pas la joignabilité et ne déclenche pas Lookup.
+
+La date et l’heure se choisissent en heure locale avec durée et fuseau canadien. Les horaires ambigus ou inexistants sont refusés. La réservation attend l’enregistrement du C2 et sa nouvelle révision, puis conserve les preuves, contrôles de disponibilité, attribution setter et campagne existants. Chaque visite reçoit une copie C2 datée, visible dans le détail pour le client autorisé et le setter de son périmètre. Cette copie ne change pas lors d’une modification du brouillon, d’un report, d’une annulation ou d’une répétition idempotente. Les anciennes visites conservent explicitement l’absence de copie et restent reportables selon les droits existants.
+
+Le brouillon reste interne au parcours Isolation ; l’espace client accède à la copie via ses visites, pas au brouillon. L’API historique de vérification n’expose pas ce nouveau champ et ne permet pas de contourner sa validation. Les résultats techniques, le téléphone importé et le statut commercial restent distincts des coordonnées déclarées dans le C2. Les écritures utilisent la révision du prospect et un audit transactionnel ; conflit ou réattribution refusent l’écrasement. La fermeture du panneau demande confirmation pour un C2 modifié, et un échec de sauvegarde conserve la saisie.
+
+Validation : 192 tests backend exécutés, 175 réussis et 17 ignorés selon l’environnement SQLite/Windows ; contrôles des droits, conflits, validation, copie, historique, résultats client, statistiques et sauvegardes existantes. Les tests ont utilisé un répertoire temporaire dans private-media pour contourner les droits du répertoire temporaire sandbox Windows. 13 tests frontend sur le C2, son enchaînement avec la réservation, le calendrier et le panneau ; typage Vue et build production réussis. Migration 0015 appliquée localement après sauvegarde SQLite hors Git, aucune migration manquante. Aucun appel ni visite réelle créé. Revue visuelle en attente, navigateur local désactivé dans Work ; avertissement Vite de taille de bundle conservé.
+
+Limites : copie consultable dans le CRM, sans ajout d’informations C2 dans Google/Microsoft ni envoi de message. Le brouillon ne remplace pas le téléphone importé utilisé par la vérification technique. La navigation vers un autre module n’est pas bloquée par ce formulaire ; enregistrer le brouillon avant de changer de page. Pas de reprise fictive des anciennes visites. Les rôles/résultats closer, les ventes conclues, les statistiques Isolation demandées et la base physique commune restent à livrer. Prochaine fonctionnalité : suivi des rendez-vous Isolation par le closer, avec tenue et conclusion distinguées.
+
 ## Statuts métier des rendez-vous Assurance
 
 Les listes, fiches et calendrier distinguent Planifié, Reprogrammé, Rendez-vous fait, Absent, Non effectué — autre motif, À renseigner et Annulé. Le résultat réel prime sur un ancien report ; un rendez-vous passé sans compte rendu reste à renseigner. Le conseiller choisit explicitement le résultat, sans présélection de présence. Toute absence ou non-réalisation exige une note et conserve le suivi existant. Les résultats restent immuables et les répétitions identiques idempotentes ; les droits et contrôles de révision existants sont conservés.
@@ -8,7 +20,7 @@ Chaque report conserve un compteur et sa date, sans altérer la qualification tr
 
 Validation : 44 tests backend sur les statuts, filtres, autorisations, réservations, comptes rendus, statistiques et exports ; contrôles complémentaires de chronologie. 13 tests frontend, typage Vue et build production réussis. Migration 0026 appliquée localement après sauvegarde SQLite hors Git ; aucune migration manquante. Aucun appel ni rendez-vous réel créé. Revue visuelle encore à faire, accès navigateur local désactivé dans Work. Avertissement de taille du bundle Vite conservé.
 
-Limites : Assurance uniquement. Les corrections d’un compte rendu déjà enregistré restent soumises au parcours d’historique existant ; aucune réécriture silencieuse. Le taux effectué existant garde son dénominateur des comptes rendus renseignés et ne prétend pas remplacer les futures statistiques Isolation. Prochaine fonctionnalité : formulaire C2 Isolation dédié, avant les résultats closer et les statistiques demandées.
+Limites : Assurance uniquement. Les corrections d’un compte rendu déjà enregistré restent soumises au parcours d’historique existant ; aucune réécriture silencieuse. Le taux effectué existant garde son dénominateur des comptes rendus renseignés et ne prétend pas remplacer les futures statistiques Isolation. Formulaire C2 Isolation désormais livré ci-dessus ; résultats closer et statistiques demandées restent à réaliser.
 
 ## Qualification Assurance dédiée et copie transmise au conseiller
 
@@ -37,7 +49,7 @@ Premier lot livré : résultats d’appel déclarés et rappels manuels Assuranc
 Suivi des lots :
 - Qualification Assurance dédiée : livrée dans la section ci-dessus.
 - Transmission contrôlée au conseiller : livrée dans le CRM avec copie datée. Présence/absence/annulation/report : livrés dans le lot des statuts métier ci-dessus, avec les preuves et transitions autorisées.
-- Formulaire Isolation C2 distinct : coordonnées/adresse/ville/code postal, grenier, électricité facultative, construction, âge et créneau.
+- Formulaire Isolation C2 distinct : livré ci-dessus avec brouillon et copie datée à la réservation.
 - Espace et permissions closer Isolation : nom du représentant, rendez-vous tenu, vente conclue, notes ; résultat modifiable selon les droits avec historique.
 - Statistiques Isolation par semaine et période, setter et closer : attribués, tenus, non tenus, conclus, présence et conclusion parmi les tenus ; exports. Les inconnus ne deviennent pas des absences. Exemple 5/15 = 33,3 %.
 - Centralisation physique : les services utilisent actuellement des bases distinctes (portail, Assurance, Isolation). Préparer puis vérifier une migration vers une base commune en préservant identités, liens, données et périmètres. Ce point n’est pas livré.

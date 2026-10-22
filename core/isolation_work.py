@@ -16,6 +16,7 @@ from .models import Prospect,AuditEvent
 from .isolation_activity import ActivityMixin,STATUSES
 from .isolation_bulk import BulkAssignmentMixin
 from .isolation_phone_calls import IsolationPhoneCallMixin
+from .isolation_c2 import C2Mixin
 from django.utils import timezone
 
 @dataclass(frozen=True)
@@ -66,7 +67,7 @@ def output(row):
         'revision':row.assignment_revision,'commercial_status':row.commercial_status,'commercial_label':STATUSES.get(row.commercial_status,row.commercial_status),
         'callback_at':row.callback_at,'callback_due':row.callback_at is not None and row.callback_at<=timezone.now()}
 
-class WorkViewSet(IsolationPhoneCallMixin,BulkAssignmentMixin,ActivityMixin,viewsets.GenericViewSet):
+class WorkViewSet(C2Mixin,IsolationPhoneCallMixin,BulkAssignmentMixin,ActivityMixin,viewsets.GenericViewSet):
     authentication_classes=[WorkAuthentication]
     permission_classes=[IsAuthenticated]
     pagination_class=Pager
