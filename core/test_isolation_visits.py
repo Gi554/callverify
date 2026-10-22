@@ -10,12 +10,17 @@ from packages.access.isolation_visits import issue_booking
 from .models import Prospect,IsolationVisit,AuditEvent
 from .test_isolation_activity import assigned_fixture
 
+C2_DATA={'full_name':'Client test','phone':'5145550100','address':'12 rue Exemple',
+    'city':'Montréal','postal_code':'H2X 1Y4','attic_accessible':False,
+    'monthly_electricity':None,'construction_year':1990,'age':50}
+
 @override_settings(DEBUG=True,SECURE_SSL_REDIRECT=False)
 class IsolationVisitTests(TestCase):
     def setUp(self):
         external=patch('core.isolation_visits.external_check',return_value={'result':'internal_only','checked_at':'2026-10-21T10:00:00+00:00'})
         self.external_check=external.start();self.addCleanup(external.stop)
-        self.prospect=assigned_fixture();self.client=APIClient();self.auth(21,'setter')
+        self.prospect=assigned_fixture();self.prospect.c2=C2_DATA.copy();self.prospect.save()
+        self.client=APIClient();self.auth(21,'setter')
         self.start=(timezone.now()+timedelta(days=7)).replace(microsecond=0);self.end=self.start+timedelta(hours=1)
         self.request_id=uuid4();self.url='/api/visits/'
     def auth(self,pk,role):self.client.credentials(HTTP_AUTHORIZATION='Bearer '+issue(pk,'isolation',role))
@@ -122,7 +127,8 @@ class IsolationVisitConcurrencyTests(TransactionTestCase):
         self.external_check=external.start();self.addCleanup(external.stop)
         from django.db import connection
         if connection.vendor!='postgresql':self.skipTest('Concurrence dans CI PostgreSQL')
-        self.prospect=assigned_fixture();self.other=Prospect.objects.create(campaign=self.prospect.campaign,raw_phone='autre',assigned_setter_id=22)
+        self.prospect=assigned_fixture();self.prospect.c2=C2_DATA.copy();self.prospect.save()
+        self.other=Prospect.objects.create(campaign=self.prospect.campaign,raw_phone='autre',assigned_setter_id=22,c2=C2_DATA.copy())
         self.start=(timezone.now()+timedelta(days=7)).replace(microsecond=0);self.end=self.start+timedelta(hours=1)
     def payload(self,prospect,actor):return {'prospect_id':prospect.pk,'revision':0,'request_id':str(uuid4()),
         'proof':issue_booking(actor,prospect.pk,actor,'Setter',72,'Client'),'starts_at':self.start.isoformat(),'ends_at':self.end.isoformat(),'timezone':'UTC'}

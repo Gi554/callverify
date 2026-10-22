@@ -46,6 +46,7 @@ class ImportBatch(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Prospect(models.Model):
+    c2=models.JSONField(default=dict)
     commercial_status=models.CharField(max_length=30,default='to_contact')
     callback_at=models.DateTimeField(null=True,blank=True,db_index=True)
     assigned_setter_id=models.PositiveBigIntegerField(null=True,blank=True,db_index=True)
@@ -181,6 +182,7 @@ class ProspectActivityShare(models.Model):
         constraints=[models.UniqueConstraint(fields=['activity','client_id'],name='unique_activity_client_share')]
 
 class IsolationVisit(models.Model):
+    c2_snapshot=models.JSONField(default=dict)
     prospect=models.ForeignKey(Prospect,on_delete=models.PROTECT,related_name='visits')
     request_id=models.UUIDField(unique=True)
     fingerprint=models.CharField(max_length=64)

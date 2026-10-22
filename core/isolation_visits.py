@@ -20,6 +20,7 @@ from .isolation_work import VisitAuthentication,Pager,Conflict,visible
 from .isolation_client import ResultMixin,result_output
 from .isolation_sharing import SharingMixin
 from .calendar_checks import check as external_check
+from .isolation_c2 import captured
 
 class SlotInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -80,7 +81,7 @@ def output(row):
     return {'id':row.pk,'prospect':{'id':row.prospect_id,'name':row.prospect.name,'phone':row.prospect.raw_phone},
         'client':{'id':row.client_id,'name':row.client_name},'original_setter':{'id':row.setter_id,'name':row.setter_name},
         'starts_at':row.starts_at,'ends_at':row.ends_at,'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal',
-        'result':result,'result_due':row.status=='scheduled' and row.ends_at<=timezone.now() and result is None}
+        'c2_snapshot':row.c2_snapshot,'result':result,'result_due':row.status=='scheduled' and row.ends_at<=timezone.now() and result is None}
 
 def snapshot(row):return {key:(getattr(row,key).isoformat() if key in ('starts_at','ends_at') else getattr(row,key)) for key in ('starts_at','ends_at','timezone','status','revision')}
 
@@ -128,11 +129,12 @@ class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
                 if existing and visible(request.user).filter(pk=data['prospect_id']).exists():return replay(existing)
                 raise
             if prospect.assigned_setter_id!=claims['setter']['id']:raise Conflict('Responsable modifié : rechargez')
+            c2_snapshot=captured(prospect)
             calendar(claims['client']['id']);available(prospect,claims['client']['id'],data)
             external=external_check(request.user,claims['client']['id'],data['starts_at'],data['ends_at'])
             if data['starts_at']<=timezone.now():raise ValidationError('Créneau futur requis')
             row,created=IsolationVisit.objects.get_or_create(request_id=data['request_id'],defaults={
-                'fingerprint':fingerprint,'prospect':prospect,'client_id':claims['client']['id'],'client_name':claims['client']['name'],
+                'fingerprint':fingerprint,'prospect':prospect,'c2_snapshot':c2_snapshot,'client_id':claims['client']['id'],'client_name':claims['client']['name'],
                 'setter_id':claims['setter']['id'],'setter_name':claims['setter']['name'],'booked_by_id':request.user.pk,
                 **{key:data[key] for key in ('starts_at','ends_at','timezone')}})
             if not created:

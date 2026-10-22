@@ -29,7 +29,7 @@ class ProspectSerializer(serializers.ModelSerializer):
     line_type = serializers.CharField(source='phone.line_type', read_only=True, default='')
     class Meta:
         model = Prospect
-        fields = '__all__'
+        exclude = ['c2']
 
 class ImportSerializer(serializers.ModelSerializer):
     class Meta:
