@@ -19,6 +19,8 @@ def metrics(now):
         'reported':Count('pk',filter=Q(report__isnull=False),distinct=True),
         'performed':Count('pk',filter=Q(report__performed=True),distinct=True),
         'not_performed':Count('pk',filter=Q(report__performed=False),distinct=True),
+        'absent':Count('pk',filter=Q(report__performed=False,report__outcome='absent'),distinct=True),
+        'other_not_performed':Count('pk',filter=Q(report__performed=False)&~Q(report__outcome='absent'),distinct=True),
         'reports_due':Count('pk',filter=Q(status='scheduled',ends_at__lte=now,report__isnull=True),distinct=True),
         'problem_reports':Count('pk',filter=Q(report__problem=True),distinct=True),
         'incidents':Count('incidents',distinct=True),
@@ -51,7 +53,7 @@ def statistics(request):
     if request.user.role=='setter':qs=qs.filter(setter_id=request.user.pk)
     totals=finish(qs.aggregate(**metrics(now)))
     result={'from':start,'to':end,'timezone':'UTC','as_of':now,'totals':totals,
-            'definition':'Période selon le début actuel du rendez-vous (UTC). Attribution statistique au setter d’origine du rendez-vous, même si le suivi est réattribué. Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue.'}
+            'definition':'Période selon le début actuel du rendez-vous (UTC). Attribution statistique au setter d’origine du rendez-vous, même si le suivi est réattribué. Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue. Absences uniquement selon la déclaration explicite du conseiller ; les anciens Non restent des non-effectués sans absence présumée.'}
     groups=[]
     if request.user.role=='administrator':
         names=Appointment.objects.filter(setter_id=OuterRef('setter_id')).order_by('-created_at','-pk').values('setter_name')[:1]

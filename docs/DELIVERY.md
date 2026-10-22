@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Statuts métier des rendez-vous Assurance
+
+Les listes, fiches et calendrier distinguent Planifié, Reprogrammé, Rendez-vous fait, Absent, Non effectué — autre motif, À renseigner et Annulé. Le résultat réel prime sur un ancien report ; un rendez-vous passé sans compte rendu reste à renseigner. Le conseiller choisit explicitement le résultat, sans présélection de présence. Toute absence ou non-réalisation exige une note et conserve le suivi existant. Les résultats restent immuables et les répétitions identiques idempotentes ; les droits et contrôles de révision existants sont conservés.
+
+Chaque report conserve un compteur et sa date, sans altérer la qualification transmise. La migration reprend uniquement les reports attestés par l’audit ; les anciens comptes rendus négatifs restent « autre motif », même si leur note évoque une absence. L’historique du contact affiche l’absence déclarée. Les statistiques et exports CSV/Excel ajoutent les absences déclarées et les autres non-effectués, tout en conservant le total des non-effectués. Les filtres métier sont distincts du statut technique historique.
+
+Validation : 44 tests backend sur les statuts, filtres, autorisations, réservations, comptes rendus, statistiques et exports ; contrôles complémentaires de chronologie. 13 tests frontend, typage Vue et build production réussis. Migration 0026 appliquée localement après sauvegarde SQLite hors Git ; aucune migration manquante. Aucun appel ni rendez-vous réel créé. Revue visuelle encore à faire, accès navigateur local désactivé dans Work. Avertissement de taille du bundle Vite conservé.
+
+Limites : Assurance uniquement. Les corrections d’un compte rendu déjà enregistré restent soumises au parcours d’historique existant ; aucune réécriture silencieuse. Le taux effectué existant garde son dénominateur des comptes rendus renseignés et ne prétend pas remplacer les futures statistiques Isolation. Prochaine fonctionnalité : formulaire C2 Isolation dédié, avant les résultats closer et les statistiques demandées.
+
 ## Qualification Assurance dédiée et copie transmise au conseiller
 
 Le formulaire Assurance est distinct des champs personnalisables : âge (0–120), profession et situation matrimoniale selon les choix demandés, enfants/propriétaire/fumeur/conseiller existant avec Oui/Non/Non renseigné, assurances multiples, notes complémentaires et notes utiles au conseiller. Nom/téléphone/courriel restent dans les coordonnées. Les réponses inconnues ne sont pas converties en Non. Aucune assurance connue est exclusive des autres choix, les doublons et choix inconnus sont refusés. Les champs restent facultatifs tant qu’aucune règle métier de complétude obligatoire n’a été définie ; un formulaire partiel est conservé comme tel.
@@ -8,7 +18,7 @@ La qualification est enregistrée avec verrou et révision de contact, audit et 
 
 Validation : 42 tests backend ciblés réussis (qualification, périmètres conseiller, instantané, conflits, réservations, partages existants, contrôles calendrier et rappels), 10 tests frontend réussis (qualification, résultat d’appel, commandes et panneau), typage Vue et build production. Migration 0025 appliquée localement après sauvegarde SQLite hors Git ; aucun schéma manquant détecté. Aucun appel, rendez-vous de recette, e-mail ni notification externe envoyé. Revue visuelle à faire : accès navigateur local désactivé dans Work. Avertissement Vite de taille du bundle conservé (>500 kB).
 
-Limites : transmission dans l’espace CRM du conseiller ; pas d’envoi par courriel ni de copie des informations personnelles dans la description Google/Microsoft. Les synchronisations calendrier existantes conservent leur configuration et leur recette externe reste à faire. Les statuts métier de présence/absence et le formulaire C2 Isolation sont les lots suivants. La plateforme n’est pas encore centralisée dans une seule base physique.
+Limites : transmission dans l’espace CRM du conseiller ; pas d’envoi par courriel ni de copie des informations personnelles dans la description Google/Microsoft. Les synchronisations calendrier existantes conservent leur configuration et leur recette externe reste à faire. Les statuts métier de présence/absence sont livrés ci-dessus ; le formulaire C2 Isolation reste à réaliser. La plateforme n’est pas encore centralisée dans une seule base physique.
 
 ## Résultats d’appel et rappels indépendants d’un rendez-vous — Assurance
 
@@ -26,7 +36,7 @@ Premier lot livré : résultats d’appel déclarés et rappels manuels Assuranc
 
 Suivi des lots :
 - Qualification Assurance dédiée : livrée dans la section ci-dessus.
-- Transmission contrôlée au conseiller : livrée dans le CRM avec copie datée. Présence/absence/annulation/report restent à représenter avec les preuves existantes et les transitions autorisées.
+- Transmission contrôlée au conseiller : livrée dans le CRM avec copie datée. Présence/absence/annulation/report : livrés dans le lot des statuts métier ci-dessus, avec les preuves et transitions autorisées.
 - Formulaire Isolation C2 distinct : coordonnées/adresse/ville/code postal, grenier, électricité facultative, construction, âge et créneau.
 - Espace et permissions closer Isolation : nom du représentant, rendez-vous tenu, vente conclue, notes ; résultat modifiable selon les droits avec historique.
 - Statistiques Isolation par semaine et période, setter et closer : attribués, tenus, non tenus, conclus, présence et conclusion parmi les tenus ; exports. Les inconnus ne deviennent pas des absences. Exemple 5/15 = 33,3 %.

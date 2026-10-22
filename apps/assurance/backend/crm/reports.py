@@ -18,10 +18,13 @@ class AppointmentPagination(PageNumberPagination):
 class ReportInput(serializers.Serializer):
     revision=serializers.IntegerField(min_value=0)
     performed=serializers.BooleanField()
+    outcome=serializers.ChoiceField(choices=['performed','absent','not_performed'],required=False)
     problem=serializers.BooleanField(default=False)
     note=serializers.CharField(max_length=3000,allow_blank=True,default='')
     def validate(self,data):
         if set(self.initial_data)-set(self.fields):raise ValidationError('Champs non autorisés')
+        data.setdefault('outcome','performed' if data['performed'] else 'not_performed')
+        if data['performed']!=(data['outcome']=='performed'):raise ValidationError('Résultat incompatible avec la présence déclarée.')
         if (not data['performed'] or data['problem']) and not data['note'].strip():raise ValidationError('Précisez le motif du suivi')
         return data
 
@@ -77,7 +80,8 @@ class ReportMixin:
         original=self.get_object()
         if request.method=='GET':
             row=AppointmentReport.objects.filter(appointment=original).first()
-            return Response(None if not row else {'performed':row.performed,'problem':row.problem,'note':row.note,'created_at':row.created_at})
+            from .appointment_status import report_outcome,LABELS
+            return Response(None if not row else {'performed':row.performed,'outcome':report_outcome(row),'outcome_label':LABELS[report_outcome(row)],'problem':row.problem,'note':row.note,'created_at':row.created_at})
         if request.user.role!='advisor':raise PermissionDenied('Compte rendu réservé au conseiller du rendez-vous')
         serializer=ReportInput(data=request.data);serializer.is_valid(raise_exception=True);data=serializer.validated_data
         with transaction.atomic():
@@ -85,19 +89,20 @@ class ReportMixin:
             appointment=Appointment.objects.get(pk=original.pk)
             existing=AppointmentReport.objects.filter(appointment=appointment).first()
             if existing:
-                if any(getattr(existing,key)!=data[key] for key in ('performed','problem','note')):raise Conflict('Compte rendu déjà enregistré ; historique conservé')
+                from .appointment_status import report_outcome
+                if any(getattr(existing,key)!=data[key] for key in ('performed','problem','note')) or report_outcome(existing)!=data['outcome']:raise Conflict('Compte rendu déjà enregistré ; historique conservé')
                 return Response({'recorded':True})
             if appointment.status!='scheduled' or appointment.ends_at>timezone.now():raise Conflict('Compte rendu attendu après la fin d’un rendez-vous non annulé')
             if appointment.revision!=data['revision']:raise Conflict('Rendez-vous modifié : actualisez avant de répondre')
             row=AppointmentReport.objects.create(appointment=appointment,author_id=request.user.pk,
-                **{key:data[key] for key in ('performed','problem','note')})
+                **{key:data[key] for key in ('performed','outcome','problem','note')})
             if not row.performed or row.problem:
                 rules=policy()
                 task=FollowUpTask.objects.create(appointment=appointment,setter_id=appointment.setter_id,reason=row.note,
                     due_at=timezone.now()+timedelta(hours=rules.initial_hours),priority=rules.default_priority,policy_revision=rules.revision)
                 notify(task,'report',f'report:{row.pk}')
             BusinessAudit.objects.create(actor_id=request.user.pk,object_id=appointment.pk,action='appointment.reported',
-                metadata={'performed':row.performed,'problem':row.problem})
+                metadata={'performed':row.performed,'outcome':row.outcome,'problem':row.problem})
         return Response({'recorded':True},status=201)
 
 class CloseInput(serializers.Serializer):

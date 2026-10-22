@@ -57,6 +57,8 @@ class AdvisorSchedule(models.Model):
     version=models.PositiveIntegerField(default=0)
 
 class Appointment(models.Model):
+    rescheduled_at=models.DateTimeField(null=True,blank=True)
+    reschedule_count=models.PositiveIntegerField(default=0)
     qualification_snapshot=models.JSONField(default=dict)
     request_id=models.UUIDField(unique=True)
     fingerprint=models.CharField(max_length=64)
@@ -79,6 +81,7 @@ class Appointment(models.Model):
         indexes=[models.Index(fields=['advisor_id','status','starts_at']),models.Index(fields=['setter_id','starts_at'])]
 
 class AppointmentReport(models.Model):
+    outcome=models.CharField(max_length=20,blank=True,default='',choices=[('performed','Rendez-vous fait'),('absent','Absent'),('not_performed','Non effectué — autre motif')])
     appointment=models.OneToOneField(Appointment,on_delete=models.PROTECT,related_name='report')
     performed=models.BooleanField()
     problem=models.BooleanField(default=False)
