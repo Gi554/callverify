@@ -14,6 +14,7 @@ import IsolationClient from './IsolationClient.vue'
 import IsolationQualification from './IsolationQualification.vue'
 import AssuranceContacts from './AssuranceContacts.vue'
 import AssurancePipeline from './AssurancePipeline.vue'
+import AssuranceProspects from './AssuranceProspects.vue'
 import AssuranceAgreementRegistry from './AssuranceAgreementRegistry.vue'
 import AssuranceAgreementAlerts from './AssuranceAgreementAlerts.vue'
 import AssuranceAssignments from './AssuranceAssignments.vue'
@@ -117,7 +118,8 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
     </CrmOverview>
     <section v-else :key="workspace+activeModule+contentVersion" class="card amx-workspace"><div class="card-header"><h2>{{pageTitle}}</h2></div><div class="amx-content">
      <template v-if="workspace==='assurance'">
-      <AssuranceContacts v-if="assuranceModule==='contacts'" :portal="portal" :request="assurance" :role="role" @imported="summary.contacts=$event"/>
+      <AssuranceProspects v-if="assuranceModule==='contacts'&&role==='setter'" :portal="portal" :request="assurance" :role="role"/>
+      <AssuranceContacts v-else-if="assuranceModule==='contacts'" :portal="portal" :request="assurance" :role="role" @imported="summary.contacts=$event"/>
       <AssurancePipeline v-else-if="assuranceModule==='pipeline'" :portal="portal" :request="assurance" :role="role"/>
       <AssuranceAgreementRegistry v-else-if="assuranceModule==='agreements'&&role==='administrator'" :key="agreementDeadline" :initial-deadline="agreementDeadline" :request="assurance" :portal="portal" @changed="refreshAssurance"/>
       <AssuranceAssignments v-else-if="assuranceModule==='assignments'&&role!=='advisor'" :request="assurance" :portal="portal" :role="role"/>
