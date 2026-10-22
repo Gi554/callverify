@@ -19,6 +19,13 @@ test('single Assurance access has no space selector or Isolation proposal',async
  const html=await renderToString(createSSRApp(component,{...props,workspace:'assurance',spaces:[{workspace:'assurance',role:'setter'}]}))
  assert.doesNotMatch(html,/<select/);assert.match(html,/Assurance/);assert.doesNotMatch(html,/Isolation|Choisir un espace/)
 })
+
+test('Setter navigation omits Conversations while keeping authorized modules',async()=>{
+ const html=await renderToString(createSSRApp(component,{...props,workspace:'assurance',spaces:[{workspace:'assurance',role:'setter'}],items:[{id:'overview',label:'Vue d’ensemble',icon:'overview'},{id:'contacts',label:'Contacts',icon:'contacts'},{id:'followups',label:'Tâches de suivi',icon:'followups'}]}))
+ assert.doesNotMatch(html,/Conversations/)
+ assert.match(html,/Accueil/);assert.match(html,/Prospects/);assert.match(html,/Tâches/)
+ assert.doesNotMatch(html,/Utilisateurs et accès/)
+})
 test('single Isolation access has no Assurance proposal',async()=>{
  const html=await renderToString(createSSRApp(component,{...props,workspace:'isolation',spaces:[{workspace:'isolation',role:'setter'}]}))
  assert.doesNotMatch(html,/<select/);assert.match(html,/Isolation/);assert.doesNotMatch(html,/Assurance|Choisir un espace/)

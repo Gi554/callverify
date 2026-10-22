@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Accueil Setter : présentation et accès directs
+
+Conversations retiré du menu et de l’en-tête Setter. Accueil dédié aux setters Assurance et Isolation : bienvenue, cartes pastel avec indicateurs réels et liens vers prospects/tâches, prochain créneau, actions principales et agenda. Les rappels et notifications Assurance restent disponibles dans un volet repliable. Les autres rôles conservent leur accueil. Vérifications : connexion et accès aux prospects dans le navigateur, ouverture des suivis, revue desktop/mobile, typage et build, tests des espaces. Aucun appel ni envoi de message déclenché. La prochaine page attend le retour de l’utilisateur.
+
 ## Couleur du bloc logo Setter
 
 Fond du logo AMX aligné sur le bleu nuit de la barre latérale (#112330), texte blanc et sous-titre éclairci. Sur ordinateur, le bloc occupe exactement la largeur du menu (248 px) et toute la hauteur de l’en-tête. La version mobile conserve un bloc compact.
