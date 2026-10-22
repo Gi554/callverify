@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Colonnes prospects vides masquées
+
+Les colonnes sans prospect ne s’affichent plus. Tous les statuts restent sélectionnables dans le filtre et disponibles dans la fiche. Les erreurs de chargement restent visibles pour permettre de réessayer ; une recherche sans résultat affiche un message unique. Recette approfondie toujours reportée à la demande de l’utilisateur.
+
 ## Prospects Setter Assurance : colonnes et fiche modale
 
 Prospects présenté en cartes sans photos, groupées par les statuts configurés, avec recherche, filtre et pagination par colonne. Actions Modifier et Préparer l’appel à côté de chaque numéro. La modale prend automatiquement la fiche en charge, conserve la sauvegarde et la libération du verrou, et ouvre la réservation avec choix parmi les conseillers attribués, date/heure locale, durée et fuseau. Les heures inexistantes ou ambiguës du changement d’heure sont refusées ; les conflits d’agenda restent contrôlés par le serveur. Le mode appel ouvre la préparation existante et exige une confirmation avant envoi ; aucun appel n’est lancé automatiquement. La modale reste disponible pour saisir les informations pendant l’échange, sans prétendre détecter sonnerie ou décrochage.
