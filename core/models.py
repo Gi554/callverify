@@ -181,6 +181,19 @@ class ProspectActivityShare(models.Model):
     class Meta:
         constraints=[models.UniqueConstraint(fields=['activity','client_id'],name='unique_activity_client_share')]
 
+class IsolationFollowUp(models.Model):
+    prospect=models.ForeignKey(Prospect,on_delete=models.PROTECT,related_name='follow_ups')
+    request_id=models.UUIDField(unique=True)
+    fingerprint=models.CharField(max_length=64)
+    created_by_id=models.PositiveBigIntegerField(null=True)
+    note=models.TextField(blank=True)
+    due_at=models.DateTimeField(db_index=True)
+    revision=models.PositiveIntegerField(default=0)
+    closed_at=models.DateTimeField(null=True,blank=True)
+    closed_by_id=models.PositiveBigIntegerField(null=True,blank=True)
+    resolution=models.TextField(blank=True)
+    created_at=models.DateTimeField(auto_now_add=True)
+
 class IsolationVisit(models.Model):
     closer_id=models.PositiveBigIntegerField(null=True,blank=True,db_index=True)
     closer_name=models.CharField(max_length=150,blank=True)

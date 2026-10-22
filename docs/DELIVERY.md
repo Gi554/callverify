@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Résultats d’appel déclarés et tâches de rappel Isolation
+
+Depuis Mes prospects Isolation → Fiche, le panneau de droite propose les sept résultats : rendez-vous pris, répondeur, numéro invalide déclaré, appel coupé, pas intéressé, rappel demandé et injoignable, avec note facultative. Aucune saisie n’appelle Phonetico/Twilio, n’exécute Lookup ou ne modifie le numéro importé, sa validité technique ou le statut commercial existant. Le résultat reste une déclaration datée et attribuée à son auteur. « Rendez-vous pris » exige une visite existante non annulée du même prospect, autorisée pour le setter ; le bouton C2 ouvre le parcours de réservation existant, puis le setter actualise et lie sa réservation avant d’enregistrer le résultat. Aucun rendez-vous fictif n’est créé par la déclaration.
+
+Le résultat Rappel demandé exige date et heure et crée atomiquement une tâche. Un rappel manuel peut aussi être créé depuis toute fiche, sans rendez-vous. Les horaires se saisissent dans un fuseau canadien et sont convertis en instants explicites ; les heures ambiguës/inexistantes sont refusées. Les tâches sont affichées en heure de Montréal, avec filtres ouverts, à venir, en retard, terminés et tous, et pagination. Le setter courant et l’administration peuvent modifier date/note d’une tâche ouverte et la terminer avec résolution obligatoire, sous révision. Chaque création, modification et clôture s’ajoute à l’historique interne de la fiche et à l’audit. Les événements d’appel et de tâche ne sont pas publiables au client via le partage des observations existant.
+
+Les tâches suivent le prospect lors d’une affectation : le nouveau setter les reprend, le précédent perd lecture/écriture, le créateur et l’historique restent conservés. La prochaine échéance ouverte alimente le repère de rappel de la fiche ; les tâches restent ouvertes jusqu’à leur clôture, indépendamment d’un changement de qualification commerciale. Les anciennes dates de rappel sont reprises par la migration sans inventer leur créateur ni des notes. Les futures saisies de rappel via l’ancienne qualification créent aussi une tâche. Les compteurs et le filtre des prospects en rappel intègrent les tâches en retard. Un onglet Tâches de rappel est disponible pour setter/administrateur Isolation ; clients et closers n’y ont pas accès.
+
+Validation : suite core complète, 221 tests exécutés dont 204 réussis et 17 ignorés selon SQLite/Windows ; 8 tests frontend sur résultat déclaré, conversion horaire, erreur gardant la saisie, création manuelle, clôture et shell. Vérifications des permissions, transferts, historique, migration, réservation autorisée, répétitions même après l’échéance et rollback transactionnel sur erreur d’audit. Typage Vue, build production, diff et absence de migration manquante validés. Migration 0017 appliquée après sauvegarde SQLite hors Git. Aucun appel, visite réelle, message ou notification externe lancé. Revue visuelle à faire, navigateur Work désactivé ; avertissement Vite >500 kB conservé.
+
+Limites : résultats déclarés et tâches internes, sans détection automatique d’appel ni notification externe. La clôture d’une tâche ne réécrit pas le statut commercial. Les statistiques de visites ne comptent pas ces tâches comme rendez-vous. Les réservations restent dans le C2 ; l’historique des commandes fournisseur n’est pas encore fusionné à cette chronologie. La fermeture du panneau protège les saisies ; enregistrer avant de changer de module. Prochain lot : historique Phonetico dans les fiches prospects, puis poursuite de la centralisation physique de la base et de la recette des connecteurs.
+
 ## Performances Isolation par semaine, setter et closer
 
 La page Statistiques propose une semaine (lundi–dimanche) ou une période personnalisée de 366 jours maximum, avec choix du fuseau Toronto/Montréal, Vancouver, Halifax ou UTC. Les bornes correspondent aux jours locaux inclus et respectent les semaines de 167/169 heures au changement d’heure. L’interface démarre sur la semaine courante à Montréal ; les requêtes historiques sans fuseau conservent leur comportement UTC. Les filtres modifiés n’altèrent pas un rapport déjà affiché : il faut recalculer ; pagination et téléchargements utilisent ensuite ses critères appliqués.
@@ -12,7 +24,7 @@ Exports Excel et CSV : toutes les lignes du regroupement affiché (limite 5 000 
 
 Validation : suite core complète, 209 tests exécutés dont 192 réussis et 17 ignorés selon SQLite/Windows ; 10 tests frontend (statistiques, export selon filtres appliqués, pagination, erreur sans anciennes données, résultats closer et shell). Typage Vue, build production et absence de migration manquante validés. Aucune migration nécessaire pour ce lot, aucun appel ni rendez-vous réel créé. Revue visuelle encore à faire, navigateur Work désactivé ; avertissement Vite >500 kB conservé.
 
-Restent à réaliser : extension des résultats d’appel et tâches de rappel au parcours Isolation, centralisation physique de la base, recette externe des connecteurs et revue des interfaces avec l’utilisateur. Prochain lot : résultats d’appel déclarés et rappels Isolation, sans déclencher d’appel réel.
+Les résultats d’appel déclarés et rappels Isolation sont désormais livrés ci-dessus. Restent l’historique fournisseur, la centralisation physique de la base, la recette externe des connecteurs et la revue des interfaces avec l’utilisateur.
 
 ## Espace closer Isolation, attribution et résultats corrigibles
 
@@ -79,7 +91,7 @@ Suivi des lots :
 - Espace et permissions closer Isolation : livrés ci-dessus, attribution contrôlée et résultats corrigibles avec historique.
 - Statistiques Isolation par semaine/période, setter et closer : livrées ci-dessus avec compteurs explicites, inconnus séparés, taux et exports. Exemple 5/15 = 33,3 %.
 - Centralisation physique : les services utilisent actuellement des bases distinctes (portail, Assurance, Isolation). Préparer puis vérifier une migration vers une base commune en préservant identités, liens, données et périmètres. Ce point n’est pas livré.
-- Étendre les résultats d’appels et rappels au parcours Isolation, puis compléter la chronologie des commandes d’appel fournisseur. Les campagnes silencieuses restent désactivées et aucun appel de recette n’est autorisé par cette évolution.
+- Résultats d’appels et rappels Isolation : livrés ci-dessus. Compléter ensuite la chronologie des commandes d’appel fournisseur. Les campagnes silencieuses restent désactivées et aucun appel de recette n’est autorisé par cette évolution.
 
 
 ## Tableau des tâches Setter Assurance

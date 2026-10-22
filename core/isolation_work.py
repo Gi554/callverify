@@ -67,7 +67,9 @@ def output(row):
         'revision':row.assignment_revision,'commercial_status':row.commercial_status,'commercial_label':STATUSES.get(row.commercial_status,row.commercial_status),
         'callback_at':row.callback_at,'callback_due':row.callback_at is not None and row.callback_at<=timezone.now()}
 
-class WorkViewSet(C2Mixin,IsolationPhoneCallMixin,BulkAssignmentMixin,ActivityMixin,viewsets.GenericViewSet):
+from .isolation_followups import FollowUpMixin
+
+class WorkViewSet(FollowUpMixin,C2Mixin,IsolationPhoneCallMixin,BulkAssignmentMixin,ActivityMixin,viewsets.GenericViewSet):
     authentication_classes=[WorkAuthentication]
     permission_classes=[IsAuthenticated]
     pagination_class=Pager
@@ -86,7 +88,7 @@ class WorkViewSet(C2Mixin,IsolationPhoneCallMixin,BulkAssignmentMixin,ActivityMi
         if status:
             if status not in STATUSES:raise ValidationError('Statut commercial invalide')
             qs=qs.filter(commercial_status=status)
-        if self.request.query_params.get('due')=='true':qs=qs.filter(callback_at__lte=timezone.now()).order_by('callback_at','pk')
+        if self.request.query_params.get('due')=='true':qs=qs.filter(Q(callback_at__lte=timezone.now())|Q(follow_ups__closed_at__isnull=True,follow_ups__due_at__lte=timezone.now())).distinct().order_by('callback_at','pk')
         return qs
     def list(self,request):return self.get_paginated_response([output(row) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(output(self.get_object()))
@@ -125,4 +127,5 @@ class WorkViewSet(C2Mixin,IsolationPhoneCallMixin,BulkAssignmentMixin,ActivityMi
 def dashboard(request):
     qs=visible(request.user)
     return Response({'role':request.user.role,'prospects':qs.count(),'unassigned':qs.filter(assigned_setter_id__isnull=True).count(),
-        'callbacks_due':qs.filter(callback_at__lte=timezone.now()).count()})
+        'callbacks_due':qs.filter(Q(callback_at__lte=timezone.now())|Q(follow_ups__closed_at__isnull=True,follow_ups__due_at__lte=timezone.now())).distinct().count(),
+        'open_follow_ups':qs.filter(follow_ups__closed_at__isnull=True,follow_ups__isnull=False).values('follow_ups').count()})

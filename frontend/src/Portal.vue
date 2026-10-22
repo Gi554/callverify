@@ -20,6 +20,7 @@ import AssuranceAssignments from './AssuranceAssignments.vue'
 import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import IsolationVisits from './IsolationVisits.vue'
+import IsolationFollowUps from './IsolationFollowUps.vue'
 import IsolationCloserVisits from './IsolationCloserVisits.vue'
 import AssuranceFollowUps from './AssuranceFollowUps.vue'
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue'
@@ -92,7 +93,7 @@ const navigation=computed(()=>{
   items.push({id:'pipeline',label:'Opportunités',icon:'agreements'})
   if(role.value!=='advisor')items.push({id:'followups',label:'Tâches de suivi',icon:'followups'},{id:'statistics',label:'Statistiques',icon:'statistics'},{id:'assignments',label:role.value==='administrator'?'Affectations':'Mes conseillers',icon:'assignments'})
   if(role.value==='administrator')items.push({id:'agreements',label:'Mandats et contrats',icon:'agreements'},{id:'fields',label:'Paramètres métier',icon:'fields'})
- }else {items.push({id:'statistics',label:'Statistiques',icon:'statistics'});if(role.value==='administrator')items.push({id:'qualification',label:'Qualification',icon:'qualification'})}
+ }else {if(['setter','administrator'].includes(role.value))items.push({id:'followups',label:'Tâches de rappel',icon:'followups'});items.push({id:'statistics',label:'Statistiques',icon:'statistics'});if(role.value==='administrator')items.push({id:'qualification',label:'Qualification',icon:'qualification'})}
  return items
 })
 const pageTitle=computed(()=>navigation.value.find(item=>item.id===activeModule.value)?.label||'Mes espaces')
@@ -137,7 +138,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
      </template>
      <template v-else>
       <IsolationStatistics v-if="isolationModule==='statistics'" :role="role" :request="isolation"/>
-      <IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
+      <IsolationFollowUps v-else-if="isolationModule==='followups'&&['setter','administrator'].includes(role)" :request="isolation" @saved="refreshIsolation"/><IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
       <CrmAppointmentsCalendar v-else-if="isolationModule==='appointments'&&role==='setter'" workspace="isolation" :role="role" :portal="portal" :request="isolation" @navigate="selectModule"/>
       <IsolationVisits v-else-if="isolationModule==='appointments'" :role="role" :portal="portal" :request="isolation" @close="selectModule('overview')" @changed="refreshIsolation"/>
       <IsolationClient v-else-if="role==='client'" :portal="portal" :request="isolation"/>
