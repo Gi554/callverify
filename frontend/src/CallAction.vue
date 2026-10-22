@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import {ref,computed,nextTick} from 'vue'
+import {ref,computed,nextTick,onMounted,watch} from 'vue'
 import {Phone,RefreshCw} from 'lucide-vue-next'
-const props=defineProps<{workspace:'assurance'|'isolation';resourceId:number;phone:string;disabled?:boolean;beforeOpen?:()=>Promise<void>;prepare:(id:string)=>Promise<{proof:string}>;portal:(path:string,body?:any)=>Promise<any>}>()
+const props=defineProps<{workspace:'assurance'|'isolation';resourceId:number;phone:string;disabled?:boolean;autoOpen?:boolean;beforeOpen?:()=>Promise<void>;prepare:(id:string)=>Promise<{proof:string}>;portal:(path:string,body?:any)=>Promise<any>}>()
+const emit=defineEmits<{busy:[value:boolean]}>()
 const key=`amx-call:${props.workspace}:${props.resourceId}`
 const pending=ref(false),confirming=ref(false),error=ref(''),result=ref<any>(null),requestId=ref('')
 const confirmedPhone=ref('')
+watch(pending,value=>emit('busy',value),{flush:'sync'})
 try{requestId.value=sessionStorage.getItem(key)||''}catch{/* Memory state still prevents an automatic retry. */}
 const labels:Record<string,string>={accepted:'Commande acceptée',rejected:'Commande refusée',blocked:'Appel bloqué par les contrôles',unknown:'Résultat indéterminé',dispatching:'Commande réservée, résultat à vérifier'}
 const unresolved=computed(()=>!!requestId.value&&!['accepted','rejected','blocked'].includes(result.value?.state))
@@ -42,6 +44,7 @@ async function inspect(){
  finally{pending.value=false}
 }
 function reset(){if(unresolved.value||pending.value)return;remember('');result.value=null;error.value=''}
+onMounted(()=>{if(props.autoOpen&&!requestId.value)void open()})
 </script>
 <template>
  <div class="call-action">

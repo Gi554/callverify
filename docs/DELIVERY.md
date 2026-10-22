@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Prospects Setter Assurance : colonnes et fiche modale
+
+Prospects présenté en cartes sans photos, groupées par les statuts configurés, avec recherche, filtre et pagination par colonne. Actions Modifier et Préparer l’appel à côté de chaque numéro. La modale prend automatiquement la fiche en charge, conserve la sauvegarde et la libération du verrou, et ouvre la réservation avec choix parmi les conseillers attribués, date/heure locale, durée et fuseau. Les heures inexistantes ou ambiguës du changement d’heure sont refusées ; les conflits d’agenda restent contrôlés par le serveur. Le mode appel ouvre la préparation existante et exige une confirmation avant envoi ; aucun appel n’est lancé automatiquement. La modale reste disponible pour saisir les informations pendant l’échange, sans prétendre détecter sonnerie ou décrochage.
+
+Limites : cette reprise concerne Assurance ; Isolation conserve son parcours. Le compte setter.visite n’a aucun conseiller attribué et ne peut pas réserver tant que cette attribution n’est pas configurée. La publication Google/Microsoft nécessite les connexions et réglages de synchronisation existants. Aucun appel ni rendez-vous réel créé. Vérifications approfondies et recette de bout en bout reportées à la demande de l’utilisateur ; contrôle de compilation uniquement pour garder la page ouvrable.
+
 ## Accueil Setter : présentation et accès directs
 
 Conversations retiré du menu et de l’en-tête Setter. Accueil dédié aux setters Assurance et Isolation : bienvenue, cartes pastel avec indicateurs réels et liens vers prospects/tâches, prochain créneau, actions principales et agenda. Les rappels et notifications Assurance restent disponibles dans un volet repliable. Les autres rôles conservent leur accueil. Vérifications : connexion et accès aux prospects dans le navigateur, ouverture des suivis, revue desktop/mobile, typage et build, tests des espaces. Aucun appel ni envoi de message déclenché. La prochaine page attend le retour de l’utilisateur.
