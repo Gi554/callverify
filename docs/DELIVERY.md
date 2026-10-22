@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Setter Assurance — retrait d’Opportunités
+
+Le module Opportunités n’apparaît plus dans le menu du setter Assurance (Accueil, Prospects, Rendez-vous, Tâches, Mes conseillers, Appels, Mes statistiques). Il reste disponible pour l’administrateur. Les statuts du pipeline restent utilisés par le tableau des prospects du setter.
+
+Validation : démo avec `setter.demo01`, menu sans Opportunités. 71 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : retrait d’interface ; l’API du pipeline reste accessible aux setters (les statuts servent au tableau des prospects).
+
 ## Socle technique — fin des `import *` historiques
 
 `core/views.py` et `core/tests.py` importent désormais explicitement leurs modèles et sérialiseurs au lieu de `from .models import *` / `from .serializers import *`. Les exceptions Ruff correspondantes (F403/F405) sont retirées : tout le Python est contrôlé par les mêmes règles. Aucun module n’importait de modèle via `core.views`. Aucun changement de comportement.
