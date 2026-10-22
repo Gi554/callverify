@@ -76,9 +76,9 @@ onMounted(load);
             <td>
               <strong>{{ row.name || 'Prospect sans nom' }}</strong>
             </td>
-            <td>{{ row.raw_phone }}</td>
-            <td>{{ row.reference || '—' }}</td>
-            <td>
+            <td data-label="Téléphone">{{ row.raw_phone }}</td>
+            <td data-label="Référence">{{ row.reference || '—' }}</td>
+            <td data-label="Suivi">
               <button
                 class="secondary"
                 :disabled="busy"

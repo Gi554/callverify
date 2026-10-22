@@ -566,14 +566,14 @@ onMounted(() =>
               <td>
                 {{ row.contact.name || 'Sans nom' }}<small>{{ row.contact.phone }}</small>
               </td>
-              <td v-if="role !== 'advisor'">{{ row.advisor.name }}</td>
-              <td>
+              <td v-if="role !== 'advisor'" data-label="Conseiller">{{ row.advisor.name }}</td>
+              <td data-label="Créneau">
                 {{ showDate(row.starts_at, row.timezone)
                 }}<small
                   >Fin : {{ showDate(row.ends_at, row.timezone) }} · {{ row.timezone }}</small
                 >
               </td>
-              <td>
+              <td data-label="Statut">
                 <span class="appointment-business-status" :class="row.business_status">{{
                   appointmentStatus(row)
                 }}</span

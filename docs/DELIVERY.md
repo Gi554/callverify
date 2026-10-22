@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Rôles terrain — intitulés de colonne dans les cartes sur téléphone
+
+En mode carte (téléphone, conseiller, closer et client), chaque valeur affiche désormais l’intitulé de sa colonne au-dessus d’elle ; la première cellule (prospect ou dossier) sert de titre de carte, en gras. Colonnes étiquetées : rendez-vous Assurance (Conseiller, Créneau, Statut), visites du closer (Rendez-vous, Setter, Résultat), dossiers du client (Téléphone, Référence, Suivi) et indicateurs des statistiques Isolation. Affichage inchangé sur ordinateur.
+
+Validation : démo à 375 px, statistiques du client avec intitulés (« Rendez-vous réservés », « Rendez-vous tenus »…) et sans débordement. 71 tests frontend, typage, ESLint, Prettier et build.
+
+Limites : seuls ces quatre tableaux sont étiquetés ; un nouveau tableau destiné aux rôles terrain devra porter ses `data-label`.
+
 ## Titres en double supprimés
 
 Sur les écrans à mise en page générique, le titre de page était répété par l’en-tête de la carte (« Visites » puis « Visites »), puis souvent par le composant (« Visites Isolation », « Rendez-vous Assurance »). L’en-tête de carte est supprimé partout (avec ses règles CSS devenues inutiles) ; les titres internes des listes de visites et de rendez-vous ne s’affichent plus que lorsqu’ils apportent un contexte (fiche d’un prospect : « Visites · nom », « Rendez-vous du prospect » ; formulaire de réservation).
