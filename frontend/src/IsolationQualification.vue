@@ -26,6 +26,12 @@ async function upload(){await run(async()=>{if(!selected.value||!file.value)thro
 async function confirm(){await run(async()=>{if(!preview.value)throw new Error('Importez un fichier avant de confirmer');const payload:any={phone:mapping.value.phone};if(mapping.value.name)payload.name=mapping.value.name;if(mapping.value.reference)payload.reference=mapping.value.reference;await props.request(`qualification/imports/${preview.value.id}/confirm/`,{mapping:payload});preview.value=null;file.value=null;tab.value='lists';await load()})}
 async function lookup(id:number){await run(async()=>{await props.request(`qualification/${id}/lookup/`,{});await load()})}
 async function exportResults(){await run(async()=>{if(!selected.value)throw new Error('Choisissez une liste');await props.request('qualification/exports/',{campaign:Number(selected.value),format:'xlsx'});tab.value='exports';await load()})}
+async function download(job:any){await run(async()=>{
+ const blob=await props.request(`qualification/exports/${job.id}/download/`)
+ const url=URL.createObjectURL(blob),link=document.createElement('a')
+ link.href=url;link.download=`qualification-isolation-${job.id}.${job.format}`
+ document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)
+})}
 function chooseFile(event:Event){file.value=(event.target as HTMLInputElement).files?.[0]||null}
 onMounted(load)
 </script>
@@ -45,7 +51,7 @@ onMounted(load)
 
   <div v-else-if="tab==='results'" class="qualification-table"><table><thead><tr><th>Contact</th><th>Numéro</th><th>Validité</th><th>État de la ligne</th><th>Liste</th></tr></thead><tbody><tr v-for="row in results" :key="row.id"><td><strong>{{row.name||'Sans nom'}}</strong><small>{{row.reference||'—'}}</small></td><td>{{row.e164||row.raw_phone}}</td><td><span :class="['crm-badge',row.validity==='valid'?'positive':'negative']">{{row.validity==='valid'?'Format valide':'Format invalide'}}</span></td><td><span :class="['crm-badge',row.line_status==='reachable'?'positive':row.line_status==='unreachable'?'negative':'warning']">{{lineLabel(row.line_status)}}</span></td><td>{{row.campaign}}</td></tr><tr v-if="!results.length"><td colspan="5">Aucun résultat dans les listes Isolation.</td></tr></tbody></table></div>
 
-  <div v-else class="qualification-table"><table><thead><tr><th>Liste</th><th>Format</th><th>État</th><th>Disponibilité</th><th></th></tr></thead><tbody><tr v-for="job in exportsList" :key="job.id"><td>{{job.campaign}}</td><td>{{job.format.toUpperCase()}}</td><td><span class="crm-badge neutral">{{job.status}}</span></td><td>{{job.expires_at?new Date(job.expires_at).toLocaleString('fr-FR'):'—'}}</td><td><a v-if="job.status==='completed'" class="text-button" :href="`/api/isolation/qualification/exports/${job.id}/download/`">Télécharger</a></td></tr><tr v-if="!exportsList.length"><td colspan="5">Aucun export demandé.</td></tr></tbody></table></div>
+  <div v-else class="qualification-table"><table><thead><tr><th>Liste</th><th>Format</th><th>État</th><th>Disponibilité</th><th></th></tr></thead><tbody><tr v-for="job in exportsList" :key="job.id"><td>{{job.campaign}}</td><td>{{job.format.toUpperCase()}}</td><td><span class="crm-badge neutral">{{job.status}}</span></td><td>{{job.expires_at?new Date(job.expires_at).toLocaleString('fr-FR'):'—'}}</td><td><button v-if="job.status==='completed'" class="text-button" :disabled="loading" @click="download(job)">Télécharger</button></td></tr><tr v-if="!exportsList.length"><td colspan="5">Aucun export demandé.</td></tr></tbody></table></div>
  </section>
 </template>
 <style scoped>
