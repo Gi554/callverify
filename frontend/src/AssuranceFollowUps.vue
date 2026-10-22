@@ -1,24 +1,188 @@
 <script setup lang="ts">
-import {ref,onMounted,watch} from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import AssuranceFollowUpPolicy from './AssuranceFollowUpPolicy.vue'
-import {bookingInterval} from './booking-time'
+import { bookingInterval } from './booking-time'
 import AssuranceTaskAssignment from './AssuranceTaskAssignment.vue'
-const props=defineProps<{role:string;taskId?:number;portal:(path:string,body?:any)=>Promise<any>;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
-const emit=defineEmits<{changed:[];busy:[value:boolean];close:[]}>()
-const rows=ref<any[]>([]),count=ref(0),page=ref(1),state=ref('open'),error=ref(''),busy=ref(false),resolution=ref(''),selected=ref<any>(null)
-const reassignment=ref<any>(null)
-const reopening=ref(false)
-const planning=ref<any>(null),priority=ref('normal'),due=ref(''),reason=ref(''),history=ref<any[]>([]),historyPage=ref(1),historyCount=ref(0),historyRow=ref<any>(null)
-async function plan(){busy.value=true;error.value='';try{await props.request(`follow-ups/${planning.value.id}/${reopening.value?'reopen':'plan'}/?state=all`,{revision:planning.value.revision,priority:priority.value,due_at:bookingInterval(due.value,'America/Toronto',30).starts_at,reason:reason.value});planning.value=null;emit('changed');await load()}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function loadHistory(){busy.value=true;error.value='';try{const data=await props.request(`follow-ups/${historyRow.value.id}/history/?state=all&page=${historyPage.value}`);history.value=data.results;historyCount.value=data.count}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function load(){busy.value=true;error.value='';try{if(props.taskId){rows.value=[await props.request(`follow-ups/${props.taskId}/?state=all`)];count.value=1}else{const data=await props.request(`follow-ups/?state=${state.value}&page=${page.value}`);rows.value=data.results;count.value=data.count}}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function close(){busy.value=true;error.value='';try{await props.request(`follow-ups/${selected.value.id}/close/`,{resolution:resolution.value,revision:selected.value.revision});selected.value=null;resolution.value='';emit('changed');await load()}catch(e:any){error.value=e.message}finally{busy.value=false}}
-watch(busy,value=>emit('busy',value),{flush:'sync'})
-function closePanel(){if(busy.value)return;if((selected.value||planning.value||reassignment.value)&&!window.confirm('Quitter sans enregistrer les modifications du suivi ?'))return;emit('close')}
-defineExpose({close:closePanel})
-function preparePlan(row:any,reopen=false){reopening.value=reopen;planning.value=row;priority.value=row.priority;reason.value='';const value=reopen?new Date(Date.now()+86400000):new Date(row.due_at);const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(value).map(p=>[p.type,p.value]));due.value=`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`}
+const props = defineProps<{
+  role: string
+  taskId?: number
+  portal: (path: string, body?: any) => Promise<any>
+  request: (path: string, body?: any, method?: string) => Promise<any>
+}>()
+const emit = defineEmits<{ changed: []; busy: [value: boolean]; close: [] }>()
+const rows = ref<any[]>([]),
+  count = ref(0),
+  page = ref(1),
+  state = ref('open'),
+  error = ref(''),
+  busy = ref(false),
+  resolution = ref(''),
+  selected = ref<any>(null)
+const reassignment = ref<any>(null)
+const reopening = ref(false)
+const planning = ref<any>(null),
+  priority = ref('normal'),
+  due = ref(''),
+  reason = ref(''),
+  history = ref<any[]>([]),
+  historyPage = ref(1),
+  historyCount = ref(0),
+  historyRow = ref<any>(null)
+async function plan() {
+  busy.value = true
+  error.value = ''
+  try {
+    await props.request(
+      `follow-ups/${planning.value.id}/${reopening.value ? 'reopen' : 'plan'}/?state=all`,
+      {
+        revision: planning.value.revision,
+        priority: priority.value,
+        due_at: bookingInterval(due.value, 'America/Toronto', 30).starts_at,
+        reason: reason.value,
+      },
+    )
+    planning.value = null
+    emit('changed')
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function loadHistory() {
+  busy.value = true
+  error.value = ''
+  try {
+    const data = await props.request(
+      `follow-ups/${historyRow.value.id}/history/?state=all&page=${historyPage.value}`,
+    )
+    history.value = data.results
+    historyCount.value = data.count
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function load() {
+  busy.value = true
+  error.value = ''
+  try {
+    if (props.taskId) {
+      rows.value = [await props.request(`follow-ups/${props.taskId}/?state=all`)]
+      count.value = 1
+    } else {
+      const data = await props.request(`follow-ups/?state=${state.value}&page=${page.value}`)
+      rows.value = data.results
+      count.value = data.count
+    }
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function close() {
+  busy.value = true
+  error.value = ''
+  try {
+    await props.request(`follow-ups/${selected.value.id}/close/`, {
+      resolution: resolution.value,
+      revision: selected.value.revision,
+    })
+    selected.value = null
+    resolution.value = ''
+    emit('changed')
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+watch(busy, (value) => emit('busy', value), { flush: 'sync' })
+function closePanel() {
+  if (busy.value) return
+  if (
+    (selected.value || planning.value || reassignment.value) &&
+    !window.confirm('Quitter sans enregistrer les modifications du suivi ?')
+  )
+    return
+  emit('close')
+}
+defineExpose({ close: closePanel })
+function preparePlan(row: any, reopen = false) {
+  reopening.value = reopen
+  planning.value = row
+  priority.value = row.priority
+  reason.value = ''
+  const value = reopen ? new Date(Date.now() + 86400000) : new Date(row.due_at)
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(value)
+      .map((p) => [p.type, p.value]),
+  )
+  due.value = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+}
 onMounted(load)
 </script>
+<!-- prettier-ignore -->
 <template><section><AssuranceFollowUpPolicy v-if="!taskId&&role==='administrator'" :request="request"/><template v-if="!taskId"><h3>Tâches de suivi</h3><p>Les tâches ouvertes restent signalées jusqu’à une clôture justifiée. Les nouvelles tâches suivent les règles définies par l’administration.</p><p v-if="error" role="alert">{{error}}</p><label>Afficher<select v-model="state" @change="page=1;load()"><option value="open">Ouvertes</option><option value="closed">Clôturées</option><option value="all">Toutes</option></select></label><button class="secondary" :disabled="busy" @click="load">Actualiser</button></template><p v-if="taskId&&error" role="alert">{{error}}</p><article v-for="row in rows" :key="row.id"><h4>Tâche {{row.id}} · {{row.contact_name||'Prospect'}} · {{row.appointment_id?'RDV '+row.appointment_id:'Rappel contact'}}</h4><p>{{row.reason}}</p><p v-if="role==='administrator'">Responsable du suivi : {{row.assigned_setter_id}} · Setter d’origine du RDV : {{row.original_setter_id??'Sans RDV'}}</p><button v-if="role==='administrator'&&!row.closed_at" class="secondary" :disabled="busy" @click="reassignment=row">Réattribuer</button><p v-if="row.latest_incident">Dernier signalement : {{row.latest_incident.note}} · {{new Date(row.latest_incident.created_at).toLocaleString('fr-FR')}}</p><p>Priorité : {{row.priority}} · Échéance : {{new Date(row.due_at).toLocaleString('fr-FR')}}</p><p v-if="row.overdue">Échéance dépassée</p><button v-if="role==='administrator'&&!row.closed_at" class="secondary" @click="preparePlan(row)">Priorité et échéance</button><button v-if="role==='administrator'" class="secondary" @click="historyRow=row;historyPage=1;loadHistory()">Historique</button><button v-if="role==='administrator'&&row.closed_at" class="secondary" :disabled="busy" @click="preparePlan(row,true)">Rouvrir avec justification</button><p v-if="row.closed_at">Clôturée : {{row.resolution}}</p><button v-else class="secondary" :disabled="busy" @click="selected=row;resolution=''">Clôturer avec justification</button></article><p v-if="!rows.length">Aucune tâche.</p><template v-if="!taskId"><p>{{count}} tâche(s) · page {{page}}</p><button class="secondary" :disabled="busy||page===1" @click="page--;load()">Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="page++;load()">Suivant</button></template><AssuranceTaskAssignment v-if="role==='administrator'&&reassignment" :key="reassignment.id" :task="reassignment" :portal="portal" :request="request" @cancel="reassignment=null" @saved="reassignment=null;emit('changed');load()"/><form v-if="selected" @submit.prevent="close"><label>Justification de clôture<textarea v-model="resolution" required maxlength="3000"></textarea></label><button class="primary" :disabled="busy">Confirmer la clôture</button><button type="button" class="secondary" @click="selected=null">Annuler</button></form><form v-if="planning" @submit.prevent="plan"><h4>{{reopening?'Rouvrir la tâche clôturée':'Planifier la tâche ouverte'}}</h4><p v-if="reopening">La clôture précédente restera dans l’historique. La tâche sera rendue au même setter avec la nouvelle échéance.</p><label>Priorité<select v-model="priority"><option value="low">Basse</option><option value="normal">Normale</option><option value="high">Haute</option><option value="urgent">Urgente</option></select></label><label>Date et heure · Montréal<input v-model="due" type="datetime-local" required></label><label>Motif de modification<textarea v-model="reason" required maxlength="1000"></textarea></label><button class="primary" :disabled="busy">{{reopening?'Confirmer la réouverture':'Enregistrer la planification'}}</button><button type="button" class="secondary" @click="planning=null">Annuler</button></form><section v-if="historyRow"><h4>Historique de la tâche {{historyRow.id}}</h4><article v-for="entry in history" :key="entry.id"><p>{{entry.action}} · {{new Date(entry.created_at).toLocaleString('fr-FR')}} · utilisateur {{entry.actor_id}}</p><pre>{{JSON.stringify(entry.metadata,null,2)}}</pre></article><button class="secondary" :disabled="busy||historyPage===1" @click="historyPage--;loadHistory()">Précédent</button><button class="secondary" :disabled="busy||historyPage*25>=historyCount" @click="historyPage++;loadHistory()">Suivant</button><button class="secondary" @click="historyRow=null">Fermer l’historique</button></section></section></template>
 
-<style scoped>section{color:#465876}article{background:#f8faff;border:1px solid #e6edf8;border-radius:12px;padding:18px;margin:10px 0 20px}h4{font-size:15px}p{font-size:12px;line-height:1.7;color:#8290a6}form{display:grid;gap:16px;padding:16px 0}label{display:grid;gap:8px;font-size:12px;color:#7988a2}input,textarea,select{box-sizing:border-box;width:100%;border:1px solid #dde6f2;border-radius:9px;padding:11px;color:#415674;font:inherit}textarea{min-height:100px}button{margin:4px 5px 4px 0}</style>
+<style scoped>
+section {
+  color: #465876;
+}
+article {
+  background: #f8faff;
+  border: 1px solid #e6edf8;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 10px 0 20px;
+}
+h4 {
+  font-size: 15px;
+}
+p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #8290a6;
+}
+form {
+  display: grid;
+  gap: 16px;
+  padding: 16px 0;
+}
+label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: #7988a2;
+}
+input,
+textarea,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #dde6f2;
+  border-radius: 9px;
+  padding: 11px;
+  color: #415674;
+  font: inherit;
+}
+textarea {
+  min-height: 100px;
+}
+button {
+  margin: 4px 5px 4px 0;
+}
+</style>

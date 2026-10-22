@@ -13,6 +13,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.lock.txt
+      - run: pip install ruff==0.6.9 && ruff format --check .
       - run: python manage.py test core
       - run: python manage.py test portal.backend.identity --settings=portal.backend.settings
       - run: python manage.py test apps.assurance.backend.crm --settings=apps.assurance.backend.settings
@@ -112,6 +113,7 @@ jobs:
           node-version: '22'
       - run: corepack enable
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec prettier --check .
       - run: node --test tests/*.test.mjs
       - run: pnpm exec vue-tsc --noEmit
       - run: pnpm exec vite build

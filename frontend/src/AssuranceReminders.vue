@@ -1,13 +1,77 @@
 <script setup lang="ts">
-import {ref,onMounted,onUnmounted} from 'vue'
-const props=defineProps<{role:string;request:(path:string,body?:any)=>Promise<any>}>()
-defineEmits<{openTasks:[];openAppointments:[]}>()
-const rows=ref<any[]>([]),count=ref(0),page=ref(1),expanded=ref(false),busy=ref(false),error=ref(''),message=ref(''),rules=ref<any>(null),reason=ref(''),editing=ref(false),escalationsOnly=ref(false),escalationCount=ref(0)
-let timer:ReturnType<typeof setInterval>|undefined
-async function refresh(){if(busy.value)return;busy.value=true;error.value='';try{const data=await props.request(`reminders/?page=${page.value}&category=${escalationsOnly.value?'escalations':'all'}`);rows.value=data.results;count.value=data.count;if(props.role==='administrator')escalationCount.value=(await props.request('reminders/?category=escalations')).count}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function configure(){busy.value=true;error.value='';try{rules.value=await props.request('reminder-policy/');reason.value='';editing.value=true}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function save(){busy.value=true;error.value='';message.value='';try{rules.value=await props.request('reminder-policy/',{...rules.value,reason:reason.value});message.value='Règles enregistrées. Le worker produira les rappels applicables lors de son prochain passage.';editing.value=false;page.value=1}catch(e:any){error.value=e.message}finally{busy.value=false}await refresh()}
-onMounted(()=>{refresh();timer=setInterval(()=>{if(!document.hidden)refresh()},60000)})
-onUnmounted(()=>{if(timer)clearInterval(timer)})
+import { ref, onMounted, onUnmounted } from 'vue'
+const props = defineProps<{ role: string; request: (path: string, body?: any) => Promise<any> }>()
+defineEmits<{ openTasks: []; openAppointments: [] }>()
+const rows = ref<any[]>([]),
+  count = ref(0),
+  page = ref(1),
+  expanded = ref(false),
+  busy = ref(false),
+  error = ref(''),
+  message = ref(''),
+  rules = ref<any>(null),
+  reason = ref(''),
+  editing = ref(false),
+  escalationsOnly = ref(false),
+  escalationCount = ref(0)
+let timer: ReturnType<typeof setInterval> | undefined
+async function refresh() {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
+  try {
+    const data = await props.request(
+      `reminders/?page=${page.value}&category=${escalationsOnly.value ? 'escalations' : 'all'}`,
+    )
+    rows.value = data.results
+    count.value = data.count
+    if (props.role === 'administrator')
+      escalationCount.value = (await props.request('reminders/?category=escalations')).count
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function configure() {
+  busy.value = true
+  error.value = ''
+  try {
+    rules.value = await props.request('reminder-policy/')
+    reason.value = ''
+    editing.value = true
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function save() {
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    rules.value = await props.request('reminder-policy/', { ...rules.value, reason: reason.value })
+    message.value =
+      'Règles enregistrées. Le worker produira les rappels applicables lors de son prochain passage.'
+    editing.value = false
+    page.value = 1
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+  await refresh()
+}
+onMounted(() => {
+  refresh()
+  timer = setInterval(() => {
+    if (!document.hidden) refresh()
+  }, 60000)
+})
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 </script>
+<!-- prettier-ignore -->
 <template><section aria-label="Rappels Assurance"><h3>Rappels actifs</h3><p role="status">{{count}} rappel(s) actif(s). Lire un rappel ne résout ni la tâche ni le compte rendu.</p><p v-if="role==='administrator'" role="status">{{escalationCount}} escalade(s) administrative(s) active(s).</p><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status">{{message}}</p><button class="secondary" :disabled="busy" @click="expanded=!expanded;refresh()">{{expanded?'Masquer les rappels':'Voir les rappels'}}</button><button class="secondary" :disabled="busy" @click="refresh">Actualiser</button><button v-if="role!=='advisor'" class="secondary" @click="$emit('openTasks')">Tâches de suivi</button><button class="secondary" @click="$emit('openAppointments')">Rendez-vous et comptes rendus</button><button v-if="role==='administrator'" class="secondary" :disabled="busy" @click="configure">Régler les rappels</button><section v-if="expanded"><label v-if="role==='administrator'"><input v-model="escalationsOnly" type="checkbox" :disabled="busy" @change="page=1;refresh()">Escalades uniquement</label><article v-for="row in rows" :key="row.id"><h4>{{row.label}}</h4><p>{{row.appointment_id?'RDV '+row.appointment_id:'Rappel contact'}}<span v-if="row.task_id"> · Tâche {{row.task_id}}</span> · {{new Date(row.created_at).toLocaleString('fr-FR')}}</p></article><p v-if="!rows.length">Aucun rappel actif pour votre périmètre.</p><button class="secondary" :disabled="busy||page===1" @click="page--;refresh()">Précédent</button><span> Page {{page}} </span><button class="secondary" :disabled="busy||page*25>=count" @click="page++;refresh()">Suivant</button></section><form v-if="editing&&rules&&role==='administrator'" @submit.prevent="save"><h4>Cadence des rappels</h4><p>Les changements invalident les anciens rappels. Les nouveaux sont générés par le worker ; aucune clôture automatique.</p><label><input v-model="rules.tasks_enabled" type="checkbox" :disabled="busy">Rappeler les tâches en retard</label><label>Intervalle des tâches (heures)<input v-model.number="rules.task_interval_hours" type="number" min="1" max="720" required :disabled="busy"></label><label><input v-model="rules.reports_enabled" type="checkbox" :disabled="busy">Rappeler les comptes rendus manquants</label><label>Délai après fin du RDV (heures)<input v-model.number="rules.report_grace_hours" type="number" min="0" max="720" required :disabled="busy"></label><label>Intervalle des comptes rendus (heures)<input v-model.number="rules.report_interval_hours" type="number" min="1" max="720" required :disabled="busy"></label><h4>Escalades administrateur</h4><p>Désactivées initialement. Les seuils s’ajoutent à l’échéance de la tâche ou au délai initial du compte rendu ; les rappels du type doivent être actifs.</p><label><input v-model="rules.escalations_enabled" type="checkbox" :disabled="busy">Activer les escalades</label><label>Retard de tâche avant escalade (heures)<input v-model.number="rules.task_escalation_hours" type="number" min="1" max="2160" required :disabled="busy"></label><label>Délai supplémentaire pour compte rendu (heures)<input v-model.number="rules.report_escalation_hours" type="number" min="1" max="2160" required :disabled="busy"></label><label>Intervalle des escalades (heures)<input v-model.number="rules.escalation_interval_hours" type="number" min="1" max="720" required :disabled="busy"></label><label>Motif obligatoire<textarea v-model="reason" required maxlength="1000" :disabled="busy"></textarea></label><button class="primary" :disabled="busy">Enregistrer</button><button type="button" class="secondary" :disabled="busy" @click="editing=false">Annuler</button></form></section></template>

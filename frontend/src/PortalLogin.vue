@@ -1,12 +1,35 @@
 <script setup lang="ts">
-import {ref} from 'vue'
-import {Phone,ShieldCheck,Home,Eye,EyeOff,LogIn,ArrowLeft,LockKeyhole} from 'lucide-vue-next'
-const props=defineProps<{busy:boolean;error:string}>()
-const emit=defineEmits<{submit:[value:{username:string;password:string;workspace:string}];recover:[]}>()
-const profile=ref(''),username=ref(''),password=ref(''),visible=ref(false)
-function choose(value:string){profile.value=value;password.value=''}
-function submit(){const secret=password.value;password.value='';emit('submit',{username:username.value,password:secret,workspace:profile.value})}
+import { ref } from 'vue'
+import {
+  Phone,
+  ShieldCheck,
+  Home,
+  Eye,
+  EyeOff,
+  LogIn,
+  ArrowLeft,
+  LockKeyhole,
+} from 'lucide-vue-next'
+const props = defineProps<{ busy: boolean; error: string }>()
+const emit = defineEmits<{
+  submit: [value: { username: string; password: string; workspace: string }]
+  recover: []
+}>()
+const profile = ref(''),
+  username = ref(''),
+  password = ref(''),
+  visible = ref(false)
+function choose(value: string) {
+  profile.value = value
+  password.value = ''
+}
+function submit() {
+  const secret = password.value
+  password.value = ''
+  emit('submit', { username: username.value, password: secret, workspace: profile.value })
+}
 </script>
+<!-- prettier-ignore -->
 <template>
  <div class="login-shell profile-login">
   <header class="login-header"><a class="brand" href="/crm"><span class="brand-mark"><Phone :size="22" stroke-width="2.5"/></span>CallVerify<span class="brand-dot">.</span></a><span class="login-private"><LockKeyhole :size="15"/> Votre espace privé</span></header>
@@ -25,5 +48,115 @@ function submit(){const secret=password.value;password.value='';emit('submit',{u
  </div>
 </template>
 <style scoped>
-.profile-login{min-height:100dvh}.profile-login .login-main{min-height:calc(100dvh - 170px)}.profile-login .login-form-wrap{max-width:470px}.login-profiles{display:flex;justify-content:center;gap:30px;margin:36px 0}.login-profile{display:flex;align-items:center;flex-direction:column;border:0;background:none;cursor:pointer;padding:14px 12px;border-radius:16px;min-width:160px;color:#30352b;transition:background .15s,transform .15s}.login-profile:hover{background:#eeede3;transform:translateY(-3px)}.login-profile:focus-visible{outline:3px solid #9380dc;outline-offset:3px}.profile-picture{width:100px;height:100px;border-radius:50%;display:grid;place-items:center;box-shadow:0 5px 16px #30352b0a;margin-bottom:16px}.profile-picture.assurance{background:#e4ebd6;color:#617a2d}.profile-picture.isolation{background:#e9e2f7;color:#8a72bd}.login-profile strong{font-size:17px;font-weight:600}.login-profile small{font-size:11px;color:#898a79;margin-top:8px}.profile-picture.selected{width:76px;height:76px;margin:0 auto 20px}.profile-back{display:flex;align-items:center;gap:8px;border:0;background:none;color:#8b8d76;font-size:11px;cursor:pointer;margin:0 0 28px}.profile-login .access-note{margin-top:28px}.profile-login .login-submit{background:#53661c;border-color:#53661c}.profile-login .login-form-wrap form{text-align:left}.profile-login .login-form-wrap input{width:100%;box-sizing:border-box}@media(max-width:600px){.login-profiles{gap:8px}.login-profile{min-width:130px;padding:12px 8px}.profile-picture{width:86px;height:86px}.profile-login .login-main{padding-top:40px;padding-bottom:40px}}
+.profile-login {
+  min-height: 100dvh;
+}
+.profile-login .login-main {
+  min-height: calc(100dvh - 170px);
+}
+.profile-login .login-form-wrap {
+  max-width: 470px;
+}
+.login-profiles {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin: 36px 0;
+}
+.login-profile {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 14px 12px;
+  border-radius: 16px;
+  min-width: 160px;
+  color: #30352b;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.login-profile:hover {
+  background: #eeede3;
+  transform: translateY(-3px);
+}
+.login-profile:focus-visible {
+  outline: 3px solid #9380dc;
+  outline-offset: 3px;
+}
+.profile-picture {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 5px 16px #30352b0a;
+  margin-bottom: 16px;
+}
+.profile-picture.assurance {
+  background: #e4ebd6;
+  color: #617a2d;
+}
+.profile-picture.isolation {
+  background: #e9e2f7;
+  color: #8a72bd;
+}
+.login-profile strong {
+  font-size: 17px;
+  font-weight: 600;
+}
+.login-profile small {
+  font-size: 11px;
+  color: #898a79;
+  margin-top: 8px;
+}
+.profile-picture.selected {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+}
+.profile-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: #8b8d76;
+  font-size: 11px;
+  cursor: pointer;
+  margin: 0 0 28px;
+}
+.profile-login .access-note {
+  margin-top: 28px;
+}
+.profile-login .login-submit {
+  background: #53661c;
+  border-color: #53661c;
+}
+.profile-login .login-form-wrap form {
+  text-align: left;
+}
+.profile-login .login-form-wrap input {
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 600px) {
+  .login-profiles {
+    gap: 8px;
+  }
+  .login-profile {
+    min-width: 130px;
+    padding: 12px 8px;
+  }
+  .profile-picture {
+    width: 86px;
+    height: 86px;
+  }
+  .profile-login .login-main {
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
+}
 </style>

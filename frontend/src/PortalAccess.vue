@@ -1,23 +1,106 @@
 <script setup lang="ts">
-import {ref,onMounted,watch} from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import PortalInvitations from './PortalInvitations.vue'
 import PortalPhoneExtensions from './PortalPhoneExtensions.vue'
 import PortalAccessHistory from './PortalAccessHistory.vue'
-const activeSection=ref('users')
-const sections=[{key:'users',label:'Utilisateurs'},{key:'invitations',label:'Invitations'},{key:'phone',label:'Postes téléphoniques'},{key:'history',label:'Journal des accès'}]
-import {UserPlus,Pause,Play,Save,ChevronLeft,ChevronRight} from 'lucide-vue-next'
-const props=defineProps<{spaces:string[];username:string;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
-const space=ref(props.spaces[0]||''),search=ref(''),page=ref(1),rows=ref<any[]>([]),count=ref(0),busy=ref(false),error=ref(''),message=ref(''),adding=ref(false)
-const form=ref({username:'',email:'',password:'',role:'setter',existing:false})
-const roles=()=>space.value==='assurance'?['administrator','setter','advisor']:['administrator','setter','client','closer']
-const labels:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client',closer:'Closer'}
-const base=()=>`workspaces/${space.value}/users/`
-async function load(){busy.value=true;error.value='';try{const data=await props.request(base()+`?search=${encodeURIComponent(search.value)}&page=${page.value}`);rows.value=data.results;count.value=data.count}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function update(row:any,changes:any){busy.value=true;error.value='';message.value='';try{await props.request(base()+row.id+'/',changes,'PATCH');message.value='Accès mis à jour.';await load()}catch(e:any){const detail=e.message;await load();error.value=detail}finally{busy.value=false}}
-function close(){adding.value=false;form.value={username:'',email:'',password:'',role:'setter',existing:false}}
-async function create(){busy.value=true;error.value='';try{const body=form.value.existing?{username:form.value.username,role:form.value.role,existing:true}:form.value;await props.request(base(),body);close();page.value=1;search.value='';await load();message.value='Utilisateur associé à cet espace.'}catch(e:any){error.value=e.message}finally{busy.value=false}}
-watch(space,()=>{page.value=1;close();message.value='';load()});onMounted(load)
+const activeSection = ref('users')
+const sections = [
+  { key: 'users', label: 'Utilisateurs' },
+  { key: 'invitations', label: 'Invitations' },
+  { key: 'phone', label: 'Postes téléphoniques' },
+  { key: 'history', label: 'Journal des accès' },
+]
+import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+const props = defineProps<{
+  spaces: string[]
+  username: string
+  request: (path: string, body?: any, method?: string) => Promise<any>
+}>()
+const space = ref(props.spaces[0] || ''),
+  search = ref(''),
+  page = ref(1),
+  rows = ref<any[]>([]),
+  count = ref(0),
+  busy = ref(false),
+  error = ref(''),
+  message = ref(''),
+  adding = ref(false)
+const form = ref({ username: '', email: '', password: '', role: 'setter', existing: false })
+const roles = () =>
+  space.value === 'assurance'
+    ? ['administrator', 'setter', 'advisor']
+    : ['administrator', 'setter', 'client', 'closer']
+const labels: Record<string, string> = {
+  administrator: 'Administrateur',
+  setter: 'Setter',
+  advisor: 'Conseiller',
+  client: 'Client',
+  closer: 'Closer',
+}
+const base = () => `workspaces/${space.value}/users/`
+async function load() {
+  busy.value = true
+  error.value = ''
+  try {
+    const data = await props.request(
+      base() + `?search=${encodeURIComponent(search.value)}&page=${page.value}`,
+    )
+    rows.value = data.results
+    count.value = data.count
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function update(row: any, changes: any) {
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    await props.request(base() + row.id + '/', changes, 'PATCH')
+    message.value = 'Accès mis à jour.'
+    await load()
+  } catch (e: any) {
+    const detail = e.message
+    await load()
+    error.value = detail
+  } finally {
+    busy.value = false
+  }
+}
+function close() {
+  adding.value = false
+  form.value = { username: '', email: '', password: '', role: 'setter', existing: false }
+}
+async function create() {
+  busy.value = true
+  error.value = ''
+  try {
+    const body = form.value.existing
+      ? { username: form.value.username, role: form.value.role, existing: true }
+      : form.value
+    await props.request(base(), body)
+    close()
+    page.value = 1
+    search.value = ''
+    await load()
+    message.value = 'Utilisateur associé à cet espace.'
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+watch(space, () => {
+  page.value = 1
+  close()
+  message.value = ''
+  load()
+})
+onMounted(load)
 </script>
+<!-- prettier-ignore -->
 <template>
 <section class="access-panel"><header class="access-heading"><div><h1>Administration</h1><p>Gérez les utilisateurs et les accès de votre espace.</p></div><button v-if="activeSection==='users'" class="primary" :disabled="busy" @click="adding=true"><UserPlus :size="17"/>Ajouter un utilisateur</button></header>
 <nav class="access-navigation" aria-label="Rubriques de l’administration"><button v-for="section in sections" :key="section.key" :aria-current="activeSection===section.key?'page':undefined" :disabled="busy" @click="activeSection=section.key;close();message='';error=''">{{section.label}}</button></nav>
@@ -31,23 +114,213 @@ watch(space,()=>{page.value=1;close();message.value='';load()});onMounted(load)
 <div v-else class="access-section"><PortalAccessHistory v-if="activeSection==='history'" :key="space" :space="space" :request="request"/><PortalPhoneExtensions v-else-if="activeSection==='phone'" :key="'phone-'+space" :space="space" :request="request"/><PortalInvitations v-else-if="activeSection==='invitations'" :key="space" :space="space" :request="request"/></div></section>
 </template>
 <style scoped>
-.access-panel{margin-top:35px}.access-toolbar,.access-toolbar form,.access-pagination,.access-actions{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.access-toolbar{justify-content:space-between;margin:25px 0}.access-panel select{padding:12px;border:1px solid #dedfce;border-radius:10px;background:#fff;color:#303d20}.access-panel small{display:block;color:#858b77;margin-top:6px}.access-panel td{padding:18px}.access-pagination{justify-content:end;align-items:center;margin:20px 0}.access-pagination span{margin-right:auto;color:#777f65}.access-status{padding:6px 10px;border-radius:8px;font-size:12px}.enabled{background:#eaf1db;color:#49601b}.disabled{background:#fbe9df;color:#99532d}.access-form{padding:28px;margin-top:28px;max-width:600px}.access-form form{display:grid;gap:18px}.access-panel button:disabled{opacity:.5;cursor:not-allowed}@media(max-width:650px){.access-toolbar form{width:100%}.access-toolbar form label{flex:1}}
+.access-panel {
+  margin-top: 35px;
+}
+.access-toolbar,
+.access-toolbar form,
+.access-pagination,
+.access-actions {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.access-toolbar {
+  justify-content: space-between;
+  margin: 25px 0;
+}
+.access-panel select {
+  padding: 12px;
+  border: 1px solid #dedfce;
+  border-radius: 10px;
+  background: #fff;
+  color: #303d20;
+}
+.access-panel small {
+  display: block;
+  color: #858b77;
+  margin-top: 6px;
+}
+.access-panel td {
+  padding: 18px;
+}
+.access-pagination {
+  justify-content: end;
+  align-items: center;
+  margin: 20px 0;
+}
+.access-pagination span {
+  margin-right: auto;
+  color: #777f65;
+}
+.access-status {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.enabled {
+  background: #eaf1db;
+  color: #49601b;
+}
+.disabled {
+  background: #fbe9df;
+  color: #99532d;
+}
+.access-form {
+  padding: 28px;
+  margin-top: 28px;
+  max-width: 600px;
+}
+.access-form form {
+  display: grid;
+  gap: 18px;
+}
+.access-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 650px) {
+  .access-toolbar form {
+    width: 100%;
+  }
+  .access-toolbar form label {
+    flex: 1;
+  }
+}
 </style>
 <style scoped>
-.access-panel{margin:0;background:#fff;min-height:70vh}
-.access-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px}
-.access-heading h1{font-size:22px;letter-spacing:-.4px;margin:0;color:#253347}
-.access-heading p{font-size:13px;color:#718096;margin:8px 0 0}
-.access-navigation{display:flex;gap:24px;padding:0 24px;border-bottom:1px solid #dfe5ed;overflow-x:auto}
-.access-navigation button{white-space:nowrap;border:0;border-bottom:3px solid transparent;background:none;color:#65758b;padding:16px 0;font-size:13px;cursor:pointer}
-.access-navigation button[aria-current]{color:#187fc2;border-bottom-color:#187fc2;font-weight:600}
-.access-toolbar{margin:0;padding:22px 24px;background:#f2f6fa;border-bottom:1px solid #e1e8ef;align-items:center}
-.access-toolbar form{align-items:end}.access-panel select{border-color:#dbe3ec;border-radius:5px;color:#34445b;padding:10px 12px}
-.access-panel .table-scroll{border:0;border-radius:0;box-shadow:none;margin:0}
-.access-panel td{padding:16px 24px}.access-panel small{color:#738196}.access-status{border-radius:16px;white-space:nowrap}
-.enabled{background:#e6f5ed;color:#24744c}.disabled{background:#fff0e6;color:#a15b26}
-.access-pagination{margin:0;padding:18px 24px;border-bottom:1px solid #e5ebf1;font-size:12px}
-.access-panel>p{margin:16px 24px;font-size:12px}.access-form{margin:24px;max-width:680px;border-color:#dbe3ec;border-radius:8px}
-.access-section{padding:24px}.access-actions{align-items:center;gap:8px}
-@media(max-width:720px){.access-heading{align-items:start;flex-direction:column;padding:18px}.access-navigation{padding:0 18px;gap:20px}.access-toolbar,.access-section{padding:18px}.access-form{margin:18px}.access-panel td{padding:12px}.access-pagination{padding:16px;flex-wrap:wrap}}
+.access-panel {
+  margin: 0;
+  background: #fff;
+  min-height: 70vh;
+}
+.access-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+}
+.access-heading h1 {
+  font-size: 22px;
+  letter-spacing: -0.4px;
+  margin: 0;
+  color: #253347;
+}
+.access-heading p {
+  font-size: 13px;
+  color: #718096;
+  margin: 8px 0 0;
+}
+.access-navigation {
+  display: flex;
+  gap: 24px;
+  padding: 0 24px;
+  border-bottom: 1px solid #dfe5ed;
+  overflow-x: auto;
+}
+.access-navigation button {
+  white-space: nowrap;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: #65758b;
+  padding: 16px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.access-navigation button[aria-current] {
+  color: #187fc2;
+  border-bottom-color: #187fc2;
+  font-weight: 600;
+}
+.access-toolbar {
+  margin: 0;
+  padding: 22px 24px;
+  background: #f2f6fa;
+  border-bottom: 1px solid #e1e8ef;
+  align-items: center;
+}
+.access-toolbar form {
+  align-items: end;
+}
+.access-panel select {
+  border-color: #dbe3ec;
+  border-radius: 5px;
+  color: #34445b;
+  padding: 10px 12px;
+}
+.access-panel .table-scroll {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+.access-panel td {
+  padding: 16px 24px;
+}
+.access-panel small {
+  color: #738196;
+}
+.access-status {
+  border-radius: 16px;
+  white-space: nowrap;
+}
+.enabled {
+  background: #e6f5ed;
+  color: #24744c;
+}
+.disabled {
+  background: #fff0e6;
+  color: #a15b26;
+}
+.access-pagination {
+  margin: 0;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e5ebf1;
+  font-size: 12px;
+}
+.access-panel > p {
+  margin: 16px 24px;
+  font-size: 12px;
+}
+.access-form {
+  margin: 24px;
+  max-width: 680px;
+  border-color: #dbe3ec;
+  border-radius: 8px;
+}
+.access-section {
+  padding: 24px;
+}
+.access-actions {
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 720px) {
+  .access-heading {
+    align-items: start;
+    flex-direction: column;
+    padding: 18px;
+  }
+  .access-navigation {
+    padding: 0 18px;
+    gap: 20px;
+  }
+  .access-toolbar,
+  .access-section {
+    padding: 18px;
+  }
+  .access-form {
+    margin: 18px;
+  }
+  .access-panel td {
+    padding: 12px;
+  }
+  .access-pagination {
+    padding: 16px;
+    flex-wrap: wrap;
+  }
+}
 </style>

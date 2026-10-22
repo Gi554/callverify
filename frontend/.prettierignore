@@ -1,0 +1,7 @@
+dist
+node_modules
+pnpm-lock.yaml
+public
+*.md
+# Template parsing fails on inline TypeScript generics (Record<string,string>).
+src/AssuranceContacts.vue

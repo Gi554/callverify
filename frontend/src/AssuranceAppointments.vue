@@ -1,42 +1,278 @@
 <script setup lang="ts">
-import {ref,onMounted,computed,watch,nextTick} from 'vue'
-import {bookingInterval} from './booking-time'
-import {appointmentStatus,appointmentStatusLabels} from './appointment-status'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { bookingInterval } from './booking-time'
+import { appointmentStatus, appointmentStatusLabels } from './appointment-status'
 import AssuranceQualificationSnapshot from './AssuranceQualificationSnapshot.vue'
-const props=defineProps<{role:string;request:(path:string,body?:any,method?:string)=>Promise<any>;portal:(path:string,body?:any)=>Promise<any>;contactRevision?:number;appointmentId?:number;contactId?:number;leaseToken?:string;compact?:boolean;beforeBook?:()=>Promise<void>;blocked?:boolean}>()
-const emit=defineEmits<{busy:[value:boolean];updated:[row:any];booked:[row:any]}>()
-const rows=ref<any[]>([]),count=ref(0),page=ref(1),period=ref('upcoming'),status=ref(''),busy=ref(false),error=ref(''),message=ref('')
-watch(busy,value=>emit('busy',value),{flush:'sync'})
-const choices=ref<any[]>([]),choicePage=ref(1),choiceCount=ref(0),choiceSearch=ref(''),assignment=ref('')
-const incidents=ref<any[]>([]),incidentPage=ref(1),incidentCount=ref(0),incidentNote=ref('')
-let incidentRequestId=crypto.randomUUID()
-function resetIncidentId(){incidentRequestId=crypto.randomUUID()}
-const reportRow=ref<any>(null),performed=ref(''),problem=ref(false),note=ref(''),savedReport=ref<any>(null)
-const editing=ref<any>(null),reason=ref(''),historyRow=ref<any>(null),history=ref<any[]>([]),historyPage=ref(1),historyCount=ref(0)
-const qualificationRow=ref<any>(null)
-const canWrite=computed(()=>['setter','administrator'].includes(props.role))
-function zonedISO(value:string|Date,zone:string){const date=new Date(value);const formatter=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});const parts=Object.fromEntries(formatter.formatToParts(date).map(part=>[part.type,part.value]));const offset=Math.round((Date.UTC(+parts.year,+parts.month-1,+parts.day,+parts.hour,+parts.minute,+parts.second)-date.getTime())/60000);const sign=offset>=0?'+':'-';const minutes=Math.abs(offset);return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`}
-const zone=ref('America/Toronto'),start=ref(zonedISO(new Date(Date.now()+3600000),'America/Toronto')),end=ref(zonedISO(new Date(Date.now()+5400000),'America/Toronto'))
-const localEnd=ref('')
-const localStart=ref(props.compact?'':start.value.slice(0,16)),duration=ref(30),historyVisible=ref(false)
-let requestId=crypto.randomUUID()
-function resetId(){requestId=crypto.randomUUID()}
-function showDate(value:string,rowZone:string){return new Intl.DateTimeFormat('fr-FR',{timeZone:rowZone,dateStyle:'medium',timeStyle:'short'}).format(new Date(value))}
-async function run(action:()=>Promise<void>){if(busy.value)return;busy.value=true;error.value='';message.value='';try{await action()}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function load(){if(props.appointmentId){rows.value=[await props.request(`appointments/${props.appointmentId}/`)];count.value=1;emit('updated',rows.value[0]);return}const result=await props.request(`appointments/?page=${page.value}&period=${period.value}&business_status=${status.value}${props.contactId?'&contact_id='+props.contactId:''}`);rows.value=result.results;count.value=result.count}
-async function loadChoices(){const result=await props.request(`assignments/?active=true&page=${choicePage.value}&search=${encodeURIComponent(choiceSearch.value)}`);choices.value=result.results;choiceCount.value=result.count;assignment.value=''}
-async function bookingProof(row:any){return (await props.portal('assurance/booking-proof/',{advisor_id:row.advisor.id,...(props.role==='administrator'?{setter_id:row.setter.id}:{})})).proof}
-async function book(){await run(async()=>{const selected=choices.value.find(row=>row.id===Number(assignment.value));if(!selected)throw new Error('Choisissez une attribution active.');const interval=props.compact?bookingInterval(localStart.value,zone.value,duration.value):{starts_at:start.value,ends_at:end.value,timezone:zone.value};await props.beforeBook?.();await nextTick();const proof=await bookingProof(selected);const bookedRow=await props.request('appointments/',{contact_id:props.contactId,...(props.contactRevision!==undefined?{contact_revision:props.contactRevision}:{}),assignment_id:selected.id,...interval,request_id:requestId,token:props.leaseToken,proof});emit('booked',bookedRow);requestId=crypto.randomUUID();page.value=1;await load();message.value='Rendez-vous réservé dans l’agenda du conseiller. La synchronisation Google ou Microsoft dépend des connexions configurées.'})}
-function edit(row:any){editing.value=row;zone.value=row.timezone;start.value=zonedISO(row.starts_at,row.timezone);end.value=zonedISO(row.ends_at,row.timezone);localStart.value=start.value.slice(0,16);localEnd.value=end.value.slice(0,16);reason.value=''}
-async function reschedule(){await run(async()=>{const row=editing.value;const proof=await bookingProof(row);await props.request(`appointments/${row.id}/reschedule/`,{revision:row.revision,starts_at:props.appointmentId?bookingInterval(localStart.value,zone.value,30).starts_at:start.value,ends_at:props.appointmentId?bookingInterval(localEnd.value,zone.value,30).starts_at:end.value,timezone:zone.value,reason:reason.value,proof});editing.value=null;await load();message.value='Rendez-vous reprogrammé. Ancien créneau conservé dans l’historique.'})}
-async function cancel(){await run(async()=>{const row=editing.value;await props.request(`appointments/${row.id}/cancel/`,{revision:row.revision,reason:reason.value});editing.value=null;await load();message.value='Rendez-vous annulé. Historique conservé.'})}
-async function openReport(row:any){await run(async()=>{reportRow.value=row;performed.value='';problem.value=false;note.value='';savedReport.value=await props.request(`appointments/${row.id}/report/`);incidentPage.value=1;incidentNote.value='';incidentRequestId=crypto.randomUUID();await loadIncidents()})}
-async function loadIncidents(){const data=await props.request(`appointments/${reportRow.value.id}/incidents/?page=${incidentPage.value}`);incidents.value=data.results;incidentCount.value=data.count}
-async function signal(){await run(async()=>{await props.request(`appointments/${reportRow.value.id}/incidents/`,{request_id:incidentRequestId,note:incidentNote.value});incidentRequestId=crypto.randomUUID();incidentNote.value='';incidentPage.value=1;await loadIncidents();message.value='Signalement enregistré et suivi transmis.'})}
-async function submitReport(){await run(async()=>{await props.request(`appointments/${reportRow.value.id}/report/`,{revision:reportRow.value.revision,performed:performed.value==='performed',outcome:performed.value,problem:problem.value,note:note.value});reportRow.value=null;message.value='Compte rendu enregistré.';await load()})}
-async function loadHistory(){const result=await props.request(`appointments/${historyRow.value.id}/history/?page=${historyPage.value}`);history.value=result.results;historyCount.value=result.count}
-onMounted(()=>run(async()=>{await load();if(canWrite.value&&props.contactId)await loadChoices()}))
+const props = defineProps<{
+  role: string
+  request: (path: string, body?: any, method?: string) => Promise<any>
+  portal: (path: string, body?: any) => Promise<any>
+  contactRevision?: number
+  appointmentId?: number
+  contactId?: number
+  leaseToken?: string
+  compact?: boolean
+  beforeBook?: () => Promise<void>
+  blocked?: boolean
+}>()
+const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; booked: [row: any] }>()
+const rows = ref<any[]>([]),
+  count = ref(0),
+  page = ref(1),
+  period = ref('upcoming'),
+  status = ref(''),
+  busy = ref(false),
+  error = ref(''),
+  message = ref('')
+watch(busy, (value) => emit('busy', value), { flush: 'sync' })
+const choices = ref<any[]>([]),
+  choicePage = ref(1),
+  choiceCount = ref(0),
+  choiceSearch = ref(''),
+  assignment = ref('')
+const incidents = ref<any[]>([]),
+  incidentPage = ref(1),
+  incidentCount = ref(0),
+  incidentNote = ref('')
+let incidentRequestId = crypto.randomUUID()
+function resetIncidentId() {
+  incidentRequestId = crypto.randomUUID()
+}
+const reportRow = ref<any>(null),
+  performed = ref(''),
+  problem = ref(false),
+  note = ref(''),
+  savedReport = ref<any>(null)
+const editing = ref<any>(null),
+  reason = ref(''),
+  historyRow = ref<any>(null),
+  history = ref<any[]>([]),
+  historyPage = ref(1),
+  historyCount = ref(0)
+const qualificationRow = ref<any>(null)
+const canWrite = computed(() => ['setter', 'administrator'].includes(props.role))
+function zonedISO(value: string | Date, zone: string) {
+  const date = new Date(value)
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  )
+  const offset = Math.round(
+    (Date.UTC(
+      +parts.year,
+      +parts.month - 1,
+      +parts.day,
+      +parts.hour,
+      +parts.minute,
+      +parts.second,
+    ) -
+      date.getTime()) /
+      60000,
+  )
+  const sign = offset >= 0 ? '+' : '-'
+  const minutes = Math.abs(offset)
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+const zone = ref('America/Toronto'),
+  start = ref(zonedISO(new Date(Date.now() + 3600000), 'America/Toronto')),
+  end = ref(zonedISO(new Date(Date.now() + 5400000), 'America/Toronto'))
+const localEnd = ref('')
+const localStart = ref(props.compact ? '' : start.value.slice(0, 16)),
+  duration = ref(30),
+  historyVisible = ref(false)
+let requestId = crypto.randomUUID()
+function resetId() {
+  requestId = crypto.randomUUID()
+}
+function showDate(value: string, rowZone: string) {
+  return new Intl.DateTimeFormat('fr-FR', {
+    timeZone: rowZone,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+async function run(action: () => Promise<void>) {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    await action()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function load() {
+  if (props.appointmentId) {
+    rows.value = [await props.request(`appointments/${props.appointmentId}/`)]
+    count.value = 1
+    emit('updated', rows.value[0])
+    return
+  }
+  const result = await props.request(
+    `appointments/?page=${page.value}&period=${period.value}&business_status=${status.value}${props.contactId ? '&contact_id=' + props.contactId : ''}`,
+  )
+  rows.value = result.results
+  count.value = result.count
+}
+async function loadChoices() {
+  const result = await props.request(
+    `assignments/?active=true&page=${choicePage.value}&search=${encodeURIComponent(choiceSearch.value)}`,
+  )
+  choices.value = result.results
+  choiceCount.value = result.count
+  assignment.value = ''
+}
+async function bookingProof(row: any) {
+  return (
+    await props.portal('assurance/booking-proof/', {
+      advisor_id: row.advisor.id,
+      ...(props.role === 'administrator' ? { setter_id: row.setter.id } : {}),
+    })
+  ).proof
+}
+async function book() {
+  await run(async () => {
+    const selected = choices.value.find((row) => row.id === Number(assignment.value))
+    if (!selected) throw new Error('Choisissez une attribution active.')
+    const interval = props.compact
+      ? bookingInterval(localStart.value, zone.value, duration.value)
+      : { starts_at: start.value, ends_at: end.value, timezone: zone.value }
+    await props.beforeBook?.()
+    await nextTick()
+    const proof = await bookingProof(selected)
+    const bookedRow = await props.request('appointments/', {
+      contact_id: props.contactId,
+      ...(props.contactRevision !== undefined ? { contact_revision: props.contactRevision } : {}),
+      assignment_id: selected.id,
+      ...interval,
+      request_id: requestId,
+      token: props.leaseToken,
+      proof,
+    })
+    emit('booked', bookedRow)
+    requestId = crypto.randomUUID()
+    page.value = 1
+    await load()
+    message.value =
+      'Rendez-vous réservé dans l’agenda du conseiller. La synchronisation Google ou Microsoft dépend des connexions configurées.'
+  })
+}
+function edit(row: any) {
+  editing.value = row
+  zone.value = row.timezone
+  start.value = zonedISO(row.starts_at, row.timezone)
+  end.value = zonedISO(row.ends_at, row.timezone)
+  localStart.value = start.value.slice(0, 16)
+  localEnd.value = end.value.slice(0, 16)
+  reason.value = ''
+}
+async function reschedule() {
+  await run(async () => {
+    const row = editing.value
+    const proof = await bookingProof(row)
+    await props.request(`appointments/${row.id}/reschedule/`, {
+      revision: row.revision,
+      starts_at: props.appointmentId
+        ? bookingInterval(localStart.value, zone.value, 30).starts_at
+        : start.value,
+      ends_at: props.appointmentId
+        ? bookingInterval(localEnd.value, zone.value, 30).starts_at
+        : end.value,
+      timezone: zone.value,
+      reason: reason.value,
+      proof,
+    })
+    editing.value = null
+    await load()
+    message.value = 'Rendez-vous reprogrammé. Ancien créneau conservé dans l’historique.'
+  })
+}
+async function cancel() {
+  await run(async () => {
+    const row = editing.value
+    await props.request(`appointments/${row.id}/cancel/`, {
+      revision: row.revision,
+      reason: reason.value,
+    })
+    editing.value = null
+    await load()
+    message.value = 'Rendez-vous annulé. Historique conservé.'
+  })
+}
+async function openReport(row: any) {
+  await run(async () => {
+    reportRow.value = row
+    performed.value = ''
+    problem.value = false
+    note.value = ''
+    savedReport.value = await props.request(`appointments/${row.id}/report/`)
+    incidentPage.value = 1
+    incidentNote.value = ''
+    incidentRequestId = crypto.randomUUID()
+    await loadIncidents()
+  })
+}
+async function loadIncidents() {
+  const data = await props.request(
+    `appointments/${reportRow.value.id}/incidents/?page=${incidentPage.value}`,
+  )
+  incidents.value = data.results
+  incidentCount.value = data.count
+}
+async function signal() {
+  await run(async () => {
+    await props.request(`appointments/${reportRow.value.id}/incidents/`, {
+      request_id: incidentRequestId,
+      note: incidentNote.value,
+    })
+    incidentRequestId = crypto.randomUUID()
+    incidentNote.value = ''
+    incidentPage.value = 1
+    await loadIncidents()
+    message.value = 'Signalement enregistré et suivi transmis.'
+  })
+}
+async function submitReport() {
+  await run(async () => {
+    await props.request(`appointments/${reportRow.value.id}/report/`, {
+      revision: reportRow.value.revision,
+      performed: performed.value === 'performed',
+      outcome: performed.value,
+      problem: problem.value,
+      note: note.value,
+    })
+    reportRow.value = null
+    message.value = 'Compte rendu enregistré.'
+    await load()
+  })
+}
+async function loadHistory() {
+  const result = await props.request(
+    `appointments/${historyRow.value.id}/history/?page=${historyPage.value}`,
+  )
+  history.value = result.results
+  historyCount.value = result.count
+}
+onMounted(() =>
+  run(async () => {
+    await load()
+    if (canWrite.value && props.contactId) await loadChoices()
+  }),
+)
 </script>
+<!-- prettier-ignore -->
 <template>
 <section class="appointments" :class="{'compact-booking':compact,'appointment-detail-mode':!!appointmentId}"><h3 v-if="!appointmentId">{{compact?'Réserver un rendez-vous':contactId?'Rendez-vous du prospect':'Rendez-vous Assurance'}}</h3><p v-if="!appointmentId" class="subtle">Choisissez un conseiller et un créneau. Les disponibilités sont contrôlées lors de la confirmation.</p><p v-if="error" role="alert" class="error">{{error}}</p><p v-if="message" role="status" class="booking-feedback">{{message}}</p>
 <div v-if="compact&&!busy&&!error&&!choiceCount" class="booking-unavailable"><strong>Aucun conseiller attribué</strong><p>Aucun conseiller ne vous est encore attribué. L’administration doit vous en attribuer un pour réserver un créneau.</p><button class="secondary" :disabled="busy" @click="run(loadChoices)">Actualiser les conseillers</button></div><button v-if="compact&&error" class="secondary" :disabled="busy" @click="run(async()=>{await load();await loadChoices()})">Réessayer</button><template v-if="canWrite&&contactId&&!editing"><p v-if="!leaseToken">Prenez en charge la fiche pour réserver un rendez-vous.</p><form v-else-if="!compact||choiceCount>0" @submit.prevent="book" @input="resetId"><template v-if="!compact"><label>Rechercher une attribution<input v-model="choiceSearch" @keydown.enter.prevent="run(async()=>{choicePage=1;await loadChoices()})"></label><button class="secondary" type="button" :disabled="busy" @click="run(async()=>{choicePage=1;await loadChoices()})">Rechercher les conseillers attribués</button></template><label>Conseiller<select v-model="assignment" required :disabled="busy"><option value="">Choisir un conseiller</option><option v-for="row in choices" :key="row.id" :value="String(row.id)">{{role==='administrator'?row.setter.name+' → ':''}}{{row.advisor.name}}</option></select></label><p v-if="compact&&!busy&&!choiceCount" class="no-advisor">Aucun conseiller ne vous est attribué dans cet espace. Un administrateur doit vous en attribuer un pour réserver.</p><div class="appointment-actions" v-if="!compact||choiceCount>25"><button type="button" class="secondary" :disabled="busy||choicePage===1" @click="run(async()=>{choicePage--;await loadChoices()})">Précédent</button><span>{{choiceCount}} attribution(s) · page {{choicePage}}</span><button type="button" class="secondary" :disabled="busy||choicePage*25>=choiceCount" @click="run(async()=>{choicePage++;await loadChoices()})">Suivant</button></div><fieldset v-if="compact" class="friendly-slot" :disabled="busy||blocked"><label>Date et heure<input v-model="localStart" type="datetime-local" required></label><label>Durée<select v-model.number="duration"><option :value="15">15 minutes</option><option :value="30">30 minutes</option><option :value="45">45 minutes</option><option :value="60">1 heure</option><option :value="90">1 h 30</option><option :value="120">2 heures</option></select></label><label>Heure du rendez-vous<select v-model="zone"><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Edmonton">Edmonton</option><option value="America/Winnipeg">Winnipeg</option><option value="America/Halifax">Halifax</option><option value="America/St_Johns">Saint-Jean</option></select></label></fieldset><template v-else><label>Début avec décalage horaire<input v-model="start" placeholder="2026-10-21T10:00:00-04:00" required></label><label>Fin avec décalage horaire<input v-model="end" required></label><label>Fuseau IANA<input v-model="zone" placeholder="America/Toronto" required></label><small>Format ISO 8601 : date, heure et décalage correspondant au fuseau. Exemple : 2026-10-21T10:00:00-04:00 à Toronto.</small></template><button class="primary" :disabled="busy||blocked||!assignment">Réserver le rendez-vous</button></form></template>
@@ -47,19 +283,201 @@ onMounted(()=>run(async()=>{await load();if(canWrite.value&&props.contactId)awai
 </section>
 </template>
 <style scoped>
-.appointments{margin:24px 0;padding-top:16px;border-top:1px solid #dedfce}.appointments form{display:grid;gap:14px;margin:20px 0}.appointments select{padding:12px;background:#fff;border:1px solid #dedfce;border-radius:10px}.appointment-actions{display:flex!important;gap:12px;flex-wrap:wrap;align-items:end}.appointments pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.appointments article{border-bottom:1px solid #dedfce;padding:16px 0}.appointments button:disabled{opacity:.5;cursor:not-allowed}
+.appointments {
+  margin: 24px 0;
+  padding-top: 16px;
+  border-top: 1px solid #dedfce;
+}
+.appointments form {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+}
+.appointments select {
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #dedfce;
+  border-radius: 10px;
+}
+.appointment-actions {
+  display: flex !important;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.appointments pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.appointments article {
+  border-bottom: 1px solid #dedfce;
+  padding: 16px 0;
+}
+.appointments button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 </style>
 <style scoped>
-.booking-unavailable{padding:22px;background:#f4f0fc;border:1px solid #e7dff6;border-radius:12px;margin:22px 0;color:#8a77aa}.booking-unavailable strong{font-size:14px;color:#8770aa}.booking-unavailable p{font-size:12px;line-height:1.8;color:#9c8bb3;margin:10px 0 16px}.booking-history-toggle{margin-top:20px}
+.booking-unavailable {
+  padding: 22px;
+  background: #f4f0fc;
+  border: 1px solid #e7dff6;
+  border-radius: 12px;
+  margin: 22px 0;
+  color: #8a77aa;
+}
+.booking-unavailable strong {
+  font-size: 14px;
+  color: #8770aa;
+}
+.booking-unavailable p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #9c8bb3;
+  margin: 10px 0 16px;
+}
+.booking-history-toggle {
+  margin-top: 20px;
+}
 </style>
 <style scoped>
-.compact-booking>h3{color:#355274;font-size:17px!important}.compact-booking .friendly-slot{border:0;padding:0;margin:0;display:grid;gap:14px}.compact-booking .booking-feedback{background:#eaf6ef;color:#38835a!important;padding:12px;border-radius:8px}.compact-booking input,.compact-booking select{min-height:40px}.compact-booking .appointment-actions{font-size:11px}.compact-booking .appointment-actions button{font-size:10px}.compact-booking .table-scroll{margin-top:16px}.compact-booking>form.appointment-actions{border-top:1px solid #edf1f6;padding-top:18px}
+.compact-booking > h3 {
+  color: #355274;
+  font-size: 17px !important;
+}
+.compact-booking .friendly-slot {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.compact-booking .booking-feedback {
+  background: #eaf6ef;
+  color: #38835a !important;
+  padding: 12px;
+  border-radius: 8px;
+}
+.compact-booking input,
+.compact-booking select {
+  min-height: 40px;
+}
+.compact-booking .appointment-actions {
+  font-size: 11px;
+}
+.compact-booking .appointment-actions button {
+  font-size: 10px;
+}
+.compact-booking .table-scroll {
+  margin-top: 16px;
+}
+.compact-booking > form.appointment-actions {
+  border-top: 1px solid #edf1f6;
+  padding-top: 18px;
+}
 </style>
 
 <style scoped>
-.appointment-detail-mode{margin:0;border:0;padding:0}.detail-person{padding:20px;background:#f2edfa;border-radius:15px;margin-bottom:22px}.detail-person strong{display:block;font-size:17px;color:#79608f}.detail-person span{display:block;font-size:12px;margin-top:7px;color:#9a86aa}.appointment-detail dl{display:grid;gap:0;margin:0 0 20px}.appointment-detail dl>div{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:14px 0;border-bottom:1px solid #eae4f0}.appointment-detail dt{font-size:11px;color:#a18faa}.appointment-detail dd{font-size:12px;color:#786483;line-height:1.7;margin:0}.appointment-detail-mode .appointment-actions button{font-size:11px}.appointment-detail-mode>section{border-top:1px solid #e4dced;margin-top:25px;padding-top:15px}.appointment-detail-mode form{font-size:12px}.appointment-detail-mode form input{width:100%;box-sizing:border-box}.appointment-detail-mode h4{font-size:15px;color:#816f94}.appointment-detail-mode .booking-feedback{font-size:12px;background:#ecf6f0;color:#7a9d8a;padding:14px;border-radius:10px}
+.appointment-detail-mode {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.detail-person {
+  padding: 20px;
+  background: #f2edfa;
+  border-radius: 15px;
+  margin-bottom: 22px;
+}
+.detail-person strong {
+  display: block;
+  font-size: 17px;
+  color: #79608f;
+}
+.detail-person span {
+  display: block;
+  font-size: 12px;
+  margin-top: 7px;
+  color: #9a86aa;
+}
+.appointment-detail dl {
+  display: grid;
+  gap: 0;
+  margin: 0 0 20px;
+}
+.appointment-detail dl > div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eae4f0;
+}
+.appointment-detail dt {
+  font-size: 11px;
+  color: #a18faa;
+}
+.appointment-detail dd {
+  font-size: 12px;
+  color: #786483;
+  line-height: 1.7;
+  margin: 0;
+}
+.appointment-detail-mode .appointment-actions button {
+  font-size: 11px;
+}
+.appointment-detail-mode > section {
+  border-top: 1px solid #e4dced;
+  margin-top: 25px;
+  padding-top: 15px;
+}
+.appointment-detail-mode form {
+  font-size: 12px;
+}
+.appointment-detail-mode form input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.appointment-detail-mode h4 {
+  font-size: 15px;
+  color: #816f94;
+}
+.appointment-detail-mode .booking-feedback {
+  font-size: 12px;
+  background: #ecf6f0;
+  color: #7a9d8a;
+  padding: 14px;
+  border-radius: 10px;
+}
 </style>
 
 <style scoped>
-.appointment-business-status{display:inline-flex;padding:5px 9px;border-radius:7px;background:#edf3fc;color:#7893b6;font-size:11px;line-height:1.6}.appointment-business-status.performed{background:#eaf6ee;color:#79a38c}.appointment-business-status.absent,.appointment-business-status.not_performed{background:#fff0e8;color:#bd9681}.appointment-business-status.rescheduled,.appointment-business-status.report_due{background:#f1ebfa;color:#a089bc}.appointment-business-status.cancelled{background:#f1eff4;color:#a39aa9}
+.appointment-business-status {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: #edf3fc;
+  color: #7893b6;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.appointment-business-status.performed {
+  background: #eaf6ee;
+  color: #79a38c;
+}
+.appointment-business-status.absent,
+.appointment-business-status.not_performed {
+  background: #fff0e8;
+  color: #bd9681;
+}
+.appointment-business-status.rescheduled,
+.appointment-business-status.report_due {
+  background: #f1ebfa;
+  color: #a089bc;
+}
+.appointment-business-status.cancelled {
+  background: #f1eff4;
+  color: #a39aa9;
+}
 </style>

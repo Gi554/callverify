@@ -1,4 +1,5 @@
 """Isolation-only import, Lookup and export flow for the central CRM."""
+
 from datetime import timedelta
 
 from django.conf import settings
@@ -62,18 +63,27 @@ def campaign_output(campaign):
     checks = LookupCheck.objects.filter(campaign=campaign)
     completed = checks.filter(status='completed').values('phone_id').distinct().count()
     return {
-        'id': campaign.pk, 'name': campaign.name, 'purpose': campaign.purpose,
-        'source': campaign.source, 'status': campaign.status, 'budget': str(campaign.budget),
-        'spent': str(campaign.spent), 'created_at': campaign.created_at,
-        'progress': {'total': phones, 'checked': completed,
-                     'pending': checks.filter(status__in=('pending', 'running')).count(),
-                     'errors': checks.filter(status='error').count(),
-                     'percent': min(100, round(100 * completed / phones)) if phones else 0},
+        'id': campaign.pk,
+        'name': campaign.name,
+        'purpose': campaign.purpose,
+        'source': campaign.source,
+        'status': campaign.status,
+        'budget': str(campaign.budget),
+        'spent': str(campaign.spent),
+        'created_at': campaign.created_at,
+        'progress': {
+            'total': phones,
+            'checked': completed,
+            'pending': checks.filter(status__in=('pending', 'running')).count(),
+            'errors': checks.filter(status='error').count(),
+            'percent': min(100, round(100 * completed / phones)) if phones else 0,
+        },
     }
 
 
 class QualificationViewSet(viewsets.GenericViewSet):
     """One administrator-only CRM process: campaign, import, Lookup, results, export."""
+
     authentication_classes = [QualificationAuthentication]
     permission_classes = [IsAuthenticated]
     pagination_class = Pager
@@ -93,15 +103,20 @@ class QualificationViewSet(viewsets.GenericViewSet):
         term = request.query_params.get('search', '').strip()[:200]
         if term:
             qs = qs.filter(name__icontains=term)
-        return self.get_paginated_response([campaign_output(row) for row in self.paginate_queryset(qs)])
+        return self.get_paginated_response(
+            [campaign_output(row) for row in self.paginate_queryset(qs)]
+        )
 
     def create(self, request):
         data = CampaignInput(data=request.data)
         data.is_valid(raise_exception=True)
         campaign = Campaign.objects.create(
-            owner=service_owner(), portal_workspace=WORKSPACE,
-            portal_owner_id=request.user.pk, name=data.validated_data['name'],
-            purpose=data.validated_data.get('purpose', ''), source=data.validated_data.get('source', ''),
+            owner=service_owner(),
+            portal_workspace=WORKSPACE,
+            portal_owner_id=request.user.pk,
+            name=data.validated_data['name'],
+            purpose=data.validated_data.get('purpose', ''),
+            source=data.validated_data.get('source', ''),
             budget=data.validated_data.get('budget', 0),
         )
         audit(request, 'isolation.qualification.campaign_created', campaign)
@@ -128,9 +143,15 @@ class QualificationViewSet(viewsets.GenericViewSet):
         if campaign.status == 'archived':
             raise ValidationError('Campagne archivée')
         upload = request.FILES.get('file')
-        if not upload or not upload.name.lower().endswith(('.csv', '.xlsx')) or upload.size > settings.MAX_IMPORT_BYTES:
+        if (
+            not upload
+            or not upload.name.lower().endswith(('.csv', '.xlsx'))
+            or upload.size > settings.MAX_IMPORT_BYTES
+        ):
             raise ValidationError('Fichier CSV/XLSX requis, maximum 20 Mo')
-        batch = ImportBatch.objects.create(campaign=campaign, original=upload, sheet=request.data.get('sheet', ''))
+        batch = ImportBatch.objects.create(
+            campaign=campaign, original=upload, sheet=request.data.get('sheet', '')
+        )
         try:
             headers, rows, sheets = read_table(batch)
         except Exception:
@@ -138,12 +159,23 @@ class QualificationViewSet(viewsets.GenericViewSet):
             batch.delete()
             raise ValidationError('Fichier vide, corrompu ou structure invalide')
         audit(request, 'isolation.qualification.import_uploaded', batch, campaign_id=campaign.pk)
-        return Response({'id': batch.pk, 'campaign': campaign.pk, 'headers': headers, 'preview': rows[:10],
-                         'rows': len(rows), 'sheets': sheets}, status=201)
+        return Response(
+            {
+                'id': batch.pk,
+                'campaign': campaign.pk,
+                'headers': headers,
+                'preview': rows[:10],
+                'rows': len(rows),
+                'sheets': sheets,
+            },
+            status=201,
+        )
 
     def batch(self, pk):
         try:
-            return ImportBatch.objects.select_related('campaign').get(pk=pk, campaign__portal_workspace=WORKSPACE)
+            return ImportBatch.objects.select_related('campaign').get(
+                pk=pk, campaign__portal_workspace=WORKSPACE
+            )
         except (ImportBatch.DoesNotExist, ValueError, TypeError):
             raise ValidationError('Import Isolation introuvable')
 
@@ -158,38 +190,66 @@ class QualificationViewSet(viewsets.GenericViewSet):
         except (ValueError, KeyError):
             raise ValidationError('Feuille inconnue ou fichier indisponible')
         batch.save(update_fields=['sheet'])
-        return Response({'id': batch.pk, 'headers': headers, 'preview': rows[:10], 'rows': len(rows),
-                         'sheets': sheets, 'sheet': batch.sheet})
+        return Response(
+            {
+                'id': batch.pk,
+                'headers': headers,
+                'preview': rows[:10],
+                'rows': len(rows),
+                'sheets': sheets,
+                'sheet': batch.sheet,
+            }
+        )
 
     @action(detail=False, methods=['post'], url_path=r'imports/(?P<batch_pk>[^/.]+)/confirm')
     def import_confirm(self, request, batch_pk=None):
         with transaction.atomic():
-            batch = ImportBatch.objects.select_for_update().select_related('campaign').get(
-                pk=self.batch(batch_pk).pk, campaign__portal_workspace=WORKSPACE)
+            batch = (
+                ImportBatch.objects.select_for_update()
+                .select_related('campaign')
+                .get(pk=self.batch(batch_pk).pk, campaign__portal_workspace=WORKSPACE)
+            )
             if batch.status != 'preview':
                 raise ValidationError('Import déjà confirmé')
             mapping = request.data.get('mapping', {})
             headers, _, _ = read_table(batch)
-            if (not isinstance(mapping, dict) or set(mapping) - {'phone', 'name', 'reference'}
-                    or mapping.get('phone') not in headers or any(value not in headers for value in mapping.values())):
+            if (
+                not isinstance(mapping, dict)
+                or set(mapping) - {'phone', 'name', 'reference'}
+                or mapping.get('phone') not in headers
+                or any(value not in headers for value in mapping.values())
+            ):
                 raise ValidationError('Mappage invalide ; téléphone obligatoire')
             batch.mapping = mapping
             batch.status = 'queued'
             batch.save(update_fields=['mapping', 'status'])
             enqueue('import', batch.pk)
-        audit(request, 'isolation.qualification.import_confirmed', batch, campaign_id=batch.campaign_id)
+        audit(
+            request,
+            'isolation.qualification.import_confirmed',
+            batch,
+            campaign_id=batch.campaign_id,
+        )
         return Response({'id': batch.pk, 'status': 'queued'}, status=202)
 
     def imports(self, request):
-        qs = ImportBatch.objects.filter(campaign__portal_workspace=WORKSPACE).order_by('-created_at')
+        qs = ImportBatch.objects.filter(campaign__portal_workspace=WORKSPACE).order_by(
+            '-created_at'
+        )
         campaign = request.query_params.get('campaign')
         if campaign:
             qs = qs.filter(campaign_id=campaign)
-        return self.get_paginated_response(ImportSerializer(self.paginate_queryset(qs), many=True).data)
+        return self.get_paginated_response(
+            ImportSerializer(self.paginate_queryset(qs), many=True).data
+        )
 
     @action(detail=False, methods=['get'], url_path='results')
     def results(self, request):
-        qs = Prospect.objects.select_related('phone', 'campaign').filter(campaign__portal_workspace=WORKSPACE).order_by('-pk')
+        qs = (
+            Prospect.objects.select_related('phone', 'campaign')
+            .filter(campaign__portal_workspace=WORKSPACE)
+            .order_by('-pk')
+        )
         campaign = request.query_params.get('campaign')
         if campaign:
             qs = qs.filter(campaign_id=campaign)
@@ -199,23 +259,51 @@ class QualificationViewSet(viewsets.GenericViewSet):
         term = request.query_params.get('search', '').strip()[:200]
         if term:
             from django.db.models import Q
-            qs = qs.filter(Q(name__icontains=term) | Q(raw_phone__icontains=term) | Q(reference__icontains=term))
-        return self.get_paginated_response(ProspectSerializer(self.paginate_queryset(qs), many=True).data)
+
+            qs = qs.filter(
+                Q(name__icontains=term)
+                | Q(raw_phone__icontains=term)
+                | Q(reference__icontains=term)
+            )
+        return self.get_paginated_response(
+            ProspectSerializer(self.paginate_queryset(qs), many=True).data
+        )
 
     def request_export(self, request):
         campaign = self.campaign(request.data.get('campaign'))
         format_name = request.data.get('format', 'xlsx')
         columns = request.data.get('columns', EXPORT_COLUMNS)
         filters = request.data.get('filters', {})
-        if format_name not in ('csv', 'xlsx') or not isinstance(columns, list) or not columns or set(columns) - set(EXPORT_COLUMNS):
+        if (
+            format_name not in ('csv', 'xlsx')
+            or not isinstance(columns, list)
+            or not columns
+            or set(columns) - set(EXPORT_COLUMNS)
+        ):
             raise ValidationError('Format ou colonnes invalides')
-        if not isinstance(filters, dict) or set(filters) - FILTERS or any(not isinstance(v, str) for v in filters.values()):
+        if (
+            not isinstance(filters, dict)
+            or set(filters) - FILTERS
+            or any(not isinstance(v, str) for v in filters.values())
+        ):
             raise ValidationError('Filtres invalides')
         with transaction.atomic():
-            job = ExportJob.objects.create(campaign=campaign, author=service_owner(), format=format_name,
-                columns=columns, filters=filters, expires_at=timezone.now() + timedelta(hours=24))
+            job = ExportJob.objects.create(
+                campaign=campaign,
+                author=service_owner(),
+                format=format_name,
+                columns=columns,
+                filters=filters,
+                expires_at=timezone.now() + timedelta(hours=24),
+            )
             enqueue('export', job.pk)
-        audit(request, 'isolation.qualification.export_requested', job, campaign_id=campaign.pk, format=format_name)
+        audit(
+            request,
+            'isolation.qualification.export_requested',
+            job,
+            campaign_id=campaign.pk,
+            format=format_name,
+        )
         return Response(ExportSerializer(job).data, status=202)
 
     @action(detail=False, methods=['get', 'post'], url_path='exports')
@@ -223,7 +311,9 @@ class QualificationViewSet(viewsets.GenericViewSet):
         if request.method == 'POST':
             return self.request_export(request)
         qs = ExportJob.objects.filter(campaign__portal_workspace=WORKSPACE).order_by('-pk')
-        return self.get_paginated_response(ExportSerializer(self.paginate_queryset(qs), many=True).data)
+        return self.get_paginated_response(
+            ExportSerializer(self.paginate_queryset(qs), many=True).data
+        )
 
     @action(detail=False, methods=['get'], url_path=r'exports/(?P<job_pk>[^/.]+)/download')
     def download(self, request, job_pk=None):
@@ -234,4 +324,8 @@ class QualificationViewSet(viewsets.GenericViewSet):
         if job.status != 'completed' or job.expires_at <= timezone.now():
             raise ValidationError('Export non disponible ou expiré')
         audit(request, 'isolation.qualification.export_downloaded', job)
-        return FileResponse(job.file.open('rb'), as_attachment=True, filename=f'qualification-isolation-{job.pk}.{job.format}')
+        return FileResponse(
+            job.file.open('rb'),
+            as_attachment=True,
+            filename=f'qualification-isolation-{job.pk}.{job.format}',
+        )

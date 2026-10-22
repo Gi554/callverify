@@ -18,6 +18,7 @@ function close(){if(busy.value||callBusy.value||taskBusy.value)return;if((body.v
 defineExpose({close})
 onMounted(load)
 </script>
+<!-- prettier-ignore -->
 <template><section class="isolation-prospect-sheet">
  <p v-if="error" role="alert" class="sheet-error">{{error}}</p><div v-if="prospect" class="sheet-summary"><span>{{prospect.commercial_label}}</span><small>{{prospect.callback_at?'Rappel : '+new Date(prospect.callback_at).toLocaleString('fr-FR'):'Aucun rappel programmé'}}</small></div>
  <nav class="sheet-tabs" aria-label="Rubriques du prospect"><button v-for="item in [{id:'call',label:'Résultat d’appel'},{id:'notes',label:'Notes et statut'},{id:'tasks',label:'Rappels'},{id:'history',label:'Historique'}]" :key="item.id" :class="{active:tab===item.id}" :aria-pressed="tab===item.id" @click="tab=item.id">{{item.label}}</button></nav>

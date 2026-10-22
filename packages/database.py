@@ -1,4 +1,5 @@
 """Explicit per-service schema selection for a common PostgreSQL database."""
+
 import os
 from django.core.exceptions import ImproperlyConfigured
 
