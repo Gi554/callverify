@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
   <p v-if="!busy&&!error&&!columns.length" class="board-empty">Aucun statut configuré. Contactez votre administrateur.</p>
   <p v-else-if="!busy&&!error&&!visible.length" class="board-empty" role="status">{{stage?'Aucun prospect pour ce statut et cette recherche.':'Aucun prospect ne correspond à votre recherche.'}}</p>
   <div class="prospects-columns" :class="{'single-status':visible.length===1}" role="region" tabindex="0" aria-label="Prospects par statut">
-   <section v-for="(column,index) in visible" :key="column.key" class="prospect-column" :style="{'--stage-tone':['#f1ad54','#5b8def','#a18be2','#48b3be','#69b694'][columns.indexOf(column)%5]}">
+   <section v-for="column in visible" :key="column.key" class="prospect-column" :style="{'--stage-tone':['#f1ad54','#5b8def','#a18be2','#48b3be','#69b694'][columns.indexOf(column)%5]}">
     <header><span class="stage-dot"></span><h2>{{column.label}}<small v-if="!column.active">Archivé</small></h2><span class="column-count">{{column.busy&&!column.page?'…':column.count}}</span></header>
     <div class="prospect-stack">
      <p v-if="column.error" role="alert">{{column.error}}<button class="secondary" @click="loadColumn(column,generation,column.page>0)">Réessayer</button></p>

@@ -10,7 +10,7 @@ import {
   ArrowLeft,
   LockKeyhole,
 } from 'lucide-vue-next'
-const props = defineProps<{ busy: boolean; error: string }>()
+defineProps<{ busy: boolean; error: string }>()
 const emit = defineEmits<{
   submit: [value: { username: string; password: string; workspace: string }]
   recover: []

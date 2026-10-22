@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Socle technique — lint frontend (ESLint)
+
+ESLint 9 (versions figées) avec règles de justesse uniquement : JavaScript et TypeScript recommandés, `vue/flat/essential` ; la mise en forme reste à Prettier. `pnpm lint` et la CI l’exigent. Exceptions commentées : `no-explicit-any` désactivée (charges d’API typées librement dans tout le projet), `catch` vides autorisés (stockage navigateur « au mieux »), nom à un mot autorisé pour le composant racine `Portal`.
+
+Corrections : un élément de la fiche tâche Assurance portait à la fois `v-if` et `v-else` ; il devient `v-else-if="selected"`, comme voulu (fiche setter seulement quand une tâche est ouverte, éditeur administrateur sinon). Imports d’icônes, de composant et variables inutilisés retirés (`Portal`, `CrmOverview`, `AssuranceSetterTasks`, `AssuranceContacts`, `AssuranceContactFollowups`, `IsolationQualification`, `PortalLogin`), index de boucle inutile, imports inutiles dans six tests.
+
+Validation : `eslint .` sans erreur, 67 tests frontend, typage, Prettier et build réussis.
+
+Limites : typage strict des réponses d’API (`any`) non entrepris.
+
 ## Socle technique — lint Python (Ruff check)
 
 Lot technique sans changement fonctionnel. `ruff check .` (règles par défaut : pyflakes et erreurs pycodestyle) est désormais exigé en CI. Corrections : imports inutilisés retirés (les ré-exports réellement utilisés, comme `Unavailable` des contrôles d’agenda, sont conservés explicitement), imports tardifs remontés en tête dans les tests, `appointments.py` et `calendar_sync.py`, affectations inutiles retirées en conservant les appels à effet (dont `get_object()` qui contrôle l’accès), `lambda` remplacées par des fonctions.

@@ -20,7 +20,6 @@ import AssuranceAssignments from './AssuranceAssignments.vue'
 import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
 import IsolationVisits from './IsolationVisits.vue'
-import IsolationFollowUps from './IsolationFollowUps.vue'
 import IsolationTasksBoard from './IsolationTasksBoard.vue'
 import IsolationCloserVisits from './IsolationCloserVisits.vue'
 import AssuranceFollowUps from './AssuranceFollowUps.vue'
@@ -29,10 +28,10 @@ import AssuranceNotifications from './AssuranceNotifications.vue'
 import AssuranceReminders from './AssuranceReminders.vue'
 import AssuranceStatistics from './AssuranceStatistics.vue'
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue'
-import {ShieldCheck,ArrowRight,Layers,LogOut,Users,Home,RefreshCw} from 'lucide-vue-next'
+import {ShieldCheck,ArrowRight,Home,RefreshCw} from 'lucide-vue-next'
 type Membership={workspace:string;role:string}
 const user=ref<{username:string;workspaces:Membership[];admin_workspaces:string[];landing:string|null}|null>(null)
-const workspace=ref(''),username=ref(''),password=ref(''),error=ref(''),busy=ref(false),ready=ref(false)
+const workspace=ref(''),error=ref(''),busy=ref(false),ready=ref(false)
 const recoveryOpen=ref(false),resetUid=ref(''),resetToken=ref('')
 const inviteId=ref(''),inviteToken=ref('')
 function closeRecovery(){recoveryOpen.value=false;resetUid.value='';resetToken.value=''}
