@@ -9,8 +9,8 @@ import {UserPlus,Pause,Play,Save,ChevronLeft,ChevronRight} from 'lucide-vue-next
 const props=defineProps<{spaces:string[];username:string;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
 const space=ref(props.spaces[0]||''),search=ref(''),page=ref(1),rows=ref<any[]>([]),count=ref(0),busy=ref(false),error=ref(''),message=ref(''),adding=ref(false)
 const form=ref({username:'',email:'',password:'',role:'setter',existing:false})
-const roles=()=>space.value==='assurance'?['administrator','setter','advisor']:['administrator','setter','client']
-const labels:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client'}
+const roles=()=>space.value==='assurance'?['administrator','setter','advisor']:['administrator','setter','client','closer']
+const labels:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client',closer:'Closer'}
 const base=()=>`workspaces/${space.value}/users/`
 async function load(){busy.value=true;error.value='';try{const data=await props.request(base()+`?search=${encodeURIComponent(search.value)}&page=${page.value}`);rows.value=data.results;count.value=data.count}catch(e:any){error.value=e.message}finally{busy.value=false}}
 async function update(row:any,changes:any){busy.value=true;error.value='';message.value='';try{await props.request(base()+row.id+'/',changes,'PATCH');message.value='Accès mis à jour.';await load()}catch(e:any){const detail=e.message;await load();error.value=detail}finally{busy.value=false}}

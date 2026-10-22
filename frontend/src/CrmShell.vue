@@ -7,7 +7,7 @@ const mobile=ref(false)
 const profileOpen=ref(false)
 const setterLabel=(item:{id:string;label:string})=>({overview:'Accueil',contacts:'Prospects',followups:'Tâches',statistics:'Mes statistiques'} as Record<string,string>)[item.id]||item.label
 const icons:Record<string,any>={overview:LayoutDashboard,contacts:ContactRound,appointments:CalendarDays,followups:ListTodo,statistics:BarChart3,assignments:UserRoundCheck,agreements:Files,fields:Settings2,qualification:ShieldCheck}
-const roles:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client'}
+const roles:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client',closer:'Closer'}
 function navigate(id:string){emit('navigate',id);mobile.value=false}
 </script>
 <template>

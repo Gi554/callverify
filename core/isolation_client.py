@@ -21,7 +21,7 @@ class ResultInput(serializers.Serializer):
         if data['performed']==(data['outcome']=='not_performed'):raise ValidationError('Résultat commercial incohérent avec la réalisation de la visite')
         return data
 
-def result_output(row):return {'performed':row.performed,'outcome':row.outcome,'note':row.note,'created_at':row.created_at}
+def result_output(row):return {'performed':row.performed,'closed':row.closed,'outcome':row.outcome,'note':row.note,'created_at':row.created_at}
 
 class SupplementInput(serializers.Serializer):
     request_id=serializers.UUIDField()

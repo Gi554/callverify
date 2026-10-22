@@ -21,6 +21,7 @@ from .isolation_client import ResultMixin,result_output
 from .isolation_sharing import SharingMixin
 from .calendar_checks import check as external_check
 from .isolation_c2 import captured
+from .isolation_closers import CloserAssignmentMixin
 
 class SlotInput(serializers.Serializer):
     starts_at=serializers.DateTimeField()
@@ -81,11 +82,12 @@ def output(row):
     return {'id':row.pk,'prospect':{'id':row.prospect_id,'name':row.prospect.name,'phone':row.prospect.raw_phone},
         'client':{'id':row.client_id,'name':row.client_name},'original_setter':{'id':row.setter_id,'name':row.setter_name},
         'starts_at':row.starts_at,'ends_at':row.ends_at,'timezone':row.timezone,'status':row.status,'revision':row.revision,'calendar':'internal',
+        'closer':None if row.closer_id is None else {'id':row.closer_id,'name':row.closer_name},
         'c2_snapshot':row.c2_snapshot,'result':result,'result_due':row.status=='scheduled' and row.ends_at<=timezone.now() and result is None}
 
 def snapshot(row):return {key:(getattr(row,key).isoformat() if key in ('starts_at','ends_at') else getattr(row,key)) for key in ('starts_at','ends_at','timezone','status','revision')}
 
-class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
+class IsolationVisitViewSet(CloserAssignmentMixin,SharingMixin,ResultMixin,viewsets.GenericViewSet):
     authentication_classes=[VisitAuthentication]
     permission_classes=[IsAuthenticated]
     serializer_class=BookingInput

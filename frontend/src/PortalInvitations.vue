@@ -5,7 +5,7 @@ const props=defineProps<{space:string;request:(path:string,body?:any,method?:str
 const rows=ref<any[]>([]),page=ref(1),count=ref(0),busy=ref(false),error=ref(''),message=ref('')
 const form=ref({username:'',email:'',role:'setter'})
 const composing=ref(false),loading=ref(false)
-const roleLabels:Record<string,string>={setter:'Setter',administrator:'Administrateur',advisor:'Conseiller',client:'Client'}
+const roleLabels:Record<string,string>={setter:'Setter',administrator:'Administrateur',advisor:'Conseiller',client:'Client',closer:'Closer'}
 function cancel(){composing.value=false;form.value={username:'',email:'',role:'setter'}}
 const base=()=>`workspaces/${props.space}/invitations/`
 async function load(){loading.value=true;error.value='';try{const data=await props.request(base()+`?page=${page.value}`);rows.value=data.results;count.value=data.count}catch(e:any){error.value=e.message}finally{loading.value=false}}
@@ -21,7 +21,7 @@ onMounted(load)
   <form v-if="composing" class="invitation-form" @submit.prevent="create">
    <div class="form-heading"><h3>Nouvelle invitation</h3><button type="button" class="secondary" :disabled="busy" aria-label="Fermer le formulaire" @click="cancel"><X :size="16"/></button></div>
    <p>Le destinataire choisira son mot de passe. Son accès sera activé après acceptation.</p>
-   <fieldset :disabled="busy"><label>Identifiant<input v-model="form.username" required maxlength="150" autocomplete="off"></label><label>Adresse e-mail<input v-model="form.email" type="email" required maxlength="254" autocomplete="off"></label><label>Rôle dans cet espace<select v-model="form.role"><option value="setter">Setter</option><option value="administrator">Administrateur</option><option v-if="space==='assurance'" value="advisor">Conseiller</option><option v-else value="client">Client</option></select></label></fieldset>
+   <fieldset :disabled="busy"><label>Identifiant<input v-model="form.username" required maxlength="150" autocomplete="off"></label><label>Adresse e-mail<input v-model="form.email" type="email" required maxlength="254" autocomplete="off"></label><label>Rôle dans cet espace<select v-model="form.role"><option value="setter">Setter</option><option value="administrator">Administrateur</option><option v-if="space==='assurance'" value="advisor">Conseiller</option><template v-else><option value="client">Client</option><option value="closer">Closer</option></template></select></label></fieldset>
    <div class="form-actions"><button type="button" class="secondary" :disabled="busy" @click="cancel">Annuler</button><button class="primary" :disabled="busy||loading"><Send :size="16"/>{{busy?'Enregistrement…':'Envoyer l’invitation'}}</button></div>
   </form>
   <div class="invitation-summary"><span role="status">{{loading?'Chargement…':`${count} invitation(s)`}}</span><button class="secondary" :disabled="busy||loading" @click="load"><RefreshCw :size="15"/>Actualiser</button></div>

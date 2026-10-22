@@ -182,6 +182,8 @@ class ProspectActivityShare(models.Model):
         constraints=[models.UniqueConstraint(fields=['activity','client_id'],name='unique_activity_client_share')]
 
 class IsolationVisit(models.Model):
+    closer_id=models.PositiveBigIntegerField(null=True,blank=True,db_index=True)
+    closer_name=models.CharField(max_length=150,blank=True)
     c2_snapshot=models.JSONField(default=dict)
     prospect=models.ForeignKey(Prospect,on_delete=models.PROTECT,related_name='visits')
     request_id=models.UUIDField(unique=True)
@@ -207,7 +209,9 @@ class IsolationVisitCalendar(models.Model):
 
 class IsolationVisitResult(models.Model):
     visit=models.OneToOneField(IsolationVisit,on_delete=models.PROTECT,related_name='result')
-    author_client_id=models.PositiveBigIntegerField()
+    author_client_id=models.PositiveBigIntegerField(null=True,blank=True)
+    author_closer_id=models.PositiveBigIntegerField(null=True,blank=True)
+    closed=models.BooleanField(null=True,blank=True)
     performed=models.BooleanField()
     outcome=models.CharField(max_length=30)
     note=models.TextField()
