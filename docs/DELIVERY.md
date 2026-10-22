@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## CRM unique — retrait du front autonome CallVerify
+
+La racine, /demo et les anciennes pages à hash montent désormais uniquement le portail et normalisent leur adresse vers /crm. L’ancien choix entre App et Portal était la cause de l’application séparée encore visible à la racine. Suppression des composants App.vue, Workspace.vue et de leur client API exclusivement historique ; titre HTML AMX. La connexion à profils existante est conservée selon la demande initiale. Retours OAuth et liens centraux invitation/récupération préservés ; les anciens jetons locaux ne sont pas convertis en identités centrales.
+
+Le lot intégré est nommé Vérification des numéros dans la navigation administrateur Isolation : listes, import/aperçu/confirmation, Lookup explicite, résultats et exports. Il reste absent des autres rôles et d’Assurance ; l’API contrôle l’audience et le rôle, sans accepter une session administrative locale historique. Correction des collisions de routes GET/POST import/export qui masquaient des méthodes. Téléchargement des exports via le client métier authentifié, sans navigation vers un lien sans ticket.
+
+Validation : 245 tests core dont 19 ignorés, 44 tests frontend, typage et build réussis (JS 482,33 kB). Tests des anciennes entrées et OAuth, quatre onglets, import/export synthétique, téléchargement et erreurs, refus de onze opérations pour six profils non autorisés et d’une session locale. Treize contrôles HTTP sur la recette vérifient racine unique et périmètres administrateur Isolation/setter/administrateur Assurance. Aucun fournisseur, appel ou Lookup réel exécuté ; aucun compte ou fichier métier supprimé. Revue visuelle à faire. [Détails et limites](CRM_ENTRYPOINT.md).
+
+Limites : ancien front retiré, traitements/modèles et API backend historiques conservés pour compatibilité ; aucune migration des données ou fusion de comptes. La recette 5174 a été rechargée, les serveurs habituels sont préservés. Prochain lot : reprendre la répétition de centralisation des copies SQLite et la validation de restauration de la base commune.
+
 ## Recette volumineuse — données fictives dans une base commune séparée
 
 Un générateur reproductible crée une nouvelle base PostgreSQL locale de recette, migre les trois schémas et remplit les parcours Assurance/Isolation par ORM. Aucun reset ni écrasement d’un jeu existant : nouveau dossier privé vide, nom de base aléatoire réservé, manifeste synthetic/disposable et refus de second remplissage. Volume paramétrable de 40 à 20 000 prospects par espace, 5 000 par défaut. Noms/adresses marqués Démo, courriels example.invalid et téléphones à indicatif régional invalide 000 ; aucune fausse preuve Lookup ou observation fournisseur.

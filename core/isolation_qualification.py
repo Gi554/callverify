@@ -120,8 +120,10 @@ class QualificationViewSet(viewsets.GenericViewSet):
         audit(request, 'isolation.qualification.lookup_scheduled', campaign, **result)
         return Response(result, status=202)
 
-    @action(detail=False, methods=['post'], url_path='imports')
+    @action(detail=False, methods=['get', 'post'], url_path='imports')
     def import_file(self, request):
+        if request.method == 'GET':
+            return self.imports(request)
         campaign = self.campaign(request.data.get('campaign'))
         if campaign.status == 'archived':
             raise ValidationError('Campagne archivée')
@@ -178,7 +180,6 @@ class QualificationViewSet(viewsets.GenericViewSet):
         audit(request, 'isolation.qualification.import_confirmed', batch, campaign_id=batch.campaign_id)
         return Response({'id': batch.pk, 'status': 'queued'}, status=202)
 
-    @action(detail=False, methods=['get'], url_path='imports')
     def imports(self, request):
         qs = ImportBatch.objects.filter(campaign__portal_workspace=WORKSPACE).order_by('-created_at')
         campaign = request.query_params.get('campaign')
@@ -201,7 +202,6 @@ class QualificationViewSet(viewsets.GenericViewSet):
             qs = qs.filter(Q(name__icontains=term) | Q(raw_phone__icontains=term) | Q(reference__icontains=term))
         return self.get_paginated_response(ProspectSerializer(self.paginate_queryset(qs), many=True).data)
 
-    @action(detail=False, methods=['post'], url_path='exports')
     def request_export(self, request):
         campaign = self.campaign(request.data.get('campaign'))
         format_name = request.data.get('format', 'xlsx')
@@ -218,8 +218,10 @@ class QualificationViewSet(viewsets.GenericViewSet):
         audit(request, 'isolation.qualification.export_requested', job, campaign_id=campaign.pk, format=format_name)
         return Response(ExportSerializer(job).data, status=202)
 
-    @action(detail=False, methods=['get'], url_path='exports')
+    @action(detail=False, methods=['get', 'post'], url_path='exports')
     def exports(self, request):
+        if request.method == 'POST':
+            return self.request_export(request)
         qs = ExportJob.objects.filter(campaign__portal_workspace=WORKSPACE).order_by('-pk')
         return self.get_paginated_response(ExportSerializer(self.paginate_queryset(qs), many=True).data)
 

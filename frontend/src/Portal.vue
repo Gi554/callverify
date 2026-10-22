@@ -93,7 +93,7 @@ const navigation=computed(()=>{
   items.push({id:'pipeline',label:'Opportunités',icon:'agreements'})
   if(role.value!=='advisor')items.push({id:'followups',label:'Tâches de suivi',icon:'followups'},{id:'statistics',label:'Statistiques',icon:'statistics'},{id:'assignments',label:role.value==='administrator'?'Affectations':'Mes conseillers',icon:'assignments'})
   if(role.value==='administrator')items.push({id:'agreements',label:'Mandats et contrats',icon:'agreements'},{id:'fields',label:'Paramètres métier',icon:'fields'})
- }else {if(['setter','administrator'].includes(role.value))items.push({id:'followups',label:'Tâches de rappel',icon:'followups'});items.push({id:'statistics',label:'Statistiques',icon:'statistics'});if(role.value==='administrator')items.push({id:'qualification',label:'Qualification',icon:'qualification'})}
+}else {if(['setter','administrator'].includes(role.value))items.push({id:'followups',label:'Tâches de rappel',icon:'followups'});items.push({id:'statistics',label:'Statistiques',icon:'statistics'});if(role.value==='administrator')items.push({id:'qualification',label:'Vérification des numéros',icon:'qualification'})}
  return items
 })
 const pageTitle=computed(()=>navigation.value.find(item=>item.id===activeModule.value)?.label||'Mes espaces')

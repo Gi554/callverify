@@ -8,6 +8,11 @@ inchangés. La recette s'ouvre sur **http://localhost:5174/crm** ; utiliser ce n
 d'hôte pour la distinguer du CRM habituel. Les cookies du portail sont également
 distincts en mode démo. L'onglet porte le titre « AMX — DÉMO FICTIVE ».
 
+La racine du port 5174 mène aussi au CRM unique, sans ancienne application
+CallVerify séparée. **Vérification des numéros** est accessible uniquement à
+`admin.demo` après sélection d'Isolation ; aucune vérification fournisseur réelle
+n'est activée dans cet environnement. Voir [le point d'entrée unique](CRM_ENTRYPOINT.md).
+
 Les identifiants et le mot de passe aléatoire figurent uniquement dans
 `private-media/demo-volume-20261022/ACCES.txt`. Ce dossier et son manifeste sont
 ignorés par Git. Le mot de passe commun est réservé à cette recette locale.
