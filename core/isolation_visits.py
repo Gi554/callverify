@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from packages.access.isolation_visits import verify_booking
+from packages.access.calendar_window import calendar_window
 from .models import Prospect,IsolationVisit,IsolationVisitCalendar,IsolationVisitResult,AuditEvent
 from .isolation_work import VisitAuthentication,Pager,Conflict,visible
 from .isolation_client import ResultMixin,result_output
@@ -101,7 +102,10 @@ class IsolationVisitViewSet(SharingMixin,ResultMixin,viewsets.GenericViewSet):
         if prospect:
             if not prospect.isdigit():raise ValidationError('Prospect invalide')
             qs=qs.filter(prospect_id=int(prospect))
-        return qs
+        state=self.request.query_params.get('status','')
+        if state not in ('','scheduled','cancelled'):raise ValidationError('Statut invalide')
+        if state:qs=qs.filter(status=state)
+        return calendar_window(qs,self.request.query_params)
     def list(self,request):return self.get_paginated_response([output(row) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(output(self.get_object()))
     def create(self,request):

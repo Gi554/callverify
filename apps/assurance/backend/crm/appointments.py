@@ -1,4 +1,5 @@
 """Internal appointments with server-side external availability confirmation."""
+from packages.access.calendar_window import calendar_window
 import hashlib
 import json
 from datetime import timedelta
@@ -122,7 +123,7 @@ class AppointmentViewSet(ReportMixin,viewsets.GenericViewSet):
         if period not in ('','upcoming','past'):raise ValidationError('Période invalide')
         if period=='upcoming':qs=qs.filter(ends_at__gt=timezone.now())
         if period=='past':qs=qs.filter(ends_at__lte=timezone.now()).order_by('-starts_at','-pk')
-        return qs
+        return calendar_window(qs,self.request.query_params)
     def list(self,request):
         rows=self.paginate_queryset(self.get_queryset())
         return self.get_paginated_response([output(row,request.user) for row in rows])

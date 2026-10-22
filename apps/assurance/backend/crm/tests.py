@@ -410,6 +410,25 @@ class AppointmentTests(TestCase):
         from datetime import timedelta
         return {'revision':0,'proof':self.proof(),'starts_at':(self.start+timedelta(days=1)).isoformat(),
                 'ends_at':(self.end+timedelta(days=1)).isoformat(),'timezone':'UTC','reason':'Internal SECRET SETTER note',**changes}
+    def test_calendar_window_overlap_boundaries_and_visibility(self):
+        from datetime import timedelta
+        row=self.book();self.assertEqual(row.status_code,201,row.data)
+        inside={'ends_after':(self.start+timedelta(minutes=5)).isoformat(),'starts_before':(self.end-timedelta(minutes=5)).isoformat()}
+        self.assertEqual(self.client.get(self.url,inside).data['count'],1)
+        self.assertEqual(self.client.get(self.url,{'ends_after':self.end.isoformat(),'starts_before':(self.end+timedelta(days=1)).isoformat()}).data['count'],0)
+        self.assertEqual(self.client.get(self.url,{'ends_after':(self.start-timedelta(days=1)).isoformat(),'starts_before':self.start.isoformat()}).data['count'],0)
+        self.authorize(22)
+        self.assertEqual(self.client.get(self.url,inside).data['count'],0)
+
+    def test_calendar_window_rejects_invalid_or_unbounded_ranges(self):
+        from datetime import timedelta
+        for params in ({'ends_after':self.start.isoformat()},
+                       {'ends_after':self.start.replace(tzinfo=None).isoformat(),'starts_before':self.end.isoformat()},
+                       {'ends_after':'invalid','starts_before':self.end.isoformat()},
+                       {'ends_after':self.end.isoformat(),'starts_before':self.start.isoformat()},
+                       {'ends_after':self.start.isoformat(),'starts_before':(self.start+timedelta(days=63)).isoformat()}):
+            self.assertEqual(self.client.get(self.url,params).status_code,400,params)
+
     def test_booking_is_idempotent_and_keeps_one_responsible_setter(self):
         from .models import Appointment,BusinessAudit
         data=self.payload();first=self.client.post(self.url,data,format='json');retry=self.client.post(self.url,data,format='json')

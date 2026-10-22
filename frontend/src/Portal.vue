@@ -3,7 +3,6 @@ import {ref,computed,onMounted} from 'vue'
 import PortalLogin from './PortalLogin.vue'
 import CrmShell from './CrmShell.vue'
 import CrmOverview from './CrmOverview.vue'
-import IsolationVisits from './IsolationVisits.vue'
 import IsolationStatistics from './IsolationStatistics.vue'
 import PortalAccess from './PortalAccess.vue'
 import PortalPassword from './PortalPassword.vue'
@@ -18,7 +17,9 @@ import AssuranceProspects from './AssuranceProspects.vue'
 import AssuranceAgreementRegistry from './AssuranceAgreementRegistry.vue'
 import AssuranceAgreementAlerts from './AssuranceAgreementAlerts.vue'
 import AssuranceAssignments from './AssuranceAssignments.vue'
+import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue'
 import AssuranceAppointments from './AssuranceAppointments.vue'
+import IsolationVisits from './IsolationVisits.vue'
 import AssuranceFollowUps from './AssuranceFollowUps.vue'
 import AssuranceNotifications from './AssuranceNotifications.vue'
 import AssuranceReminders from './AssuranceReminders.vue'
@@ -98,7 +99,7 @@ const title=(value:string)=>value==='assurance'?'Assurance':'Isolation'
 onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|microsoft)$/);if(oauth){const query=new URLSearchParams(location.search);const body:any={state:query.get('state')||''};if(query.has('error'))body.error=query.get('error');else body.code=query.get('code')||'';history.replaceState(null,'','/crm');try{await portal('calendar/callback/'+oauth[1]+'/',body);passwordOpen.value=true;calendarNotice.value='Agenda connecté. Consultez Mon compte et mes sessions pour vérifier les disponibilités.'}catch(e:any){calendarNotice.value=e.message}}const invitation=location.hash.match(/^#invite=([a-f0-9-]{36}):([A-Za-z0-9_-]+)$/);if(invitation){inviteId.value=invitation[1]!;inviteToken.value=invitation[2]!;history.replaceState(null,'',location.pathname+location.search);ready.value=true;return}const recovery=location.hash.match(/^#reset=([A-Za-z0-9_-]+):([A-Za-z0-9_-]+)$/);if(recovery){resetUid.value=recovery[1]!;resetToken.value=recovery[2]!;recoveryOpen.value=true;history.replaceState(null,'',location.pathname+location.search);ready.value=true;return}try{user.value=await portal('session/');if(user.value?.workspaces.length===1)await enter(user.value.workspaces[0]!.workspace);else if(user.value?.landing&&user.value.workspaces.some(item=>item.workspace===user.value!.landing))await enter(user.value.landing)}catch{}finally{ready.value=true}})
 </script>
 <template>
- <div class="amx-root" :class="{'is-authenticated':!!user,'setter-home':!!user&&role==='setter'&&activeModule==='overview'&&!passwordOpen&&!managing,'contacts-layout':!!user&&workspace==='assurance'&&['contacts','pipeline'].includes(activeModule)&&!passwordOpen&&!managing}">
+ <div class="amx-root" :class="{'is-authenticated':!!user,'setter-home':!!user&&role==='setter'&&activeModule==='overview'&&!passwordOpen&&!managing,'calendar-layout':!!user&&role==='setter'&&activeModule==='appointments'&&!passwordOpen&&!managing,'contacts-layout':!!user&&workspace==='assurance'&&['contacts','pipeline'].includes(activeModule)&&!passwordOpen&&!managing}">
  <PortalLogin v-if="ready&&!user&&!recoveryOpen&&!inviteId" :busy="busy" :error="error" @submit="login" @recover="recoveryOpen=true;error=''"/>
  <CrmShell v-else :username="user?.username||''" :workspace="workspace" :role="role" :spaces="user?.workspaces||[]" :items="navigation" :active="activeModule" :page-title="pageTitle" :account-open="passwordOpen" :access-open="managing" :can-manage="!!user?.admin_workspaces?.length" @workspace="enter" @navigate="selectModule" @account="openAccount" @access="openAccess" @logout="logout">
  <main class="amx-main">
@@ -126,11 +127,13 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
       <AssuranceFollowUps v-else-if="assuranceModule==='followups'&&role!=='advisor'" :portal="portal" :role="role" :request="assurance" @changed="refreshAssurance"/>
       <AssuranceStatistics v-else-if="assuranceModule==='statistics'&&role!=='advisor'" :role="role" :request="assurance"/>
       <AssuranceFieldSettings v-else-if="assuranceModule==='fields'&&role==='administrator'" :request="assurance"/>
+      <CrmAppointmentsCalendar v-else-if="role==='setter'" workspace="assurance" :request="assurance" :portal="portal" :role="role" @navigate="selectModule"/>
       <AssuranceAppointments v-else :request="assurance" :portal="portal" :role="role"/>
      </template>
      <template v-else>
       <IsolationStatistics v-if="isolationModule==='statistics'" :request="isolation"/>
       <IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
+      <CrmAppointmentsCalendar v-else-if="isolationModule==='appointments'&&role==='setter'" workspace="isolation" :role="role" :portal="portal" :request="isolation" @navigate="selectModule"/>
       <IsolationVisits v-else-if="isolationModule==='appointments'" :role="role" :portal="portal" :request="isolation" @close="selectModule('overview')" @changed="refreshIsolation"/>
       <IsolationClient v-else-if="role==='client'" :portal="portal" :request="isolation"/>
       <IsolationWorkQueue v-else :role="role" :portal="portal" :request="isolation"/>
