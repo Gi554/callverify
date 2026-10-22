@@ -1,6 +1,6 @@
 from datetime import timedelta
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F,Q,Count
 from django.utils import timezone
 from rest_framework import serializers,viewsets
 from rest_framework.decorators import action
@@ -149,9 +149,29 @@ class FollowUpViewSet(viewsets.GenericViewSet):
         state=self.request.query_params.get('state','open')
         if state not in ('open','closed','all'):raise ValidationError('Filtre invalide')
         if state!='all':qs=qs.filter(closed_at__isnull=state=='open')
+        bucket=self.request.query_params.get('bucket','')
+        if bucket not in ('','todo','overdue','closed'):raise ValidationError('Colonne invalide')
+        now=timezone.now()
+        if bucket=='todo':qs=qs.filter(closed_at__isnull=True,due_at__gte=now)
+        elif bucket=='overdue':qs=qs.filter(closed_at__isnull=True,due_at__lt=now)
+        elif bucket=='closed':qs=qs.filter(closed_at__isnull=False).order_by('-closed_at','-pk')
+        priority=self.request.query_params.get('priority','')
+        if priority not in ('','low','normal','high','urgent'):raise ValidationError('Priorité invalide')
+        if priority:qs=qs.filter(priority=priority)
+        term=self.request.query_params.get('search','').strip()[:250]
+        if term:qs=qs.filter(Q(appointment__contact__name__icontains=term)|Q(reason__icontains=term))
         return qs
     def list(self,request):return self.get_paginated_response([task_output(row,request.user) for row in self.paginate_queryset(self.get_queryset())])
     def retrieve(self,request,pk=None):return Response(task_output(self.get_object(),request.user))
+    @action(detail=False,methods=['get'])
+    def summary(self,request):
+        qs=self.get_queryset();now=timezone.now()
+        counts=qs.aggregate(total=Count('pk'),closed=Count('pk',filter=Q(closed_at__isnull=False)),
+            overdue=Count('pk',filter=Q(closed_at__isnull=True,due_at__lt=now)))
+        counts['todo']=counts['total']-counts['closed']-counts['overdue']
+        counts['open']=counts['total']-counts['closed']
+        counts['open_priorities']={key:qs.filter(closed_at__isnull=True,priority=key).count() for key in ('urgent','high','normal','low')}
+        return Response({**counts,'as_of':now})
     @action(detail=True,methods=['post'])
     def reassign(self,request,pk=None):
         from django.core import signing

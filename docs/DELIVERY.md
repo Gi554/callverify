@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Tableau des tâches Setter Assurance
+
+Page Mes tâches reprise selon la référence : trois colonnes À traiter, En retard et Clôturées, cartes sans photos avec prospect, priorité en français, échéance, signalement et rendez-vous source. Défilement interne par colonne et chargement de 25 cartes supplémentaires. Panneau bleu d’avancement calculé sur les tâches visibles selon les filtres, volumes par priorité et accès aux rendez-vous. Aucun statut « en cours » ni pourcentage d’avancement par tâche inventé ; une tâche reste ouverte jusqu’à sa clôture justifiée.
+
+Le détail s’ouvre à droite avec le motif complet, le dernier signalement et la résolution conservée. Clôture avec révision et justification obligatoire, confirmation visuelle, actualisation du tableau et protection du brouillon à la fermeture. Recherche serveur par prospect/motif et filtre de priorité appliqués à toutes les colonnes et au résumé. Compteurs calculés sur l’ensemble des résultats, indépendamment des pages de cartes. Les règles, réattributions et réouvertures administrateur restent dans leur parcours existant.
+
+Validation : 18 tests backend réussis sur le tableau et les opérations de tâches ; 3 tests de concurrence réservés à PostgreSQL ignorés sur SQLite. Contrôles des périmètres setter, des colonnes exclusives, des filtres, de la pagination et de la clôture. Typage Vue, build production et revue navigateur bureau/mobile avec filtre de priorité. Le compte de revue ne contient aucune tâche : les cas renseignés et la clôture sont vérifiés dans la base de tests uniquement. Aucun appel, rendez-vous, tâche ou message réel créé pour la revue.
+
+Limites : présentation Setter Assurance uniquement ; Isolation n’a pas de module de tâches équivalent livré ici. Pas de création manuelle ni de glisser-déposer : les tâches restent générées par les suivis de rendez-vous existants et changent de colonne selon leur échéance ou leur clôture. Les compteurs sont rafraîchis à la demande et après clôture. La prochaine reprise demandée par l’utilisateur concerne le panneau des prospects ; recette globale et revue administrateur restent à poursuivre.
+
 ## Calendrier mensuel Setter Assurance et Isolation
 
 La page Rendez-vous/Visites Setter reprend la référence fournie : grille lundi-dimanche, navigation mensuelle, retour à aujourd’hui, repères corail, cartes pastel, recherche locale, filtre de statut et choix du fuseau canadien. Un clic sur un événement ouvre son détail dans le panneau commun à droite ; au-delà de trois événements par jour, « autres » ouvre la liste complète. Les reports/annulations continuent d’utiliser les commandes existantes, avec motif, révision et contrôles d’accès. Le report Assurance dispose de champs de date/heure locale et refuse les horaires ambigus ou inexistants. Le bouton Réserver guide vers la fiche prospect pour conserver le choix du conseiller et les contrôles métier.
