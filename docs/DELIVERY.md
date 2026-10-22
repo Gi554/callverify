@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Filtre de statut prospects
+
+Suppression du double encadrement causé par les styles globaux du sélecteur. Une seule bordure, flèche alignée à droite et indicateur de focus autour du contrôle complet. Contrôle du diff effectué ; recette approfondie reportée.
+
 ## Quatre prospects par ligne
 
 Lorsqu’un seul statut est visible, sa grille affiche quatre cartes par ligne sur grand écran (>1200 px), trois jusqu’à 1200 px, deux jusqu’à 1000 px et une jusqu’à 600 px pour préserver la lisibilité. Contrôle du diff effectué ; recette approfondie reportée.

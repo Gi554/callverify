@@ -69,6 +69,11 @@ onBeforeUnmount(()=>{disposed=true;generation++;dialog.value?.close()})
 </style>
 <style scoped>
 /* Let the remaining stages fill the board instead of keeping fixed narrow lanes. */
+.prospects-board .prospects-toolbar .stage-filter{position:relative;display:block!important;min-width:180px;height:42px;padding:0;gap:0}
+.prospects-board .prospects-toolbar .stage-filter select{display:block;appearance:none;width:100%;height:100%;min-width:0;max-width:100%;border:0;border-radius:inherit;background:transparent;box-shadow:none;padding:10px 36px 10px 13px;cursor:pointer;font-size:12px;line-height:20px}
+.prospects-board .stage-filter>svg{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#8190a7}
+.prospects-board .stage-filter:focus-within{outline:3px solid #81b3ed;outline-offset:2px}
+.prospects-board .prospects-toolbar .stage-filter select:focus-visible{outline:none}
 .prospects-columns .prospect-column{flex:1 0 280px}
 .prospects-columns.single-status .prospect-column{flex:1 1 100%}
 .single-status .prospect-stack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-content:start;align-items:start;gap:16px}
