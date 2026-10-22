@@ -2,7 +2,7 @@
 
 ## Correctif — test d’appel instable
 
-`test_phone_calls.test_one_dispatch_replay_status_and_private_output` vérifiait que le poste (« 501 ») et le numéro (« 1514… ») n’apparaissent pas dans la réponse, y compris dans l’identifiant de requête aléatoire : un UUID contenant « 501 » faisait échouer la CI par hasard (constaté sur #127). La vérification porte désormais sur tous les champs sauf cet identifiant. Aucun changement applicatif.
+`test_phone_calls.test_one_dispatch_replay_status_and_private_output` vérifiait que le poste (« 501 ») et le numéro (« 1514… ») n’apparaissent pas dans la réponse, y compris dans l’identifiant de requête aléatoire : un UUID contenant « 501 » (#127) puis des microsecondes « 144501 » (#129) faisaient échouer la CI par hasard. Le test vérifie désormais la liste exacte des champs renvoyés et l’absence de ces chiffres dans les seules valeurs texte (hors identifiant aléatoire et dates). Aucun changement applicatif.
 
 ## Rôles terrain — intitulés de colonne dans les cartes sur téléphone
 

@@ -55,10 +55,24 @@ class PhoneCallsTests(TestCase):
         self.assertEqual(self.provider.call_count, 1)
         self.assertEqual(self.client.get(self.url + str(self.key) + '/').data['contact_id'], 42)
         self.assertEqual(response['Cache-Control'], 'no-store')
-        # The random request UUID may contain these digits by chance: check every other field.
-        exposed = str({key: value for key, value in response.data.items() if key != 'request_id'})
-        self.assertNotIn('501', exposed)
-        self.assertNotIn('1514', exposed)
+        # No extension or phone field, and no such digits in text values. The random request
+        # UUID and the timestamps (microseconds) may contain them by chance, so they are skipped.
+        self.assertEqual(
+            set(response.data),
+            {
+                'request_id',
+                'contact_id',
+                'workspace',
+                'state',
+                'created_at',
+                'updated_at',
+                'definition',
+            },
+        )
+        for key, value in response.data.items():
+            if key != 'request_id' and isinstance(value, str):
+                self.assertNotIn('501', value)
+                self.assertNotIn('1514', value)
         self.assertEqual(AccessAudit.objects.filter(action='phone.call_reserved').count(), 1)
 
     def test_timeout_or_crash_is_not_retried(self):
