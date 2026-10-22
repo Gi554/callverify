@@ -1,11 +1,63 @@
 <script setup lang="ts">
-import {ref,onMounted} from 'vue'
-const props=defineProps<{space:string;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
-const rows=ref<any[]>([]),count=ref(0),page=ref(1),action=ref(''),actor=ref(''),start=ref(''),end=ref(''),busy=ref(false),error=ref('')
-const actions:Record<string,string>={'membership.granted':'Accès accordé','membership.updated':'Accès modifié','invitation.created':'Invitation créée','invitation.resend':'Invitation renouvelée','invitation.revoke':'Invitation révoquée','invitation.accepted':'Invitation acceptée'}
-const roles:Record<string,string>={administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client'}
-function state(value:any){return [roles[value?.role]||'',typeof value?.active==='boolean'?(value.active?'Actif':'Suspendu'):''].filter(Boolean).join(' · ')||'Non renseigné'}
-async function load(){busy.value=true;error.value='';try{const params=new URLSearchParams({page:String(page.value)});if(action.value)params.set('action',action.value);if(actor.value)params.set('actor_id',actor.value);if(start.value)params.set('start_date',start.value);if(end.value)params.set('end_date',end.value);const data=await props.request(`workspaces/${props.space}/access-history/?${params}`);rows.value=data.results;count.value=data.count}catch(e:any){rows.value=[];count.value=0;error.value=e.message}finally{busy.value=false}}
+import { ref, onMounted } from 'vue'
+const props = defineProps<{
+  space: string
+  request: (path: string, body?: any, method?: string) => Promise<any>
+}>()
+const rows = ref<any[]>([]),
+  count = ref(0),
+  page = ref(1),
+  action = ref(''),
+  actor = ref(''),
+  start = ref(''),
+  end = ref(''),
+  busy = ref(false),
+  error = ref('')
+const actions: Record<string, string> = {
+  'membership.granted': 'Accès accordé',
+  'membership.updated': 'Accès modifié',
+  'invitation.created': 'Invitation créée',
+  'invitation.resend': 'Invitation renouvelée',
+  'invitation.revoke': 'Invitation révoquée',
+  'invitation.accepted': 'Invitation acceptée',
+}
+const roles: Record<string, string> = {
+  administrator: 'Administrateur',
+  setter: 'Setter',
+  advisor: 'Conseiller',
+  client: 'Client',
+}
+function state(value: any) {
+  return (
+    [
+      roles[value?.role] || '',
+      typeof value?.active === 'boolean' ? (value.active ? 'Actif' : 'Suspendu') : '',
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'Non renseigné'
+  )
+}
+async function load() {
+  busy.value = true
+  error.value = ''
+  try {
+    const params = new URLSearchParams({ page: String(page.value) })
+    if (action.value) params.set('action', action.value)
+    if (actor.value) params.set('actor_id', actor.value)
+    if (start.value) params.set('start_date', start.value)
+    if (end.value) params.set('end_date', end.value)
+    const data = await props.request(`workspaces/${props.space}/access-history/?${params}`)
+    rows.value = data.results
+    count.value = data.count
+  } catch (e: any) {
+    rows.value = []
+    count.value = 0
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
 onMounted(load)
 </script>
+<!-- prettier-ignore -->
 <template><section><h2>Journal d’administration des accès</h2><p>Créations, modifications et invitations dans l’espace sélectionné uniquement. Les connexions globales, les envois d’e-mails et les actions métier ne figurent pas dans ce journal. Les noms d’auteurs sont les identifiants actuels des comptes.</p><p v-if="error" role="alert">{{error}}</p><form @submit.prevent="page=1;load()"><fieldset :disabled="busy"><label>Action<select v-model="action"><option value="">Toutes</option><option v-for="(label,key) in actions" :key="key" :value="key">{{label}}</option></select></label><label>Identifiant numérique de l’auteur<input v-model="actor" type="number" min="1" step="1"></label><label>Du (date UTC incluse)<input v-model="start" type="date"></label><label>Au (date UTC incluse)<input v-model="end" type="date"></label><button class="secondary">Filtrer / actualiser</button></fieldset></form><article v-for="row in rows" :key="row.id"><h3>{{row.label}}</h3><p>{{new Date(row.created_at).toLocaleString('fr-FR')}} · {{row.actor?`${row.actor.username} · n° ${row.actor.id}`:'Compte auteur supprimé ou non renseigné'}}</p><p v-if="row.details.subject_id">Compte concerné n° {{row.details.subject_id}}</p><p v-if="row.details.invitation_id">Invitation {{row.details.invitation_id}}</p><p v-if="row.details.role">Rôle : {{roles[row.details.role]||row.details.role}}</p><p v-if="typeof row.details.existing_account==='boolean'">{{row.details.existing_account?'Compte existant associé':'Nouveau compte créé'}}</p><p v-if="row.details.before||row.details.after">Avant : {{state(row.details.before)}} → Après : {{state(row.details.after)}}</p></article><p v-if="!rows.length&&!busy">Aucun événement dans ce périmètre.</p><p>{{count}} événement(s) · page {{page}}</p><button class="secondary" :disabled="busy||page===1" @click="page--;load()">Précédent</button><button class="secondary" :disabled="busy||page*25>=count" @click="page++;load()">Suivant</button></section></template>

@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Socle technique — formatage automatique du code
+
+Lot technique sans changement fonctionnel. Python formaté par Ruff 0.6.9 (`ruff.toml` : 100 colonnes, guillemets simples, migrations exclues) ; frontend formaté par Prettier 3.3.3 (`frontend/.prettierrc.json` : guillemets simples, sans point-virgule, 100 colonnes) pour les `<script>`, `<style>`, fichiers TypeScript, configurations et tests. La CI refuse désormais un code non formaté (`ruff format --check .`, `pnpm exec prettier --check .`).
+
+Les `<template>` Vue restent volontairement intacts grâce à un `<!-- prettier-ignore -->` : les harnais de test transforment par expressions régulières le rendu compilé, que la remise en forme des templates modifie. Cinq composants sont exclus entièrement (`AssuranceContacts`, `AssuranceQualification`, `AssuranceQualificationSnapshot`, `IsolationProspectActivity`, `Portal`) : le parseur Prettier ne lit pas les conversions `as Record<string,string>` de leurs templates. Seule adaptation des tests : les harnais tolèrent la virgule finale des imports d’icônes.
+
+Validation : bundle JS de production identique hors identifiants de portée Vue ; CSS identique hors espaces dans les valeurs de variables CSS et identifiants d’animations portés. Suites core 246 (19 ignorés), portail 221 (11 ignorés), Assurance 308 (26 ignorés), unittest base commune/démo, contrôle des migrations des trois projets, 52 tests frontend, typage, builds principal et démo réussis.
+
+Limites : templates Vue (environ 225 Ko) encore sur de longues lignes ; leur formatage demande d’abord des harnais de test indépendants de la forme du code compilé. Prochain lot fonctionnel inchangé : accueil, navigation et calendriers administrateur.
+
 ## Reprise des tâches — Isolation et administration Assurance
 
 Isolation setter et administrateur disposent du tableau À traiter / En retard / Terminées, avec cartes, compteurs sur tout le périmètre filtré, recherche serveur avant pagination, 25 lignes par état et chargement complémentaire indépendant. Les totaux sont indisponibles lorsqu’une colonne échoue, plutôt qu’affichés partiellement comme complets. Les échéances restent en heure de Montréal. Édition et clôture s’ouvrent à droite ; les brouillons et opérations en cours empêchent une fermeture silencieuse. La création manuelle depuis la fiche prospect reste disponible.

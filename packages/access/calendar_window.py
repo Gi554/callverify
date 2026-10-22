@@ -1,4 +1,5 @@
 """Optional, bounded calendar viewport; preserves the caller's visibility queryset."""
+
 from datetime import timedelta
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -16,5 +17,7 @@ def calendar_window(queryset, params):
         if not timedelta(0) < end - start <= timedelta(days=62):
             raise ValueError()
     except (ValueError, TypeError, OverflowError):
-        raise ValidationError('Fenêtre calendrier de 62 jours maximum, avec deux dates ISO 8601 et décalages explicites, requise.')
+        raise ValidationError(
+            'Fenêtre calendrier de 62 jours maximum, avec deux dates ISO 8601 et décalages explicites, requise.'
+        )
     return queryset.filter(starts_at__lt=end, ends_at__gt=start)

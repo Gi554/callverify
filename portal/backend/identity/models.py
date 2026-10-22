@@ -2,112 +2,154 @@ from django.conf import settings
 from django.db import models
 
 ROLES = {
-    'assurance': {'administrator','setter','advisor'},
-    'isolation': {'administrator','setter','client','closer'},
+    'assurance': {'administrator', 'setter', 'advisor'},
+    'isolation': {'administrator', 'setter', 'client', 'closer'},
 }
 
+
 class PhoneCallAttempt(models.Model):
-    request_id=models.UUIDField(primary_key=True)
-    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
-    workspace=models.CharField(max_length=20,default='assurance')
-    contact_id=models.PositiveBigIntegerField()
-    extension=models.CharField(max_length=10)
-    fingerprint=models.CharField(max_length=64)
-    state=models.CharField(max_length=20,default='dispatching')
-    created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now=True)
+    request_id = models.UUIDField(primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    workspace = models.CharField(max_length=20, default='assurance')
+    contact_id = models.PositiveBigIntegerField()
+    extension = models.CharField(max_length=10)
+    fingerprint = models.CharField(max_length=64)
+    state = models.CharField(max_length=20, default='dispatching')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class Membership(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='workspace_memberships')
-    workspace = models.CharField(max_length=20,choices=[(key,key) for key in ROLES])
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='workspace_memberships'
+    )
+    workspace = models.CharField(max_length=20, choices=[(key, key) for key in ROLES])
     role = models.CharField(max_length=30)
     active = models.BooleanField(default=True)
+
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['user','workspace'],name='unique_workspace_membership'),
-                       models.UniqueConstraint(fields=['workspace'],condition=models.Q(workspace='isolation',role='client'),name='single_isolation_client')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'workspace'], name='unique_workspace_membership'
+            ),
+            models.UniqueConstraint(
+                fields=['workspace'],
+                condition=models.Q(workspace='isolation', role='client'),
+                name='single_isolation_client',
+            ),
+        ]
+
     def clean(self):
         from django.core.exceptions import ValidationError
-        if self.role not in ROLES.get(self.workspace,set()):
+
+        if self.role not in ROLES.get(self.workspace, set()):
             raise ValidationError('Rôle incompatible avec cet espace')
 
+
 class AccessAudit(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.SET_NULL,null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     action = models.CharField(max_length=60)
-    workspace = models.CharField(max_length=20,blank=True)
-    metadata = models.JSONField(default=dict,blank=True)
+    workspace = models.CharField(max_length=20, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class SessionGeneration(models.Model):
-    user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,primary_key=True)
-    generation=models.PositiveBigIntegerField(default=0)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True
+    )
+    generation = models.PositiveBigIntegerField(default=0)
+
 
 class CalendarConnection(models.Model):
-    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
-    workspace=models.CharField(max_length=20)
-    provider=models.CharField(max_length=20,blank=True)
-    payload=models.TextField(blank=True)
-    connected=models.BooleanField(default=False)
-    expires_at=models.DateTimeField(null=True)
-    revision=models.PositiveIntegerField(default=0)
-    auto_sync=models.BooleanField(default=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    workspace = models.CharField(max_length=20)
+    provider = models.CharField(max_length=20, blank=True)
+    payload = models.TextField(blank=True)
+    connected = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(null=True)
+    revision = models.PositiveIntegerField(default=0)
+    auto_sync = models.BooleanField(default=False)
+
     class Meta:
-        constraints=[models.UniqueConstraint(fields=['user','workspace'],name='unique_owner_workspace_calendar')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'workspace'], name='unique_owner_workspace_calendar'
+            )
+        ]
+
 
 class CalendarAuthorization(models.Model):
-    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
-    workspace=models.CharField(max_length=20)
-    provider=models.CharField(max_length=20)
-    state_hash=models.CharField(max_length=64,unique=True)
-    session_hash=models.CharField(max_length=64)
-    verifier=models.TextField()
-    revision=models.PositiveIntegerField()
-    expires_at=models.DateTimeField()
-    used=models.BooleanField(default=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    workspace = models.CharField(max_length=20)
+    provider = models.CharField(max_length=20)
+    state_hash = models.CharField(max_length=64, unique=True)
+    session_hash = models.CharField(max_length=64)
+    verifier = models.TextField()
+    revision = models.PositiveIntegerField()
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+
 
 class CalendarSync(models.Model):
     import uuid
-    connection=models.ForeignKey(CalendarConnection,on_delete=models.PROTECT,related_name='events')
-    source_id=models.PositiveBigIntegerField()
-    key=models.UUIDField(default=uuid.uuid4,unique=True)
-    provider=models.CharField(max_length=20)
-    remote_id=models.CharField(max_length=2048,blank=True)
-    source_revision=models.IntegerField(default=-1)
-    fingerprint=models.CharField(max_length=64,blank=True)
-    status=models.CharField(max_length=20,default='pending')
-    error_code=models.CharField(max_length=40,blank=True)
-    checked_at=models.DateTimeField(null=True)
-    create_attempted=models.BooleanField(default=False)
-    expected_start=models.DateTimeField(null=True)
-    expected_end=models.DateTimeField(null=True)
+
+    connection = models.ForeignKey(
+        CalendarConnection, on_delete=models.PROTECT, related_name='events'
+    )
+    source_id = models.PositiveBigIntegerField()
+    key = models.UUIDField(default=uuid.uuid4, unique=True)
+    provider = models.CharField(max_length=20)
+    remote_id = models.CharField(max_length=2048, blank=True)
+    source_revision = models.IntegerField(default=-1)
+    fingerprint = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=20, default='pending')
+    error_code = models.CharField(max_length=40, blank=True)
+    checked_at = models.DateTimeField(null=True)
+    create_attempted = models.BooleanField(default=False)
+    expected_start = models.DateTimeField(null=True)
+    expected_end = models.DateTimeField(null=True)
+
     class Meta:
-        constraints=[models.UniqueConstraint(fields=['connection','source_id'],name='unique_calendar_sync_source')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['connection', 'source_id'], name='unique_calendar_sync_source'
+            )
+        ]
 
 
 class Invitation(models.Model):
     import uuid
-    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    username = models.CharField(max_length=150,unique=True)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    username = models.CharField(max_length=150, unique=True)
     email = models.EmailField()
     workspace = models.CharField(max_length=20)
     role = models.CharField(max_length=30)
-    issuer = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    issuer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     token_hash = models.CharField(max_length=64)
     expires_at = models.DateTimeField()
     accepted_at = models.DateTimeField(null=True)
     revoked_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
-        constraints = [models.UniqueConstraint(models.functions.Lower('username'),name='invitation_username_ci'),
-            models.UniqueConstraint(models.functions.Lower('email'),name='invitation_email_ci')]
+        constraints = [
+            models.UniqueConstraint(
+                models.functions.Lower('username'), name='invitation_username_ci'
+            ),
+            models.UniqueConstraint(models.functions.Lower('email'), name='invitation_email_ci'),
+        ]
+
 
 class PortalMail(models.Model):
     import uuid
-    id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,null=True,on_delete=models.SET_NULL)
-    workspace = models.CharField(max_length=20,blank=True)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    workspace = models.CharField(max_length=20, blank=True)
     payload = models.TextField()
-    status = models.CharField(max_length=12,default='pending')
+    status = models.CharField(max_length=12, default='pending')
     attempts = models.PositiveSmallIntegerField(default=0)
     next_attempt_at = models.DateTimeField()
     lease_until = models.DateTimeField(null=True)
@@ -115,32 +157,41 @@ class PortalMail(models.Model):
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True)
+
     class Meta:
-        indexes=[models.Index(fields=['status','next_attempt_at'],name='portal_mail_due')]
+        indexes = [models.Index(fields=['status', 'next_attempt_at'], name='portal_mail_due')]
+
 
 class AssuranceMailRelay(models.Model):
-    stream=models.CharField(max_length=20,default='incidents')
-    event_id=models.PositiveBigIntegerField()
-    recipient_id=models.PositiveBigIntegerField()
-    mail=models.OneToOneField(PortalMail,null=True,on_delete=models.PROTECT)
-    created_at=models.DateTimeField(auto_now_add=True)
+    stream = models.CharField(max_length=20, default='incidents')
+    event_id = models.PositiveBigIntegerField()
+    recipient_id = models.PositiveBigIntegerField()
+    mail = models.OneToOneField(PortalMail, null=True, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
-        constraints=[models.UniqueConstraint(fields=['stream','event_id','recipient_id'],name='unique_assurance_mail_stream_event_recipient')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['stream', 'event_id', 'recipient_id'],
+                name='unique_assurance_mail_stream_event_recipient',
+            )
+        ]
+
 
 class AssuranceMailCursor(models.Model):
-    id=models.PositiveSmallIntegerField(primary_key=True,default=1)
-    after_id=models.PositiveBigIntegerField(default=0)
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    after_id = models.PositiveBigIntegerField(default=0)
 
 
 class PhoneExtension(models.Model):
     # One PBX for this deployment; same user may use the same post in both workspaces.
-    user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
-    extension=models.CharField(max_length=10,unique=True,null=True)
-    revision=models.PositiveIntegerField(default=0)
-    updated_at=models.DateTimeField(auto_now=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    extension = models.CharField(max_length=10, unique=True, null=True)
+    revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class PhoneDirectoryGate(models.Model):
     # Serialize provider directory reads across API workers, no cached personnel data.
-    id=models.PositiveSmallIntegerField(primary_key=True,default=1)
-    revision=models.PositiveIntegerField(default=0)
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    revision = models.PositiveIntegerField(default=0)

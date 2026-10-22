@@ -1,19 +1,113 @@
 <script setup lang="ts">
-import {ref,reactive,onMounted} from 'vue'
-const props=defineProps<{role:string;request:(path:string,body?:any,method?:string)=>Promise<any>;portal:(path:string,body?:any)=>Promise<any>}>()
-const rows=ref<any[]>([]),count=ref(0),page=ref(1),search=ref(''),state=ref(''),busy=ref(false),error=ref(''),message=ref('')
-const directory=reactive<Record<string,{rows:any[];page:number;count:number;search:string;selected:string}>>({setter:{rows:[],page:1,count:0,search:'',selected:''},advisor:{rows:[],page:1,count:0,search:'',selected:''}})
-const history=ref<any[]>([]),historyPage=ref(1),historyCount=ref(0),historyRow=ref<any>(null)
-async function load(){const result=await props.request(`assignments/?page=${page.value}&search=${encodeURIComponent(search.value)}&active=${state.value}`);rows.value=result.results;count.value=result.count}
-async function loadPeople(role:string){const group=directory[role];const result=await props.portal(`assurance/participants/?role=${role}&search=${encodeURIComponent(group.search)}&page=${group.page}`);group.rows=result.results;group.count=result.count}
-async function run(action:()=>Promise<void>){busy.value=true;error.value='';message.value='';try{await action()}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function people(role:string,step=0){await run(async()=>{const group=directory[role];group.page=step?group.page+step:1;group.selected='';await loadPeople(role)})}
-async function attest(setterId:number,advisorId:number){return (await props.portal('assurance/participants/',{setter_id:setterId,advisor_id:advisorId})).proof}
-async function create(){await run(async()=>{const proof=await attest(Number(directory.setter.selected),Number(directory.advisor.selected));await props.request('assignments/',{proof});directory.setter.selected='';directory.advisor.selected='';page.value=1;search.value='';state.value='';await load();message.value='Conseiller associé au setter.'})}
-async function toggle(row:any){await run(async()=>{const body:any={active:!row.active,revision:row.revision};if(body.active)body.proof=await attest(row.setter.id,row.advisor.id);await props.request(`assignments/${row.id}/`,body,'PATCH');await load();message.value=body.active?'Association réactivée.':'Association suspendue. Les historiques sont conservés.'})}
-async function loadHistory(){const result=await props.request(`assignments/${historyRow.value.id}/history/?page=${historyPage.value}`);history.value=result.results;historyCount.value=result.count}
-onMounted(()=>run(async()=>{await load();if(props.role==='administrator'){await loadPeople('setter');await loadPeople('advisor')}}))
+import { ref, reactive, onMounted } from 'vue'
+const props = defineProps<{
+  role: string
+  request: (path: string, body?: any, method?: string) => Promise<any>
+  portal: (path: string, body?: any) => Promise<any>
+}>()
+const rows = ref<any[]>([]),
+  count = ref(0),
+  page = ref(1),
+  search = ref(''),
+  state = ref(''),
+  busy = ref(false),
+  error = ref(''),
+  message = ref('')
+const directory = reactive<
+  Record<string, { rows: any[]; page: number; count: number; search: string; selected: string }>
+>({
+  setter: { rows: [], page: 1, count: 0, search: '', selected: '' },
+  advisor: { rows: [], page: 1, count: 0, search: '', selected: '' },
+})
+const history = ref<any[]>([]),
+  historyPage = ref(1),
+  historyCount = ref(0),
+  historyRow = ref<any>(null)
+async function load() {
+  const result = await props.request(
+    `assignments/?page=${page.value}&search=${encodeURIComponent(search.value)}&active=${state.value}`,
+  )
+  rows.value = result.results
+  count.value = result.count
+}
+async function loadPeople(role: string) {
+  const group = directory[role]
+  const result = await props.portal(
+    `assurance/participants/?role=${role}&search=${encodeURIComponent(group.search)}&page=${group.page}`,
+  )
+  group.rows = result.results
+  group.count = result.count
+}
+async function run(action: () => Promise<void>) {
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    await action()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function people(role: string, step = 0) {
+  await run(async () => {
+    const group = directory[role]
+    group.page = step ? group.page + step : 1
+    group.selected = ''
+    await loadPeople(role)
+  })
+}
+async function attest(setterId: number, advisorId: number) {
+  return (
+    await props.portal('assurance/participants/', { setter_id: setterId, advisor_id: advisorId })
+  ).proof
+}
+async function create() {
+  await run(async () => {
+    const proof = await attest(
+      Number(directory.setter.selected),
+      Number(directory.advisor.selected),
+    )
+    await props.request('assignments/', { proof })
+    directory.setter.selected = ''
+    directory.advisor.selected = ''
+    page.value = 1
+    search.value = ''
+    state.value = ''
+    await load()
+    message.value = 'Conseiller associé au setter.'
+  })
+}
+async function toggle(row: any) {
+  await run(async () => {
+    const body: any = { active: !row.active, revision: row.revision }
+    if (body.active) body.proof = await attest(row.setter.id, row.advisor.id)
+    await props.request(`assignments/${row.id}/`, body, 'PATCH')
+    await load()
+    message.value = body.active
+      ? 'Association réactivée.'
+      : 'Association suspendue. Les historiques sont conservés.'
+  })
+}
+async function loadHistory() {
+  const result = await props.request(
+    `assignments/${historyRow.value.id}/history/?page=${historyPage.value}`,
+  )
+  history.value = result.results
+  historyCount.value = result.count
+}
+onMounted(() =>
+  run(async () => {
+    await load()
+    if (props.role === 'administrator') {
+      await loadPeople('setter')
+      await loadPeople('advisor')
+    }
+  }),
+)
 </script>
+<!-- prettier-ignore -->
 <template>
 <section class="assignment-panel"><h3>{{role==='administrator'?'Affectations des conseillers':'Mes conseillers'}}</h3><p v-if="error" role="alert" class="error">{{error}}</p><p v-if="message" role="status">{{message}}</p>
 <template v-if="role==='administrator'"><p>Un setter peut disposer de plusieurs conseillers. Les associations sont indépendantes des rendez-vous déjà enregistrés.</p><form @submit.prevent="create"><div class="participant-columns"><div v-for="kind in ['setter','advisor']" :key="kind"><label>{{kind==='setter'?'Rechercher un setter':'Rechercher un conseiller'}}<input v-model="directory[kind].search" :disabled="busy" @keydown.enter.prevent="people(kind)"></label><button type="button" class="secondary" :disabled="busy" @click="people(kind)">Rechercher</button><label>{{kind==='setter'?'Setter actif':'Conseiller actif'}}<select v-model="directory[kind].selected" :disabled="busy" required><option value="">Sélectionner un compte</option><option v-for="person in directory[kind].rows" :key="person.id" :value="String(person.id)">{{person.name}}</option></select></label><div class="assignment-actions"><button type="button" class="secondary" :disabled="busy||directory[kind].page===1" @click="people(kind,-1)">Précédent</button><span>{{directory[kind].count}} compte(s) · page {{directory[kind].page}}</span><button type="button" class="secondary" :disabled="busy||directory[kind].page*25>=directory[kind].count" @click="people(kind,1)">Suivant</button></div></div></div><button class="primary" :disabled="busy||!directory.setter.selected||!directory.advisor.selected">Associer ce conseiller au setter</button></form><form class="assignment-actions" @submit.prevent="run(async()=>{page=1;await load()})"><label>Rechercher une association<input v-model="search" placeholder="Nom du setter ou du conseiller"></label><label>État<select v-model="state"><option value="">Tous</option><option value="true">Actives</option><option value="false">Suspendues</option></select></label><button class="secondary" :disabled="busy">Filtrer</button></form></template>
@@ -23,5 +117,50 @@ onMounted(()=>run(async()=>{await load();if(props.role==='administrator'){await 
 </section>
 </template>
 <style scoped>
-.assignment-panel{margin:24px 0}.participant-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px}.participant-columns>div{display:grid;gap:12px}.assignment-panel form{margin:24px 0}.assignment-panel select{padding:12px;border:1px solid #dedfce;border-radius:10px;background:white;max-width:100%}.assignment-actions{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:16px 0}.assignment-panel article{padding:16px;border-bottom:1px solid #ddd}.assignment-panel pre{white-space:pre-wrap;overflow-wrap:anywhere}.assignment-panel button:disabled{opacity:.5;cursor:not-allowed}@media(max-width:650px){.participant-columns{grid-template-columns:1fr}}
+.assignment-panel {
+  margin: 24px 0;
+}
+.participant-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.participant-columns > div {
+  display: grid;
+  gap: 12px;
+}
+.assignment-panel form {
+  margin: 24px 0;
+}
+.assignment-panel select {
+  padding: 12px;
+  border: 1px solid #dedfce;
+  border-radius: 10px;
+  background: white;
+  max-width: 100%;
+}
+.assignment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 16px 0;
+}
+.assignment-panel article {
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+}
+.assignment-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assignment-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 650px) {
+  .participant-columns {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -1,10 +1,57 @@
 <script setup lang="ts">
-import {ref,onMounted} from 'vue'
-const props=defineProps<{task:any;portal:(path:string,body?:any)=>Promise<any>;request:(path:string,body?:any,method?:string)=>Promise<any>}>()
-const emit=defineEmits<{saved:[];cancel:[]}>()
-const rows=ref<any[]>([]),page=ref(1),count=ref(0),search=ref(''),selected=ref(''),reason=ref(''),busy=ref(false),error=ref('')
-async function load(step=0){busy.value=true;error.value='';selected.value='';page.value=step?page.value+step:1;try{const data=await props.portal(`assurance/participants/?role=setter&page=${page.value}&search=${encodeURIComponent(search.value)}`);rows.value=data.results;count.value=data.count}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function save(){busy.value=true;error.value='';try{const {proof}=await props.portal('assurance/task-owner-proof/',{task_id:props.task.id,setter_id:Number(selected.value)});await props.request(`follow-ups/${props.task.id}/reassign/?state=all`,{revision:props.task.revision,proof,reason:reason.value});emit('saved')}catch(e:any){error.value=e.message}finally{busy.value=false}}
-onMounted(()=>load())
+import { ref, onMounted } from 'vue'
+const props = defineProps<{
+  task: any
+  portal: (path: string, body?: any) => Promise<any>
+  request: (path: string, body?: any, method?: string) => Promise<any>
+}>()
+const emit = defineEmits<{ saved: []; cancel: [] }>()
+const rows = ref<any[]>([]),
+  page = ref(1),
+  count = ref(0),
+  search = ref(''),
+  selected = ref(''),
+  reason = ref(''),
+  busy = ref(false),
+  error = ref('')
+async function load(step = 0) {
+  busy.value = true
+  error.value = ''
+  selected.value = ''
+  page.value = step ? page.value + step : 1
+  try {
+    const data = await props.portal(
+      `assurance/participants/?role=setter&page=${page.value}&search=${encodeURIComponent(search.value)}`,
+    )
+    rows.value = data.results
+    count.value = data.count
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function save() {
+  busy.value = true
+  error.value = ''
+  try {
+    const { proof } = await props.portal('assurance/task-owner-proof/', {
+      task_id: props.task.id,
+      setter_id: Number(selected.value),
+    })
+    await props.request(`follow-ups/${props.task.id}/reassign/?state=all`, {
+      revision: props.task.revision,
+      proof,
+      reason: reason.value,
+    })
+    emit('saved')
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+onMounted(() => load())
 </script>
+<!-- prettier-ignore -->
 <template><section><h4>Réattribuer la tâche {{task.id}}</h4><p>Seule la responsabilité du suivi change. Le rendez-vous et son setter d’origine restent inchangés. Priorité et échéance sont conservées.</p><p v-if="error" role="alert">{{error}}</p><form @submit.prevent="load()"><label>Rechercher un setter actif<input v-model="search" :disabled="busy"></label><button class="secondary" :disabled="busy">Rechercher</button></form><form @submit.prevent="save"><label>Nouveau responsable<select v-model="selected" required :disabled="busy"><option value="">Choisir un setter Assurance</option><option v-for="person in rows" :key="person.id" :value="String(person.id)" :disabled="person.id===task.assigned_setter_id">{{person.name}}{{person.id===task.assigned_setter_id?' (responsable actuel)':''}}</option></select></label><p>{{count}} setter(s) · page {{page}}</p><button type="button" class="secondary" :disabled="busy||page===1" @click="load(-1)">Précédent</button><button type="button" class="secondary" :disabled="busy||page*25>=count" @click="load(1)">Suivant</button><label>Motif de réattribution<textarea v-model="reason" maxlength="1000" required :disabled="busy"></textarea></label><button class="primary" :disabled="busy||!selected">Confirmer la réattribution</button><button type="button" class="secondary" :disabled="busy" @click="emit('cancel')">Annuler</button></form></section></template>

@@ -61,6 +61,8 @@ $env:DEBUG='true'
 .venv/Scripts/python.exe manage.py makemigrations --check --dry-run
 ```
 
+Formatage, contrôlé en CI : `ruff format .` (Ruff 0.6.9) à la racine et `pnpm format` dans `frontend/` (`pnpm format:check` pour vérifier sans modifier). Les templates Vue sont exclus pour l'instant.
+
 Les tests automatisés ont été exécutés sur SQLite et PostgreSQL. Redis a été testé en réel pour la limitation globale. Une sauvegarde PostgreSQL de données fictives a été restaurée dans une deuxième base jetable. Ces vérifications ne remplacent pas la recette sur votre hébergement et votre compte Twilio.
 
 ## À fournir et valider ensuite

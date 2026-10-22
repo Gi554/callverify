@@ -1,10 +1,51 @@
 <script setup lang="ts">
-import {ref,onMounted} from 'vue'
-const props=defineProps<{request:(path:string,body?:any,method?:string)=>Promise<any>}>()
-const stages=ref<any[]>([]),revision=ref(0),reason=ref(''),busy=ref(false),error=ref(''),message=ref('')
-async function load(){busy.value=true;error.value='';try{const data=await props.request('pipeline/');stages.value=data.stages.map((s:any)=>({...s,existing:true}));revision.value=data.revision}catch(e:any){error.value=e.message}finally{busy.value=false}}
-async function save(){busy.value=true;error.value='';message.value='';try{await props.request('pipeline/',{revision:revision.value,reason:reason.value,stages:stages.value.map(({key,label,active})=>({key,label,active}))});reason.value='';await load();message.value='Pipeline enregistré.'}catch(e:any){error.value=e.message}finally{busy.value=false}}
-function move(index:number,delta:number){const row=stages.value.splice(index,1)[0];stages.value.splice(index+delta,0,row)}
+import { ref, onMounted } from 'vue'
+const props = defineProps<{
+  request: (path: string, body?: any, method?: string) => Promise<any>
+}>()
+const stages = ref<any[]>([]),
+  revision = ref(0),
+  reason = ref(''),
+  busy = ref(false),
+  error = ref(''),
+  message = ref('')
+async function load() {
+  busy.value = true
+  error.value = ''
+  try {
+    const data = await props.request('pipeline/')
+    stages.value = data.stages.map((s: any) => ({ ...s, existing: true }))
+    revision.value = data.revision
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+async function save() {
+  busy.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    await props.request('pipeline/', {
+      revision: revision.value,
+      reason: reason.value,
+      stages: stages.value.map(({ key, label, active }) => ({ key, label, active })),
+    })
+    reason.value = ''
+    await load()
+    message.value = 'Pipeline enregistré.'
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
+}
+function move(index: number, delta: number) {
+  const row = stages.value.splice(index, 1)[0]
+  stages.value.splice(index + delta, 0, row)
+}
 onMounted(load)
 </script>
+<!-- prettier-ignore -->
 <template><section><h3>Pipeline commercial Assurance</h3><p>Les statuts sont renseignés manuellement et restent distincts des comptes rendus, incidents et contrats. Archiver un statut conserve les fiches et leur historique. Le statut initial des imports reste actif.</p><p v-if="error" role="alert">{{error}}</p><p v-if="message" role="status">{{message}}</p><form @submit.prevent="save"><fieldset v-for="(stage,index) in stages" :key="index" :disabled="busy"><legend>Étape {{index+1}}</legend><label>Clé stable<input v-model="stage.key" :readonly="stage.existing" pattern="[a-z][a-z0-9_]{0,39}" maxlength="40" required></label><label>Libellé<input v-model="stage.label" maxlength="100" required></label><label><input v-model="stage.active" type="checkbox" :disabled="stage.key==='to_contact'">Actif</label><button type="button" class="secondary" :disabled="index===0" @click="move(index,-1)">Monter</button><button type="button" class="secondary" :disabled="index===stages.length-1" @click="move(index,1)">Descendre</button><button v-if="!stage.existing" type="button" class="secondary" @click="stages.splice(index,1)">Retirer</button></fieldset><button type="button" class="secondary" :disabled="busy||stages.length>=30" @click="stages.push({key:'',label:'',active:true,existing:false})">Ajouter un statut</button><label>Motif de configuration<textarea v-model="reason" maxlength="1000" required :disabled="busy"></textarea></label><button class="primary" :disabled="busy">Enregistrer le pipeline</button><button type="button" class="secondary" :disabled="busy" @click="load">Recharger le pipeline</button></form></section></template>
