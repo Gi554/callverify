@@ -131,8 +131,22 @@ function isolationDashboard(role: string) {
 function isolation(path: string, body?: any, method?: string) {
   return business(path, body, method, 'isolation');
 }
+// The last workspace is reopened on reload, so multi-space users skip the space chooser.
+const LAST_WORKSPACE = 'amx-workspace';
+function rememberedWorkspace() {
+  try {
+    return localStorage.getItem(LAST_WORKSPACE) || '';
+  } catch {
+    return '';
+  }
+}
 async function enter(value: string) {
   if (!user.value?.workspaces.some((item) => item.workspace === value)) return;
+  try {
+    localStorage.setItem(LAST_WORKSPACE, value);
+  } catch {
+    /* Storage unavailable: the profile menu still switches spaces. */
+  }
   const version = ++workspaceVersion;
   error.value = '';
   busy.value = true;
@@ -348,12 +362,11 @@ onMounted(async () => {
   }
   try {
     user.value = await portal('session/');
-    if (user.value?.workspaces.length === 1) await enter(user.value.workspaces[0]!.workspace);
-    else if (
-      user.value?.landing &&
-      user.value.workspaces.some((item) => item.workspace === user.value!.landing)
-    )
-      await enter(user.value.landing);
+    const allowed = user.value?.workspaces.map((item) => item.workspace) || [];
+    const target = [rememberedWorkspace(), user.value?.landing || '', allowed[0] || ''].find(
+      (value) => value && allowed.includes(value),
+    );
+    if (target) await enter(target);
   } catch {
   } finally {
     ready.value = true;

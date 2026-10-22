@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Accès direct au dernier espace — fin de la page « Mes espaces »
+
+Un compte autorisé dans les deux espaces n’est plus arrêté sur la page « Mes espaces » au rechargement ou au retour sur le site : le dernier espace utilisé (mémorisé dans le navigateur) est rouvert, sinon l’espace d’accueil du portail, sinon le premier espace autorisé. Le changement d’espace se fait par le menu du profil. La connexion ouvrait déjà l’espace du profil choisi. La page ne subsiste que pour un compte sans espace actif. Mémorisation au mieux : stockage indisponible sans effet bloquant.
+
+Validation : démo avec `setter.demo01` — connexion Isolation puis rechargement : Isolation ; bascule Assurance par le profil puis rechargement : Assurance ; page de choix jamais affichée. 71 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : mémorisation par navigateur (pas par compte côté serveur).
+
 ## Closer et client Isolation — cadre commun utilisable sur téléphone
 
 Le closer et le client Isolation passent sur le cadre commun, comme le conseiller : leurs menus et libellés sont conservés (closer : Mes visites, Mes statistiques ; client : Vue d’ensemble, Mes dossiers, Visites, Statistiques), sans recherche, appels ni Pilotage ; profil « Isolation · Closer » ou « Isolation · Client ». La mise en cartes des tableaux sur téléphone (sous 700 px) est désormais commune aux rôles terrain (conseiller, closer, client) et portée par le cadre ; la copie propre au conseiller est retirée.
