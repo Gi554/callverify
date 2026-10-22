@@ -28,7 +28,7 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>
   portal: (path: string, body?: any) => Promise<any>
 }>()
-const emit = defineEmits<{ navigate: [value: string] }>()
+const emit = defineEmits<{ navigate: [value: string]; changed: [] }>()
 const zone = ref('America/Toronto'),
   month = ref(dayKey(new Date(), zone.value).slice(0, 7)),
   status = ref(''),
@@ -43,7 +43,48 @@ const selected = ref<any>(null),
   creating = ref(false),
   detailBusy = ref(false)
 const assurance = computed(() => props.workspace === 'assurance'),
-  canBook = computed(() => ['setter', 'administrator'].includes(props.role))
+  canBook = computed(() => ['setter', 'administrator'].includes(props.role)),
+  admin = computed(() => props.role === 'administrator')
+// Administrator only: the existing list keeps its management tools.
+const listView = ref(false)
+// Team filter built from the loaded month: participants are only exposed to administrators.
+const member = ref('')
+const memberKinds = computed(() =>
+  assurance.value
+    ? [
+        { kind: 'setter', label: 'Setters', of: (row: any) => row.setter },
+        { kind: 'advisor', label: 'Conseillers', of: (row: any) => row.advisor },
+      ]
+    : [
+        { kind: 'setter', label: 'Setters', of: (row: any) => row.original_setter },
+        { kind: 'closer', label: 'Closers', of: (row: any) => row.closer },
+        { kind: 'client', label: 'Clients', of: (row: any) => row.client },
+      ],
+)
+const memberGroups = computed(() =>
+  memberKinds.value
+    .map(({ kind, label, of }) => {
+      const people = new Map<string, string>()
+      for (const row of rows.value) {
+        const person = of(row)
+        if (person?.id != null) people.set(String(person.id), person.name || `#${person.id}`)
+      }
+      return {
+        kind,
+        label,
+        options: [...people]
+          .map(([id, name]) => ({ value: `${kind}:${id}`, name }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+      }
+    })
+    .filter((group) => group.options.length),
+)
+function matchesMember(row: any) {
+  if (!member.value) return true
+  const [kind, id] = member.value.split(':')
+  const person = memberKinds.value.find((entry) => entry.kind === kind)?.of(row)
+  return String(person?.id ?? '') === id
+}
 const days = computed(() => monthGrid(month.value)),
   today = computed(() => dayKey(new Date(), zone.value))
 const title = computed(() =>
@@ -63,9 +104,18 @@ const filtered = computed(() => {
   const term = search.value.trim().toLocaleLowerCase('fr')
   return rows.value.filter((row) => {
     const person = row.contact || row.prospect
+    if (!matchesMember(row)) return false
     return (
       !term ||
-      [person?.name, person?.phone, row.advisor?.name, row.client?.name].some((value) =>
+      [
+        person?.name,
+        person?.phone,
+        row.advisor?.name,
+        row.client?.name,
+        row.setter?.name,
+        row.original_setter?.name,
+        row.closer?.name,
+      ].some((value) =>
         String(value || '')
           .toLocaleLowerCase('fr')
           .includes(term),
@@ -169,13 +219,14 @@ onBeforeUnmount(() => {
 <!-- prettier-ignore -->
 <template>
  <section class="appointment-calendar">
-  <header class="calendar-heading"><div><span class="calendar-eyebrow">MON ESPACE {{assurance?'ASSURANCE':'ISOLATION'}}</span><h1>{{assurance?'Rendez-vous':'Visites'}}</h1><p>Vos prochains échanges prennent place ici.</p></div><button v-if="canBook" class="calendar-new" @click="creating=true"><Plus :size="16"/>Réserver un {{assurance?'rendez-vous':'créneau'}}</button></header>
-  <div class="calendar-surface">
+  <header class="calendar-heading"><div><span class="calendar-eyebrow">{{admin?'ÉQUIPE':'MON ESPACE'}} {{assurance?'ASSURANCE':'ISOLATION'}}</span><h1>{{assurance?'Rendez-vous':'Visites'}}</h1><p>{{admin?'L’agenda de toute l’équipe.':'Vos prochains échanges prennent place ici.'}}</p></div><div v-if="admin" class="calendar-view-switch" role="group" aria-label="Affichage"><button :class="{'is-active':!listView}" :aria-pressed="!listView" @click="listView=false">Calendrier</button><button :class="{'is-active':listView}" :aria-pressed="listView" @click="listView=true">Liste</button></div><button v-if="canBook&&!listView" class="calendar-new" @click="creating=true"><Plus :size="16"/>Réserver un {{assurance?'rendez-vous':'créneau'}}</button></header>
+  <div v-if="admin&&listView" class="calendar-list-view"><AssuranceAppointments v-if="assurance" :request="request" :portal="portal" :role="role"/><IsolationVisits v-else :role="role" :portal="portal" :request="request" @close="listView=false" @changed="emit('changed')"/></div>
+  <div v-else class="calendar-surface">
    <div class="calendar-toolbar"><div class="calendar-today"><strong>{{weekday}}</strong><span>{{busy?'Chargement…':`${monthCount} ${assurance?'rendez-vous':'visite(s)'} sur ce mois`}}</span></div><div class="calendar-month-nav"><button aria-label="Mois précédent" :disabled="month<='1901-01'" @click="move(-1)"><ChevronLeft :size="17"/></button><h2 aria-live="polite">{{title}}</h2><button aria-label="Mois suivant" :disabled="month>='2099-12'" @click="move(1)"><ChevronRight :size="17"/></button></div><div class="calendar-toolbar-end"><button class="calendar-today-button" @click="month=today.slice(0,7)">Aujourd’hui</button><button class="calendar-icon-button" :disabled="busy" aria-label="Actualiser le calendrier" @click="load"><RefreshCw :size="16"/></button></div></div>
-   <div class="calendar-filters"><label class="calendar-search"><Search :size="15"/><input v-model="search" placeholder="Prospect ou conseiller…" aria-label="Rechercher dans les rendez-vous chargés"></label><label class="calendar-select"><span>Statut</span><select v-model="status"><option value="">Tous les statuts</option><template v-if="assurance"><option v-for="(label,key) in appointmentStatusLabels" :key="key" :value="key">{{label}}</option></template><template v-else><option value="scheduled">Planifiés</option><option value="cancelled">Annulés</option></template></select></label><label class="calendar-select"><span>Heures affichées</span><select v-model="zone"><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Edmonton">Edmonton</option><option value="America/Winnipeg">Winnipeg</option><option value="America/Halifax">Halifax</option><option value="America/St_Johns">Saint-Jean</option></select></label></div>
+   <div class="calendar-filters"><label class="calendar-search"><Search :size="15"/><input v-model="search" :placeholder="admin?'Prospect ou membre de l’équipe…':'Prospect ou conseiller…'" aria-label="Rechercher dans les rendez-vous chargés"></label><label v-if="admin" class="calendar-select"><span>Membre de l’équipe</span><select v-model="member"><option value="">Toute l’équipe</option><optgroup v-for="group in memberGroups" :key="group.kind" :label="group.label"><option v-for="option in group.options" :key="option.value" :value="option.value">{{option.name}}</option></optgroup><option v-if="member&&!memberGroups.some(group=>group.options.some(option=>option.value===member))" :value="member">Membre sans rendez-vous ce mois</option></select></label><label class="calendar-select"><span>Statut</span><select v-model="status"><option value="">Tous les statuts</option><template v-if="assurance"><option v-for="(label,key) in appointmentStatusLabels" :key="key" :value="key">{{label}}</option></template><template v-else><option value="scheduled">Planifiés</option><option value="cancelled">Annulés</option></template></select></label><label class="calendar-select"><span>Heures affichées</span><select v-model="zone"><option value="America/Toronto">Toronto / Montréal</option><option value="America/Vancouver">Vancouver</option><option value="America/Edmonton">Edmonton</option><option value="America/Winnipeg">Winnipeg</option><option value="America/Halifax">Halifax</option><option value="America/St_Johns">Saint-Jean</option></select></label></div>
    <div v-if="error" class="calendar-error" role="alert"><strong>Le calendrier n’a pas pu être chargé.</strong><p>{{error}}</p><button class="calendar-today-button" @click="load">Réessayer</button></div>
    <p v-else-if="busy" class="calendar-notice" role="status">Chargement des rendez-vous{{expectedCount?` · ${loadedCount} / ${expectedCount}`:'…'}}</p>
-   <p v-else-if="!filtered.length" class="calendar-notice" role="status">{{search.trim()?'Aucun rendez-vous ne correspond à votre recherche.':'Aucun rendez-vous pour cette période et ce statut.'}}</p>
+   <p v-else-if="!filtered.length" class="calendar-notice" role="status">{{search.trim()||member?'Aucun rendez-vous ne correspond à votre recherche.':'Aucun rendez-vous pour cette période et ce statut.'}}</p>
    <p class="calendar-mobile-hint">Faites défiler le calendrier vers la droite pour voir toute la semaine.<ArrowRight :size="13"/></p><div class="calendar-scroll" tabindex="0" role="region" :aria-label="`Calendrier de ${title}`" :aria-busy="busy">
     <div class="calendar-weekdays"><span v-for="(day,index) in ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']" :key="day" :class="{'weekday-today':((new Date(today+'T12:00:00Z').getUTCDay()+6)%7)===index&&month===today.slice(0,7)}">{{day}}</span></div>
     <div class="calendar-grid"><div v-for="cell in cells" :key="cell.day" class="calendar-cell" :class="{'outside-month':!cell.day.startsWith(month),'is-today':cell.day===today,'is-weekend':[0,6].includes(new Date(cell.day+'T12:00:00Z').getUTCDay())}"><button class="calendar-day" :aria-label="`${fullDay(cell.day)} : ${cell.rows.length} rendez-vous`" :aria-current="cell.day===today?'date':undefined" @click="selectedDay=cell.day"><time :datetime="cell.day">{{Number(cell.day.slice(-2))}}</time></button>
@@ -229,6 +280,28 @@ onBeforeUnmount(() => {
 .appointment-calendar button:disabled {
   opacity: 0.45;
   cursor: wait;
+}
+.calendar-view-switch {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f1eff4;
+}
+.calendar-view-switch button {
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #5d5866;
+  padding: 9px 15px;
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.calendar-view-switch button.is-active {
+  background: white;
+  color: #242127;
+  box-shadow: 0 1px 4px #24212718;
 }
 .calendar-new {
   display: inline-flex;

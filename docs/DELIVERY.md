@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Calendrier d’équipe administrateur — Assurance et Isolation
+
+L’administrateur ouvre désormais Rendez-vous ou Visites sur le calendrier mensuel déjà utilisé par le setter, intitulé « Équipe » avec l’agenda de toute l’équipe. Un filtre **Membre de l’équipe** regroupe setters et conseillers (Assurance) ou setters d’origine, closers et clients (Isolation), construit à partir des rendez-vous du mois chargé ; la recherche couvre aussi ces noms. Une bascule **Calendrier / Liste** redonne accès à la liste de gestion existante sans rien retirer ; la réservation et le détail complet restent disponibles depuis le calendrier. Les modifications de visites Isolation depuis la liste rafraîchissent les compteurs de l’espace. Aucun changement backend, aucune migration : les participants étaient déjà renvoyés aux seuls administrateurs.
+
+Validation : quatre tests (filtre setter/conseiller Assurance sans nouvelle requête, bascule liste/calendrier, groupes setters/closers/clients Isolation, setter sans filtre ni bascule). Suite frontend 64 tests, typage, format et build réussis.
+
+Limites : filtrage côté navigateur sur le mois chargé ; un mois très chargé est récupéré page par page (25 lignes) avant affichage. Un membre sans rendez-vous ce mois n’apparaît pas dans la liste. Pas de revue visuelle en navigateur ; revue esthétique différée. Prochain lot : prospects Assurance administrateur alignés sur l’écran setter, import conservé.
+
 ## Accueil et navigation administrateur — Assurance et Isolation
 
 L’administrateur utilise désormais le même cadre que le setter : en-tête avec recherche, tâches et profil (« Assurance · Administration »), barre latérale sombre. La navigation principale regroupe Accueil, Prospects, Rendez-vous ou Visites, Opportunités (Assurance) et Tâches ; un bloc **Pilotage** rassemble Statistiques, Affectations, Mandats et contrats, Paramètres métier, Vérification des numéros (Isolation) et, pour les gestionnaires d’accès, Utilisateurs et accès. Les commandes d’appel restent réservées au setter. Conseiller, closer et client conservent l’ancien cadre.
