@@ -160,7 +160,7 @@ a été initialisée avec authentification SCRAM, en suivant la
 
 ## Données fictives demandées
 
-Préparer ensuite un générateur reproductible réservé à une cible de recette neuve,
+Générateur livré : voir [le guide de recette](DEMO_DATA.md). Il est réservé à une cible neuve,
 avec de nombreux prospects dans les deux secteurs, tous les rôles, des rendez-vous
 passés/futurs et résultats, rappels en retard/à venir/terminés et historiques
 déclarés. Les scénarios doivent alimenter les tableaux de bord et statistiques.

@@ -26,6 +26,9 @@ from packages.database import configure_schema
 configure_schema(DATABASES['default'], 'portal')
 SESSION_COOKIE_NAME = 'amx_portal_session'
 CSRF_COOKIE_NAME = 'amx_portal_csrf'
+if DEBUG and os.getenv('CRM_DEMO_MODE') == 'true':
+    SESSION_COOKIE_NAME = 'amx_demo_portal_session'
+    CSRF_COOKIE_NAME = 'amx_demo_portal_csrf'
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
