@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Panneau latéral commun et fiche prospect guidée
+
+Composant SidePanel réutilisable pour les futures fiches/formulaires : ouverture à droite, contexte de page visible, en-tête et actions fixes, fermeture contrôlée et Échap protégé pendant les opérations, défilement interne, format mobile et animation réduite selon les préférences. La fiche prospect utilise trois onglets Coordonnées, Qualification et Rendez-vous ; les saisies restent montées pendant les changements d’onglet. Les champs complémentaires vides et l’historique de rendez-vous vide ne prennent plus de place. Sans conseiller attribué, un encart remplace le formulaire de réservation inutilisable. Une fermeture avec note, document ou qualification non enregistrés propose de rester ou d’abandonner ces saisies.
+
+Validation ciblée : typage Vue, tests du cycle ouverture/fermeture du panneau et des commandes d’appel, revue visuelle navigateur et abandon d’un brouillon local non enregistré. Aucun appel ni rendez-vous réel déclenché. La recette métier globale reste reportée ; les autres modales seront reprises page par page suivant ce modèle (docs/UI_PATTERNS.md).
+
 ## Filtre de statut prospects
 
 Suppression du double encadrement causé par les styles globaux du sélecteur. Une seule bordure, flèche alignée à droite et indicateur de focus autour du contrôle complet. Contrôle du diff effectué ; recette approfondie reportée.
