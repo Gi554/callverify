@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Préparation de la base commune — audit SQLite en lecture seule
+
+Un nouvel outil `scripts/crm_db_audit.py` contrôle les trois sources locales sans les modifier : intégrité et clés étrangères, inventaire et empreintes de structure, migrations attendues, références aux identités centrales et sources métier des appels/calendriers selon l’espace. Les références sans clé étrangère sont classées explicitement ; les exclusions polymorphes restent signalées comme non vérifiées. Un rapport agrégé hors Git expose les blocages sans lignes métier ni secrets. Refus des sources absentes/identiques, des liens et de tout écrasement. Codes 0 (périmètre contrôlé sans problème), 2 (blocages avec rapport), 1 (audit impossible). `migration_ready` reste toujours false, même avec la déclaration opérateur `--quiesced`.
+
+L’audit local du 22 octobre compte 22 tables portail, 29 Assurance et 33 Isolation ; 36 contrôles d’identités et deux contrôles de sources, sans blocage détecté dans ce périmètre. Neuf noms de tables sont communs à plusieurs bases et doivent conserver leurs copies distinctes. Les services sont restés actifs : les instantanés sont cohérents séparément, sans transaction commune. Aucune copie vers PostgreSQL ni bascule effectuée ; les trois bases actuelles restent distinctes.
+
+Le [plan de centralisation](DATABASE_CENTRALIZATION.md) décrit la cible proposée : une base PostgreSQL, trois schémas et rôles distincts, portail comme autorité d’identité, conservation des identifiants et historiques. La configuration, le transfert, les contrôles PostgreSQL, les références polymorphes/JSON, les médias et la restauration restent à réaliser et à éprouver avant migration.
+
+Validation : huit tests dédiés ; suite core complète de 231 tests réussie, dont 17 ignorés. Contrôles WAL, intégrité, absence de fuite des valeurs et refus d’écrasement couverts. Aucun appel, accès fournisseur, arrêt de service ou changement de configuration. Prochain lot : préparer une cible PostgreSQL isolée pour répéter la centralisation et vérifier les permissions avant toute bascule.
+
 ## Historique Phonetico en fiche — consultation sortante filtrée
 
 Les fiches Setter Assurance (Appel et rappels et activité du dossier) et Isolation (Fiche et suivi) proposent une consultation manuelle du journal Phonetico. Choix de sept dates maximum sans futur, en heure de Montréal, pagination de 25 lignes, date/heure locale et durée brute. Aucune lecture automatique au montage, aucun appel, ni commande d’enregistrement/DTMF/raccrochage. Le journal fournisseur reste distinct des déclarations du setter, sans conversion en humain décroché, validité de ligne ou résultat commercial. L’unité de Duration n’étant pas confirmée, elle reste explicitement brute.
