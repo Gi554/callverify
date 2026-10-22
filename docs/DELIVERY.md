@@ -1,5 +1,19 @@
 # Suivi des livraisons CRM AMX
 
+## Performances Isolation par semaine, setter et closer
+
+La page Statistiques propose une semaine (lundi–dimanche) ou une période personnalisée de 366 jours maximum, avec choix du fuseau Toronto/Montréal, Vancouver, Halifax ou UTC. Les bornes correspondent aux jours locaux inclus et respectent les semaines de 167/169 heures au changement d’heure. L’interface démarre sur la semaine courante à Montréal ; les requêtes historiques sans fuseau conservent leur comportement UTC. Les filtres modifiés n’altèrent pas un rapport déjà affiché : il faut recalculer ; pagination et téléchargements utilisent ensuite ses critères appliqués.
+
+Compteurs : rendez-vous réservés dans le périmètre, tenus, non tenus déclarés, ventes explicitement conclues, tenus sans vente conclue déclarée, tenus dont la vente reste non renseignée, résultats de tenue manquants, annulations, à venir et visites sans closer. Taux de présence = tenus / résultats de tenue renseignés. Taux de conclusion observé = ventes conclues / rendez-vous tenus, y compris ceux dont la vente reste à renseigner ; ces inconnus sont affichés séparément et ne deviennent pas des ventes perdues. Aucun dénominateur donne « Non calculable ». Exemple testé : 20 rendez-vous, 15 tenus, 5 non tenus et 5 ventes donnent 75 % de présence et 33,3 % de conclusion parmi les tenus.
+
+Le client Isolation unique et l’administration comparent les groupes paginés par setter d’origine ou closer actuellement attribué, avec groupe « Non attribué ». Les totaux portent sur toute la période, pas seulement la page. Une réattribution déplace les visites et résultats courants dans le groupe du nouveau closer ; l’auteur historique du résultat reste dans l’audit. Ces rapports décrivent donc l’état actuel de la cohorte de rendez-vous, pas une photographie historique d’effectif. Le setter conserve son périmètre existant (ses réservations dont il conserve le prospect). Le closer accède à ses statistiques personnelles depuis son espace, limitées à ses visites actuellement attribuées, sans groupes ni noms de tiers. Les autres API restent fermées au closer.
+
+Exports Excel et CSV : toutes les lignes du regroupement affiché (limite 5 000 groupes), même au-delà de la pagination ; feuille Synthèse puis Par setter ou Par closer, intitulés français, dates/fuseau et définitions des calculs. Aucun téléphone, qualification personnelle ou note libre de prospect. Protection contre les formules dans les noms conservée, téléchargements audités. Une semaine et des dates personnalisées simultanées, fuseau inconnu, groupe invalide et bornes hors limites sont refusés.
+
+Validation : suite core complète, 209 tests exécutés dont 192 réussis et 17 ignorés selon SQLite/Windows ; 10 tests frontend (statistiques, export selon filtres appliqués, pagination, erreur sans anciennes données, résultats closer et shell). Typage Vue, build production et absence de migration manquante validés. Aucune migration nécessaire pour ce lot, aucun appel ni rendez-vous réel créé. Revue visuelle encore à faire, navigateur Work désactivé ; avertissement Vite >500 kB conservé.
+
+Restent à réaliser : extension des résultats d’appel et tâches de rappel au parcours Isolation, centralisation physique de la base, recette externe des connecteurs et revue des interfaces avec l’utilisateur. Prochain lot : résultats d’appel déclarés et rappels Isolation, sans déclencher d’appel réel.
+
 ## Espace closer Isolation, attribution et résultats corrigibles
 
 Le rôle Closer est disponible dans l’administration et les invitations Isolation, distinct du client Isolation unique. Son espace affiche uniquement ses visites attribuées, leur créneau/fuseau, le setter d’origine, la copie C2 et le résultat. Il n’accède ni à la file générale des prospects, ni aux vérifications techniques, ni aux visites d’un autre closer, ni aux API historiques client/setter. Aucun nouveau compte de recette n’a été créé.
@@ -10,7 +24,7 @@ Après la fin d’une visite non annulée, le closer attribué déclare explicit
 
 Validation : suites complètes core (200 tests, 183 réussis, 17 ignorés SQLite/Windows) et portail identité (206 tests, 195 réussis, 11 ignorés selon l’environnement), 12 tests frontend (saisie closer, erreur conservant le brouillon, qualification ancienne, C2/réservation et shell), typage Vue et build production. Migration 0016 appliquée après sauvegarde SQLite hors Git, aucune migration manquante core/portail, diff sans erreur. Aucun appel, visite réelle, invitation ou message externe lancé. Revue visuelle à effectuer, accès navigateur local désactivé dans Work ; avertissement Vite >500 kB conservé.
 
-Limites : le client/administrateur attribue après réservation ; le setter ne choisit pas un closer à la création. L’agenda externe reste celui du client Isolation configuré, sans nouvelle synchronisation personnelle du closer. Les contrôles d’activation d’un compte sont ceux des tickets existants à expiration courte. Les statistiques existantes comptent toujours tenue/non-tenue ; les ventilations closer, ventes et taux de conclusion ne sont pas encore livrées. Prochain lot : statistiques hebdomadaires/période personnalisée par setter et closer, avec exports, en conservant les inconnus. La base physique commune reste à réaliser.
+Limites : le client/administrateur attribue après réservation ; le setter ne choisit pas un closer à la création. L’agenda externe reste celui du client Isolation configuré, sans nouvelle synchronisation personnelle du closer. Les contrôles d’activation d’un compte sont ceux des tickets existants à expiration courte. Les ventilations closer, ventes et taux de conclusion sont désormais livrés dans le lot de performances décrit ci-dessus. La base physique commune reste à réaliser.
 
 ## Formulaire C2 Isolation et copie conservée à la réservation
 
@@ -63,7 +77,7 @@ Suivi des lots :
 - Transmission contrôlée au conseiller : livrée dans le CRM avec copie datée. Présence/absence/annulation/report : livrés dans le lot des statuts métier ci-dessus, avec les preuves et transitions autorisées.
 - Formulaire Isolation C2 distinct : livré ci-dessus avec brouillon et copie datée à la réservation.
 - Espace et permissions closer Isolation : livrés ci-dessus, attribution contrôlée et résultats corrigibles avec historique.
-- Statistiques Isolation par semaine et période, setter et closer : attribués, tenus, non tenus, conclus, présence et conclusion parmi les tenus ; exports. Les inconnus ne deviennent pas des absences. Exemple 5/15 = 33,3 %.
+- Statistiques Isolation par semaine/période, setter et closer : livrées ci-dessus avec compteurs explicites, inconnus séparés, taux et exports. Exemple 5/15 = 33,3 %.
 - Centralisation physique : les services utilisent actuellement des bases distinctes (portail, Assurance, Isolation). Préparer puis vérifier une migration vers une base commune en préservant identités, liens, données et périmètres. Ce point n’est pas livré.
 - Étendre les résultats d’appels et rappels au parcours Isolation, puis compléter la chronologie des commandes d’appel fournisseur. Les campagnes silencieuses restent désactivées et aucun appel de recette n’est autorisé par cette évolution.
 

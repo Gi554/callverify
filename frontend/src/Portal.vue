@@ -86,7 +86,7 @@ const role=computed(()=>summary.value?.role||user.value?.workspaces.find(item=>i
 const activeModule=computed(()=>workspace.value==='assurance'?assuranceModule.value:isolationModule.value)
 const navigation=computed(()=>{
  if(!workspace.value)return []
- if(role.value==='closer')return [{id:'overview',label:'Mes visites',icon:'appointments'}]
+ if(role.value==='closer')return [{id:'overview',label:'Mes visites',icon:'appointments'},{id:'statistics',label:'Mes statistiques',icon:'statistics'}]
  const items=[{id:'overview',label:'Vue d’ensemble',icon:'overview'},{id:'contacts',label:role.value==='client'?'Mes dossiers':'Contacts',icon:'contacts'},{id:'appointments',label:workspace.value==='assurance'?'Rendez-vous':'Visites',icon:'appointments'}]
  if(workspace.value==='assurance'){
   items.push({id:'pipeline',label:'Opportunités',icon:'agreements'})
@@ -118,7 +118,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
    <div v-if="!workspace" class="amx-spaces"><button v-for="item in user.workspaces" :key="item.workspace" class="amx-space" @click="enter(item.workspace)"><span class="amx-space-icon"><ShieldCheck v-if="item.workspace==='assurance'" :size="27"/><Home v-else :size="27"/></span><h2>{{title(item.workspace)}}</h2><p>{{item.workspace==='assurance'?'Contacts, conseillers et suivi des rendez-vous.':'Prospects, rappels et suivi des visites.'}}</p><span class="amx-role">{{({administrator:'Administrateur',setter:'Setter',advisor:'Conseiller',client:'Client',closer:'Closer'} as Record<string,string>)[item.role]||item.role}}</span><span class="amx-open">Ouvrir mon espace<ArrowRight :size="18"/></span></button><p v-if="!user.workspaces.length">Aucun espace actif. Contactez votre administrateur.</p></div>
    <p v-if="busy" role="status">Chargement de votre espace…</p>
    <template v-if="workspace&&summary">
-    <IsolationCloserVisits v-if="workspace==='isolation'&&role==='closer'" :request="isolation"/><CrmOverview v-else-if="activeModule==='overview'" :workspace="workspace" :role="role" :summary="summary" :username="user.username" :request="workspace==='assurance'?assurance:isolation" @navigate="selectModule" @refresh="refreshWorkspace">
+    <IsolationCloserVisits v-if="workspace==='isolation'&&role==='closer'&&activeModule==='overview'" :request="isolation"/><CrmOverview v-else-if="activeModule==='overview'" :workspace="workspace" :role="role" :summary="summary" :username="user.username" :request="workspace==='assurance'?assurance:isolation" @navigate="selectModule" @refresh="refreshWorkspace">
      <template v-if="workspace==='assurance'"><AssuranceAgreementAlerts v-if="role==='administrator'" :request="assurance" :refresh-version="notificationVersion" @open="agreementDeadline=$event;assuranceModule='agreements'"/><AssuranceReminders :role="role" :request="assurance" @open-tasks="selectModule('followups')" @open-appointments="selectModule('appointments')"/><AssuranceNotifications v-if="role!=='advisor'" :request="assurance" :refresh-version="notificationVersion" @open-tasks="selectModule('followups')"/></template>
     </CrmOverview>
     <section v-else :key="workspace+activeModule+contentVersion" class="card amx-workspace"><div class="card-header"><h2>{{pageTitle}}</h2></div><div class="amx-content">
@@ -136,7 +136,7 @@ onMounted(async()=>{const oauth=location.pathname.match(/^\/crm\/oauth\/(google|
       <AssuranceAppointments v-else :request="assurance" :portal="portal" :role="role"/>
      </template>
      <template v-else>
-      <IsolationStatistics v-if="isolationModule==='statistics'" :request="isolation"/>
+      <IsolationStatistics v-if="isolationModule==='statistics'" :role="role" :request="isolation"/>
       <IsolationQualification v-else-if="isolationModule==='qualification'&&role==='administrator'" :request="isolation"/>
       <CrmAppointmentsCalendar v-else-if="isolationModule==='appointments'&&role==='setter'" workspace="isolation" :role="role" :portal="portal" :request="isolation" @navigate="selectModule"/>
       <IsolationVisits v-else-if="isolationModule==='appointments'" :role="role" :portal="portal" :request="isolation" @close="selectModule('overview')" @changed="refreshIsolation"/>
