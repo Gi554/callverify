@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { parse, compileScript } from 'vue/compiler-sfc'
 import { createRenderer, nextTick } from 'vue'
 import ts from 'typescript'
+import { withStatComponents } from './stat-components.mjs'
 const require = createRequire(import.meta.url)
 const url = (code) =>
   'data:text/javascript;base64,' +
@@ -38,6 +39,7 @@ code =
     .replace(/vModelSelect as _vModelSelect,?/g, '')
     .replace(/vModelDynamic as _vModelDynamic,?/g, '') +
   ';const _vModelText={},_vModelSelect={},_vModelDynamic={};'
+code = withStatComponents(code)
 const component = (await import(url(code))).default
 globalThis.document = { activeElement: null }
 globalThis.window = {

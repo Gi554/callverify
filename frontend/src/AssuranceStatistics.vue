@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import {
-  CalendarCheck,
-  CircleCheck,
-  UserX,
-  FileWarning,
-  Download,
-  Info,
-  RefreshCw,
-} from 'lucide-vue-next';
+import { Download, Info, RefreshCw } from 'lucide-vue-next';
+import StatKpi from './StatKpi.vue';
+import StatDonut from './StatDonut.vue';
+import StatBars from './StatBars.vue';
 const props = defineProps<{
   role: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
+  username?: string;
 }>();
 const DAY = 86400000;
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -67,6 +63,34 @@ function applyPreset(id: string) {
 const totals = computed(() => result.value?.totals || {});
 const value = (key: string) => (totals.value[key] === null ? '—' : (totals.value[key] ?? 0));
 const rate = computed(() => totals.value.performed_rate);
+// Trends compare with the previous period of the same length returned by the API.
+const before = computed(() => result.value?.previous?.totals || null);
+function change(key: string) {
+  const now = totals.value[key],
+    then = before.value?.[key];
+  return typeof now === 'number' && typeof then === 'number' && then > 0
+    ? ((now - then) / then) * 100
+    : null;
+}
+const rateChange = computed(() =>
+  typeof rate.value === 'number' && typeof before.value?.performed_rate === 'number'
+    ? rate.value - before.value.performed_rate
+    : null,
+);
+const daily = computed<any[]>(() => result.value?.daily || []);
+const series = (key: string) => daily.value.map((row) => row[key]);
+const percent = (value: number | null | undefined) =>
+  value === null || value === undefined
+    ? '—'
+    : new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value) + ' %';
+const outcomes = computed(() => [
+  { label: 'Effectués', value: totals.value.performed || 0, color: '#2f6fed' },
+  { label: 'Absences déclarées', value: totals.value.absent || 0, color: '#38bdf8' },
+  { label: 'Autres non effectués', value: totals.value.other_not_performed || 0, color: '#a5b4fc' },
+  { label: 'Sans compte rendu', value: totals.value.reports_due || 0, color: '#f59e0b' },
+  { label: 'À venir', value: totals.value.upcoming || 0, color: '#d0d5dd' },
+  { label: 'Annulés', value: totals.value.cancelled || 0, color: '#f97066' },
+]);
 const period = computed(() => {
   const format = (day: string) =>
     new Intl.DateTimeFormat('fr-FR', {
@@ -121,6 +145,16 @@ onMounted(load);
 
 <template>
   <section class="stats">
+    <header class="stats-hello">
+      <h2>Bonjour{{ username ? ', ' + username : '' }}</h2>
+      <p>
+        {{
+          role === 'administrator'
+            ? 'Voici l’activité de rendez-vous de toute l’équipe Assurance.'
+            : 'Voici l’activité de vos rendez-vous Assurance.'
+        }}
+      </p>
+    </header>
     <header class="stats-toolbar">
       <div class="stats-presets" role="group" aria-label="Période">
         <button
@@ -160,33 +194,50 @@ onMounted(load);
     <p v-if="busy && !result" role="status" class="stats-loading">Calcul des statistiques…</p>
     <template v-if="result">
       <div class="stats-kpis">
-        <article class="stat-card">
-          <span class="stat-icon blue"><CalendarCheck :size="20" /></span>
-          <small>Rendez-vous</small>
-          <strong>{{ value('appointments') }}</strong>
-          <p>{{ value('cancelled') }} annulés · {{ value('upcoming') }} à venir</p>
-        </article>
-        <article class="stat-card">
-          <span class="stat-icon green"><CircleCheck :size="20" /></span>
-          <small>Taux effectué</small>
-          <strong>{{ rate === null || rate === undefined ? '—' : rate + ' %' }}</strong>
-          <div class="stat-bar" aria-hidden="true">
-            <span :style="{ width: (rate || 0) + '%' }"></span>
-          </div>
-          <p>{{ value('performed') }} effectués sur {{ value('reported') }} comptes rendus</p>
-        </article>
-        <article class="stat-card">
-          <span class="stat-icon violet"><UserX :size="20" /></span>
-          <small>Absences déclarées</small>
-          <strong>{{ value('absent') }}</strong>
-          <p>{{ value('other_not_performed') }} non effectués pour un autre motif</p>
-        </article>
-        <article class="stat-card" :class="{ warning: Number(totals.reports_due) > 0 }">
-          <span class="stat-icon orange"><FileWarning :size="20" /></span>
-          <small>Comptes rendus manquants</small>
-          <strong>{{ value('reports_due') }}</strong>
-          <p>Rendez-vous passés sans compte rendu du conseiller</p>
-        </article>
+        <StatKpi
+          label="Rendez-vous"
+          :value="value('appointments')"
+          :trend="change('appointments')"
+          :series="series('appointments')"
+          :hint="value('cancelled') + ' annulés · ' + value('upcoming') + ' à venir'"
+        />
+        <StatKpi
+          label="Rendez-vous effectués"
+          :value="value('performed')"
+          :trend="change('performed')"
+          :series="series('performed')"
+          :hint="'Sur ' + value('reported') + ' comptes rendus renseignés'"
+        />
+        <StatKpi
+          label="Taux effectué"
+          :value="percent(rate)"
+          :trend="rateChange"
+          points
+          :hint="value('absent') + ' absences déclarées'"
+        />
+        <StatKpi
+          label="Comptes rendus manquants"
+          :value="value('reports_due')"
+          :trend="change('reports_due')"
+          inverse
+          hint="Rendez-vous passés sans compte rendu"
+        />
+      </div>
+      <div class="stats-charts">
+        <StatDonut
+          title="Issue des rendez-vous"
+          :center="percent(rate)"
+          caption="taux effectué"
+          :segments="outcomes"
+        />
+        <StatBars
+          title="Volume des rendez-vous"
+          :days="daily"
+          :series="[
+            { key: 'appointments', label: 'Réservés', color: '#7dd3fc' },
+            { key: 'performed', label: 'Effectués', color: '#2f6fed' },
+          ]"
+        />
       </div>
       <ul class="stats-secondary">
         <li v-for="item in secondary" :key="item.key">
@@ -195,7 +246,7 @@ onMounted(load);
         </li>
       </ul>
       <div v-if="result.setters" class="stats-table">
-        <h4>Détail par setter</h4>
+        <h3>Détail par setter</h3>
         <div class="table-scroll">
           <table>
             <thead>
@@ -281,13 +332,46 @@ onMounted(load);
 <style scoped>
 .stats {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
+  container: stats / inline-size;
+}
+.stats-hello h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 24px;
+}
+.stats-hello p {
+  margin: 4px 0 0;
+  color: #667085;
+  font-size: 14px;
+}
+.stats-charts {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 2.2fr);
+  gap: 14px;
+}
+@container stats (max-width: 760px) {
+  .stats-charts {
+    grid-template-columns: 1fr;
+  }
+}
+.stats-table {
+  padding: 18px;
+  border: 1px solid #e6e9f0;
+  border-radius: 14px;
+  background: white;
+}
+.stats-table h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #101828;
 }
 .stats-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
-  gap: 14px 20px;
+  align-items: center;
+  gap: 10px 16px;
 }
 .stats-presets {
   display: inline-flex;
@@ -313,11 +397,12 @@ onMounted(load);
 .stats-range {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: center;
   gap: 10px;
 }
 .stats-range label {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: 4px;
   font-size: 12px;
   color: #5b6b82;
@@ -346,62 +431,9 @@ onMounted(load);
 }
 .stats-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
-.stat-card {
-  display: grid;
-  gap: 6px;
-  align-content: start;
-  padding: 16px 18px;
-  border: 1px solid #e3e7ee;
-  border-radius: 14px;
-  background: white;
-}
-.stat-card.warning {
-  border-color: #f4c38b;
-  background: #fffaf3;
-}
-.stat-card small {
-  color: #5b6b82;
-  font-size: 12px;
-  font-weight: 600;
-}
-.stat-card strong {
-  font-size: 28px;
-  line-height: 1.1;
-  color: #1f2f45;
-  font-variant-numeric: tabular-nums;
-}
-.stat-card p {
-  margin: 0;
-  color: #6b7686;
-  font-size: 12px;
-}
-.stat-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-}
-.stat-icon.blue {
-  background: #e7f0fd;
-  color: #1f5fa8;
-}
-.stat-icon.green {
-  background: #e3f4ea;
-  color: #23784a;
-}
-.stat-icon.violet {
-  background: #efeafb;
-  color: #6b4fc5;
-}
-.stat-icon.orange {
-  background: #fdeedd;
-  color: #b4610c;
-}
-.stat-bar,
 .rate-bar {
   display: block;
   height: 6px;
@@ -409,7 +441,6 @@ onMounted(load);
   background: #e8edf3;
   overflow: hidden;
 }
-.stat-bar span,
 .rate-bar span {
   display: block;
   height: 100%;
@@ -436,9 +467,6 @@ onMounted(load);
 .stats-secondary strong {
   color: #1f2f45;
   font-size: 14px;
-}
-.stats-table h4 {
-  margin: 6px 0 10px;
 }
 .stats-table td small {
   color: #6b7686;
@@ -492,6 +520,16 @@ onMounted(load);
 @media (max-width: 700px) {
   .stats-exports {
     margin-left: 0;
+  }
+}
+@container stats (max-width: 640px) {
+  .stats-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container stats (max-width: 460px) {
+  .stats-kpis {
+    grid-template-columns: 1fr;
   }
 }
 </style>

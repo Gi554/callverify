@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { parse, compileScript } from 'vue/compiler-sfc'
 import { createRenderer, nextTick } from 'vue'
 import ts from 'typescript'
+import { withStatComponents } from './stat-components.mjs'
 const require = createRequire(import.meta.url)
 const vue = pathToFileURL(require.resolve('vue')).href
 let code = compileScript(
@@ -28,6 +29,7 @@ code =
     )
     .replace(/from ['"]vue['"]/g, `from '${vue}'`)
     .replace(/vModelText as _vModelText,?/g, '') + ';const _vModelText={};'
+code = withStatComponents(code)
 const component = (
   await import(
     'data:text/javascript;base64,' +
@@ -92,7 +94,7 @@ const totals = {
   closed_tasks: 7,
   performed_rate: 77.85,
 }
-function fixture(role = 'administrator') {
+function fixture(role = 'administrator', extra = {}) {
   const root = { children: [] },
     requests = []
   const request = async (path) => {
@@ -101,6 +103,7 @@ function fixture(role = 'administrator') {
       as_of: '2026-10-23T01:52:40Z',
       definition: 'Définition des indicateurs.',
       totals,
+      ...extra,
       setters:
         role === 'administrator'
           ? {
@@ -137,8 +140,8 @@ test('statistics lead with key figures, team detail and a folded methodology', a
     await flush()
     const page = text(f.root)
     assert.match(page, /Rendez-vous600/)
-    assert.match(page, /Taux effectué77.85 %/)
-    assert.match(page, /348 effectués sur 447 comptes rendus/)
+    assert.match(page, /Taux effectué77,9 %/)
+    assert.match(page, /Rendez-vous effectués348Sur 447 comptes rendus renseignés/)
     assert.match(page, /Comptes rendus manquants93/)
     assert.match(page, /4Tâches ouvertes/)
     assert.match(page, /toute l’équipe/)
@@ -181,6 +184,41 @@ test('setters see their own scope without the team table', async () => {
     await flush()
     assert.match(text(f.root), /vos rendez-vous/)
     assert.doesNotMatch(text(f.root), /Détail par setter/)
+  } finally {
+    f.close()
+  }
+})
+
+test('indicators compare with the previous period and chart each day', async () => {
+  const f = fixture('administrator', {
+    previous: {
+      from: '2026-08-26',
+      to: '2026-09-24',
+      totals: { ...totals, appointments: 500, performed_rate: 70, reports_due: 100 },
+    },
+    daily: [
+      { day: '2026-10-21', appointments: 3, performed: 1, cancelled: 0 },
+      { day: '2026-10-22', appointments: 5, performed: 4, cancelled: 1 },
+      { day: '2026-10-23', appointments: 2, performed: 0, cancelled: 0 },
+    ],
+  })
+  try {
+    await flush()
+    const badges = all(f.root)
+      .filter((n) => String(n.props?.class || '').startsWith('kpi-trend'))
+      .map((n) => [text(n), n.props.class])
+    assert.deepEqual(badges, [
+      ['+20 %', 'kpi-trend good'],
+      ['0 %', 'kpi-trend flat'],
+      ['+7,8 pt', 'kpi-trend good'],
+      ['-7 %', 'kpi-trend good'],
+    ])
+    const groups = all(f.root).filter(
+      (n) => n.props?.class?.[0] === 'bars-group' || n.props?.class === 'bars-group',
+    )
+    assert.equal(groups.length, 3)
+    assert.match(groups[1].props['aria-label'], /Réservés 5, Effectués 4/)
+    assert.ok(all(f.root).some((n) => n.tag === 'path' && /^M0.0,/.test(n.props.d)))
   } finally {
     f.close()
   }

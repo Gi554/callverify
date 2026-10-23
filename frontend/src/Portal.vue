@@ -680,6 +680,7 @@ const roleLabels: Record<string, string> = {
                       v-else-if="assuranceModule === 'statistics' && role !== 'advisor'"
                       :role="role"
                       :request="assurance"
+                      :username="user?.username || ''"
                     />
                     <AssuranceFieldSettings
                       v-else-if="assuranceModule === 'fields' && role === 'administrator'"
@@ -706,6 +707,7 @@ const roleLabels: Record<string, string> = {
                       v-if="isolationModule === 'statistics'"
                       :role="role"
                       :request="isolation"
+                      :username="user?.username || ''"
                     />
                     <IsolationTasksBoard
                       v-else-if="
