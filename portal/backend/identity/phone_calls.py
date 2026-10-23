@@ -21,6 +21,7 @@ from packages.access.phone_calls import verify
 from packages.access.tickets import issue as access_ticket
 from packages.newt.calls import place
 from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
+from .call_journal import digest
 
 
 class Conflict(APIException):
@@ -162,6 +163,7 @@ def calls(request, workspace='assurance'):
                     contact_label=claims['label'],
                     extension=link.extension,
                     fingerprint=fingerprint,
+                    destination_digest=digest(claims['destination']),
                 )
         except IntegrityError:
             raise Conflict('Identifiant déjà réservé ; aucune nouvelle commande envoyée.') from None

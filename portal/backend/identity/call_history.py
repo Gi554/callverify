@@ -29,6 +29,10 @@ def output(row, administrator):
         'state': row.state,
         'contact_id': row.contact_id,
         'contact_label': row.contact_label,
+        # Provider duration (NEWT 511, in seconds) once the journal line is reconciled.
+        'journal_status': row.journal_status if row.destination_digest else 'unavailable',
+        'journal_started_at': row.journal_started_at,
+        'journal_duration': row.journal_duration,
     }
     if administrator:
         result['caller'] = {'id': row.user_id, 'username': row.user.username}

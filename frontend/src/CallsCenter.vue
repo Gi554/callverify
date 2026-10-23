@@ -48,6 +48,42 @@ function when(value: string) {
   );
 }
 const phoneOf = (row: any) => row.phone || row.raw_phone || '';
+// Duration reported by the NEWT 511 journal once the call line is reconciled.
+const journalLabels: Record<string, string> = {
+  pending: 'En attente du journal',
+  not_found: 'Absent du journal',
+  ambiguous: 'À vérifier',
+};
+function duration(row: any) {
+  if (!['accepted', 'unknown'].includes(row.state) || row.journal_status === 'unavailable')
+    return '—';
+  if (row.journal_status !== 'matched') return journalLabels[row.journal_status] || '—';
+  const seconds = row.journal_duration;
+  if (seconds == null) return 'Durée non lisible';
+  if (seconds < 60) return `${seconds} s`;
+  return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')} s`;
+}
+const reconciling = ref(false),
+  reconciled = ref('');
+async function reconcile() {
+  reconciling.value = true;
+  error.value = '';
+  reconciled.value = '';
+  try {
+    const result = await props.portal(`${props.workspace}/call-history/reconcile/`, {});
+    reconciled.value = result.checked
+      ? `${result.matched} durée(s) récupérée(s) sur ${result.checked} appel(s) vérifié(s)` +
+        (result.ambiguous ? `, ${result.ambiguous} à vérifier` : '') +
+        (result.not_found ? `, ${result.not_found} absent(s) du journal` : '') +
+        '.'
+      : 'Aucun appel récent à rapprocher.';
+    await loadHistory();
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    reconciling.value = false;
+  }
+}
 async function loadOptions() {
   if (admin.value) return;
   try {
@@ -191,6 +227,7 @@ onMounted(() => {
       >
     </p>
     <p v-if="error" role="alert" class="calls-error">{{ error }}</p>
+    <p v-if="reconciled" role="status" class="calls-reconciled">{{ reconciled }}</p>
     <div v-if="!admin && tab === 'compose'" class="compose-layout">
       <div class="dialer">
         <header class="dialer-heading">
@@ -286,6 +323,18 @@ onMounted(() => {
             <option v-for="(label, key) in states" :key="key" :value="key">{{ label }}</option>
           </select></label
         >
+        <button
+          v-if="admin"
+          type="button"
+          class="secondary"
+          :disabled="reconciling || loading"
+          title="Récupère la durée des appels des sept derniers jours dans le journal NEWT"
+          @click="reconcile"
+        >
+          <RefreshCw :size="15" />{{
+            reconciling ? 'Rapprochement…' : 'Rapprocher le journal NEWT'
+          }}
+        </button>
         <label v-if="admin"
           >Appelant<select v-model="caller" @change="filter">
             <option value="">Toute l’équipe</option>
@@ -303,6 +352,7 @@ onMounted(() => {
               <th>Date</th>
               <th v-if="admin">Appelant</th>
               <th>Résultat</th>
+              <th>Durée</th>
               <th><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -316,6 +366,9 @@ onMounted(() => {
               <td data-label="Résultat">
                 <span :class="['call-state', row.state]">{{ states[row.state] || row.state }}</span>
               </td>
+              <td data-label="Durée" :class="['call-duration', row.journal_status]">
+                {{ duration(row) }}
+              </td>
               <td class="row-action">
                 <button
                   class="secondary"
@@ -326,7 +379,7 @@ onMounted(() => {
               </td>
             </tr>
             <tr v-if="!history.length">
-              <td :colspan="admin ? 5 : 4" class="calls-empty">
+              <td :colspan="admin ? 6 : 5" class="calls-empty">
                 <History :size="28" />
                 {{
                   loading
@@ -363,14 +416,29 @@ onMounted(() => {
         </button>
       </footer>
       <p class="dialer-hint">
-        « Poste joint » signifie que votre poste a décroché et que la composition a démarré : cela
-        ne prouve ni la sonnerie ni la réponse du prospect.
+        « Poste joint » signifie que votre poste a décroché et que la composition a démarré. La
+        durée provient du journal NEWT (heure de Montréal), rapproché par poste, numéro et heure ;
+        une durée de quelques secondes signale en général un appel sans conversation.
       </p>
     </div>
   </section>
 </template>
 
 <style scoped>
+.calls-reconciled {
+  margin: 0 0 12px;
+  color: #054f31;
+}
+.call-duration {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.call-duration.pending,
+.call-duration.not_found,
+.call-duration.ambiguous {
+  color: #667085;
+  font-size: 13px;
+}
 .calls {
   display: grid;
   gap: 16px;

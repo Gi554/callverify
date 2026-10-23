@@ -18,6 +18,12 @@ class PhoneCallAttempt(models.Model):
     state = models.CharField(max_length=20, default='dispatching')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Keyed digest of the dialed number: matches the NEWT 511 journal without storing it.
+    destination_digest = models.CharField(max_length=64, blank=True, default='')
+    journal_status = models.CharField(max_length=20, default='pending')
+    journal_started_at = models.DateTimeField(null=True, blank=True)
+    journal_duration = models.PositiveIntegerField(null=True, blank=True)
+    journal_checked_at = models.DateTimeField(null=True, blank=True)
 
 
 class Membership(models.Model):
