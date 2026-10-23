@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Secrets CD de production configurés — activation toujours suspendue
+
+Après autorisation explicite de l’utilisateur, la clé SSH du compte de déploiement dédié et la clé hôte vérifiée ont été enregistrées respectivement dans les secrets `CD_SSH_KEY` et `CD_KNOWN_HOSTS` de l’environnement GitHub `production`. La clé privée est transmise directement à la commande de gestion des secrets, sans affichage ni ajout aux fichiers suivis. Les secrets ne figurent pas dans le dépôt public. Cette étape lève le blocage de transfert mentionné dans le lot précédent.
+
+Validation : présence des deux noms de secrets contrôlée sans lecture de leur contenu ; environnement toujours limité à la branche main ; variable de dépôt `CD_ENABLED` vérifiée à `false`. Aucun workflow de déploiement lancé ni service applicatif démarré par ce lot. La connexion par cette clé au compte de déploiement avait été vérifiée pendant la préparation du VPS ; aucune exécution GitHub vers le VPS n’est encore déclarée réussie.
+
+Restent à faire : domaine/DNS, paramètres SMTP, configuration privée définitive, première installation et migrations, administrateur de production, recette HTTPS des parcours authentifiés, sauvegardes hors serveur et restauration. Le CD sera activé et testé après cette recette initiale, pas simplement à la présence des secrets.
+
+Suite : finaliser l’installation dès réception du domaine et des paramètres de messagerie.
+
+
 ## Préparation réelle du VPS Ubuntu — publication en attente
 
 Le VPS a été inspecté par SSH après connexion initiale de l’utilisateur et autorisation d’une clé dédiée : Ubuntu 24.04.5 LTS, architecture amd64, environ 24 Go de RAM et 290 Go de disque. Ubuntu était déjà installé ; aucune réinstallation ni remise à zéro du serveur n’a été réalisée. Docker Engine 29.9.2 et le plugin Compose 5.6.1 ont été installés depuis le dépôt APT officiel Docker. Docker démarre avec le système. Le compte de déploiement `amx-deploy`, avec une clé distincte de l’accès administrateur, appartient au groupe Docker ; le clone de main est placé dans `/opt/amx-crm`. Le pare-feu UFW autorise SSH, HTTP et HTTPS, en IPv4 et IPv6. Les connexions par clé administrateur et déploiement ont été vérifiées avec contrôle strict de la clé hôte déjà approuvée par l’utilisateur.
