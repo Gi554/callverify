@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Navigation des dossiers clients — repères administrateur
+
+L’ouverture d’un dossier replace le titre du client dans la zone visible et lui donne le focus clavier, avec une marge sous l’en-tête fixe. Le retour « Tous les dossiers » restaure la dernière recherche effectivement chargée et la page du répertoire ; un brouillon de recherche non soumis ne remplace pas ce repère. Le titre est également remis en vue au retour. Les compteurs « Résultats des rendez-vous » et « Étapes commerciales des prospects » ont des groupes et libellés distincts ; le filtre actif est signalé visuellement et par aria-pressed. Aucun statut métier, quota, périmètre ni export modifié.
+
+Validation : tests de navigation/recherche/page, défilement et focus au titre, état du filtre actif ; suite frontend complète, typage, lint et format. Le parcours Assurance a été observé dans la démonstration sur écran étroit et bureau avant correction : le défaut de position conservée masquait le titre. Cette correction ne constitue pas une refonte exhaustive des écrans administrateur.
+
+Suite : poursuivre la recette des fiches et des rendez-vous administrateur, puis traiter les écarts visuels précis relevés avec l’utilisateur.
+
+
 ## Exports des dossiers clients — CSV et Excel
 
 Dans Dossiers clients, les administrateurs Assurance et Isolation peuvent télécharger soit les résultats de l’onglet courant (prospects, rendez-vous, résultats d’appel, tâches), soit la synthèse métier générale du dossier. L’export de liste reprend la dernière recherche et le statut effectivement chargés et porte sur toutes les pages, pas uniquement les 25 lignes affichées. La synthèse reste indépendante de ces filtres. Le format CSV utilise un séparateur point-virgule et un BOM UTF-8 ; le classeur Excel contient des cellules textuelles pour les valeurs susceptibles d’être interprétées comme des formules. Les appels répétés pendant un téléchargement sont bloqués ; les fichiers portent l’espace, le client et la section dans leur nom.
