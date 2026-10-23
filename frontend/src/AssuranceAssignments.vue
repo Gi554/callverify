@@ -206,6 +206,11 @@ onMounted(() =>
             <h2>Votre équipe, vos prochains rendez-vous.</h2>
             <p>Retrouvez vos conseillers et préparez la suite de chaque échange.</p>
           </div>
+          <span class="discovery-decoration" aria-hidden="true"
+            ><CalendarCheck :size="38" /><span
+              >Le prochain échange<br />commence avec votre équipe.</span
+            ></span
+          >
         </div>
         <form class="advisor-search" @submit.prevent="filter()">
           <label class="advisor-name-filter"
@@ -290,7 +295,12 @@ onMounted(() =>
       </p>
     </template>
     <div v-if="role !== 'administrator'" class="advisor-grid" :aria-busy="busy">
-      <article v-for="row in rows" :key="row.id" class="advisor-card">
+      <article
+        v-for="row in rows"
+        :key="row.id"
+        class="advisor-card"
+        :class="{ 'advisor-card-suspended': !row.active }"
+      >
         <header>
           <span class="advisor-monogram">{{ initials(row.advisor.name) }}</span>
           <div class="advisor-identity">
@@ -324,9 +334,12 @@ onMounted(() =>
             ></progress>
             <small>{{ quotas.get(row.advisor.id)?.attended }} rendez-vous tenu(s) au total</small>
           </template>
-          <p v-else class="quota-undefined">
-            Objectif non défini<span>L’administrateur peut renseigner un quota.</span>
-          </p>
+          <div v-else class="quota-undefined">
+            <span class="quota-empty-icon"><Target :size="24" /></span>
+            <div>
+              <strong>À votre rythme</strong><span>Aucun objectif défini pour ce conseiller.</span>
+            </div>
+          </div>
         </div>
         <footer>
           <span class="advisor-booking-hint"

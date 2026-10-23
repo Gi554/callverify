@@ -578,3 +578,279 @@
 .advisors-page-layout .crm-connected .crm-stage .amx-workspace > .amx-content {
   padding: 0;
 }
+
+/* Advisor directory owns its visual rhythm; neutral article/form defaults must not flatten it. */
+.advisors-page-layout .crm-connected .crm-stage .amx-main {
+  padding: 0;
+  background: radial-gradient(ellipse at 92% 0, #e7edff 0, transparent 45%), #f6f8fc;
+}
+.advisors-page-layout .crm-connected .crm-stage .setter-advisors {
+  padding: 28px 32px;
+  gap: 22px;
+  align-content: start;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisors-heading h1 {
+  color: #1d2d51;
+  font-size: 32px;
+  margin: 6px 0;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisors-eyebrow {
+  color: #5a6b8c;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisors-heading .secondary {
+  border-radius: 30px;
+  padding: 10px 16px;
+  background: #fff;
+  color: #4662a6;
+  border-color: #e0e7f7;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-discovery {
+  margin: 0 0 10px;
+  padding: 24px;
+  border-radius: 24px;
+  background: linear-gradient(110deg, #dfe8ff, #e9e6ff 65%, #e1f1f2);
+  position: relative;
+}
+.advisors-page-layout .crm-connected .crm-stage .discovery-copy {
+  padding: 0 0 20px;
+  gap: 14px;
+}
+.advisors-page-layout .crm-connected .crm-stage .discovery-copy h2 {
+  color: #273a68;
+  font-size: 20px;
+}
+.advisors-page-layout .crm-connected .crm-stage .discovery-copy p {
+  color: #53668a;
+  font-size: 14px;
+}
+.advisors-page-layout .crm-connected .crm-stage .discovery-mark {
+  background: #fff9;
+  color: #4b66d4;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+}
+.discovery-decoration {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #687cc1;
+}
+.discovery-decoration > span {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #536993;
+}
+.advisors-page-layout .crm-connected .crm-stage form.advisor-search {
+  margin: 0;
+  transform: none;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 18px #5067a90c;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-search label > span,
+.advisors-page-layout .crm-connected .crm-stage .advisor-search-context > span {
+  color: #65728a;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-search input,
+.advisors-page-layout .crm-connected .crm-stage .advisor-search select {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  height: 28px;
+  font-size: 14px;
+  color: #273d65;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-search input::placeholder {
+  color: #6d7f9d;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-search-submit {
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+  color: #fff;
+  background: #4969e8;
+  box-shadow: 0 7px 14px #4969e826;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-list-heading {
+  margin-top: 0;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-list-heading h2 {
+  font-size: 23px;
+  color: #23375c;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-list-heading h2 span {
+  background: #e1e9ff;
+  color: #4263bb;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-list-heading p {
+  color: #647493;
+  font-size: 13px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-grid {
+  align-items: start;
+  gap: 20px;
+}
+.advisors-page-layout .crm-connected .crm-stage article.advisor-card {
+  margin: 0 !important;
+  padding: 24px !important;
+  border: 1px solid #e0e7f5 !important;
+  border-radius: 25px !important;
+  background: linear-gradient(165deg, #eef3ff 0, #fff 42%);
+  box-shadow: 0 10px 25px #4e68a412;
+  border-top: 4px solid #708bed !important;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+.advisors-page-layout .crm-connected .crm-stage article.advisor-card:nth-child(3n + 2) {
+  background: linear-gradient(165deg, #e8f7f1 0, #fff 42%);
+  border-top-color: #65b69b !important;
+}
+.advisors-page-layout .crm-connected .crm-stage article.advisor-card:nth-child(3n + 3) {
+  background: linear-gradient(165deg, #fff1df 0, #fff 42%);
+  border-top-color: #e9b374 !important;
+}
+.advisors-page-layout .crm-connected .crm-stage article.advisor-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px #4e68a41b;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-monogram {
+  width: 56px;
+  height: 56px;
+  background: #d9e4ff;
+  color: #4767c1;
+  font-size: 16px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-identity h2 {
+  font-size: 18px;
+  color: #253c65;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-card p.advisor-speciality {
+  color: #60759a;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-tags {
+  margin: 16px 0;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-card .state {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-card .state.active {
+  color: #267159;
+  background: #def2e8;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-card .state.active::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #369477;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-quota {
+  background: #f0f4fd;
+  border-radius: 17px;
+  padding: 16px;
+  min-height: 116px;
+  flex: initial;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-caption {
+  color: #536b95;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-figure {
+  margin: 8px 0;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-figure strong {
+  color: #3e62c8;
+  font-size: 32px;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-figure span,
+.advisors-page-layout .crm-connected .crm-stage .advisor-quota small {
+  color: #5d7091;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-undefined {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 0;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-undefined .quota-empty-icon {
+  margin: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #dfe8ff;
+  color: #6480d8;
+  flex-shrink: 0;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-undefined strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+  color: #3c5683;
+}
+.advisors-page-layout .crm-connected .crm-stage .quota-undefined div > span {
+  margin-top: 3px;
+  color: #627496;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-card footer {
+  margin-top: 18px;
+  gap: 10px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-booking-hint {
+  color: #627496;
+  font-size: 12px;
+}
+.advisors-page-layout .crm-connected .crm-stage .advisor-book {
+  padding: 13px 12px;
+  font-size: 13px;
+  background: #4565e9;
+  box-shadow: 0 6px 13px #4565e921;
+}
+.advisors-page-layout .crm-connected .crm-stage .assignments-pages {
+  color: #657694;
+}
+@media (max-width: 1050px) {
+  .discovery-decoration {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  .advisors-page-layout .crm-connected .crm-stage .setter-advisors {
+    padding: 20px 16px;
+  }
+  .advisors-page-layout .crm-connected .crm-stage .advisor-discovery {
+    padding: 18px;
+  }
+  .advisors-page-layout .crm-connected .crm-stage form.advisor-search {
+    padding: 14px;
+  }
+  .advisors-page-layout .crm-connected .crm-stage .advisor-search-submit {
+    width: 48px;
+    height: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .advisors-page-layout .crm-connected .crm-stage article.advisor-card {
+    transition: none;
+  }
+  .advisors-page-layout .crm-connected .crm-stage article.advisor-card:hover {
+    transform: none;
+  }
+}

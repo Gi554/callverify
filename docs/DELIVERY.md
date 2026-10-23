@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Mes conseillers — contraste et rythme visuel
+
+Correction des surcharges du thème global qui aplatissaient les cartes (coins de 7 px, marges imposées, suppression des ombres) et réintroduisaient des bordures dans la recherche. La page setter possède désormais ses règles contextualisées : bandeau compact bleu/lavande, cartes arrondies avec accents bleu/menthe/abricot, textes plus contrastés et boutons visibles. L’état sans quota précise toujours l’absence d’objectif. Les cartes remontent dans la page sans déplacer les boutons sous une grande zone vide. Animation discrète au survol, désactivée avec la préférence de mouvement réduit. Données, permissions et parcours conservés.
+
+Validation : tests existants associations/navigation/filtre, typage, lint, formatage et build. Recette visuelle navigateur non effectuée (accès local désactivé dans Work) ; correction guidée par la capture utilisateur et la cascade CSS identifiée. Aucun appel ni réservation déclenché.
+
+
 ## Mes conseillers — disposition annuaire selon référence
 
 La présentation setter reprend la référence fournie : fond gris bleuté, bandeau de recherche intégré, filtres nom/association, compteur des résultats, grille de trois cartes sur grand écran (deux puis une sur petit écran), identité par initiales et boutons bleus arrondis. Les quotas, états et rendez-vous tenus proviennent des données existantes. Aucun portrait, tarif, avis ou indicateur de disponibilité horaire fictif. Le bouton « Préparer un rendez-vous » ouvre les prospects : la réservation reste effectuée depuis une fiche et le conseiller doit y être sélectionné. Les associations suspendues ne proposent pas cette action. Administration conservée.
