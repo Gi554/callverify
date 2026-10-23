@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Pipeline CD préparée — activation serveur en attente
+
+Le workflow « Deploy CRM production » attend la réussite du workflow de validation sur un push de main du dépôt d’origine. Le commit validé doit encore être la tête de main, vérifiée côté GitHub puis côté serveur. Les PR et branches ne déclenchent pas ce déploiement. Les secrets sont limités à l’environnement production ; clé SSH et known_hosts vérifiés sont requis, sans collecte de clé hôte automatique ni désactivation de sa vérification. Les déploiements sont sérialisés et ne s’interrompent pas à chaque nouveau commit.
+
+Le script serveur verrouille l’installation, refuse les modifications Git suivies et les installations non initialisées, sauvegarde les trois bases PostgreSQL, les fichiers et le .env, puis change de commit et réutilise deploy.sh. Les services sont attendus au démarrage. Le succès n’est enregistré qu’après réponses attendues sur le HTTPS public du frontend et des trois API. Un échec avant validation ne laisse pas de marqueur de succès ; une reprise du même commit reste possible. Aucun rollback de base automatique. Les archives privées sont exclues du build Docker et de Git. deploy/CD.md décrit les paramètres, la première installation, les limites et la restauration à préparer.
+
+Validation : huit tests Bash avec Git/Docker/HTTPS simulés (ordre sauvegarde/checkout/déploiement, échec de sauvegarde, migration et disponibilité, commit dépassé, fichiers modifiés, verrou, arguments invalides, première installation absente, reprise et idempotence), syntaxe Bash, Ruff, format et actionlint officiel v1.7.12 (archive vérifiée par SHA-256). Aucun contact SSH, changement ou déploiement effectué sur le VPS ; aucun secret serveur saisi ou publié. Le mail d’achat indique Ubuntu et l’utilisateur root ; la version d’Ubuntu, l’accès par clé et le domaine HTTPS restent à configurer.
+
+Statut : code de la pipeline livré, CD désactivé par défaut (variable de dépôt CD_ENABLED absente ou false), environnement/secrets et recette serveur non réalisés. Limites : construction sur VPS et interruption possible, sauvegardes locales d’une application active sans instantané atomique entre services ; copie hors serveur, chiffrement, rétention et restauration périodique à mettre en place. Les contrôles HTTP ne constituent pas une recette métier authentifiée. Ce lot ne déclare pas la production déployée.
+
+Suite : obtenir un domaine, vérifier le VPS et son empreinte SSH, initialiser l’installation, configurer les secrets GitHub puis valider le premier déploiement avant activation du CD.
+
+
 ## Rendez-vous précis depuis les dossiers clients
 
 L’onglet Rendez-vous des dossiers administrateur Assurance et Isolation propose « Voir le rendez-vous » sur chaque ligne. Le panneau latéral charge l’identifiant exact du rendez-vous/visite via les composants métier existants, sans repasser par la liste des créneaux à venir du prospect. Les rendez-vous passés et annulés restent donc directement consultables, avec qualification transmise, compte rendu et historique disponibles selon le module. Les actions existantes conservent leurs permissions et contrôles serveur. « Ouvrir la fiche » et « Appels CRM » restent accessibles séparément.

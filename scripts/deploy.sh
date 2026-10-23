@@ -37,6 +37,6 @@ echo "4/5 Migrations et contrôles de sécurité"
 "${compose[@]}" run --rm assurance python manage.py check --deploy --settings=apps.assurance.backend.settings
 
 echo "5/5 Démarrage de l'application"
-"${compose[@]}" up -d --remove-orphans
+"${compose[@]}" up -d --wait --wait-timeout 180 --remove-orphans
 "${compose[@]}" ps
 echo "Terminé. Ouvrez https://$(grep '^CALLVERIFY_DOMAIN=' .env | cut -d= -f2)/crm"

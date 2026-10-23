@@ -50,6 +50,9 @@ Le mot de passe est demandé de façon masquée. Cet administrateur a accès à 
 
 ## 6. Mettre à jour
 
+Pour automatiser les mises à jour après validation de `main`, suivre [la configuration du CD](CD.md).
+La pipeline reste désactivée jusqu’à la première installation, la recette HTTPS et la configuration SSH.
+
 ```bash
 git pull
 ./scripts/deploy.sh
