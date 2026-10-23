@@ -2032,6 +2032,40 @@ class StatisticsTests(TestCase):
             + f'?from={(self.now-timedelta(days=1)).date()}&to={(self.now+timedelta(days=1)).date()}'
         )
 
+    def test_dashboard_has_daily_series_and_previous_period(self):
+        from .models import Appointment
+        from uuid import uuid4
+        from datetime import timedelta
+
+        day = self.row.starts_at.date()
+        earlier = self.row.starts_at - timedelta(days=3)
+        Appointment.objects.create(
+            **self.base,
+            request_id=uuid4(),
+            starts_at=earlier,
+            ends_at=earlier + timedelta(hours=1),
+            status='cancelled',
+        )
+        url = f'{self.url}?from={day - timedelta(days=2)}&to={day}'
+        data = self.client.get(url).data
+        self.assertEqual(
+            [row['day'] for row in data['daily']], [day - timedelta(days=n) for n in (2, 1, 0)]
+        )
+        self.assertEqual(
+            data['daily'][-1], {'day': day, 'appointments': 1, 'performed': 0, 'cancelled': 0}
+        )
+        self.assertEqual(data['totals']['appointments'], 1)
+        self.assertEqual(
+            (data['previous']['from'], data['previous']['to']),
+            (day - timedelta(days=5), day - timedelta(days=3)),
+        )
+        self.assertEqual(data['previous']['totals']['appointments'], 1)
+        self.assertEqual(data['previous']['totals']['cancelled'], 1)
+        self.auth(22, 'setter')
+        scoped = self.client.get(url).data
+        self.assertEqual(sum(row['appointments'] for row in scoped['daily']), 0)
+        self.assertEqual(scoped['previous']['totals']['appointments'], 0)
+
     def test_missing_report_is_not_counted_as_no_and_zero_rate_is_unknown(self):
         data = self.client.get(self.query()).data['totals']
         self.assertEqual(data['appointments'], 1)

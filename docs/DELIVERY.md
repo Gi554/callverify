@@ -1,5 +1,37 @@
 # Suivi des livraisons CRM AMX
 
+## Statistiques — tableau de bord (indicateurs, tendances, anneau et histogramme)
+
+Les pages Statistiques Assurance et Isolation adoptent une présentation de tableau de bord :
+
+- **En-tête** : « Bonjour, … » avec le périmètre affiché.
+- **Indicateurs** : quatre indicateurs en cartes, chacun avec sa tendance par rapport à la période précédente de même durée (badge vert ou rouge, inversé quand une hausse est défavorable, comme les comptes rendus manquants) et une courbe quotidienne.
+- **Graphiques** : un anneau « Issue des rendez-vous » et un histogramme « Volume des rendez-vous » regroupable par jour, semaine ou mois. Une infobulle donne le détail au survol ou au clavier.
+- **Détail par setter ou closer** : présenté dans une carte.
+
+Contenu par espace :
+
+- **Assurance** : rendez-vous, effectués, taux effectué (écart en points) et comptes rendus manquants. L’anneau répartit effectués, absences, autres non effectués, sans compte rendu, à venir et annulés.
+- **Isolation** : rendez-vous réservés, tenus, ventes conclues et taux de conclusion. L’anneau répartit les ventes conclues, les tenus sans vente ou à vente non renseignée, les non tenus, les résultats manquants, les rendez-vous à venir et les annulés. L’histogramme montre réservés, tenus et ventes.
+
+Les filtres, exports, comparaisons et la méthode sont conservés.
+
+Les API de statistiques renvoient en plus, hors export, `daily` (une ligne par jour, complétée par des zéros ; UTC en Assurance, fuseau choisi en Isolation) et `previous` (totaux de la période précédente de même durée, avec le même périmètre de rôle). Les exports CSV et Excel sont inchangés. La mise en page s’adapte à la largeur réellement disponible : quatre, deux ou une colonne, sans débordement sur téléphone.
+
+Validation :
+
+- Backend : un test Assurance et un test Isolation (série quotidienne, période précédente, périmètre setter ou client).
+- Frontend : test des tendances (hausse, stabilité, points, sens inversé), de l’histogramme et de la courbe.
+- Les harnais existants affichent désormais les vrais composants.
+- Suites Assurance (335), Isolation (254) et frontend (108) complètes, typage, ESLint, Prettier, Ruff et build.
+- Démo `admin.demo` : Assurance et Isolation contrôlés sur ordinateur et en vue téléphone.
+
+Limites :
+
+- **Démo** : les services de démo, lancés sans rechargement par une autre session, ne renvoyaient pas encore la série quotidienne. Les tendances et l’histogramme n’y apparaîtront qu’après redémarrage ; sans série, l’histogramme affiche un message.
+- **Période précédente** : les rendez-vous qui y sont « à venir » ou « sans compte rendu » sont évalués à la date du jour.
+- **Contenu non repris de la maquette** : pas de colonne de messages.
+
 ## Mes conseillers — contraste et rythme visuel
 
 Correction des surcharges du thème global qui aplatissaient les cartes (coins de 7 px, marges imposées, suppression des ombres) et réintroduisaient des bordures dans la recherche. La page setter possède désormais ses règles contextualisées : bandeau compact bleu/lavande, cartes arrondies avec accents bleu/menthe/abricot, textes plus contrastés et boutons visibles. L’état sans quota précise toujours l’absence d’objectif. Les cartes remontent dans la page sans déplacer les boutons sous une grande zone vide. Animation discrète au survol, désactivée avec la préférence de mouvement réduit. Données, permissions et parcours conservés.
