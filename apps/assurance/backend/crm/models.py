@@ -109,6 +109,7 @@ class Appointment(models.Model):
 
 
 class AppointmentReport(models.Model):
+    sale_concluded = models.BooleanField(null=True, blank=True)
     outcome = models.CharField(
         max_length=20,
         blank=True,
@@ -125,6 +126,16 @@ class AppointmentReport(models.Model):
     note = models.TextField(blank=True)
     author_id = models.PositiveBigIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(sale_concluded__isnull=True)
+                | models.Q(sale_concluded=False)
+                | models.Q(performed=True),
+                name='assurance_sale_requires_attendance',
+            )
+        ]
 
 
 class FollowUpTask(models.Model):

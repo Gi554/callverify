@@ -732,6 +732,16 @@ onMounted(() =>
           }}
           · Problème : {{ savedReport.problem ? 'Oui' : 'Non' }}
         </p>
+        <p>
+          Vente ou contrat conclu :
+          {{
+            savedReport.sale_concluded == null
+              ? 'Non renseigné'
+              : savedReport.sale_concluded
+                ? 'Oui'
+                : 'Non'
+          }}
+        </p>
         <p>{{ savedReport.note }}</p>
         <form @submit.prevent="signal">
           <label

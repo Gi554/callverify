@@ -13,6 +13,7 @@ import {
 import SidePanel from './SidePanel.vue';
 import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status';
 import AssuranceAppointments from './AssuranceAppointments.vue';
+import AssuranceAdvisorAppointment from './AssuranceAdvisorAppointment.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import {
   dayKey,
@@ -42,6 +43,7 @@ const selected = ref<any>(null),
   selectedDay = ref(''),
   creating = ref(false),
   detailBusy = ref(false);
+const advisorDetail = ref<InstanceType<typeof AssuranceAdvisorAppointment> | null>(null);
 const assurance = computed(() => props.workspace === 'assurance'),
   canBook = computed(() => ['setter', 'administrator'].includes(props.role)),
   admin = computed(() => props.role === 'administrator');
@@ -228,6 +230,7 @@ function open(row: any) {
 }
 function closeDetail() {
   if (detailBusy.value) return;
+  if (advisorDetail.value && !advisorDetail.value.close()) return;
   selected.value = null;
   void load();
 }
@@ -475,8 +478,15 @@ onBeforeUnmount(() => {
       "
       :close-disabled="detailBusy"
       @request-close="closeDetail"
-      ><AssuranceAppointments
-        v-if="selected && assurance"
+      ><AssuranceAdvisorAppointment
+        v-if="selected && assurance && role === 'advisor'"
+        :key="selected.id"
+        ref="advisorDetail"
+        :appointment-id="selected.id"
+        :request="request"
+        @busy="detailBusy = $event"
+        @updated="selected = $event" /><AssuranceAppointments
+        v-else-if="selected && assurance"
         :key="selected.id"
         :appointment-id="selected.id"
         :request="request"

@@ -23,6 +23,7 @@ from .calendar_checks import check as external_check
 from .appointment_status import output as business_status, filter_status
 from .qualification import snapshot as qualification_snapshot
 from .reports import ReportMixin
+from .advisor_workspace import AdvisorWorkspaceMixin
 from .visibility import visible_contacts
 
 
@@ -176,7 +177,7 @@ def output(row, user):
     return result
 
 
-class AppointmentViewSet(ReportMixin, viewsets.GenericViewSet):
+class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericViewSet):
     serializer_class = BookingInput
     pagination_class = AppointmentPagination
     http_method_names = ['get', 'post', 'head', 'options']
