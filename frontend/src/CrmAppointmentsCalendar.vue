@@ -11,6 +11,7 @@ import {
   Search,
 } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
+import ProspectExport from './ProspectExport.vue';
 import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status';
 import AssuranceAppointments from './AssuranceAppointments.vue';
 import AssuranceAdvisorAppointment from './AssuranceAdvisorAppointment.vue';
@@ -267,6 +268,12 @@ onBeforeUnmount(() => {
           Liste
         </button>
       </div>
+      <ProspectExport
+        v-if="assurance && role === 'advisor'"
+        :request="request"
+        path="contacts/export/"
+        label="Mes prospects"
+      />
       <button v-if="canBook && !listView" class="calendar-new" @click="creating = true">
         <Plus :size="16" />Réserver un {{ assurance ? 'rendez-vous' : 'créneau' }}
       </button>

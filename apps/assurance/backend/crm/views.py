@@ -12,6 +12,7 @@ from .leases import ContactLeaseMixin
 from .notes import ContactNoteMixin, NoteSharingMixin
 from .interactions import ContactInteractionMixin
 from .custom_fields import CustomValuesMixin
+from .contact_export import ContactExportMixin
 from .documents import ContactDocumentMixin, DocumentSharingMixin
 from .pipeline import ContactPipelineMixin, pipeline
 from django.db.models import Q
@@ -47,6 +48,7 @@ class PublicContactSerializer(serializers.ModelSerializer):
 
 
 class ContactViewSet(
+    ContactExportMixin,
     QualificationMixin,
     ContactFollowUpMixin,
     PhoneCallMixin,

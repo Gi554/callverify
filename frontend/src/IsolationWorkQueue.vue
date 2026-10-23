@@ -14,6 +14,7 @@ import CallAction from './CallAction.vue';
 import IsolationProspectActivity from './IsolationProspectActivity.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import SidePanel from './SidePanel.vue';
+import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
 const adminTools = ref(false),
@@ -227,7 +228,16 @@ onBeforeUnmount(() => {
       <div class="board-actions">
         <button v-if="role === 'administrator'" class="secondary" @click="adminTools = !adminTools">
           <Users :size="16" />Répartir les prospects</button
-        ><button class="secondary" :disabled="busy" @click="load">
+        ><ProspectExport
+          :request="request"
+          path="work-queue/export/"
+          :filters="{
+            search: applied.search,
+            owner: applied.owner,
+            commercial_status: commercialStatus,
+            due: applied.due ? 'true' : '',
+          }"
+        /><button class="secondary" :disabled="busy" @click="load">
           <RefreshCw :size="16" />Actualiser
         </button>
       </div>
