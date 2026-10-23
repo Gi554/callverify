@@ -25,6 +25,7 @@ import IsolationCloserVisits from './IsolationCloserVisits.vue';
 import AssuranceFollowUps from './AssuranceFollowUps.vue';
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue';
 import AssuranceNotifications from './AssuranceNotifications.vue';
+import TaskAlerts from './TaskAlerts.vue';
 import AssuranceReminders from './AssuranceReminders.vue';
 import AssuranceStatistics from './AssuranceStatistics.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
@@ -437,6 +438,18 @@ const roleLabels: Record<string, string> = {
       @access="openAccess"
       @logout="logout"
     >
+      <template
+        v-if="user && workspace === 'assurance' && ['setter', 'administrator'].includes(role)"
+        #alerts
+      >
+        <TaskAlerts
+          :key="workspace + user.username"
+          :role="role"
+          :username="user.username"
+          :request="assurance"
+          @navigate="selectModule"
+        />
+      </template>
       <main class="amx-main">
         <p v-if="calendarNotice" role="status">{{ calendarNotice }}</p>
         <p v-if="!ready" class="subtle">Chargement de votre espace…</p>

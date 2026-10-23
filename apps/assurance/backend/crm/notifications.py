@@ -26,7 +26,9 @@ def notify(task, kind, key):
 def scoped(user):
     if user.role not in ('administrator', 'setter'):
         raise PermissionDenied('Notifications de suivi internes uniquement')
-    qs = TaskNotification.objects.select_related('task')
+    qs = TaskNotification.objects.select_related(
+        'task', 'task__contact', 'task__appointment__contact'
+    )
     if user.role == 'setter':
         qs = qs.filter(task__setter_id=user.pk)
     read = TaskNotificationRead.objects.filter(notification_id=OuterRef('pk'), user_id=user.pk)
@@ -34,9 +36,13 @@ def scoped(user):
 
 
 def output(row):
+    contact = row.task.contact or (row.task.appointment.contact if row.task.appointment else None)
     return {
         'id': row.pk,
         'task_id': row.task_id,
+        # Name only, so alerts can say which prospect to call back.
+        'contact_id': contact.pk if contact else None,
+        'contact_name': contact.name if contact else '',
         'kind': row.kind,
         'label': LABELS[row.kind],
         'created_at': row.created_at,

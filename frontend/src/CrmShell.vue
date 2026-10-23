@@ -131,13 +131,14 @@ function navigate(id: string) {
           aria-label="Appels, accessibles depuis une fiche prospect"
         >
           <Phone :size="22" /></button
-        ><button
-          v-if="items.some((item) => item.id === 'followups')"
-          :title="admin ? 'Tâches de l’équipe' : 'Mes tâches'"
-          :aria-label="admin ? 'Consulter les tâches de l’équipe' : 'Consulter mes tâches'"
-          @click="navigate('followups')"
-        >
-          <Bell :size="22" /></button
+        ><slot name="alerts"
+          ><button
+            v-if="items.some((item) => item.id === 'followups')"
+            :title="admin ? 'Tâches de l’équipe' : 'Mes tâches'"
+            :aria-label="admin ? 'Consulter les tâches de l’équipe' : 'Consulter mes tâches'"
+            @click="navigate('followups')"
+          >
+            <Bell :size="22" /></button></slot
         ><button disabled title="Centre d’aide à venir" aria-label="Centre d’aide indisponible">
           <HelpCircle :size="24" />
         </button>

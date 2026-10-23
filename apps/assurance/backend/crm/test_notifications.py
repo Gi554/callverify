@@ -78,6 +78,10 @@ class NotificationTests(TestCase):
         self.auth(21, 'setter')
         self.assertEqual(self.summary()['open'], 1)
         self.assertIsNotNone(self.client.get(self.url).data['results'][0]['read_at'])
+        row = self.client.get(self.url).data['results'][0]
+        contact = self.task.contact or self.task.appointment.contact
+        self.assertEqual(row['contact_id'], contact.pk)
+        self.assertEqual(row['contact_name'], contact.name)
         self.assertEqual(self.read(user_id=22).status_code, 400)
 
     def test_read_state_is_per_user_and_moves_with_task_ownership(self):
@@ -157,6 +161,8 @@ class NotificationTests(TestCase):
             {
                 'id',
                 'task_id',
+                'contact_id',
+                'contact_name',
                 'kind',
                 'label',
                 'created_at',
