@@ -13,6 +13,7 @@ import {
 } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
 import ClientCallHistory from './ClientCallHistory.vue';
+import ProspectExport from './ProspectExport.vue';
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import IsolationProspectActivity from './IsolationProspectActivity.vue';
 import IsolationVisits from './IsolationVisits.vue';
@@ -22,6 +23,23 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
 }>();
+const exporting = ref(false),
+  exportChoice = ref('section');
+const applied = ref({ section: 'prospects', search: '', status: '' });
+const exportSection = computed(() =>
+  exportChoice.value === 'summary' ? 'summary' : section.value,
+);
+const exportFilters = computed(() =>
+  exportSection.value === 'summary'
+    ? { section: 'summary' }
+    : {
+        section: applied.value.section,
+        search: applied.value.search,
+        ...(['prospects', 'appointments'].includes(applied.value.section)
+          ? { status: applied.value.status }
+          : {}),
+      },
+);
 const folders = ref<any[]>([]),
   selected = ref<any>(null),
   metrics = ref<any>(null);
@@ -92,6 +110,7 @@ function date(value: string, zone = 'America/Toronto') {
   }).format(new Date(value));
 }
 async function load() {
+  if (exporting.value) return;
   const version = ++generation;
   busy.value = true;
   error.value = '';
@@ -125,6 +144,11 @@ async function load() {
       rows.value = data.results;
       count.value = data.count;
       metrics.value = data.summary;
+      applied.value = {
+        section: query.get('section') || 'prospects',
+        search: query.get('search') || '',
+        status: query.get('status') || '',
+      };
       const actors = await actorNames(
         props.portal,
         props.workspace,
@@ -139,6 +163,7 @@ async function load() {
   }
 }
 function reset() {
+  if (exporting.value) return;
   page.value = 1;
   void load();
 }
@@ -193,7 +218,7 @@ onMounted(load);
   <section class="client-folders" :aria-busy="busy">
     <header class="folder-heading">
       <div>
-        <button v-if="selected" class="folder-back" :disabled="busy" @click="back">
+        <button v-if="selected" class="folder-back" :disabled="busy || exporting" @click="back">
           <ArrowLeft :size="16" />Tous les dossiers
         </button>
         <span v-else class="folder-eyebrow"
@@ -208,12 +233,12 @@ onMounted(load);
           }}
         </p>
       </div>
-      <button class="folder-refresh" :disabled="busy" @click="load">
+      <button class="folder-refresh" :disabled="busy || exporting" @click="load">
         <RefreshCw :size="16" />Actualiser
       </button>
     </header>
     <p v-if="error" class="folder-error" role="alert">
-      {{ error }} <button :disabled="busy" @click="load">Réessayer</button>
+      {{ error }} <button :disabled="busy || exporting" @click="load">Réessayer</button>
     </p>
     <p v-if="busy" role="status">Chargement des dossiers…</p>
     <template v-if="!selected">
@@ -232,7 +257,8 @@ onMounted(load);
           v-model="search"
           placeholder="Rechercher un client…"
           aria-label="Rechercher un client"
-        /><button :disabled="busy">Rechercher</button><span>{{ count }} dossier(s)</span>
+        /><button :disabled="busy || exporting">Rechercher</button
+        ><span>{{ count }} dossier(s)</span>
       </form>
       <div class="folder-grid">
         <button
@@ -240,7 +266,7 @@ onMounted(load);
           :key="folder.id"
           class="client-folder"
           :class="`folder-tone-${index % 3}`"
-          :disabled="busy"
+          :disabled="busy || exporting"
           @click="open(folder)"
         >
           <span class="folder-topline"
@@ -310,7 +336,7 @@ onMounted(load);
             (key) => workspace === 'assurance' || !['absent', 'rescheduled'].includes(key),
           )"
           :key="state"
-          :disabled="busy"
+          :disabled="busy || exporting"
           :class="['status-pill', state]"
           @click="
             section = 'appointments';
@@ -333,7 +359,7 @@ onMounted(load);
         <button
           v-for="stage in metrics.prospect_statuses"
           :key="stage.status"
-          :disabled="busy"
+          :disabled="busy || exporting"
           class="status-pill"
           @click="
             status = stage.status;
@@ -344,7 +370,7 @@ onMounted(load);
         ><button
           v-if="status"
           class="status-pill"
-          :disabled="busy"
+          :disabled="busy || exporting"
           @click="
             status = '';
             reset();
@@ -361,7 +387,7 @@ onMounted(load);
         <button
           v-for="item in tabs"
           :key="item.id"
-          :disabled="busy"
+          :disabled="busy || exporting"
           :aria-current="section === item.id ? 'page' : undefined"
           @click="tab(item.id)"
         >
@@ -377,19 +403,41 @@ onMounted(load);
           }}</span>
         </button>
       </nav>
+      <div class="folder-export">
+        <label
+          >Contenu à exporter<select v-model="exportChoice" :disabled="busy || exporting">
+            <option value="section">Cet onglet · tous les résultats filtrés</option>
+            <option value="summary">Synthèse générale · indicateurs métier</option>
+          </select></label
+        >
+        <ProspectExport
+          :request="request"
+          :path="`client-folders/${selected.id}/export/`"
+          :filters="exportFilters"
+          :filename="`dossier-${workspace}-${selected.id}-${exportSection}`"
+          label="Télécharger"
+          :blocked="busy || exporting || !!error || !metrics"
+          @busy="exporting = $event"
+        />
+        <small>{{
+          exportChoice === 'summary'
+            ? 'Indicateurs de tout le dossier, hors objectif administratif et quota restant.'
+            : 'Toutes les pages correspondant à la dernière liste chargée. Les modifications de recherche doivent être appliquées avant un nouvel export.'
+        }}</small>
+      </div>
       <form class="folder-search" @submit.prevent="reset">
         <Search :size="18" /><input
           v-model="search"
           placeholder="Rechercher un prospect dans ce dossier…"
           aria-label="Rechercher un prospect dans le dossier"
         /><label v-if="section === 'appointments'"
-          >Statut<select v-model="status" @change="reset">
+          >Statut<select v-model="status" :disabled="busy || exporting" @change="reset">
             <option value="">Tous les statuts</option>
             <option v-for="state in appointmentStates" :key="state" :value="state">
               {{ labels[state] }}
             </option>
           </select></label
-        ><button :disabled="busy">Rechercher</button>
+        ><button :disabled="busy || exporting">Rechercher</button>
       </form>
       <p v-if="section === 'calls'" class="folder-rule">
         Résultats saisis par les agents sur les fiches de ce dossier. Ce total ne représente pas le
@@ -469,13 +517,13 @@ onMounted(load);
               <td>
                 <button
                   class="folder-link"
-                  :disabled="busy"
+                  :disabled="busy || exporting"
                   @click="openProspect(row.contact_id || row.id)"
                 >
                   Ouvrir la fiche <ArrowUpRight :size="14" /></button
                 ><button
                   class="folder-call-link"
-                  :disabled="busy"
+                  :disabled="busy || exporting"
                   @click="callContact = { id: row.contact_id || row.id, name: row.name }"
                 >
                   Appels CRM
@@ -494,7 +542,7 @@ onMounted(load);
     <footer class="folder-pagination">
       <span>{{ count }} {{ selected ? 'résultat(s)' : 'dossier(s)' }} · page {{ page }}</span
       ><button
-        :disabled="busy || page === 1"
+        :disabled="busy || exporting || page === 1"
         @click="
           page--;
           load();
@@ -502,7 +550,7 @@ onMounted(load);
       >
         Précédent</button
       ><button
-        :disabled="busy || page * (selected ? 25 : 12) >= count"
+        :disabled="busy || exporting || page * (selected ? 25 : 12) >= count"
         @click="
           page++;
           load();
@@ -699,6 +747,35 @@ onMounted(load);
   padding: 8px;
   border: 1px solid #dfe3ee;
   border-radius: 8px;
+}
+.folder-export {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e5e4f5;
+  border-radius: 12px;
+}
+.folder-export > label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  flex: 1;
+  min-width: 220px;
+}
+.folder-export select {
+  margin: 0;
+  border: 1px solid #dce0ed;
+  border-radius: 8px;
+  padding: 9px;
+}
+.folder-export > small {
+  width: 100%;
+  color: #68748c;
+  font-size: 11px;
 }
 .folder-grid {
   display: grid;

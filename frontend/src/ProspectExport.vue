@@ -7,11 +7,17 @@ const props = defineProps<{
   path: string;
   filters?: Record<string, string>;
   label?: string;
+  filename?: string;
+  blocked?: boolean;
 }>();
+const emit = defineEmits<{ busy: [value: boolean] }>();
 const busy = ref(''),
   error = ref('');
 async function download(file: 'csv' | 'xlsx') {
+  if (busy.value || props.blocked) return;
+  const filename = props.filename || 'prospects';
   busy.value = file;
+  emit('busy', true);
   error.value = '';
   try {
     const query = new URLSearchParams({ file });
@@ -22,7 +28,7 @@ async function download(file: 'csv' | 'xlsx') {
     try {
       const link = document.createElement('a');
       link.href = url;
-      link.download = `prospects.${file}`;
+      link.download = `${filename}.${file}`;
       link.click();
     } finally {
       URL.revokeObjectURL(url);
@@ -31,6 +37,7 @@ async function download(file: 'csv' | 'xlsx') {
     error.value = e.message;
   } finally {
     busy.value = '';
+    emit('busy', false);
   }
 }
 </script>
@@ -41,7 +48,7 @@ async function download(file: 'csv' | 'xlsx') {
     ><button
       type="button"
       class="secondary"
-      :disabled="!!busy"
+      :disabled="!!busy || !!blocked"
       title="Fichier CSV (séparateur point-virgule)"
       @click="download('csv')"
     >
@@ -49,7 +56,7 @@ async function download(file: 'csv' | 'xlsx') {
     ><button
       type="button"
       class="secondary"
-      :disabled="!!busy"
+      :disabled="!!busy || !!blocked"
       title="Classeur Excel (.xlsx)"
       @click="download('xlsx')"
     >

@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Exports des dossiers clients — CSV et Excel
+
+Dans Dossiers clients, les administrateurs Assurance et Isolation peuvent télécharger soit les résultats de l’onglet courant (prospects, rendez-vous, résultats d’appel, tâches), soit la synthèse métier générale du dossier. L’export de liste reprend la dernière recherche et le statut effectivement chargés et porte sur toutes les pages, pas uniquement les 25 lignes affichées. La synthèse reste indépendante de ces filtres. Le format CSV utilise un séparateur point-virgule et un BOM UTF-8 ; le classeur Excel contient des cellules textuelles pour les valeurs susceptibles d’être interprétées comme des formules. Les appels répétés pendant un téléchargement sont bloqués ; les fichiers portent l’espace, le client et la section dans leur nom.
+
+Les listes et exports partagent les mêmes requêtes et sérialiseurs de périmètre, avec les mêmes comptes rendus et auteurs. Les dates des fichiers sont en UTC ISO 8601 avec décalage explicite ; le fuseau du rendez-vous est conservé. Les présences et ventes déclarées du compte rendu restent consultables même après annulation ; les indicateurs, eux, excluent ces annulations du décompte des présences/ventes. Aucun compte rendu manquant n’est transformé en absence. Chaque export réussi ajoute un audit (administrateur, client, section, format et nombre de lignes), sans téléphone, note ou recherche en métadonnées. Au-delà de 50 000 lignes CSV ou 20 000 lignes Excel, le fichier est refusé explicitement, jamais tronqué.
+
+Limites affichées : export des listes métier et de leurs indicateurs, sans pièces jointes binaires, qualification complète, historique technique NEWT, objectif administratif ni quota restant (ces derniers proviennent du portail). Les auteurs non nommés dans les listes restent identifiés par leur compte numérique. Les résultats d’appel sont des déclarations, pas des conversations connectées. L’historique complet des fiches peut précéder une réaffectation ; les prospects de plusieurs dossiers ne constituent pas des populations disjointes. Le périmètre et cette règle sont rappelés dans les fichiers. Aucun nouveau connecteur, appel, message ou réservation ajouté.
+
+Validation : 21 tests backend ciblés, dont 8 nouveaux tests d’export ; 116 tests frontend, dont 3 nouveaux contrôles des filtres appliqués, du nom du fichier et du verrouillage de téléchargement ; typage Vue, lint, format et build. Recette sur la base PostgreSQL synthétique : CSV complets de 250 prospects Assurance et 1 250 prospects Isolation, synthèses Excel de 16 et 14 indicateurs relues avec openpyxl. Seules quatre entrées d’audit d’export ont été ajoutées aux données de recette. Aucun changement de schéma. Les autres exports de prospects conservent leur nom et leurs filtres par défaut. Contrôle visuel navigateur non réalisé (accès local désactivé dans Work).
+
+À suivre : revue des parcours administrateur et validation des interfaces avec l’utilisateur. Les autres écarts métier/production restent recensés plus bas.
+
+
 ## Statistiques — tableau de bord (indicateurs, tendances, anneau et histogramme)
 
 Les pages Statistiques Assurance et Isolation adoptent une présentation de tableau de bord :
@@ -99,7 +112,7 @@ Périmètre explicite : les appels et tâches reprennent l’historique complet 
 
 Validation locale : 27 tests backend ciblés (2 contrôles de concurrence PostgreSQL ignorés sur SQLite), dont 7 nouveaux tests de dossiers/permissions/pagination/historique ; 113 tests frontend, dont 3 nouveaux tests de navigation, décompte, panne et espace Isolation ; typage, lint, format et build. Recette API en lecture seule sur la base PostgreSQL synthétique de 10 000 prospects : 5 dossiers Assurance, 1 dossier Isolation ; dossier Assurance de 250 prospects et dossier Isolation de 1 250 prospects, appels déclarés et suivis paginés, cohérence des totaux vérifiée. Aucun appel, fournisseur, message, réservation ou donnée de recette déclenché/modifié. Aucun changement de schéma. Recette graphique navigateur non réalisée : contrôle local désactivé dans Work.
 
-À suivre : export du dossier client et de ses indicateurs, puis revue visuelle utilisateur des pages administrateur. Les autres écarts métier/production recensés plus bas restent ouverts.
+Export du dossier et des indicateurs livré dans le lot décrit ci-dessus ; revue visuelle utilisateur des pages administrateur à poursuivre. Les autres écarts métier/production recensés plus bas restent ouverts.
 
 
 ## Prospection active et traçabilité du travail
