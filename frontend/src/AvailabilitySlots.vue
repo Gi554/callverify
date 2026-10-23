@@ -15,6 +15,7 @@ const props = defineProps<{
   // Returns busy intervals between two explicit instants; `key` reloads when it changes.
   load: (start: string, end: string) => Promise<Busy[]>;
   loadKey: string;
+  fullDay?: boolean;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 const FIRST_HOUR = 8,
@@ -49,7 +50,11 @@ const title = computed(() =>
 const slots = computed(() => {
   const now = Date.now(),
     result: { local: string; label: string; state: 'free' | 'busy' | 'past' }[] = [];
-  for (let minutes = FIRST_HOUR * 60; minutes < LAST_HOUR * 60; minutes += STEP) {
+  for (
+    let minutes = (props.fullDay ? 0 : FIRST_HOUR) * 60;
+    minutes < (props.fullDay ? 24 : LAST_HOUR) * 60;
+    minutes += STEP
+  ) {
     const label = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
     const local = `${day.value}T${label}`;
     let interval;
@@ -125,13 +130,20 @@ watch([day, () => props.zone, () => props.loadKey], () => void refresh(), { imme
         :class="[slot.state, { selected: modelValue === slot.local }]"
         :disabled="slot.state !== 'free' || disabled"
         :aria-pressed="modelValue === slot.local"
-        :title="slot.state === 'busy' ? 'Créneau déjà occupé' : undefined"
+        :title="
+          slot.state === 'busy'
+            ? 'Créneau indisponible (horaire fermé ou rendez-vous existant)'
+            : undefined
+        "
         @click="emit('update:modelValue', slot.local)"
       >
         {{ slot.label }}
       </button>
     </div>
-    <small>Créneaux de {{ FIRST_HOUR }} h à {{ LAST_HOUR }} h selon le CRM. {{ note }}</small>
+    <small
+      >Créneaux de {{ fullDay ? 0 : FIRST_HOUR }} h à {{ fullDay ? 24 : LAST_HOUR }} h selon le CRM.
+      {{ note }}</small
+    >
   </section>
 </template>
 

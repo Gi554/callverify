@@ -45,7 +45,7 @@ function compile(name, stub) {
 globalThis.slotProps = null
 const appointments = await compile('AssuranceAppointments', (name) =>
   name === 'AvailabilitySlots'
-    ? `const AvailabilitySlots={props:['modelValue','zone','duration','load','loadKey'],setup(p){return()=>{globalThis.slotProps=p;return null}}}`
+    ? `const AvailabilitySlots={props:['modelValue','zone','duration','load','loadKey','fullDay'],setup(p){return()=>{globalThis.slotProps=p;return null}}}`
     : `const ${name}={render:()=>null}`,
 )
 const slotsComponent = await compile(
@@ -118,7 +118,8 @@ test('booking form asks the API for the chosen assignment and prospect busy time
         next: null,
         results: [{ id: 5, setter: { name: 'S' }, advisor: { name: 'C' } }],
       }
-    if (path.startsWith('appointments/availability/')) return { busy: [busy] }
+    if (path.startsWith('appointments/availability/'))
+      return { busy: [busy], working_hours_enabled: true }
     return { count: 0, next: null, results: [] }
   }
   const app = renderer.createApp(appointments, {
@@ -147,6 +148,8 @@ test('booking form asks the API for the chosen assignment and prospect busy time
     assert.equal(query.get('assignment_id'), '5')
     assert.equal(query.get('contact_id'), '42')
     assert.equal(query.get('start'), '2026-11-02T00:00:00-05:00')
+    await flush()
+    assert.equal(globalThis.slotProps.fullDay, true)
   } finally {
     app.unmount()
   }
@@ -187,6 +190,38 @@ test('shared grid marks busy slots, keeps free ones selectable and reloads per d
     slot(root, '11:00').props.onClick()
     assert.deepEqual(chosen, [`${tomorrow}T11:00`])
     assert.match(text(root), /Agenda externe vérifié à la confirmation/)
+  } finally {
+    app.unmount()
+  }
+})
+
+test('configured hours can offer early slots outside the legacy 8-to-20 grid', async () => {
+  const root = { children: [] }
+  const app = renderer.createApp(slotsComponent, {
+    modelValue: '',
+    zone: 'America/Toronto',
+    duration: 30,
+    label: 'Horaires',
+    note: '',
+    loadKey: 'hours',
+    fullDay: true,
+    load: async (start) => [
+      {
+        starts_at: start,
+        ends_at: bookingInterval(`${tomorrow}T07:00`, 'America/Toronto', 30).starts_at,
+      },
+    ],
+  })
+  app.mount(root)
+  try {
+    await flush()
+    all(root)
+      .find((n) => n.props?.['aria-label'] === 'Jour suivant')
+      .props.onClick()
+    await flush()
+    assert.equal(slotButtons(root).length, 48)
+    assert.equal(slot(root, '06:30').props.disabled, true)
+    assert.equal(slot(root, '07:00').props.disabled, false)
   } finally {
     app.unmount()
   }

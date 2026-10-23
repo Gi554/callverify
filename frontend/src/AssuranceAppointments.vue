@@ -94,10 +94,16 @@ const localStart = ref(props.compact ? '' : start.value.slice(0, 16)),
   duration = ref(30),
   historyVisible = ref(false);
 let requestId = crypto.randomUUID();
+const workingHoursEnabled = ref(false);
+let availabilityVersion = 0;
 function loadBusy(start: string, end: string) {
+  const version = ++availabilityVersion;
   const query = new URLSearchParams({ assignment_id: assignment.value, start, end });
   if (props.contactId) query.set('contact_id', String(props.contactId));
-  return props.request(`appointments/availability/?${query}`).then((data: any) => data.busy);
+  return props.request(`appointments/availability/?${query}`).then((data: any) => {
+    if (version === availabilityVersion) workingHoursEnabled.value = !!data.working_hours_enabled;
+    return data.busy;
+  });
 }
 function resetId() {
   requestId = crypto.randomUUID();
@@ -413,6 +419,7 @@ onMounted(() =>
           </button>
         </div>
         <AvailabilitySlots
+          :full-day="workingHoursEnabled"
           v-if="compact && assignment"
           v-model="localStart"
           :zone="zone"

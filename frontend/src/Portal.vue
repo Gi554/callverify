@@ -20,6 +20,7 @@ import AssuranceAssignments from './AssuranceAssignments.vue';
 import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue';
 import AssuranceAppointments from './AssuranceAppointments.vue';
 import AssuranceAdvisorProspects from './AssuranceAdvisorProspects.vue';
+import AssuranceAdvisorAgenda from './AssuranceAdvisorAgenda.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import IsolationTasksBoard from './IsolationTasksBoard.vue';
 import IsolationCloserVisits from './IsolationCloserVisits.vue';
@@ -155,7 +156,7 @@ async function enter(value: string) {
   busy.value = true;
   workspace.value = value;
   summary.value = null;
-  // Advisors only work from their appointments: no overview, contacts or pipeline.
+  // Advisors start in their agenda, with their own prospects and availability settings.
   assuranceModule.value = role.value === 'advisor' ? 'appointments' : 'overview';
   isolationModule.value = 'overview';
   managing.value = false;
@@ -267,6 +268,7 @@ const navigation = computed(() => {
     return [
       { id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' },
       { id: 'contacts', label: 'Mes prospects', icon: 'contacts' },
+      { id: 'agenda-settings', label: 'Mon agenda et disponibilités', icon: 'appointments' },
     ];
   if (role.value === 'closer')
     return [
@@ -485,7 +487,10 @@ const roleLabels: Record<string, string> = {
           @close="closeRecovery"
         />
         <template v-else-if="user">
-          <div class="amx-heading">
+          <div
+            v-if="activeModule !== 'agenda-settings' || passwordOpen || managing"
+            class="amx-heading"
+          >
             <div>
               <p class="amx-eyebrow">{{ workspace ? title(workspace) : 'AMX CRM' }}</p>
               <h1>
@@ -600,8 +605,13 @@ const roleLabels: Record<string, string> = {
                     @open-prospect="openProspect"
                   />
                   <template v-else-if="workspace === 'assurance'">
+                    <AssuranceAdvisorAgenda
+                      v-if="assuranceModule === 'agenda-settings' && role === 'advisor'"
+                      :portal="portal"
+                      :request="assurance"
+                    />
                     <AssuranceProspects
-                      v-if="
+                      v-else-if="
                         assuranceModule === 'contacts' && ['setter', 'administrator'].includes(role)
                       "
                       :key="prospectFocus ? 'focus-' + prospectFocus.id : 'board'"

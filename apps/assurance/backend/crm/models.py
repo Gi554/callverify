@@ -66,6 +66,8 @@ class AdvisorSchedule(models.Model):
     # Serializes slot changes for the same advisor across all of their setters.
     advisor_id = models.PositiveBigIntegerField(primary_key=True)
     version = models.PositiveIntegerField(default=0)
+    availability = models.JSONField(default=dict)
+    availability_revision = models.PositiveIntegerField(default=0)
 
 
 class Appointment(models.Model):
