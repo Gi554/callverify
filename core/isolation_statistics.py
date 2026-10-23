@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from .isolation_work import WorkAuthentication
 from .models import IsolationVisit, AuditEvent
 from .isolation_statistics_export import response as export_response
+from packages.stats_series import daily, previous
 
 
 class StatisticsAuthentication(WorkAuthentication):
@@ -101,13 +102,20 @@ def statistics(request):
     group = request.query_params.get('group', 'setter')
     if group not in ('setter', 'closer'):
         raise ValidationError('Regroupement setter ou closer requis.')
-    qs = IsolationVisit.objects.filter(starts_at__gte=lower, starts_at__lt=upper)
-    if request.user.role == 'client':
-        qs = qs.filter(client_id=request.user.pk)
-    if request.user.role == 'setter':
-        qs = qs.filter(setter_id=request.user.pk, prospect__assigned_setter_id=request.user.pk)
-    if request.user.role == 'closer':
-        qs = qs.filter(closer_id=request.user.pk)
+
+    def scoped(first, last):
+        rows = IsolationVisit.objects.filter(starts_at__gte=first, starts_at__lt=last)
+        if request.user.role == 'client':
+            rows = rows.filter(client_id=request.user.pk)
+        if request.user.role == 'setter':
+            rows = rows.filter(
+                setter_id=request.user.pk, prospect__assigned_setter_id=request.user.pk
+            )
+        if request.user.role == 'closer':
+            rows = rows.filter(closer_id=request.user.pk)
+        return rows
+
+    qs = scoped(lower, upper)
     result = {
         'from': start,
         'to': end,
@@ -117,6 +125,34 @@ def statistics(request):
         'totals': finish(qs.aggregate(**metrics(now))),
         'definition': f'Période selon le début actuel de la visite, jours inclus dans le fuseau {zone}. Setter d’origine ; closer actuellement affecté. Une réattribution déplace donc les visites et leurs résultats courants dans le groupe du nouveau closer, sans modifier leur auteur historique. Client : ses visites uniquement. Setter : ses réservations dont il conserve le prospect. Closer : ses visites actuellement attribuées. Taux effectué (présence) = tenues / résultats de tenue renseignés. Taux de conclusion observé = ventes explicitement conclues / visites tenues, y compris celles dont la vente reste non renseignée ; ces inconnues sont affichées séparément, pas classées comme ventes perdues. Les annulations, rendez-vous futurs et résultats manquants ne deviennent pas des absences. Prospects distincts par groupe, non additionnables. Un report peut déplacer une visite de période.',
     }
+    if not kind:
+        # Dashboard only: same-length previous period for trends, and one point per local day.
+        local = ZoneInfo(zone)
+        try:
+            first, last = previous(start, end)
+            result['previous'] = {
+                'from': first,
+                'to': last,
+                'totals': finish(
+                    scoped(
+                        datetime.combine(first, time.min, local).astimezone(utc.utc),
+                        lower,
+                    ).aggregate(**metrics(now))
+                ),
+            }
+        except OverflowError:
+            result['previous'] = None
+        result['daily'] = daily(
+            qs,
+            start,
+            end,
+            local,
+            visits=Count('pk', distinct=True),
+            performed=Count('pk', filter=Q(result__performed=True), distinct=True),
+            closed=Count(
+                'pk', filter=Q(result__performed=True, result__closed=True), distinct=True
+            ),
+        )
     exported_groups = []
     if request.user.role in ('administrator', 'client'):
         identity = f'{group}_id'

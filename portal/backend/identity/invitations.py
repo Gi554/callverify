@@ -77,12 +77,31 @@ def available(username, email):
         raise ValidationError('Compte déjà présent : utilisez l’association d’un compte existant')
 
 
+SPACES = {'assurance': 'Assurance', 'isolation': 'Isolation'}
+ROLE_NAMES = {
+    'administrator': 'Administrateur',
+    'setter': 'Setter',
+    'advisor': 'Conseiller',
+    'client': 'Client',
+    'closer': 'Closer',
+}
+
+
 def deliver(row, token):
+    space = SPACES.get(row.workspace, row.workspace)
+    role = ROLE_NAMES.get(row.role, row.role)
     enqueue(
         user=row.issuer,
         workspace=row.workspace,
-        subject='AMX — Invitation à votre espace',
-        body=f'Vous êtes invité dans l’espace {row.workspace}, avec le rôle {row.role}.\nIdentifiant : {row.username}\n\n{public_url()}/crm#invite={row.pk}:{token}\n\nChoisissez votre mot de passe pour accepter. Ce lien expire dans 24 heures.',
+        subject=f'AMX — Invitation à l’espace {space}',
+        body=(
+            f'Bonjour,\n\nVous êtes invité dans l’espace {space} en tant que {role}.\n'
+            f'Votre identifiant : {row.username}\n\n'
+            'Pour activer votre compte, ouvrez ce lien et choisissez votre mot de passe :\n'
+            f'{public_url()}/crm#invite={row.pk}:{token}\n\n'
+            'Ce lien expire dans 24 heures. Ensuite, connectez-vous avec votre identifiant '
+            f'et votre mot de passe : votre espace {space} s’ouvrira directement.'
+        ),
         recipient=row.email,
         guard={'kind': 'invitation', 'id': str(row.pk), 'hash': row.token_hash},
         expires_at=row.expires_at,

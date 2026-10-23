@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import StatKpi from './StatKpi.vue';
+import StatDonut from './StatDonut.vue';
+import StatBars from './StatBars.vue';
 const props = defineProps<{
   role?: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
+  username?: string;
 }>();
 const today = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Toronto',
@@ -65,6 +69,47 @@ function number(value: any) {
     ? 'Non calculable'
     : new Intl.NumberFormat('fr-CA', { maximumFractionDigits: 1 }).format(value);
 }
+// Trends compare with the previous period of the same length returned by the API.
+const totals = computed(() => result.value?.totals || {});
+const before = computed(() => result.value?.previous?.totals || null);
+function change(key: string) {
+  const now = totals.value[key],
+    then = before.value?.[key];
+  return typeof now === 'number' && typeof then === 'number' && then > 0
+    ? ((now - then) / then) * 100
+    : null;
+}
+function pointChange(key: string) {
+  const now = totals.value[key],
+    then = before.value?.[key];
+  return typeof now === 'number' && typeof then === 'number' ? now - then : null;
+}
+const daily = computed<any[]>(() => result.value?.daily || []);
+const series = (key: string) => daily.value.map((row) => row[key]);
+const percent = (value: any) =>
+  value === null || value === undefined ? '—' : number(value) + ' %';
+const details = [
+  'not_performed',
+  'results_due',
+  'closure_unknown',
+  'not_closed',
+  'upcoming',
+  'cancelled',
+  'unassigned_closer',
+];
+const outcomes = computed(() => [
+  { label: 'Ventes conclues', value: totals.value.closed || 0, color: '#2f6fed' },
+  { label: 'Tenus, vente non conclue', value: totals.value.not_closed || 0, color: '#7dd3fc' },
+  {
+    label: 'Tenus, vente non renseignée',
+    value: totals.value.closure_unknown || 0,
+    color: '#a5b4fc',
+  },
+  { label: 'Non tenus déclarés', value: totals.value.not_performed || 0, color: '#f97066' },
+  { label: 'Résultat manquant', value: totals.value.results_due || 0, color: '#f59e0b' },
+  { label: 'À venir', value: totals.value.upcoming || 0, color: '#d0d5dd' },
+  { label: 'Annulés', value: totals.value.cancelled || 0, color: '#98a2b3' },
+]);
 async function load(criteria = query(), target = 1) {
   if (busy.value) return;
   busy.value = true;
@@ -102,9 +147,9 @@ onMounted(() => load());
 </script>
 <template>
   <section class="isolation-statistics">
-    <header>
-      <h3>Performances Isolation</h3>
-      <p>Rendez-vous, présence et ventes déclarées dans votre périmètre.</p>
+    <header class="statistics-hello">
+      <h2>Bonjour{{ username ? ', ' + username : '' }}</h2>
+      <p>Rendez-vous, présence et ventes déclarées dans votre périmètre Isolation.</p>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
     <form @submit.prevent="load()">
@@ -148,12 +193,59 @@ onMounted(() => load());
           Télécharger CSV
         </button>
       </div>
-      <div class="statistics-cards">
-        <article v-for="(label, key) in labels" :key="key">
-          <span>{{ label }}</span
-          ><strong>{{ number(result.totals[key]) }}</strong>
-        </article>
+      <div class="statistics-kpis">
+        <StatKpi
+          label="Rendez-vous réservés"
+          :value="number(totals.visits)"
+          :trend="change('visits')"
+          :series="series('visits')"
+          :hint="number(totals.prospects) + ' prospect(s) distinct(s)'"
+        />
+        <StatKpi
+          label="Rendez-vous tenus"
+          :value="number(totals.performed)"
+          :trend="change('performed')"
+          :series="series('performed')"
+          :hint="'Présence : ' + percent(totals.performed_rate)"
+        />
+        <StatKpi
+          label="Ventes conclues déclarées"
+          :value="number(totals.closed)"
+          :trend="change('closed')"
+          :series="series('closed')"
+          :hint="number(totals.closure_unknown) + ' tenu(s) sans résultat de vente'"
+        />
+        <StatKpi
+          label="Taux de conclusion"
+          :value="percent(totals.closing_rate)"
+          :trend="pointChange('closing_rate')"
+          points
+          hint="Ventes conclues / rendez-vous tenus"
+        />
       </div>
+      <div class="statistics-charts">
+        <StatDonut
+          title="Issue des rendez-vous"
+          :center="percent(totals.closing_rate)"
+          caption="taux de conclusion"
+          :segments="outcomes"
+        />
+        <StatBars
+          title="Volume des rendez-vous"
+          :days="daily"
+          :series="[
+            { key: 'visits', label: 'Réservés', color: '#7dd3fc' },
+            { key: 'performed', label: 'Tenus', color: '#2f6fed' },
+            { key: 'closed', label: 'Ventes', color: '#12a05c' },
+          ]"
+        />
+      </div>
+      <ul class="statistics-details">
+        <li v-for="key in details" :key="key">
+          <strong>{{ number(totals[key]) }}</strong
+          >{{ labels[key] }}
+        </li>
+      </ul>
       <p v-if="result.totals.closure_unknown">
         {{ result.totals.closure_unknown }} rendez-vous tenu(s) sans résultat de vente : le taux de
         conclusion reflète les ventes déclarées à ce jour.
@@ -166,8 +258,8 @@ onMounted(() => load());
           déclenché par ce rapport.</small
         >
       </details>
-      <template v-if="groups"
-        ><h4>
+      <div v-if="groups" class="statistics-groups">
+        <h4>
           {{
             result.group === 'closer' ? 'Par closer actuellement attribué' : 'Par setter d’origine'
           }}
@@ -211,8 +303,8 @@ onMounted(() => load());
           @click="load(applied, page + 1)"
         >
           Suivant
-        </button></template
-      >
+        </button>
+      </div>
       <p>
         Les exports contiennent toutes les lignes autorisées du regroupement affiché, au-delà de
         cette page. Ils ne contiennent ni coordonnées de prospects ni notes.
@@ -223,6 +315,7 @@ onMounted(() => load());
 <style scoped>
 .isolation-statistics {
   color: #30425b;
+  container: stats / inline-size;
 }
 .statistics-filters {
   border: 0;
@@ -248,34 +341,75 @@ onMounted(() => load());
   color: #7e88a0;
   font-size: 12px;
 }
-.statistics-cards {
+.statistics-hello h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 24px;
+}
+.statistics-hello p {
+  margin: 4px 0 0;
+  color: #667085;
+  font-size: 14px;
+}
+.statistics-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
-  gap: 12px;
-  margin: 20px 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0 14px;
 }
-.statistics-cards article {
-  background: #f5f7fd;
-  border: 1px solid #e6eaf5;
-  border-radius: 13px;
-  padding: 18px;
+.statistics-charts {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 2.2fr);
+  gap: 14px;
 }
-.statistics-cards article:nth-child(3n + 2) {
-  background: #f4f1fa;
+@container stats (max-width: 640px) {
+  .statistics-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-.statistics-cards article:nth-child(3n) {
-  background: #eff8f5;
+@container stats (max-width: 460px) {
+  .statistics-kpis {
+    grid-template-columns: 1fr;
+  }
 }
-.statistics-cards span {
-  display: block;
+@container stats (max-width: 760px) {
+  .statistics-charts {
+    grid-template-columns: 1fr;
+  }
+}
+.statistics-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+.statistics-details li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: #f3f5f8;
+  color: #5b6b82;
   font-size: 12px;
-  line-height: 1.5;
-  color: #7b8499;
 }
-.statistics-cards strong {
-  display: block;
-  font-size: 26px;
-  margin-top: 12px;
+.statistics-details strong {
+  color: #1f2f45;
+  font-size: 14px;
+}
+.statistics-groups {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #e6e9f0;
+  border-radius: 14px;
+  background: white;
+}
+.statistics-groups h4 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #101828;
 }
 .isolation-statistics details {
   padding: 16px;

@@ -1,5 +1,92 @@
 # Suivi des livraisons CRM AMX
 
+## Statistiques — tableau de bord (indicateurs, tendances, anneau et histogramme)
+
+Les pages Statistiques Assurance et Isolation adoptent une présentation de tableau de bord :
+
+- **En-tête** : « Bonjour, … » avec le périmètre affiché.
+- **Indicateurs** : quatre indicateurs en cartes, chacun avec sa tendance par rapport à la période précédente de même durée (badge vert ou rouge, inversé quand une hausse est défavorable, comme les comptes rendus manquants) et une courbe quotidienne.
+- **Graphiques** : un anneau « Issue des rendez-vous » et un histogramme « Volume des rendez-vous » regroupable par jour, semaine ou mois. Une infobulle donne le détail au survol ou au clavier.
+- **Détail par setter ou closer** : présenté dans une carte.
+
+Contenu par espace :
+
+- **Assurance** : rendez-vous, effectués, taux effectué (écart en points) et comptes rendus manquants. L’anneau répartit effectués, absences, autres non effectués, sans compte rendu, à venir et annulés.
+- **Isolation** : rendez-vous réservés, tenus, ventes conclues et taux de conclusion. L’anneau répartit les ventes conclues, les tenus sans vente ou à vente non renseignée, les non tenus, les résultats manquants, les rendez-vous à venir et les annulés. L’histogramme montre réservés, tenus et ventes.
+
+Les filtres, exports, comparaisons et la méthode sont conservés.
+
+Les API de statistiques renvoient en plus, hors export, `daily` (une ligne par jour, complétée par des zéros ; UTC en Assurance, fuseau choisi en Isolation) et `previous` (totaux de la période précédente de même durée, avec le même périmètre de rôle). Les exports CSV et Excel sont inchangés. La mise en page s’adapte à la largeur réellement disponible : quatre, deux ou une colonne, sans débordement sur téléphone.
+
+Validation :
+
+- Backend : un test Assurance et un test Isolation (série quotidienne, période précédente, périmètre setter ou client).
+- Frontend : test des tendances (hausse, stabilité, points, sens inversé), de l’histogramme et de la courbe.
+- Les harnais existants affichent désormais les vrais composants.
+- Suites Assurance (335), Isolation (254) et frontend (108) complètes, typage, ESLint, Prettier, Ruff et build.
+- Démo `admin.demo` : Assurance et Isolation contrôlés sur ordinateur et en vue téléphone.
+
+Limites :
+
+- **Démo** : les services de démo, lancés sans rechargement par une autre session, ne renvoyaient pas encore la série quotidienne. Les tendances et l’histogramme n’y apparaîtront qu’après redémarrage ; sans série, l’histogramme affiche un message.
+- **Période précédente** : les rendez-vous qui y sont « à venir » ou « sans compte rendu » sont évalués à la date du jour.
+- **Contenu non repris de la maquette** : pas de colonne de messages.
+## Connexion sans choix de profil et invitation en français clair
+
+L’écran de connexion demande directement l’identifiant et le mot de passe. Une personne qui n’a qu’un espace entre directement dans cet espace : c’est le cas d’un conseiller, qui arrive sur son agenda Assurance. Une personne qui a plusieurs espaces arrive sur « Mes espaces », qui ne présente que les espaces autorisés. L’erreur « Votre compte n’a pas accès à ce profil » disparaît donc. L’e-mail d’invitation affiche l’espace et le rôle en français, par exemple « l’espace Assurance en tant que Conseiller », et précise que l’espace s’ouvrira directement.
+
+Validation : test frontend de la connexion (identifiants seuls, mot de passe effacé après envoi) ; test backend du libellé de l’invitation ; suites portail (231) et frontend complètes, typage, ESLint, Prettier et Ruff ; contrôle visuel de l’écran de connexion.
+
+Limites : à la reconnexion, une personne qui a plusieurs espaces choisit son espace dans « Mes espaces ». Le dernier espace utilisé n’est rouvert automatiquement que lors de la reprise d’une session existante.
+## Préparation du déploiement
+
+Le dépôt contient désormais de quoi mettre le CRM en ligne sur un serveur Linux avec Docker :
+
+- `deploy/env.production.template` : la configuration complète, commentée en français.
+- `scripts/generate_production_env.py` : crée le `.env` du serveur à partir du domaine, avec des clés et mots de passe aléatoires (clés Fernet valides). Il refuse de remplacer un fichier existant et n’affiche jamais les valeurs.
+- `scripts/deploy.sh` : vérifie la configuration, construit, migre les trois bases, lance `check --deploy` puis démarre ; il est réutilisé tel quel pour les mises à jour.
+- `scripts/create_admin.sh` : crée le premier administrateur des deux espaces, avec un mot de passe saisi de façon masquée.
+- Nouveau service `portal-call-journal` (profil `newt-journal`) : il rapproche les durées NEWT et ne démarre que si `NEWT_CDR_HISTORY_ENABLED=true`.
+- `.dockerignore` exclut aussi `.claude`, toutes les bases SQLite et les variantes de `.env`.
+- `.gitattributes` garde des fins de ligne Linux pour les scripts shell.
+- `deploy/README.md` : guide pas à pas en français (prérequis, DNS, déploiement, premier administrateur, mises à jour, sauvegardes, dépannage).
+
+Validation : génération testée (aucun marqueur restant, 12 secrets distincts, clés Fernet valides, refus d’écrasement et de domaine invalide) ; `docker compose config` valide avec la configuration générée, avec et sans le profil `newt-journal` ; syntaxe bash des scripts ; Ruff.
+
+Limites : non exécuté de bout en bout, faute de Docker démarré sur le poste de développement ; la première mise en ligne sur le serveur fera office de recette. Le serveur, le domaine et le compte SMTP restent à fournir. Les sauvegardes automatiques restent à planifier sur le serveur.
+## Sécurité avant la mise en production
+
+Un audit ciblé a été mené : contrôles Django `check --deploy` des trois services en mode production, failles connues des dépendances avec pip-audit, recherche de motifs à risque (routes publiques, SQL brut, HTML non échappé, exécution de commandes, secrets en dur).
+
+Corrections :
+
+- **Dépendances** : `cryptography` passe de 46.0.7 à 50.0.0 (sept avis de sécurité) et `certifi` de 2026.7.22 à 2026.10.19. pip-audit ne signale plus aucune faille.
+- **Limites de connexion derrière Caddy** : le portail et l’API Isolation ne retiennent plus que l’adresse ajoutée par le proxy (`NUM_PROXIES=1` quand `TRUST_PROXY=true`). Un en-tête `X-Forwarded-For` falsifié ne permet plus de contourner la limite de tentatives.
+- **Caddy** : les routes internes entre services (`/api/portal/internal/`, `/api/assurance/internal/`) répondent 404 depuis Internet ; elles restaient de toute façon protégées par des preuves signées. Ajout de l’en-tête HSTS et suppression de l’en-tête `Server`.
+
+Points vérifiés sans correction nécessaire : cookies de session `Secure`, `HttpOnly` et `SameSite=Strict` ; protection CSRF du portail (Assurance n’utilise pas de cookie) ; limite de tentatives sur la connexion et la récupération de mot de passe ; webhook Twilio vérifié par signature ; aucun SQL construit à partir de données utilisateur ; aucun HTML non échappé dans l’interface ; aucun secret en dur.
+
+Validation : suites portail (231), Assurance (334) et Isolation (253) complètes avec les nouvelles versions ; `pip check` ; pip-audit sans faille ; contrôle de l’adresse retenue avec et sans en-tête falsifié ; Ruff.
+
+Limites : le Caddyfile n’a pas pu être validé par Caddy lui-même (Docker indisponible sur le poste). Audit ciblé, qui ne remplace pas un test d’intrusion. Les points relevés par `check --deploy` restants sont couverts par Caddy (redirection HTTPS, X-Frame-Options, HSTS).
+## Tests d’intrusion (environnement local)
+
+Une série de tests d’intrusion a été menée sur l’environnement local (127.0.0.1), avec des comptes et des données fictives, pour vérifier les contrôles d’accès avant la mise en production. Aucune faille n’a été trouvée ; aucun correctif n’a été nécessaire.
+
+Scénarios vérifiés, tous bloqués comme attendu :
+
+- **Accès sans authentification** : les API métier et d’administration répondent 403.
+- **Élévation de privilèges** : un setter ne peut pas créer d’accès ni se faire passer pour administrateur ; un conseiller n’atteint pas les écrans d’administration.
+- **Accès horizontal** : un setter ne voit et n’ouvre que ses prospects (fiche d’un autre : 404) ; un conseiller ne voit que ses contacts attribués. L’isolement est appliqué côté serveur, pas seulement masqué à l’écran.
+- **Jetons d’espace** : un jeton Isolation réutilisé sur Assurance, tronqué ou falsifié est refusé (401). Le rôle est fixé par le serveur, non modifiable par le client.
+- **CSRF** : toute écriture sans jeton CSRF (connexion, création d’accès) est refusée (403).
+- **Force brute** : la connexion est limitée (429 au-delà du quota).
+- **Énumération de comptes** : un compte inexistant et un bon compte avec mauvais mot de passe renvoient le même message « Identifiants incorrects ».
+- **Injection** : les tentatives SQL dans la recherche ne renvoient aucun résultat ; un paramètre d’état invalide est rejeté (400).
+- **Routes internes entre services** : elles exigent une preuve signée (403 sans elle) et sont en plus masquées par Caddy en production (voir lot sécurité).
+- **En-têtes** : `X-Content-Type-Options: nosniff` présent sur les réponses.
+
+Limites : tests ciblés sur les contrôles d’accès et les abus courants, menés en local. Ils ne remplacent pas un test d’intrusion professionnel sur l’environnement de production réel, recommandé une fois le CRM en ligne avec de vraies données.
 ## Dossiers clients — administration Assurance et Isolation
 
 Nouvelle entrée « Dossiers clients » réservée aux administrateurs de chaque espace. Les comptes conseillers Assurance et le client Isolation existant sont présentés sous forme de dossiers recherchables, paginés par 12, sans créer de nouveaux clients. Les comptes inactifs encore présents dans l’annuaire restent consultables. Chaque dossier ouvre une vue regroupant les prospects confiés (fiches distinctes, historique d’attribution inclus), les rendez-vous de ce client, les résultats d’appel déclarés et les tâches/rappels des fiches, avec recherche et pagination par 25. Les fiches traitées restent consultables.

@@ -168,3 +168,7 @@ if os.getenv('S3_BUCKET'):
     }
 
 PORTAL_INTERNAL_URL = os.getenv('PORTAL_INTERNAL_URL', 'http://127.0.0.1:8090' if DEBUG else '')
+
+if os.getenv('TRUST_PROXY', 'false').lower() == 'true':
+    # Behind Caddy, throttles must count the visitor (last X-Forwarded-For hop), not the proxy.
+    REST_FRAMEWORK['NUM_PROXIES'] = 1
