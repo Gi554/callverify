@@ -653,6 +653,7 @@ const roleLabels: Record<string, string> = {
                     />
                     <AssuranceAssignments
                       v-else-if="assuranceModule === 'assignments' && role !== 'advisor'"
+                      @navigate="selectModule"
                       :request="assurance"
                       :portal="portal"
                       :role="role"

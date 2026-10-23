@@ -101,9 +101,11 @@ const row = {
 function fixture(role = 'administrator') {
   const root = { children: [] },
     requests = [],
-    portal = []
+    portal = [],
+    navigations = []
   const app = renderer.createApp(component, {
     role,
+    onNavigate: (target) => navigations.push(target),
     request: async (path, body, method) => {
       requests.push([path, body, method])
       if (path === 'advisor-usage/')
@@ -138,7 +140,7 @@ function fixture(role = 'administrator') {
     },
   })
   app.mount(root)
-  return { root, requests, portal, close: () => app.unmount() }
+  return { root, requests, portal, navigations, close: () => app.unmount() }
 }
 const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
 const panel = (f, title) => all(f.root).find((n) => n.props?.['data-panel'] === title)
@@ -206,6 +208,14 @@ test('setter only sees the advisors available for booking', async () => {
     // Only the quota board, readable by every Assurance member, comes from the portal.
     assert.deepEqual(f.portal, [['assurance/advisor-quotas/', undefined]])
     assert.match(text(f.root), /7 restant\(s\) sur\s+10/)
+    button(f, 'Préparer un rendez-vous').props.onClick()
+    assert.deepEqual(f.navigations, ['contacts'])
+    const filter = all(f.root).find((n) => n.tag === 'select')
+    filter.props['onUpdate:modelValue']('false')
+    filter.props.onChange()
+    await flush()
+    assert.match(f.requests.at(-1)[0], /assignments\/\?page=1&search=&active=false/)
+    assert.ok(!f.requests.some(([path, body]) => body || path.includes('calls/')))
   } finally {
     f.close()
   }

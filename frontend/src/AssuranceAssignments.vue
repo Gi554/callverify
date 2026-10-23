@@ -19,6 +19,7 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
 }>();
+const emit = defineEmits<{ navigate: [value: string] }>();
 const quotas = ref(new Map<number, AdvisorQuota>());
 const quotaLoading = ref(true),
   quotaError = ref(false);
@@ -198,32 +199,61 @@ onMounted(() =>
           <RefreshCw :size="16" />Actualiser
         </button>
       </header>
-      <div class="advisors-intro">
-        <div class="advisors-total">
-          <span class="advisors-icon"><Users :size="26" /></span>
+      <div class="advisor-discovery">
+        <div class="discovery-copy">
+          <span class="discovery-mark"><Users :size="25" /></span>
           <div>
-            <strong>{{ busy ? '…' : count }}</strong
-            ><span>conseiller(s) associé(s)</span>
+            <h2>Votre équipe, vos prochains rendez-vous.</h2>
+            <p>Retrouvez vos conseillers et préparez la suite de chaque échange.</p>
           </div>
         </div>
-        <div class="advisors-explainer">
-          <CalendarCheck :size="23" />
-          <p>
-            <strong>Chaque présence fait avancer l’objectif.</strong
-            ><span
-              >Seuls les rendez-vous tenus sont décomptés. Les absences ne consomment pas le
-              quota.</span
+        <form class="advisor-search" @submit.prevent="filter()">
+          <label class="advisor-name-filter"
+            ><span>Nom du conseiller</span
+            ><input
+              v-model="search"
+              aria-label="Rechercher un conseiller"
+              placeholder="Tous vos conseillers"
+          /></label>
+          <label class="advisor-state-filter"
+            ><span>Association</span
+            ><select
+              v-model="state"
+              aria-label="Filtrer les conseillers par association"
+              @change="filter()"
             >
-          </p>
-        </div>
+              <option value="">Toutes les associations</option>
+              <option value="true">Actives</option>
+              <option value="false">Suspendues</option>
+            </select></label
+          >
+          <div class="advisor-search-context">
+            <span>Décompte de l’objectif</span><strong>Rendez-vous tenus uniquement</strong>
+          </div>
+          <button class="advisor-search-submit" :disabled="busy" aria-label="Rechercher">
+            <Search :size="23" />
+          </button>
+        </form>
       </div>
-      <form class="advisor-search" @submit.prevent="filter()">
-        <Search :size="18" /><input
-          v-model="search"
-          aria-label="Rechercher un conseiller"
-          placeholder="Rechercher un conseiller…"
-        /><button class="secondary" :disabled="busy">Rechercher</button>
-      </form>
+      <header class="advisor-list-heading">
+        <div>
+          <h2>
+            Vos conseillers <span>{{ busy ? '…' : count }}</span>
+          </h2>
+          <p>Les conseillers avec lesquels vous pouvez réserver vos rendez-vous.</p>
+        </div>
+        <button
+          v-if="search || state"
+          class="secondary"
+          :disabled="busy"
+          @click="
+            search = '';
+            filter('');
+          "
+        >
+          Tout afficher<ArrowRight :size="15" />
+        </button>
+      </header>
     </template>
     <p v-if="error" role="alert" class="assignments-error">{{ error }}</p>
     <p v-if="message" role="status" class="assignments-message">{{ message }}</p>
@@ -262,13 +292,17 @@ onMounted(() =>
     <div v-if="role !== 'administrator'" class="advisor-grid" :aria-busy="busy">
       <article v-for="row in rows" :key="row.id" class="advisor-card">
         <header>
-          <span class="advisor-monogram">{{ initials(row.advisor.name) }}</span
-          ><span :class="['state', row.active ? 'active' : 'suspended']">{{
+          <span class="advisor-monogram">{{ initials(row.advisor.name) }}</span>
+          <div class="advisor-identity">
+            <h2>{{ row.advisor.name }}</h2>
+            <p class="advisor-speciality">Conseiller en sécurité financière</p>
+          </div>
+        </header>
+        <div class="advisor-tags">
+          <span :class="['state', row.active ? 'active' : 'suspended']">{{
             row.active ? 'Association active' : 'Association suspendue'
           }}</span>
-        </header>
-        <h2>{{ row.advisor.name }}</h2>
-        <p class="advisor-speciality">Conseiller en sécurité financière</p>
+        </div>
         <div class="advisor-quota">
           <span class="quota-caption"><Target :size="16" />Objectif du conseiller</span>
           <p v-if="quotaLoading">Chargement de l’objectif…</p>
@@ -295,9 +329,15 @@ onMounted(() =>
           </p>
         </div>
         <footer>
-          <CalendarCheck :size="17" /><span>{{
-            row.active ? 'Disponible pour vos réservations' : 'Nouvelles réservations suspendues'
-          }}</span>
+          <span class="advisor-booking-hint"
+            ><CalendarCheck :size="16" />Depuis une fiche prospect</span
+          ><button
+            class="advisor-book"
+            :disabled="!row.active || busy"
+            @click="emit('navigate', 'contacts')"
+          >
+            Préparer un rendez-vous<ArrowRight :size="15" />
+          </button>
         </footer>
       </article>
       <div v-if="!rows.length" class="advisors-empty">
@@ -716,277 +756,416 @@ tr.inactive .person {
 }
 
 .setter-advisors {
-  padding: 28px;
-  gap: 24px;
-  color: #243147;
+  padding: 32px;
+  gap: 28px;
+  color: #3c4354;
 }
 .advisors-heading {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
 }
 .advisors-eyebrow {
   font-size: 10px;
-  letter-spacing: 2px;
   font-weight: 700;
-  color: #8877ad;
+  letter-spacing: 2px;
+  color: #9399ac;
 }
 .advisors-heading h1 {
-  font-size: 30px;
+  font-size: 32px;
+  font-weight: 750;
   letter-spacing: -1px;
   margin: 8px 0;
-  color: #19253a;
+  color: #353b4b;
 }
 .advisors-heading h1 span {
-  color: #8264df;
+  color: #526bdb;
 }
 .advisors-heading p {
-  margin: 0;
-  font-size: 14px;
-  color: #718096;
+  display: none;
 }
 .advisors-heading button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: white;
-  border-radius: 12px;
+  border: 0;
+  background: #eceff9;
+  border-radius: 14px;
+  color: #64709a;
 }
-.advisors-intro {
-  display: grid;
-  grid-template-columns: minmax(210px, 1fr) 2fr;
-  gap: 20px;
+.advisor-discovery {
+  background: linear-gradient(115deg, #e9edf5, #eef0f6 65%, #e8edf5);
+  border-radius: 26px;
+  padding: 28px 26px 0;
+  margin-bottom: 24px;
 }
-.advisors-total {
-  padding: 24px;
-  border-radius: 22px;
-  background: #e9e3f6;
+.discovery-copy {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
+  padding: 0 4px 30px;
 }
-.advisors-icon {
+.discovery-mark {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
-  background: #ffffff80;
   border-radius: 16px;
-  width: 58px;
-  height: 58px;
-  color: #8264be;
+  background: #e0e6f7;
+  color: #6d7cb7;
 }
-.advisors-total strong {
-  display: block;
-  font-size: 32px;
-  line-height: 1.3;
+.discovery-copy h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 650;
 }
-.advisors-total div > span {
-  font-size: 13px;
-  color: #706580;
-}
-.advisors-explainer {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 24px;
-  background: #e5f3ed;
-  border-radius: 22px;
-  color: #48836d;
-}
-.advisors-explainer svg {
-  flex-shrink: 0;
-}
-.advisors-explainer p {
+.discovery-copy p {
   margin: 0;
-  display: grid;
-  gap: 7px;
-}
-.advisors-explainer strong {
-  font-size: 15px;
-  color: #345a4c;
-}
-.advisors-explainer span {
   font-size: 13px;
-  line-height: 1.7;
+  color: #82899a;
 }
 .advisor-search {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.2fr) minmax(150px, 1fr) minmax(180px, 1fr) 66px;
+  align-items: center;
+  gap: 20px;
+  background: #ffffffef;
+  border: 1px solid #f4f5f9;
+  padding: 20px 24px;
+  border-radius: 20px;
+  box-shadow: 0 16px 34px #5c6e9410;
+  transform: translateY(24px);
+  margin-top: -24px;
+}
+.advisor-search label,
+.advisor-search-context {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.advisor-search label > span,
+.advisor-search-context > span {
+  font-size: 11px;
+  color: #949aa8;
+}
+.setter-advisors .advisor-search input,
+.setter-advisors .advisor-search select {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  min-width: 0;
+  width: 100%;
+  color: #525a6d;
+  font-size: 13px;
+  height: 25px;
+}
+.advisor-state-filter,
+.advisor-search-context {
+  border-left: 1px solid #eeeff4;
+  padding-left: 20px;
+}
+.advisor-search-context strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #66718a;
+}
+.setter-advisors .advisor-search-submit {
+  height: 64px;
+  width: 64px;
+  border-radius: 20px;
+  border: 0;
+  background: #e5e9fa;
+  display: grid;
+  place-items: center;
+  color: #576588;
+  cursor: pointer;
+}
+.advisor-list-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.advisor-list-heading h2 {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: white;
-  border: 1px solid #e9e6f1;
-  padding: 6px 8px 6px 16px;
-  border-radius: 14px;
-  color: #8a7a9f;
-  max-width: 540px;
+  margin: 0 0 7px;
+  font-size: 24px;
+  letter-spacing: -0.7px;
 }
-.setter-advisors .advisor-search input {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
+.advisor-list-heading h2 span {
+  font-size: 11px;
+  letter-spacing: 0;
+  border-radius: 20px;
+  padding: 4px 9px;
+  background: #e9ebf1;
+  color: #7c8393;
+}
+.advisor-list-heading p {
+  margin: 0;
+  font-size: 12px;
+  color: #8a91a2;
+}
+.advisor-list-heading button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
-  box-shadow: none;
-  outline: none;
-  background: transparent;
-}
-.advisor-search:focus-within {
-  outline: 2px solid #b7a3e8;
-  outline-offset: 2px;
+  border-radius: 30px;
+  background: #e9edf9;
 }
 .advisor-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-  align-items: start;
+  gap: 22px;
+  align-items: stretch;
 }
 .advisor-card {
-  background: white;
-  border: 1px solid #e9e7f0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(145deg, #fff, #fcfcfe);
+  border: 1px solid #fff;
   border-radius: 24px;
   padding: 24px;
   min-width: 0;
+  box-shadow: 0 10px 32px #67779108;
 }
 .advisor-card header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 .advisor-monogram {
-  width: 52px;
-  height: 52px;
   display: grid;
   place-items: center;
-  background: #ede7fa;
-  color: #8365bd;
-  border-radius: 18px;
-  font-size: 16px;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid white;
+  box-shadow: 0 2px 9px #7482a120;
+  background: #e2e9f7;
+  color: #6f80ae;
+  font-size: 13px;
   font-weight: 700;
 }
 .advisor-card:nth-child(3n + 2) .advisor-monogram {
-  background: #e3effb;
-  color: #577eac;
+  background: #eee5f6;
+  color: #9881b0;
 }
 .advisor-card:nth-child(3n + 3) .advisor-monogram {
-  background: #faeddb;
-  color: #ad8250;
+  background: #e3f0ea;
+  color: #779a8a;
 }
-.advisor-card h2 {
-  font-size: 18px;
-  margin: 20px 0 6px;
+.advisor-identity {
+  min-width: 0;
+}
+.advisor-identity h2 {
+  font-size: 16px;
+  margin: 0 0 5px;
   overflow-wrap: anywhere;
+  font-weight: 700;
+  color: #454c60;
 }
 .advisor-speciality {
-  font-size: 12px;
-  color: #8490a1;
-  margin: 0 0 22px;
+  font-size: 11px;
+  color: #979baa;
+  margin: 0;
+  line-height: 1.5;
+}
+.advisor-tags {
+  margin: 18px 0 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.advisor-card .state {
+  font-size: 10px;
+  padding: 5px 10px;
+  font-weight: 500;
+}
+.advisor-card .state.active {
+  background: #e8f2ec;
+  color: #52856c;
 }
 .advisor-quota {
-  background: #f8f7fb;
-  border-radius: 16px;
+  background: #f6f7fb;
   padding: 18px;
-  min-height: 140px;
+  border-radius: 17px;
+  flex: 1;
+  min-height: 155px;
 }
 .quota-caption {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
-  color: #7b6b92;
+  font-size: 11px;
+  color: #8b93a7;
 }
 .quota-figure {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 9px;
-  margin: 15px 0 10px;
+  gap: 7px;
+  margin: 15px 0 12px;
 }
 .quota-figure strong {
-  font-size: 30px;
+  font-size: 29px;
+  letter-spacing: -1px;
+  color: #536895;
 }
 .quota-figure span,
 .advisor-quota small {
-  font-size: 12px;
-  color: #8290a0;
+  font-size: 11px;
+  color: #8e95a5;
 }
 .advisor-quota progress {
+  display: block;
   width: 100%;
-  height: 6px;
+  height: 5px;
   border: 0;
   border-radius: 10px;
-  background: #e9e4f3;
-  accent-color: #9576d3;
-  display: block;
-  margin: 0 0 12px;
+  background: #e5e9f5;
+  accent-color: #7089df;
+  margin-bottom: 12px;
 }
 .advisor-quota progress::-webkit-progress-bar {
-  background: #e9e4f3;
+  background: #e5e9f5;
   border-radius: 10px;
 }
 .advisor-quota progress::-webkit-progress-value {
-  background: #9576d3;
+  background: #7089df;
   border-radius: 10px;
 }
 .quota-undefined {
-  font-size: 15px;
-  margin: 20px 0 0;
+  font-size: 14px;
+  margin: 24px 0 0;
+  color: #68758e;
 }
 .quota-undefined span {
   display: block;
-  font-size: 12px;
-  color: #8290a0;
-  margin-top: 8px;
+  margin-top: 9px;
   line-height: 1.6;
+  color: #9a9fac;
+  font-size: 11px;
 }
 .advisor-card footer {
   display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 22px;
+}
+.advisor-booking-hint {
+  display: flex;
   align-items: center;
-  gap: 9px;
-  margin-top: 20px;
+  gap: 6px;
+  color: #8f97aa;
+  font-size: 11px;
+}
+.setter-advisors .advisor-book {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 12px;
+  background: #4765e9;
+  border: 0;
+  border-radius: 30px;
+  color: white;
   font-size: 12px;
-  color: #688476;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.setter-advisors .advisor-book:hover:not(:disabled) {
+  background: #3654d6;
+  transform: translateY(-1px);
+}
+.setter-advisors button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.setter-advisors button:focus-visible,
+.setter-advisors input:focus-visible,
+.setter-advisors select:focus-visible {
+  outline: 3px solid #99aaf1;
+  outline-offset: 4px;
 }
 .advisors-empty {
   grid-column: 1/-1;
-  padding: 55px 20px;
   text-align: center;
-  color: #8a7ca1;
   background: #fff;
-  border: 1px dashed #d8cde9;
+  padding: 55px 20px;
   border-radius: 24px;
+  color: #8a93a9;
 }
 .advisors-empty h2 {
-  color: #39475c;
   font-size: 19px;
-}
-.setter-advisors button:focus-visible {
-  outline: 3px solid #b7a3e8;
-  outline-offset: 3px;
+  color: #53607a;
 }
 .setter-advisors .assignments-pages {
-  padding: 0 4px;
   flex-wrap: wrap;
+  font-size: 11px;
+  color: #959aaa;
 }
-@media (min-width: 1700px) {
-  .advisor-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-@media (max-width: 1100px) {
+@media (max-width: 1150px) {
   .advisor-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .advisor-search {
+    grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) 64px;
+  }
+  .advisor-search-context {
+    display: none;
+  }
 }
-@media (max-width: 700px) {
+@media (max-width: 720px) {
   .setter-advisors {
     padding: 18px;
+    gap: 22px;
   }
-  .advisors-intro,
   .advisor-grid {
     grid-template-columns: 1fr;
   }
+  .advisor-discovery {
+    padding: 22px 16px 0;
+  }
+  .advisor-search {
+    padding: 16px;
+    grid-template-columns: minmax(0, 1fr) 50px;
+    gap: 16px;
+  }
+  .advisor-name-filter {
+    grid-column: 1/-1;
+  }
+  .advisor-state-filter {
+    border: 0;
+    padding: 0;
+  }
+  .setter-advisors .advisor-search-submit {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+  }
   .advisors-heading h1 {
-    font-size: 26px;
+    font-size: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .setter-advisors .advisor-book {
+    transition: none;
   }
 }
 </style>
