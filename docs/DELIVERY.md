@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Mes conseillers — présentation setter
+
+La liste setter Assurance utilise des cartes sans photo, avec nom, association active/suspendue et objectif du conseiller : quota restant, rendez-vous tenus et progression. Les objectifs non définis, en chargement ou indisponibles sont distingués. Le total compte les associations accessibles ; recherche et pagination restent côté serveur. Les absences ne consomment pas le quota ; la progression est celle du conseiller, non une statistique personnelle du setter. Présentation lavande/menthe cohérente avec l’accueil et Appels, grille adaptative et état vide. Le tableau administratif, ses commandes et panneaux restent disponibles.
+
+Validation : tests de permissions et de création/filtrage des associations, typage, lint et build frontend. Aucun appel, message ou réservation déclenché. Recette visuelle navigateur non réalisée : accès local désactivé dans Work.
+
+
 ## Présentation de la page Appels
 
 Page commune Assurance/Isolation : en-tête propre, tons lavande et menthe cohérents avec l’accueil, composition en deux panneaux (pavé numérique et résultats), état vide explicatif et historique en carte. Le parcours reste une recherche de fiche puis ouverture du prospect ; aucun appel automatique ajouté. Adaptation en une colonne sur petit écran, focus clavier et réduction des animations. Aucun indicateur fictif.
