@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { Plus, Search, ArrowRight, History, PauseCircle, PlayCircle } from 'lucide-vue-next';
+import {
+  Plus,
+  Search,
+  ArrowRight,
+  History,
+  PauseCircle,
+  PlayCircle,
+  RefreshCw,
+  Users,
+  CalendarCheck,
+  Target,
+} from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
 import { loadQuotas, type AdvisorQuota } from './advisor-quota';
 const props = defineProps<{
@@ -9,11 +20,18 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
 }>();
 const quotas = ref(new Map<number, AdvisorQuota>());
+const quotaLoading = ref(true),
+  quotaError = ref(false);
 async function loadQuotaBoard() {
+  quotaLoading.value = true;
+  quotaError.value = false;
   try {
     quotas.value = await loadQuotas(props.portal, props.request);
   } catch {
     quotas.value = new Map();
+    quotaError.value = true;
+  } finally {
+    quotaLoading.value = false;
   }
 }
 const rows = ref<any[]>([]),
@@ -159,7 +177,54 @@ onMounted(() =>
 </script>
 
 <template>
-  <section class="assignments">
+  <section class="assignments" :class="{ 'setter-advisors': role !== 'administrator' }">
+    <template v-if="role !== 'administrator'">
+      <header class="advisors-heading">
+        <div>
+          <span class="advisors-eyebrow">MON ÉQUIPE · ASSURANCE</span>
+          <h1>Mes conseillers<span>.</span></h1>
+          <p>Les conseillers avec lesquels vous pouvez réserver vos rendez-vous.</p>
+        </div>
+        <button
+          class="secondary"
+          :disabled="busy"
+          @click="
+            run(async () => {
+              await load();
+              await loadQuotaBoard();
+            })
+          "
+        >
+          <RefreshCw :size="16" />Actualiser
+        </button>
+      </header>
+      <div class="advisors-intro">
+        <div class="advisors-total">
+          <span class="advisors-icon"><Users :size="26" /></span>
+          <div>
+            <strong>{{ busy ? '…' : count }}</strong
+            ><span>conseiller(s) associé(s)</span>
+          </div>
+        </div>
+        <div class="advisors-explainer">
+          <CalendarCheck :size="23" />
+          <p>
+            <strong>Chaque présence fait avancer l’objectif.</strong
+            ><span
+              >Seuls les rendez-vous tenus sont décomptés. Les absences ne consomment pas le
+              quota.</span
+            >
+          </p>
+        </div>
+      </div>
+      <form class="advisor-search" @submit.prevent="filter()">
+        <Search :size="18" /><input
+          v-model="search"
+          aria-label="Rechercher un conseiller"
+          placeholder="Rechercher un conseiller…"
+        /><button class="secondary" :disabled="busy">Rechercher</button>
+      </form>
+    </template>
     <p v-if="error" role="alert" class="assignments-error">{{ error }}</p>
     <p v-if="message" role="status" class="assignments-message">{{ message }}</p>
     <template v-if="role === 'administrator'">
@@ -194,10 +259,68 @@ onMounted(() =>
         associations actives. Suspendre une association conserve les rendez-vous déjà pris.
       </p>
     </template>
-    <p v-else class="assignments-hint">
-      Les conseillers avec lesquels vous pouvez réserver des rendez-vous.
-    </p>
-    <div class="table-scroll">
+    <div v-if="role !== 'administrator'" class="advisor-grid" :aria-busy="busy">
+      <article v-for="row in rows" :key="row.id" class="advisor-card">
+        <header>
+          <span class="advisor-monogram">{{ initials(row.advisor.name) }}</span
+          ><span :class="['state', row.active ? 'active' : 'suspended']">{{
+            row.active ? 'Association active' : 'Association suspendue'
+          }}</span>
+        </header>
+        <h2>{{ row.advisor.name }}</h2>
+        <p class="advisor-speciality">Conseiller en sécurité financière</p>
+        <div class="advisor-quota">
+          <span class="quota-caption"><Target :size="16" />Objectif du conseiller</span>
+          <p v-if="quotaLoading">Chargement de l’objectif…</p>
+          <p v-else-if="quotaError">Objectif indisponible</p>
+          <template v-else-if="quotas.get(row.advisor.id)?.quota != null">
+            <div class="quota-figure">
+              <strong>{{ quotas.get(row.advisor.id)?.remaining }}</strong
+              ><span>{{ ' ' }}restant(s) sur {{ quotas.get(row.advisor.id)?.quota }}</span>
+            </div>
+            <progress
+              :value="
+                Math.min(
+                  quotas.get(row.advisor.id)?.attended || 0,
+                  quotas.get(row.advisor.id)?.quota || 0,
+                )
+              "
+              :max="quotas.get(row.advisor.id)?.quota || 1"
+              :aria-label="'Progression de l’objectif de ' + row.advisor.name"
+            ></progress>
+            <small>{{ quotas.get(row.advisor.id)?.attended }} rendez-vous tenu(s) au total</small>
+          </template>
+          <p v-else class="quota-undefined">
+            Objectif non défini<span>L’administrateur peut renseigner un quota.</span>
+          </p>
+        </div>
+        <footer>
+          <CalendarCheck :size="17" /><span>{{
+            row.active ? 'Disponible pour vos réservations' : 'Nouvelles réservations suspendues'
+          }}</span>
+        </footer>
+      </article>
+      <div v-if="!rows.length" class="advisors-empty">
+        <Users :size="35" />
+        <h2>
+          {{
+            busy
+              ? 'Chargement des conseillers…'
+              : search
+                ? 'Aucun conseiller trouvé'
+                : 'Votre équipe se prépare'
+          }}
+        </h2>
+        <p>
+          {{
+            search
+              ? 'Essayez un autre nom.'
+              : 'Les conseillers associés à votre compte apparaîtront ici.'
+          }}
+        </p>
+      </div>
+    </div>
+    <div v-else class="table-scroll">
       <table class="assignments-table">
         <thead>
           <tr>
@@ -590,5 +713,280 @@ tr.inactive .person {
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+
+.setter-advisors {
+  padding: 28px;
+  gap: 24px;
+  color: #243147;
+}
+.advisors-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.advisors-eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: #8877ad;
+}
+.advisors-heading h1 {
+  font-size: 30px;
+  letter-spacing: -1px;
+  margin: 8px 0;
+  color: #19253a;
+}
+.advisors-heading h1 span {
+  color: #8264df;
+}
+.advisors-heading p {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+}
+.advisors-heading button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border-radius: 12px;
+}
+.advisors-intro {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) 2fr;
+  gap: 20px;
+}
+.advisors-total {
+  padding: 24px;
+  border-radius: 22px;
+  background: #e9e3f6;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.advisors-icon {
+  display: grid;
+  place-items: center;
+  background: #ffffff80;
+  border-radius: 16px;
+  width: 58px;
+  height: 58px;
+  color: #8264be;
+}
+.advisors-total strong {
+  display: block;
+  font-size: 32px;
+  line-height: 1.3;
+}
+.advisors-total div > span {
+  font-size: 13px;
+  color: #706580;
+}
+.advisors-explainer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px;
+  background: #e5f3ed;
+  border-radius: 22px;
+  color: #48836d;
+}
+.advisors-explainer svg {
+  flex-shrink: 0;
+}
+.advisors-explainer p {
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+.advisors-explainer strong {
+  font-size: 15px;
+  color: #345a4c;
+}
+.advisors-explainer span {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.advisor-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border: 1px solid #e9e6f1;
+  padding: 6px 8px 6px 16px;
+  border-radius: 14px;
+  color: #8a7a9f;
+  max-width: 540px;
+}
+.setter-advisors .advisor-search input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  background: transparent;
+}
+.advisor-search:focus-within {
+  outline: 2px solid #b7a3e8;
+  outline-offset: 2px;
+}
+.advisor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.advisor-card {
+  background: white;
+  border: 1px solid #e9e7f0;
+  border-radius: 24px;
+  padding: 24px;
+  min-width: 0;
+}
+.advisor-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.advisor-monogram {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  background: #ede7fa;
+  color: #8365bd;
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.advisor-card:nth-child(3n + 2) .advisor-monogram {
+  background: #e3effb;
+  color: #577eac;
+}
+.advisor-card:nth-child(3n + 3) .advisor-monogram {
+  background: #faeddb;
+  color: #ad8250;
+}
+.advisor-card h2 {
+  font-size: 18px;
+  margin: 20px 0 6px;
+  overflow-wrap: anywhere;
+}
+.advisor-speciality {
+  font-size: 12px;
+  color: #8490a1;
+  margin: 0 0 22px;
+}
+.advisor-quota {
+  background: #f8f7fb;
+  border-radius: 16px;
+  padding: 18px;
+  min-height: 140px;
+}
+.quota-caption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #7b6b92;
+}
+.quota-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 15px 0 10px;
+}
+.quota-figure strong {
+  font-size: 30px;
+}
+.quota-figure span,
+.advisor-quota small {
+  font-size: 12px;
+  color: #8290a0;
+}
+.advisor-quota progress {
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 10px;
+  background: #e9e4f3;
+  accent-color: #9576d3;
+  display: block;
+  margin: 0 0 12px;
+}
+.advisor-quota progress::-webkit-progress-bar {
+  background: #e9e4f3;
+  border-radius: 10px;
+}
+.advisor-quota progress::-webkit-progress-value {
+  background: #9576d3;
+  border-radius: 10px;
+}
+.quota-undefined {
+  font-size: 15px;
+  margin: 20px 0 0;
+}
+.quota-undefined span {
+  display: block;
+  font-size: 12px;
+  color: #8290a0;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.advisor-card footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 20px;
+  font-size: 12px;
+  color: #688476;
+}
+.advisors-empty {
+  grid-column: 1/-1;
+  padding: 55px 20px;
+  text-align: center;
+  color: #8a7ca1;
+  background: #fff;
+  border: 1px dashed #d8cde9;
+  border-radius: 24px;
+}
+.advisors-empty h2 {
+  color: #39475c;
+  font-size: 19px;
+}
+.setter-advisors button:focus-visible {
+  outline: 3px solid #b7a3e8;
+  outline-offset: 3px;
+}
+.setter-advisors .assignments-pages {
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+@media (min-width: 1700px) {
+  .advisor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .advisor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .setter-advisors {
+    padding: 18px;
+  }
+  .advisors-intro,
+  .advisor-grid {
+    grid-template-columns: 1fr;
+  }
+  .advisors-heading h1 {
+    font-size: 26px;
+  }
 }
 </style>

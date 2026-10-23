@@ -562,3 +562,19 @@
 .calls-page-layout .crm-connected .crm-stage .amx-workspace > .amx-content {
   padding: 0;
 }
+
+.advisors-page-layout .amx-main > .amx-heading {
+  display: none;
+}
+.advisors-page-layout .crm-connected .crm-stage .amx-main {
+  background: #f6f5fa;
+}
+.advisors-page-layout .crm-connected .crm-stage .amx-workspace {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.advisors-page-layout .crm-connected .crm-stage .amx-workspace > .amx-content {
+  padding: 0;
+}
