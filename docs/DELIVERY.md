@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Connexion sans choix de profil et invitation en français clair
+
+L’écran de connexion demande directement l’identifiant et le mot de passe. Une personne qui n’a qu’un espace entre directement dans cet espace : c’est le cas d’un conseiller, qui arrive sur son agenda Assurance. Une personne qui a plusieurs espaces arrive sur « Mes espaces », qui ne présente que les espaces autorisés. L’erreur « Votre compte n’a pas accès à ce profil » disparaît donc. L’e-mail d’invitation affiche l’espace et le rôle en français, par exemple « l’espace Assurance en tant que Conseiller », et précise que l’espace s’ouvrira directement.
+
+Validation : test frontend de la connexion (identifiants seuls, mot de passe effacé après envoi) ; test backend du libellé de l’invitation ; suites portail (231) et frontend complètes, typage, ESLint, Prettier et Ruff ; contrôle visuel de l’écran de connexion.
+
+Limites : à la reconnexion, une personne qui a plusieurs espaces choisit son espace dans « Mes espaces ». Le dernier espace utilisé n’est rouvert automatiquement que lors de la reprise d’une session existante.
+
 ## Mes conseillers — contraste et rythme visuel
 
 Correction des surcharges du thème global qui aplatissaient les cartes (coins de 7 px, marges imposées, suppression des ombres) et réintroduisaient des bordures dans la recherche. La page setter possède désormais ses règles contextualisées : bandeau compact bleu/lavande, cartes arrondies avec accents bleu/menthe/abricot, textes plus contrastés et boutons visibles. L’état sans quota précise toujours l’absence d’objectif. Les cartes remontent dans la page sans déplacer les boutons sous une grande zone vide. Animation discrète au survol, désactivée avec la préférence de mouvement réduit. Données, permissions et parcours conservés.

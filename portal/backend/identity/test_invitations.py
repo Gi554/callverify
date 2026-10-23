@@ -86,6 +86,8 @@ class InvitationTests(TestCase):
             [('assurance', 'advisor')],
         )
         self.assertNotIn('_auth_user_id', self.public.session)
+        self.assertIn('l’espace Assurance en tant que Conseiller', mail.outbox[0].body)
+        self.assertNotIn('advisor', mail.outbox[0].body)
         self.assertEqual(self.accept(body).status_code, 400)
 
     def test_permissions_scoping_and_roles(self):
