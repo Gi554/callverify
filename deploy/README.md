@@ -14,11 +14,13 @@ Ce guide installe le CRM sur un serveur, avec HTTPS automatique. Le serveur fait
 
 ## 2. Préparer le serveur (une seule fois)
 
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER   # puis se reconnecter
-git clone https://github.com/Gi554/callverify.git crm && cd crm
-```
+Installer Docker Engine et le plugin Compose depuis le [dépôt APT officiel Docker pour Ubuntu](https://docs.docker.com/engine/install/ubuntu/#install-using-the-apt-repository).
+Utiliser un compte SSH dédié au déploiement, membre du groupe Docker, et cloner le dépôt
+dans un chemin fixe sans espaces (par exemple `/opt/amx-crm`). Voir [CD.md](CD.md).
+Le script de commodité `get.docker.com` n’est pas la procédure de production retenue.
+
+Sur une installation déjà préparée, vérifier d’abord Docker, le compte et le clone existants :
+ne pas réinstaller le système ni remplacer ses clés ou sa configuration.
 
 ## 3. Créer la configuration (une seule fois)
 
