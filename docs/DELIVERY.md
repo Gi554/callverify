@@ -31,6 +31,13 @@ Limites :
 - **Démo** : les services de démo, lancés sans rechargement par une autre session, ne renvoyaient pas encore la série quotidienne. Les tendances et l’histogramme n’y apparaîtront qu’après redémarrage ; sans série, l’histogramme affiche un message.
 - **Période précédente** : les rendez-vous qui y sont « à venir » ou « sans compte rendu » sont évalués à la date du jour.
 - **Contenu non repris de la maquette** : pas de colonne de messages.
+## Connexion sans choix de profil et invitation en français clair
+
+L’écran de connexion demande directement l’identifiant et le mot de passe. Une personne qui n’a qu’un espace entre directement dans cet espace : c’est le cas d’un conseiller, qui arrive sur son agenda Assurance. Une personne qui a plusieurs espaces arrive sur « Mes espaces », qui ne présente que les espaces autorisés. L’erreur « Votre compte n’a pas accès à ce profil » disparaît donc. L’e-mail d’invitation affiche l’espace et le rôle en français, par exemple « l’espace Assurance en tant que Conseiller », et précise que l’espace s’ouvrira directement.
+
+Validation : test frontend de la connexion (identifiants seuls, mot de passe effacé après envoi) ; test backend du libellé de l’invitation ; suites portail (231) et frontend complètes, typage, ESLint, Prettier et Ruff ; contrôle visuel de l’écran de connexion.
+
+Limites : à la reconnexion, une personne qui a plusieurs espaces choisit son espace dans « Mes espaces ». Le dernier espace utilisé n’est rouvert automatiquement que lors de la reprise d’une session existante.
 
 ## Mes conseillers — contraste et rythme visuel
 

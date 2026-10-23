@@ -182,25 +182,18 @@ async function enter(value: string) {
     if (version === workspaceVersion) busy.value = false;
   }
 }
-async function login(credentials: { username: string; password: string; workspace: string }) {
+async function login(credentials: { username: string; password: string }) {
   busy.value = true;
   error.value = '';
   try {
     const authenticated = await portal('login/', {
       username: credentials.username,
       password: credentials.password,
-      workspace: credentials.workspace,
     });
     csrf = '';
-    if (
-      !authenticated.workspaces.some((item: Membership) => item.workspace === credentials.workspace)
-    ) {
-      await portal('session/', {});
-      csrf = '';
-      throw new Error('Votre compte n’a pas accès à ce profil. Choisissez votre espace autorisé.');
-    }
     user.value = authenticated;
-    await enter(credentials.workspace);
+    // A single authorised space opens directly; several are listed in « Mes espaces ».
+    if (authenticated.workspaces.length === 1) await enter(authenticated.workspaces[0].workspace);
   } catch (e: any) {
     error.value = e.message;
   } finally {
