@@ -12,6 +12,7 @@ class PhoneCallAttempt(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     workspace = models.CharField(max_length=20, default='assurance')
     contact_id = models.PositiveBigIntegerField()
+    contact_label = models.CharField(max_length=120, blank=True, default='')
     extension = models.CharField(max_length=10)
     fingerprint = models.CharField(max_length=64)
     state = models.CharField(max_length=20, default='dispatching')

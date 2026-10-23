@@ -97,6 +97,10 @@ urlpatterns += [
     ),
 ]
 
+from .identity.call_history import history as call_history
+
+urlpatterns += [path('api/portal/<str:workspace>/call-history/', call_history)]
+
 from .identity import booking_calendars
 
 urlpatterns += [

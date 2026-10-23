@@ -214,3 +214,27 @@ test('advisor gets the shared frame with only appointments and no call or search
   assert.match(html, /Assurance · Conseiller/)
   assert.doesNotMatch(html, /setter-search|setter-phone|Appels|setter-statistics|Pilotage/)
 })
+
+test('the setter phone icon is enabled and the calls module sits in the menu', async () => {
+  const html = await renderToString(
+    createSSRApp(component, {
+      ...props,
+      workspace: 'assurance',
+      spaces: [{ workspace: 'assurance', role: 'setter' }],
+      items: [
+        { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
+        { id: 'contacts', label: 'Contacts', icon: 'contacts' },
+        { id: 'calls', label: 'Appels', icon: 'calls' },
+      ],
+    }),
+  )
+  const phone = html.slice(
+    html.indexOf('class="setter-phone"') - 20,
+    html.indexOf('</button>', html.indexOf('class="setter-phone"')),
+  )
+  assert.match(phone, /Ouvrir le composeur d’appel/)
+  assert.doesNotMatch(phone, /disabled/)
+  const nav = section(html, '<nav>', '</nav>')
+  assert.match(nav, /Appels/)
+  assert.equal((nav.match(/Appels/g) || []).length, 1)
+})

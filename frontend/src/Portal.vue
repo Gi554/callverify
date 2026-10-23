@@ -26,6 +26,7 @@ import AssuranceFollowUps from './AssuranceFollowUps.vue';
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue';
 import AssuranceNotifications from './AssuranceNotifications.vue';
 import TaskAlerts from './TaskAlerts.vue';
+import CallsCenter from './CallsCenter.vue';
 import AssuranceReminders from './AssuranceReminders.vue';
 import AssuranceStatistics from './AssuranceStatistics.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
@@ -307,13 +308,23 @@ const navigation = computed(() => {
     if (role.value === 'administrator')
       items.push({ id: 'qualification', label: 'Vérification des numéros', icon: 'qualification' });
   }
+  // Calls: setters dial from a prospect card, administrators read the team history.
+  if (['setter', 'administrator'].includes(role.value))
+    items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
   return items;
 });
+// Prospect card to open on arrival in Prospects (from the calls module).
+const prospectFocus = ref<{ id: number; mode: 'edit' | 'call' } | null>(null);
+function openProspect(value: { id: number; mode: 'edit' | 'call' }) {
+  prospectFocus.value = value;
+  selectModule('contacts');
+}
 const pageTitle = computed(
   () => navigation.value.find((item) => item.id === activeModule.value)?.label || 'Mes espaces',
 );
 function selectModule(id: string) {
   if (!navigation.value.some((item) => item.id === id)) return;
+  if (id !== 'contacts') prospectFocus.value = null;
   managing.value = false;
   passwordOpen.value = false;
   if (workspace.value === 'assurance') assuranceModule.value = id;
@@ -575,11 +586,22 @@ const roleLabels: Record<string, string> = {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
-                  <template v-if="workspace === 'assurance'">
+                  <CallsCenter
+                    v-if="activeModule === 'calls'"
+                    :key="'calls-' + workspace"
+                    :workspace="workspace"
+                    :role="role"
+                    :request="workspace === 'assurance' ? assurance : isolation"
+                    :portal="portal"
+                    @open-prospect="openProspect"
+                  />
+                  <template v-else-if="workspace === 'assurance'">
                     <AssuranceProspects
                       v-if="
                         assuranceModule === 'contacts' && ['setter', 'administrator'].includes(role)
                       "
+                      :key="prospectFocus ? 'focus-' + prospectFocus.id : 'board'"
+                      :focus="prospectFocus"
                       :portal="portal"
                       :request="assurance"
                       :role="role"
@@ -698,7 +720,14 @@ const roleLabels: Record<string, string> = {
                       :portal="portal"
                       :request="isolation"
                     />
-                    <IsolationWorkQueue v-else :role="role" :portal="portal" :request="isolation" />
+                    <IsolationWorkQueue
+                      v-else
+                      :key="prospectFocus ? 'focus-' + prospectFocus.id : 'board'"
+                      :focus="prospectFocus"
+                      :role="role"
+                      :portal="portal"
+                      :request="isolation"
+                    />
                   </template>
                 </div>
               </section>

@@ -6,7 +6,9 @@ from .tickets import key_for
 SALT = 'amx.assurance.phone-call.v1'
 
 
-def issue(actor, contact, revision, request_id, destination, lease=None, workspace='assurance'):
+def issue(
+    actor, contact, revision, request_id, destination, lease=None, workspace='assurance', label=''
+):
     value = {
         'aud': workspace,
         'actor': actor,
@@ -14,6 +16,8 @@ def issue(actor, contact, revision, request_id, destination, lease=None, workspa
         'revision': revision,
         'request_id': str(request_id),
         'destination': destination,
+        # Display name signed by the business service, kept for the call history.
+        'label': str(label or '')[:120],
     }
     if workspace == 'assurance':
         value['lease'] = str(lease)
@@ -24,7 +28,7 @@ def verify(proof, actor, workspace='assurance'):
     value = signing.loads(
         proof, key=key_for(workspace), salt=f'amx.{workspace}.phone-call.v1', max_age=60
     )
-    fields = {'aud', 'actor', 'contact', 'revision', 'request_id', 'destination'} | (
+    fields = {'aud', 'actor', 'contact', 'revision', 'request_id', 'destination', 'label'} | (
         {'lease'} if workspace == 'assurance' else set()
     )
     if (
@@ -47,4 +51,6 @@ def verify(proof, actor, workspace='assurance'):
         r'1[2-9][0-9]{2}[2-9][0-9]{6}', value['destination']
     ):
         raise signing.BadSignature('Invalid destination')
+    if not isinstance(value['label'], str) or len(value['label']) > 120:
+        raise signing.BadSignature('Invalid label')
     return value
