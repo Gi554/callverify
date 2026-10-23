@@ -33,16 +33,17 @@ printf '%s\n' "$previous" > "$backup/previous-commit"
 printf '%s\n' "$sha" > "$backup/target-commit"
 cp -- .env "$backup/config.env"
 for service in db portal-db assurance-db; do
-  "${compose[@]}" exec -T "$service" sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup/$service.dump"
+  # The release script itself arrives on stdin over SSH; children must not consume it.
+  "${compose[@]}" exec -T "$service" sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' < /dev/null > "$backup/$service.dump"
   [[ -s "$backup/$service.dump" ]]
   "${compose[@]}" exec -T "$service" pg_restore --list < "$backup/$service.dump" > /dev/null
 done
-"${compose[@]}" exec -T api tar -czf - -C /app/private-media . > "$backup/media.tar.gz"
+"${compose[@]}" exec -T api tar -czf - -C /app/private-media . < /dev/null > "$backup/media.tar.gz"
 tar -tzf "$backup/media.tar.gz" > /dev/null
 echo "Pre-deployment backups saved in $backup (private, local to server)."
 
 git checkout --detach "$sha"
-if ! bash scripts/deploy.sh; then
+if ! bash scripts/deploy.sh < /dev/null; then
   echo "Deployment failed. Previous commit: $previous. Backup: $backup. No automatic database rollback." >&2
   exit 1
 fi

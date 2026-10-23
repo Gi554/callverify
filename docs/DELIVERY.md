@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Première installation HTTPS et administrateur de production
+
+Le domaine racine pointe vers le VPS sur les serveurs DNS LWS ; l’ancien AAAA a disparu de la zone autoritaire et du résolveur Cloudflare. La première installation réelle a été exécutée avec la configuration privée existante : images reconstruites, trois bases PostgreSQL initialisées et migrées, services CRM démarrés et certificat HTTPS valide obtenu pour `orvia-crm.com`. Un premier administrateur dispose des deux espaces ; son mot de passe aléatoire reste dans des fichiers privés sur le serveur et sur le PC de l’utilisateur, jamais dans Git ni les journaux. Aucune donnée de démonstration n’a été transférée.
+
+Recette HTTPS ciblant explicitement l’IPv4 du VPS, sans désactiver la validation du certificat : page CRM et CSRF à 200, connexion par mot de passe et session, accès signés administrateur aux listes Assurance et Isolation vides, déconnexion et refus de la session terminée. Les API sans authentification répondent 401/403 ; une route interne du portail est inaccessible (404) ; HTTP redirige vers HTTPS (308). Une sauvegarde locale initiale des trois bases et des fichiers a été créée, avec contrôle des catalogues `pg_restore --list` et de l’archive ; cela ne constitue pas encore un test de restauration ni une sauvegarde hors serveur.
+
+La sauvegarde via SSH a révélé qu’un processus Docker attaché à stdin pouvait consommer la suite du script CD transmis par SSH et laisser une sortie 0 sans déploiement ni contrôle final. `deploy-release.sh` fournit désormais `/dev/null` aux exports, à l’archivage et au script de déploiement ; la validation des dumps conserve son entrée fichier. Le nouveau test transmet réellement le script sur stdin, avec enfants qui consomment l’entrée : échec reproduit avant correction, puis suite complète de neuf tests réussie après correction. Ruff et les contrôles GitHub complètent cette validation ; aucune modification des règles métier.
+
+Limites : certains résolveurs du PC et du VPS répondent encore avec l’ancienne IPv6 LWS en cache malgré la suppression autoritaire, ce qui peut afficher une page LWS/404. Les tests ci-dessus valident le VPS et son certificat, pas une propagation terminée partout. Le CD reste à false jusqu’à validation des contrôles HTTPS sans ciblage d’IP et recette du workflow complet après correction. L’expéditeur et le transport Brevo restent à configurer ; invitations, récupération de mot de passe et rappels par e-mail ne sont pas déclarés opérationnels. Appels NEWT, lookup Twilio et agendas externes restent désactivés/non configurés. Les contrôles Django signalent encore des avertissements d’en-têtes/HTTPS gérés par Caddy et d’absence de middleware CSRF sur l’API Assurance à jetons ; ils ne constituent pas une recette de sécurité exhaustive. Aucune revue visuelle navigateur effectuée.
+
+Suite : configurer l’expéditeur Brevo, constater l’expiration des caches DNS, puis activer et tester le CD sur un commit main validé. Restent aussi la copie des sauvegardes hors serveur, leur rétention et une restauration réelle sur une cible distincte.
+
+
 ## Domaine de production choisi — DNS encore chez LWS
 
 L’utilisateur a choisi `orvia-crm.com`. Le clone propre du VPS a été synchronisé avec main ; la configuration privée de production a été générée sur le serveur pour ce domaine, avec de nouvelles clés internes et mots de passe de bases aléatoires, sans affichage ni transfert vers Git. Le fichier `.env` est vérifié en mode 600. La configuration Compose de production est valide ; DEBUG, les appels NEWT et la vérification Twilio restent désactivés. Aucune clé déjà en place n’a été régénérée.
