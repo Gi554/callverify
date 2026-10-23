@@ -24,6 +24,7 @@ from .appointment_status import output as business_status, filter_status
 from .qualification import snapshot as qualification_snapshot
 from .reports import ReportMixin
 from .advisor_workspace import AdvisorWorkspaceMixin
+from .advisor_availability import ensure_open, configuration as working_hours, closed_periods
 from .visibility import visible_contacts
 
 
@@ -281,6 +282,7 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                     )
                 active_assignment(assignment.pk)
                 calendar_lock(assignment.advisor_id)
+                ensure_open(assignment.advisor_id, data['starts_at'], data['ends_at'])
                 if data['starts_at'] <= timezone.now():
                     raise ValidationError('Le rendez-vous doit commencer dans le futur')
                 prevent_overlap(
@@ -337,6 +339,7 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                 or hasattr(row, 'report')
             ):
                 raise Conflict('Rendez-vous modifié, annulé ou déjà renseigné')
+            ensure_open(row.advisor_id, data['starts_at'], data['ends_at'])
             if data['starts_at'] <= timezone.now():
                 raise ValidationError('Le rendez-vous doit commencer dans le futur')
             prevent_overlap(
@@ -425,6 +428,7 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
             .values('starts_at', 'ends_at', 'advisor_id')
         )
         # Times only: other prospects' identities are never exposed.
+        rules = working_hours(assignment.advisor_id)
         return Response(
             {
                 'busy': [
@@ -436,7 +440,9 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                         else 'contact',
                     }
                     for row in rows
-                ],
+                ]
+                + closed_periods(rules, start, end),
+                'working_hours_enabled': rules['enabled'],
                 'external_calendar': 'checked_at_booking',
             }
         )

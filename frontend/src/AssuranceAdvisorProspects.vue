@@ -169,6 +169,7 @@ onMounted(load);
 <style scoped>
 .advisor-prospects {
   color: #27384f;
+  padding: 24px;
 }
 .advisor-prospects header {
   display: flex;

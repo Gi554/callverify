@@ -65,3 +65,6 @@ from .crm.advisor_usage import usage as advisor_usage, prospects as advisor_pros
 
 urlpatterns += [path('api/assurance/advisor-usage/', advisor_usage)]
 urlpatterns += [path('api/assurance/advisor-prospects/', advisor_prospects)]
+from .crm.advisor_availability import availability as advisor_availability
+
+urlpatterns += [path('api/assurance/advisor-availability/', advisor_availability)]

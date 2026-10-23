@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
+import { bookingInterval } from './booking-time';
+const props = defineProps<{
+  request: (path: string, body?: any) => Promise<any>;
+  workspace?: string;
+  simple?: boolean;
+}>();
+const zone = ref('America/Toronto');
 const rows = ref<any[]>([]),
   busy = ref(false),
   error = ref(''),
@@ -13,7 +19,9 @@ const rows = ref<any[]>([]),
   password = ref(''),
   ack = ref(false);
 async function load() {
-  rows.value = (await props.request('calendar/')).connections;
+  rows.value = (await props.request('calendar/')).connections.filter(
+    (row: any) => !props.workspace || row.workspace === props.workspace,
+  );
   for (const row of rows.value) {
     try {
       history.value[row.workspace] = await props.request(`calendar/${row.workspace}/sync/`);
@@ -56,8 +64,10 @@ async function check(row: any) {
     checkedSpace.value = '';
     periods.value = [];
     const result = await props.request(`calendar/${row.workspace}/busy/`, {
-      starts_at: start.value,
-      ends_at: end.value,
+      starts_at: props.simple
+        ? bookingInterval(start.value, zone.value, 15).starts_at
+        : start.value,
+      ends_at: props.simple ? bookingInterval(end.value, zone.value, 15).starts_at : end.value,
     });
     periods.value = result.busy;
     checkedSpace.value = row.workspace;
@@ -147,10 +157,14 @@ onMounted(() => run(load));
 <template>
   <section>
     <h3>Mes agendas Google et Microsoft</h3>
-    <p>
+    <p v-if="!simple">
       Connexion personnelle du conseiller Assurance ou du client Isolation. Un agenda principal par
       espace. Retirez les événements AMX avant de changer de compte. Calendly sera traité
       ultérieurement.
+    </p>
+    <p v-else>
+      Connectez votre agenda principal pour contrôler ses périodes occupées lors des réservations.
+      Vos horaires de travail se règlent dans l’onglet « Mes disponibilités ».
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
@@ -190,15 +204,29 @@ onMounted(() => run(load));
       <form v-if="row.connected" @submit.prevent="check(row)">
         <fieldset :disabled="busy">
           <legend>Consulter les périodes occupées (31 jours maximum)</legend>
+          <label v-if="simple"
+            >Fuseau de consultation<select v-model="zone">
+              <option value="America/Toronto">Toronto / Montréal</option>
+              <option value="America/Vancouver">Vancouver</option>
+              <option value="America/Edmonton">Edmonton</option>
+              <option value="America/Winnipeg">Winnipeg</option>
+              <option value="America/Halifax">Halifax</option>
+              <option value="America/St_Johns">Saint-Jean</option>
+            </select></label
+          >
           <label
-            >Début ISO 8601 avec décalage<input
+            >{{ simple ? 'Début de la période' : 'Début ISO 8601 avec décalage'
+            }}<input
               v-model="start"
+              :type="simple ? 'datetime-local' : 'text'"
               placeholder="2026-12-01T00:00:00-05:00"
               required
           /></label>
           <label
-            >Fin ISO 8601 avec décalage<input
+            >{{ simple ? 'Fin de la période' : 'Fin ISO 8601 avec décalage'
+            }}<input
               v-model="end"
+              :type="simple ? 'datetime-local' : 'text'"
               placeholder="2026-12-02T00:00:00-05:00"
               required
           /></label>
@@ -211,8 +239,9 @@ onMounted(() => run(load));
           réserve rien et ne vérifie pas les autres agendas.
         </p>
         <p v-for="(period, index) in periods" :key="index">
-          {{ new Date(period.start).toLocaleString('fr-FR') }} →
-          {{ new Date(period.end).toLocaleString('fr-FR') }}
+          {{ new Date(period.start).toLocaleString('fr-FR', simple ? { timeZone: zone } : {}) }} →
+          {{ new Date(period.end).toLocaleString('fr-FR', simple ? { timeZone: zone } : {}) }}
+          {{ simple ? zone : '' }}
         </p>
       </section>
       <section v-if="row.provider">
