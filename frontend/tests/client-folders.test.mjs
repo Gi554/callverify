@@ -20,7 +20,11 @@ code = code
   .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
     name === 'ProspectExport'
       ? `const ProspectExport={props:['filters','path','filename','blocked'],setup:props=>{globalThis.__folderExportProps=props;return()=>null}}`
-      : `const ${name}={render:()=>null}`,
+      : name === 'SidePanel'
+        ? `const SidePanel={inheritAttrs:false,emits:['requestClose'],props:['open','title','closeDisabled'],setup:(props,ctx)=>()=>{if(props.open){globalThis.__folderPanel={props,close:()=>ctx.emit('requestClose')};return ctx.slots.default?.()}return null}}`
+        : ['AssuranceAppointments', 'IsolationVisits'].includes(name)
+          ? `const ${name}={props:['appointmentId','visitId','role'],setup:(props,ctx)=>{globalThis.__folderAppointment={props,busy:v=>ctx.emit('busy',v),updated:()=>ctx.emit('updated')};return()=>null}}`
+          : `const ${name}={render:()=>null}`,
   )
   .replace(
     /import \{ actorNames \} from ['"]\.\/actor-names['"]/g,
@@ -135,6 +139,23 @@ function mount({ workspace = 'assurance', fail = false, catalogCount = 1 } = {})
       calls.push(['business', path])
       if (fail) throw Error('Statistics unavailable')
       if (path.startsWith('client-folders/?')) return { results: [{ id: 31, ...summary }] }
+      if (path.includes('section=appointments'))
+        return {
+          count: 1,
+          summary,
+          results: [
+            {
+              id: 900,
+              contact_id: 5,
+              name: 'Past cancelled prospect',
+              status: 'cancelled',
+              starts_at: '2026-01-01T10:00:00Z',
+              timezone: 'UTC',
+              setter_id: 21,
+              booked_by_id: 99,
+            },
+          ],
+        }
       return {
         count: 26,
         summary,
@@ -242,3 +263,47 @@ test('export uses the last applied list filters and a separate unfiltered summar
     app.unmount()
   }
 })
+for (const workspace of ['assurance', 'isolation']) {
+  test(`${workspace}: dossier opens the exact past cancelled appointment and protects pending edits`, async () => {
+    const { root, calls, app } = mount({ workspace })
+    globalThis.window = { confirm: () => false }
+    try {
+      await flush()
+      button(root, 'Synthetic Client').props.onClick()
+      await flush()
+      button(root, 'Rendez-vous').props.onClick()
+      await flush()
+      button(root, 'Voir le rendez-vous').props.onClick()
+      await flush()
+      const detail = globalThis.__folderAppointment
+      assert.equal(detail.props[workspace === 'assurance' ? 'appointmentId' : 'visitId'], 900)
+      assert.equal(detail.props.role, 'administrator')
+      assert.equal(
+        calls.some(([, path]) => path.includes('contacts/5/')),
+        false,
+      )
+      detail.busy(true)
+      await flush()
+      const panel = globalThis.__folderPanel
+      assert.equal(panel.props.closeDisabled, true)
+      panel.close()
+      await flush()
+      assert.equal(panel.props.open, true)
+      detail.busy(false)
+      await flush()
+      all(root)
+        .find((n) => n.tag === 'div' && n.props.onInput)
+        .props.onInput()
+      panel.close()
+      await flush()
+      assert.equal(panel.props.open, true)
+      globalThis.window.confirm = () => true
+      panel.close()
+      await flush()
+      assert.equal(panel.props.open, false)
+    } finally {
+      app.unmount()
+      delete globalThis.window
+    }
+  })
+}

@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Rendez-vous précis depuis les dossiers clients
+
+L’onglet Rendez-vous des dossiers administrateur Assurance et Isolation propose « Voir le rendez-vous » sur chaque ligne. Le panneau latéral charge l’identifiant exact du rendez-vous/visite via les composants métier existants, sans repasser par la liste des créneaux à venir du prospect. Les rendez-vous passés et annulés restent donc directement consultables, avec qualification transmise, compte rendu et historique disponibles selon le module. Les actions existantes conservent leurs permissions et contrôles serveur. « Ouvrir la fiche » et « Appels CRM » restent accessibles séparément.
+
+La fermeture est bloquée pendant une opération et demande confirmation si des champs ont été modifiés depuis le dernier chargement/enregistrement ; une fermeture refusée conserve le panneau. Une fermeture confirmée recharge les compteurs et la liste du dossier avec leurs filtres. Aucune nouvelle API, règle de présence, vente, quota ni action téléphonique ajoutée. Les résultats conseiller/closer restent soumis à leurs permissions, sans élargissement à l’administrateur.
+
+Validation : suite frontend complète (119 tests), dont deux nouveaux scénarios Assurance/Isolation : rendez-vous passé annulé, identifiant précis distinct de la fiche, rôle administrateur, fermeture pendant opération et conservation des saisies si confirmation refusée ; typage, lint, format et contrôles GitHub. Recette visuelle après modification non réalisée : accès navigateur local désactivé dans Work. Cette livraison ne constitue pas une revue esthétique exhaustive de l’administration.
+
+Suite : préparer le déploiement continu après réception des paramètres du serveur et du domaine ; ne pas activer de déploiement réel sans cible configurée et vérifiée. Le fournisseur téléphonique reste désactivé dans la recette.
+
+
 ## Navigation des dossiers clients — repères administrateur
 
 L’ouverture d’un dossier replace le titre du client dans la zone visible et lui donne le focus clavier, avec une marge sous l’en-tête fixe. Le retour « Tous les dossiers » restaure la dernière recherche effectivement chargée et la page du répertoire ; un brouillon de recherche non soumis ne remplace pas ce repère. Le titre est également remis en vue au retour. Les compteurs « Résultats des rendez-vous » et « Étapes commerciales des prospects » ont des groupes et libellés distincts ; le filtre actif est signalé visuellement et par aria-pressed. Aucun statut métier, quota, périmètre ni export modifié.
