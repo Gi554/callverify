@@ -219,7 +219,10 @@ test('configured hours can offer early slots outside the legacy 8-to-20 grid', a
       .find((n) => n.props?.['aria-label'] === 'Jour suivant')
       .props.onClick()
     await flush()
-    assert.equal(slotButtons(root).length, 48)
+    // DST transition days may omit nonexistent or repeated wall-clock choices.
+    assert.ok(slotButtons(root).length > 24)
+    assert.ok(slot(root, '00:00'))
+    assert.ok(slot(root, '23:30'))
     assert.equal(slot(root, '06:30').props.disabled, true)
     assert.equal(slot(root, '07:00').props.disabled, false)
   } finally {
