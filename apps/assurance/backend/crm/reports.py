@@ -157,6 +157,7 @@ class ReportMixin:
                 if not row
                 else {
                     'performed': row.performed,
+                    'sale_concluded': row.sale_concluded,
                     'outcome': report_outcome(row),
                     'outcome_label': LABELS[report_outcome(row)],
                     'problem': row.problem,

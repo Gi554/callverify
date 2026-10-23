@@ -402,7 +402,7 @@ const roleLabels: Record<string, string> = {
         !managing,
       'calendar-layout':
         !!user &&
-        ['setter', 'administrator'].includes(role) &&
+        ['setter', 'administrator', 'advisor'].includes(role) &&
         activeModule === 'appointments' &&
         !passwordOpen &&
         !managing,
@@ -640,7 +640,7 @@ const roleLabels: Record<string, string> = {
                       :request="assurance"
                     />
                     <CrmAppointmentsCalendar
-                      v-else-if="['setter', 'administrator'].includes(role)"
+                      v-else-if="['setter', 'administrator', 'advisor'].includes(role)"
                       workspace="assurance"
                       :request="assurance"
                       :portal="portal"
