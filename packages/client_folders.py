@@ -99,6 +99,135 @@ def summary(workspace, client_id, now):
     }
 
 
+def dossier_rows(workspace, client_id, params, now):
+    appointments, contacts, resource, relation, _, status = scope(workspace, client_id)
+    section = params.get('section', 'prospects')
+    term = params.get('search', '').strip()[:250]
+    if section == 'prospects':
+        rows = contacts
+        if params.get('status'):
+            rows = rows.filter(**{status: params['status'][:40]})
+        if term:
+            phone = 'phone' if workspace == 'assurance' else 'raw_phone'
+            rows = rows.filter(Q(name__icontains=term) | Q(**{f'{phone}__icontains': term}))
+        rows = rows.order_by('-pk')
+    elif section == 'appointments':
+        rows = classified(appointments, relation, now).select_related(resource, relation)
+        if term:
+            rows = rows.filter(**{f'{resource}__name__icontains': term})
+        state = params.get('status', '')
+        if state:
+            if state not in (
+                'scheduled',
+                'rescheduled',
+                'performed',
+                'absent',
+                'not_performed',
+                'report_due',
+                'cancelled',
+            ):
+                raise ValidationError('Statut de rendez-vous invalide.')
+            rows = rows.filter(folder_status=state)
+        rows = rows.order_by('-starts_at', '-pk')
+    elif section in ('calls', 'tasks'):
+        calls, tasks = work(workspace, contacts, appointments)
+        rows = calls if section == 'calls' else tasks
+        if term:
+            if section == 'tasks' and workspace == 'assurance':
+                rows = rows.filter(
+                    Q(contact__name__icontains=term) | Q(appointment__contact__name__icontains=term)
+                )
+            else:
+                rows = rows.filter(**{f'{resource}__name__icontains': term})
+        rows = rows.order_by('-created_at', '-pk')
+        if workspace == 'assurance' and section == 'tasks':
+            rows = rows.select_related('contact', 'appointment__contact')
+        else:
+            rows = rows.select_related(resource)
+    else:
+        raise ValidationError('Section inconnue.')
+    return rows, (resource, relation, status, section)
+
+
+def serialize_rows(page, workspace, context, now):
+    resource, relation, status, section = context
+    output = []
+    for row in page:
+        if section == 'prospects':
+            output.append(
+                {
+                    'id': row.pk,
+                    'name': row.name,
+                    'phone': row.phone if workspace == 'assurance' else row.raw_phone,
+                    'status': getattr(row, status),
+                }
+            )
+        elif section == 'appointments':
+            person = getattr(row, resource)
+            report = getattr(row, relation, None)
+            output.append(
+                {
+                    'id': row.pk,
+                    'contact_id': person.pk,
+                    'name': person.name,
+                    'starts_at': row.starts_at,
+                    'ends_at': row.ends_at,
+                    'timezone': row.timezone,
+                    'status': row.folder_status,
+                    'setter_id': row.setter_id,
+                    'setter_name': row.setter_name,
+                    'booked_by_id': row.booked_by_id,
+                    'closer_name': getattr(row, 'closer_name', ''),
+                    'note': report.note if report else '',
+                    'report_by_id': (
+                        getattr(report, 'author_id', None)
+                        or getattr(report, 'author_closer_id', None)
+                        or getattr(report, 'author_client_id', None)
+                    ),
+                    'reported_at': report.created_at if report else None,
+                    'performed': report.performed if report else None,
+                    'sale_concluded': (
+                        getattr(report, 'sale_concluded', getattr(report, 'closed', None))
+                        if report
+                        else None
+                    ),
+                }
+            )
+        else:
+            person = getattr(row, resource, None)
+            if person is None:
+                person = row.appointment.contact
+            if section == 'calls':
+                result = row.result if workspace == 'assurance' else row.changes.get('result', '')
+                note = row.note if workspace == 'assurance' else row.body
+                actor = row.setter_id if workspace == 'assurance' else row.author_portal_id
+            else:
+                result = 'closed' if row.closed_at else ('overdue' if row.due_at < now else 'open')
+                note = row.reason if workspace == 'assurance' else row.note
+                actor = row.setter_id if workspace == 'assurance' else row.created_by_id
+            output.append(
+                {
+                    'id': row.pk,
+                    'contact_id': person.pk,
+                    'name': person.name,
+                    'created_at': row.created_at,
+                    'status': result,
+                    'note': note,
+                    'actor_id': actor,
+                    **(
+                        {
+                            'due_at': row.due_at,
+                            'resolution': row.resolution,
+                            'closed_by_id': row.closed_by_id,
+                        }
+                        if section == 'tasks'
+                        else {}
+                    ),
+                }
+            )
+    return output
+
+
 def folders(request, workspace, client_id=None):
     if request.user.role != 'administrator':
         raise PermissionDenied('Dossiers clients réservés aux administrateurs.')
@@ -114,127 +243,11 @@ def folders(request, workspace, client_id=None):
             {'results': [summary(workspace, pk, now) for pk in dict.fromkeys(map(int, raw))]}
         )
     else:
-        appointments, contacts, resource, relation, _, status = scope(workspace, client_id)
-        section = request.query_params.get('section', 'prospects')
-        term = request.query_params.get('search', '').strip()[:250]
-        if section == 'prospects':
-            rows = contacts
-            if request.query_params.get('status'):
-                rows = rows.filter(**{status: request.query_params['status'][:40]})
-            if term:
-                phone = 'phone' if workspace == 'assurance' else 'raw_phone'
-                rows = rows.filter(Q(name__icontains=term) | Q(**{f'{phone}__icontains': term}))
-            rows = rows.order_by('-pk')
-        elif section == 'appointments':
-            rows = classified(appointments, relation, now).select_related(resource, relation)
-            if term:
-                rows = rows.filter(**{f'{resource}__name__icontains': term})
-            state = request.query_params.get('status', '')
-            if state:
-                if state not in (
-                    'scheduled',
-                    'rescheduled',
-                    'performed',
-                    'absent',
-                    'not_performed',
-                    'report_due',
-                    'cancelled',
-                ):
-                    raise ValidationError('Statut de rendez-vous invalide.')
-                rows = rows.filter(folder_status=state)
-            rows = rows.order_by('-starts_at', '-pk')
-        elif section in ('calls', 'tasks'):
-            calls, tasks = work(workspace, contacts, appointments)
-            rows = calls if section == 'calls' else tasks
-            if term:
-                if section == 'tasks' and workspace == 'assurance':
-                    rows = rows.filter(
-                        Q(contact__name__icontains=term)
-                        | Q(appointment__contact__name__icontains=term)
-                    )
-                else:
-                    rows = rows.filter(**{f'{resource}__name__icontains': term})
-            rows = rows.order_by('-created_at', '-pk')
-            if workspace == 'assurance' and section == 'tasks':
-                rows = rows.select_related('contact', 'appointment__contact')
-            else:
-                rows = rows.select_related(resource)
-        else:
-            raise ValidationError('Section inconnue.')
+        rows, context = dossier_rows(workspace, client_id, request.query_params, now)
         pager = PageNumberPagination()
         pager.page_size = 25
         page = pager.paginate_queryset(rows, request)
-        output = []
-        for row in page:
-            if section == 'prospects':
-                output.append(
-                    {
-                        'id': row.pk,
-                        'name': row.name,
-                        'phone': row.phone if workspace == 'assurance' else row.raw_phone,
-                        'status': getattr(row, status),
-                    }
-                )
-            elif section == 'appointments':
-                person = getattr(row, resource)
-                report = getattr(row, relation, None)
-                output.append(
-                    {
-                        'id': row.pk,
-                        'contact_id': person.pk,
-                        'name': person.name,
-                        'starts_at': row.starts_at,
-                        'timezone': row.timezone,
-                        'status': row.folder_status,
-                        'setter_id': row.setter_id,
-                        'setter_name': row.setter_name,
-                        'booked_by_id': row.booked_by_id,
-                        'closer_name': getattr(row, 'closer_name', ''),
-                        'note': report.note if report else '',
-                        'report_by_id': (
-                            getattr(report, 'author_id', None)
-                            or getattr(report, 'author_closer_id', None)
-                            or getattr(report, 'author_client_id', None)
-                        ),
-                        'reported_at': report.created_at if report else None,
-                    }
-                )
-            else:
-                person = getattr(row, resource, None)
-                if person is None:
-                    person = row.appointment.contact
-                if section == 'calls':
-                    result = (
-                        row.result if workspace == 'assurance' else row.changes.get('result', '')
-                    )
-                    note = row.note if workspace == 'assurance' else row.body
-                    actor = row.setter_id if workspace == 'assurance' else row.author_portal_id
-                else:
-                    result = (
-                        'closed' if row.closed_at else ('overdue' if row.due_at < now else 'open')
-                    )
-                    note = row.reason if workspace == 'assurance' else row.note
-                    actor = row.setter_id if workspace == 'assurance' else row.created_by_id
-                output.append(
-                    {
-                        'id': row.pk,
-                        'contact_id': person.pk,
-                        'name': person.name,
-                        'created_at': row.created_at,
-                        'status': result,
-                        'note': note,
-                        'actor_id': actor,
-                        **(
-                            {
-                                'due_at': row.due_at,
-                                'resolution': row.resolution,
-                                'closed_by_id': row.closed_by_id,
-                            }
-                            if section == 'tasks'
-                            else {}
-                        ),
-                    }
-                )
+        output = serialize_rows(page, workspace, context, now)
         response = pager.get_paginated_response(output)
         response.data['summary'] = summary(workspace, client_id, now)
     response['Cache-Control'] = 'no-store'

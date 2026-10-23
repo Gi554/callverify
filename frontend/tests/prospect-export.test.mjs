@@ -72,7 +72,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture(fail = false) {
+function fixture(fail = false, overrides = {}) {
   const root = { children: [] },
     requests = [],
     links = [],
@@ -93,6 +93,7 @@ function fixture(fail = false) {
       if (fail) throw new Error('Plus de 50000 lignes : précisez les filtres avant d’exporter.')
       return 'file'
     },
+    ...overrides,
   })
   app.mount(root)
   return { root, requests, links, revoked, close: () => app.unmount() }
@@ -129,6 +130,46 @@ test('a refused export shows the server message', async () => {
     assert.match(text(f.root), /précisez les filtres/)
     assert.equal(f.links.length, 0)
     assert.equal(button(f, /^Excel$/).props.disabled, false)
+  } finally {
+    f.close()
+  }
+})
+
+test('dossier export keeps its filename, announces busy state and refuses duplicate downloads', async () => {
+  let finish
+  let count = 0
+  const events = []
+  const f = fixture(false, {
+    filename: 'dossier-assurance-31-appointments',
+    onBusy: (value) => events.push(value),
+    request: () => {
+      count++
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    },
+  })
+  try {
+    button(f, /^CSV$/).props.onClick()
+    button(f, /^Excel$/).props.onClick()
+    await flush()
+    assert.equal(count, 1)
+    finish('file')
+    await flush()
+    assert.deepEqual(events, [true, false])
+    assert.equal(f.links[0].download, 'dossier-assurance-31-appointments.csv')
+  } finally {
+    f.close()
+  }
+})
+
+test('parent loading blocks the download before any request', async () => {
+  const f = fixture(false, { blocked: true })
+  try {
+    assert.equal(button(f, /^CSV$/).props.disabled, true)
+    button(f, /^CSV$/).props.onClick()
+    await flush()
+    assert.equal(f.requests.length, 0)
   } finally {
     f.close()
   }
