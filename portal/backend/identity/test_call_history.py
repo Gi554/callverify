@@ -77,6 +77,7 @@ class CallHistoryTests(TestCase):
         row = mine.data['results'][0]
         self.assertEqual(row['contact_label'], 'Dossier Alpha')
         self.assertEqual(row['state'], 'accepted')
+        self.assertEqual((row['journal_status'], row['journal_duration']), ('pending', None))
         self.assertNotIn('caller', row)
         self.assertNotIn('extension', row)
         self.assertEqual(self.client.get(self.url, {'user_id': self.other.pk}).status_code, 403)

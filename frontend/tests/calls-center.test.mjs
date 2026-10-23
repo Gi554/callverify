@@ -117,6 +117,8 @@ function fixture({ role = 'setter', workspace = 'assurance', options, contacts =
     portal: async (path) => {
       portals.push(path)
       if (path.endsWith('/calls/options/')) return options
+      if (path.endsWith('/call-history/reconcile/'))
+        return { checked: 3, matched: 1, ambiguous: 1, not_found: 1 }
       if (path.includes('/call-history/')) return { count: calls.length, results: calls }
       return { results: [{ id: 9, name: 'setter.demo01' }] }
     },
@@ -216,6 +218,49 @@ test('an administrator sees the team history with callers and filters', async ()
     selects[1].props.onChange()
     await flush()
     assert.equal(f.portals.at(-1), 'isolation/call-history/?page=1&user_id=9')
+  } finally {
+    f.close()
+  }
+})
+
+test('the history shows the NEWT duration and administrators reconcile the journal', async () => {
+  const f = fixture({
+    role: 'administrator',
+    calls: [
+      { ...call(1, 'Dossier Alpha', 'accepted'), journal_status: 'matched', journal_duration: 125 },
+      { ...call(2, 'Dossier Beta', 'accepted'), journal_status: 'matched', journal_duration: 4 },
+      { ...call(3, 'Dossier Gamma', 'unknown'), journal_status: 'pending' },
+      { ...call(4, 'Dossier Delta', 'rejected'), journal_status: 'pending' },
+      { ...call(5, 'Dossier Epsilon', 'accepted'), journal_status: 'ambiguous' },
+    ],
+  })
+  try {
+    await flush()
+    const cells = all(f.root)
+      .filter((n) => n.tag === 'td' && n.props['data-label'] === 'Durée')
+      .map((n) => text(n).trim())
+    assert.deepEqual(cells, ['2 min 05 s', '4 s', 'En attente du journal', '—', 'À vérifier'])
+    button(f, /Rapprocher le journal NEWT/).props.onClick()
+    await flush()
+    assert.ok(f.portals.includes('assurance/call-history/reconcile/'))
+    const status = all(f.root).find((n) => n.props?.class === 'calls-reconciled')
+    assert.equal(
+      text(status),
+      '1 durée(s) récupérée(s) sur 3 appel(s) vérifié(s), 1 à vérifier, 1 absent(s) du journal.',
+    )
+    assert.equal(f.portals.at(-1), 'assurance/call-history/?page=1')
+  } finally {
+    f.close()
+  }
+})
+
+test('setters read durations without the reconciliation button', async () => {
+  const f = fixture({ options: { enabled: true, post_associated: true } })
+  try {
+    await flush()
+    button(f, /Mon historique/).props.onClick()
+    await flush()
+    assert.equal(button(f, /Rapprocher/), undefined)
   } finally {
     f.close()
   }

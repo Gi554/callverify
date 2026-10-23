@@ -101,6 +101,10 @@ from .identity.call_history import history as call_history
 
 urlpatterns += [path('api/portal/<str:workspace>/call-history/', call_history)]
 
+from .identity.call_journal import reconcile_view as call_journal
+
+urlpatterns += [path('api/portal/<str:workspace>/call-history/reconcile/', call_journal)]
+
 from .identity.advisor_quotas import quotas as advisor_quotas
 
 urlpatterns += [path('api/portal/assurance/advisor-quotas/', advisor_quotas)]

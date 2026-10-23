@@ -1,5 +1,48 @@
 # Suivi des livraisons CRM AMX
 
+## Appels — durée réelle via le journal NEWT 511
+
+L’historique des appels affiche une colonne « Durée », renseignée à partir du journal NEWT (fonction 511). Ce journal est en heure de Montréal ; ses colonnes From, To, Description, DNID, Date, Time, Duration et Amount ont été confirmées par NEWT.
+
+Chaque commande d’appel conserve désormais une empreinte chiffrée du numéro composé (HMAC avec la clé du portail), jamais le numéro en clair. Le rapprochement retient une ligne du journal si elle remplit trois conditions :
+
+- elle vient du poste utilisé pour l’appel ;
+- elle vise le même numéro (indicatif 1 ajouté si absent, puis comparaison des empreintes) ;
+- elle commence entre 60 s avant et 3 min après la commande.
+
+Les cas incertains ne sont jamais tranchés :
+
+- **Plusieurs lignes, ou une ligne commune à deux commandes** : statut « À vérifier ».
+- **Aucune ligne au-delà de 15 minutes** : statut « Absent du journal ».
+- **Aucune ligne avant ce délai** : statut « En attente du journal ».
+
+Une durée rapprochée est définitive. Seules les commandes « Poste joint » ou « Indéterminé » sont concernées.
+
+Le rapprochement porte sur les sept derniers jours. Il se lance de deux façons :
+
+- **Depuis l’historique d’équipe**, par le bouton « Rapprocher le journal NEWT » réservé à l’administrateur (`POST /api/portal/<espace>/call-history/reconcile/`). Il affiche le nombre de durées récupérées, à vérifier et absentes.
+- **Par la commande `python manage.py reconcile_call_journal`**, qui accepte `--loop --interval 900` pour une exécution planifiée.
+
+Garanties :
+
+- **Données conservées** : seules la durée et l’heure de début sont enregistrées, sur nos propres appels. Les lignes globales du fournisseur ne sont jamais stockées ; le journal d’audit ne contient ni numéro ni ligne brute.
+- **Configuration** : le rapprochement exige `NEWT_CDR_HISTORY_ENABLED` et les accès NEWT. Si le journal est indisponible, rien n’est modifié.
+- **Migration** : `identity.0018`, additive.
+
+Validation :
+
+- Backend : tests des règles de rapprochement sur les lignes d’exemple fournies par NEWT (correspondance, ambiguïté, ligne partagée, autre poste, attente puis absence) ; droits du bouton, fenêtre de sept jours, définitivité et journal sans numéro ; journal indisponible ou non configuré ; empreinte et anciens appels.
+- Frontend : formats de durée et statuts, bouton et compte rendu réservés à l’administrateur.
+- Suites portail et frontend (107) complètes, typage, ESLint, Prettier et Ruff.
+- Non vérifié contre le vrai journal NEWT, les appels réels n’étant pas activés.
+
+Limites :
+
+- **Unité de Duration** : elle est interprétée en secondes, ce que NEWT doit encore confirmer, de même que le traitement d’un appel sans réponse (durée 0 ou absence de ligne).
+- **Pas de réponse prouvée** : la durée ne prouve pas à elle seule une conversation avec le prospect.
+- **Anciens appels** : ceux passés avant ce lot n’ont pas d’empreinte et ne peuvent pas être rapprochés.
+- **Exécution planifiée** : la commande n’est pas encore planifiée en production.
+
 ## Agenda et disponibilités personnelles du conseiller Assurance
 
 Le menu conseiller donne un accès direct à « Mon agenda et disponibilités », avec deux onglets : horaires CRM et connexion Google/Microsoft. Le conseiller définit ses plages hebdomadaires (plusieurs par jour), son fuseau et leur activation dans un panneau à droite. Sans plage un jour est fermé ; avec les horaires activés et aucune plage, aucune nouvelle réservation n’est acceptée. Les profils existants restent sans restriction horaire personnalisée jusqu’à activation explicite. Les rendez-vous déjà pris restent conservés.
