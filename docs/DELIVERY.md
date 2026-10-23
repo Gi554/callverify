@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Domaine de production choisi — DNS encore chez LWS
+
+L’utilisateur a choisi `orvia-crm.com`. Le clone propre du VPS a été synchronisé avec main ; la configuration privée de production a été générée sur le serveur pour ce domaine, avec de nouvelles clés internes et mots de passe de bases aléatoires, sans affichage ni transfert vers Git. Le fichier `.env` est vérifié en mode 600. La configuration Compose de production est valide ; DEBUG, les appels NEWT et la vérification Twilio restent désactivés. Aucune clé déjà en place n’a été régénérée.
+
+Le DNS observé pointe encore vers l’hébergement LWS, en IPv4 et IPv6. L’utilisateur doit remplacer le A du domaine racine par l’IPv4 du VPS et supprimer l’ancien AAAA du domaine racine, sans modifier les serveurs DNS ni les entrées de messagerie. La gestion reste chez LWS ; aucun accès au compte LWS ni modification DNS n’a été effectué par l’agent.
+
+Validation : génération du fichier privé puis contrôle de son domaine, de ses permissions et des indicateurs de fournisseurs ; `docker compose ... config -q` réussi. Aucun service applicatif démarré, certificat obtenu, compte administrateur créé, invitation envoyée ou appel passé. Aucun secret ajouté au dépôt. La configuration SMTP reste à compléter et vérifier ; les identifiants Twilio concernent la vérification Isolation et ne sont pas requis pour préparer l’installation du CRM.
+
+Suite : constater le pointage DNS vers le VPS, renseigner la messagerie, terminer la première installation et la recette HTTPS avant d’activer le CD, toujours à false.
+
+
 ## Secrets CD de production configurés — activation toujours suspendue
 
 Après autorisation explicite de l’utilisateur, la clé SSH du compte de déploiement dédié et la clé hôte vérifiée ont été enregistrées respectivement dans les secrets `CD_SSH_KEY` et `CD_KNOWN_HOSTS` de l’environnement GitHub `production`. La clé privée est transmise directement à la commande de gestion des secrets, sans affichage ni ajout aux fichiers suivis. Les secrets ne figurent pas dans le dépôt public. Cette étape lève le blocage de transfert mentionné dans le lot précédent.
