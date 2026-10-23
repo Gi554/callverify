@@ -54,6 +54,21 @@ Le dépôt contient désormais de quoi mettre le CRM en ligne sur un serveur Lin
 Validation : génération testée (aucun marqueur restant, 12 secrets distincts, clés Fernet valides, refus d’écrasement et de domaine invalide) ; `docker compose config` valide avec la configuration générée, avec et sans le profil `newt-journal` ; syntaxe bash des scripts ; Ruff.
 
 Limites : non exécuté de bout en bout, faute de Docker démarré sur le poste de développement ; la première mise en ligne sur le serveur fera office de recette. Le serveur, le domaine et le compte SMTP restent à fournir. Les sauvegardes automatiques restent à planifier sur le serveur.
+## Sécurité avant la mise en production
+
+Un audit ciblé a été mené : contrôles Django `check --deploy` des trois services en mode production, failles connues des dépendances avec pip-audit, recherche de motifs à risque (routes publiques, SQL brut, HTML non échappé, exécution de commandes, secrets en dur).
+
+Corrections :
+
+- **Dépendances** : `cryptography` passe de 46.0.7 à 50.0.0 (sept avis de sécurité) et `certifi` de 2026.7.22 à 2026.10.19. pip-audit ne signale plus aucune faille.
+- **Limites de connexion derrière Caddy** : le portail et l’API Isolation ne retiennent plus que l’adresse ajoutée par le proxy (`NUM_PROXIES=1` quand `TRUST_PROXY=true`). Un en-tête `X-Forwarded-For` falsifié ne permet plus de contourner la limite de tentatives.
+- **Caddy** : les routes internes entre services (`/api/portal/internal/`, `/api/assurance/internal/`) répondent 404 depuis Internet ; elles restaient de toute façon protégées par des preuves signées. Ajout de l’en-tête HSTS et suppression de l’en-tête `Server`.
+
+Points vérifiés sans correction nécessaire : cookies de session `Secure`, `HttpOnly` et `SameSite=Strict` ; protection CSRF du portail (Assurance n’utilise pas de cookie) ; limite de tentatives sur la connexion et la récupération de mot de passe ; webhook Twilio vérifié par signature ; aucun SQL construit à partir de données utilisateur ; aucun HTML non échappé dans l’interface ; aucun secret en dur.
+
+Validation : suites portail (231), Assurance (334) et Isolation (253) complètes avec les nouvelles versions ; `pip check` ; pip-audit sans faille ; contrôle de l’adresse retenue avec et sans en-tête falsifié ; Ruff.
+
+Limites : le Caddyfile n’a pas pu être validé par Caddy lui-même (Docker indisponible sur le poste). Audit ciblé, qui ne remplace pas un test d’intrusion. Les points relevés par `check --deploy` restants sont couverts par Caddy (redirection HTTPS, X-Frame-Options, HSTS).
 
 ## Mes conseillers — contraste et rythme visuel
 
