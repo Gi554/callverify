@@ -1,4 +1,5 @@
 from django.urls import path
+from .identity.actor_names import names as actor_names
 from .identity import views
 from .identity import management_api
 from .identity import invitations
@@ -129,3 +130,5 @@ urlpatterns += [
     path('api/portal/assurance/calls/options/', call_options),
     path('api/portal/isolation/calls/options/', call_options, {'workspace': 'isolation'}),
 ]
+
+urlpatterns += [path('api/portal/<str:workspace>/actor-names/', actor_names)]

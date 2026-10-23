@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
+import { actorNames } from './actor-names';
+const names = ref<Record<number, string>>({});
 import PhoneHistory from './PhoneHistory.vue';
 import IsolationCallResult from './IsolationCallResult.vue';
 import IsolationFollowUps from './IsolationFollowUps.vue';
@@ -46,6 +48,12 @@ async function load() {
       `work-queue/${props.prospectId}/activities/?page=${page.value}`,
     );
     rows.value = data.results;
+    if (props.role === 'administrator')
+      names.value = await actorNames(
+        props.portal,
+        'isolation',
+        data.results.map((row: any) => row.author_portal_id),
+      );
     count.value = data.count;
   } catch (e: any) {
     error.value = e.message;
@@ -218,7 +226,8 @@ const resultLabels: Record<string, string> = {
       <article v-for="row in rows" :key="row.id">
         <small
           >{{ new Date(row.created_at).toLocaleString('fr-FR') }} · {{ row.author_role }}
-          {{ row.author_portal_id }} · {{ activityLabels[row.kind] || row.kind }}</small
+          {{ names[row.author_portal_id] || 'Compte' }} (n° {{ row.author_portal_id }}) ·
+          {{ activityLabels[row.kind] || row.kind }}</small
         >
         <p style="white-space: pre-wrap">{{ row.body }}</p>
         <p v-if="row.kind === 'call_result'">

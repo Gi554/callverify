@@ -35,8 +35,9 @@ code =
   code
     .replace(/vModelText as _vModelText,?/g, '')
     .replace(/vModelSelect as _vModelSelect,?/g, '')
+    .replace(/vModelCheckbox as _vModelCheckbox,?/g, '')
     .replace(/vModelDynamic as _vModelDynamic,?/g, '') +
-  ';const _vModelText={},_vModelSelect={},_vModelDynamic={};'
+  ';const _vModelText={},_vModelSelect={},_vModelDynamic={},_vModelCheckbox={};'
 code = code.replace(
   /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
   (_, name) =>
