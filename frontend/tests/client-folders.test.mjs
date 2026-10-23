@@ -53,6 +53,12 @@ const renderer = createRenderer({
     children: [],
     props: {},
     style: {},
+    scrollIntoView() {
+      this.scrolled = true
+    },
+    focus() {
+      this.focused = true
+    },
     listeners: {},
     addEventListener(name, fn) {
       ;(this.listeners[name] ||= []).push(fn)
@@ -113,14 +119,17 @@ const summary = {
   overdue_tasks: 1,
   prospect_statuses: [{ status: 'to_contact', label: 'À contacter', total: 20 }],
 }
-function mount({ workspace = 'assurance', fail = false } = {}) {
+function mount({ workspace = 'assurance', fail = false, catalogCount = 1 } = {}) {
   const calls = []
   const root = { children: [] }
   const app = renderer.createApp(component, {
     workspace,
     portal: async (path) => {
       calls.push(['portal', path])
-      return { count: 1, results: [{ id: 31, name: 'Synthetic Client', active: true, quota: 20 }] }
+      return {
+        count: catalogCount,
+        results: [{ id: 31, name: 'Synthetic Client', active: true, quota: 20 }],
+      }
     },
     request: async (path) => {
       calls.push(['business', path])
@@ -153,6 +162,41 @@ test('admin opens client folder, sees confirmed presence countdown and pages the
   assert.ok(calls.some(([, path]) => path.includes('page=2')))
   assert.ok(calls.every(([, path]) => !path.includes('/calls/')))
   app.unmount()
+})
+
+test('returning from a dossier preserves the searched catalog page and distinguishes status filters', async () => {
+  const { root, calls, app } = mount({ catalogCount: 30 })
+  try {
+    await flush()
+    all(root)
+      .find((n) => n.tag === 'input')
+      .props['onUpdate:modelValue']('Synthetic')
+    all(root)
+      .find((n) => n.tag === 'form')
+      .props.onSubmit({ preventDefault() {} })
+    await flush()
+    button(root, 'Suivant').props.onClick()
+    await flush()
+    button(root, 'Synthetic Client').props.onClick()
+    await flush()
+    const heading = all(root).find((n) => n.tag === 'h1')
+    assert.equal(heading.scrolled, true)
+    assert.equal(heading.focused, true)
+    assert.ok(text(root).includes('Résultats des rendez-vous'))
+    assert.ok(text(root).includes('Étapes commerciales des prospects'))
+    const stage = button(root, 'À contacter')
+    stage.props.onClick()
+    await flush()
+    assert.equal(button(root, 'À contacter').props['aria-pressed'], true)
+    button(root, 'Tous les dossiers').props.onClick()
+    await flush()
+    assert.ok(
+      calls.some(([type, path]) => type === 'portal' && path.includes('page=2&search=Synthetic')),
+    )
+    assert.equal(all(root).find((n) => n.tag === 'input').value, 'Synthetic')
+  } finally {
+    app.unmount()
+  }
 })
 test('unavailable business data keeps folder access and does not fabricate zero statistics', async () => {
   const { root, app } = mount({ fail: true })
