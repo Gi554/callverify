@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { actorNames } from './actor-names';
+const names = ref<Record<number, string>>({});
 const props = defineProps<{
   contactId: number;
+  portal?: (path: string) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
 const rows = ref<any[]>([]),
@@ -53,6 +56,11 @@ async function load(reset = false) {
     if (before.value) query.set('before', before.value);
     const data = await props.request(`contacts/${props.contactId}/interactions/?${query}`);
     rows.value = data.results;
+    names.value = await actorNames(
+      props.portal,
+      'assurance',
+      data.results.map((row: any) => row.actor_id),
+    );
     count.value = data.count;
   } catch (e: any) {
     error.value = e.message;
@@ -94,6 +102,9 @@ onMounted(() => load());
     <article v-for="entry in rows" :key="entry.event_type + ':' + entry.event_id">
       <strong>{{ labels[entry.event_type] }}</strong> ·
       {{ new Date(entry.occurred_at).toLocaleString('fr-FR') }}
+      <p v-if="entry.actor_id">
+        Auteur : {{ names[entry.actor_id] || 'Compte' }} · n° {{ entry.actor_id }}
+      </p>
       <p>Référence {{ entry.reference_id }} · {{ states[entry.state] || entry.state }}</p>
       <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ entry.detail }}</p>
     </article>

@@ -37,7 +37,7 @@ def window(params):
     return result
 
 
-def entries(qs, kind, detail, state, reference, dates):
+def entries(qs, kind, detail, state, reference, dates, actor):
     if 'after' in dates:
         qs = qs.filter(created_at__gte=dates['after'])
     if 'before' in dates:
@@ -51,8 +51,11 @@ def entries(qs, kind, detail, state, reference, dates):
             detail=Cast(detail, TextField()),
             state=Cast(state, TextField()),
             reference_id=reference,
+            actor_id=F(actor),
         )
-        .values('event_type', 'event_id', 'occurred_at', 'detail', 'state', 'reference_id')
+        .values(
+            'event_type', 'event_id', 'occurred_at', 'detail', 'state', 'reference_id', 'actor_id'
+        )
     )
 
 
@@ -152,7 +155,19 @@ class ContactInteractionMixin:
         elif kind in ('call_result', 'task'):
             sources[kind] = (ContactCallOutcome.objects.none(), Value(''), Value(''), F('pk'))
         queries = [
-            entries(qs, key, detail, state, reference, dates)
+            entries(
+                qs,
+                key,
+                detail,
+                state,
+                reference,
+                dates,
+                {
+                    'appointment': 'booked_by_id',
+                    'task': 'setter_id',
+                    'call_result': 'setter_id',
+                }.get(key, 'author_id'),
+            )
             for key, (qs, detail, state, reference) in sources.items()
             if not kind or key == kind
         ]
@@ -163,6 +178,10 @@ class ContactInteractionMixin:
             if len(queries) > 1
             else queries[0].order_by('-occurred_at', 'event_type', '-event_id')
         )
-        response = self.get_paginated_response(list(self.paginate_queryset(qs)))
+        rows = list(self.paginate_queryset(qs))
+        if user.role != 'administrator':
+            for row in rows:
+                row.pop('actor_id', None)
+        response = self.get_paginated_response(rows)
         response['Cache-Control'] = 'no-store'
         return response

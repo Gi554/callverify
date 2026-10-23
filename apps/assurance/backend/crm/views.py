@@ -1,6 +1,7 @@
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from .visibility import visible_contacts
 from .agreements import AgreementMixin, AgreementDocumentMixin
 from .qualification import QualificationMixin
@@ -25,6 +26,7 @@ class ContactPagination(PageNumberPagination):
 
 class PublicContactSerializer(serializers.ModelSerializer):
     status_label = serializers.SerializerMethodField()
+    queue_reason = serializers.CharField(source='_queue_reason', read_only=True)
 
     def get_status_label(self, obj):
         if 'stage_labels' not in self.context:
@@ -41,6 +43,7 @@ class PublicContactSerializer(serializers.ModelSerializer):
             'email',
             'status',
             'status_label',
+            'queue_reason',
             'updated_at',
             'revision',
         ]
@@ -78,7 +81,12 @@ class ContactViewSet(
         status = self.request.query_params.get('status', '')
         if status:
             qs = qs.filter(status=status)
-        return qs
+        from .prospect_queue import apply_queue
+
+        mode = self.request.query_params.get('queue', '')
+        if mode and self.request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied('File de prospection interne aux setters et administrateurs.')
+        return apply_queue(qs, mode)
 
 
 @api_view(['GET'])
