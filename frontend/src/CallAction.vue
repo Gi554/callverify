@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import { Phone, RefreshCw } from 'lucide-vue-next';
+import { Phone, PhoneCall, RefreshCw } from 'lucide-vue-next';
 const props = defineProps<{
   workspace: 'assurance' | 'isolation';
   resourceId: number;
@@ -110,7 +110,7 @@ onMounted(() => {
 <template>
   <div class="call-action">
     <button
-      v-if="!requestId"
+      v-if="!requestId && !confirming"
       type="button"
       class="secondary"
       :disabled="disabled || pending"
@@ -118,23 +118,31 @@ onMounted(() => {
     >
       <Phone :size="16" /> Appeler
     </button>
-    <section v-if="confirming" class="call-confirm" aria-label="Confirmer l’appel">
-      <strong>Appeler {{ confirmedPhone }}</strong>
-      <p>
-        Votre poste Phonetico sonnera d’abord. Décrochez : la composition du numéro extérieur
-        démarre ensuite. Le son passe par votre téléphone ou softphone.
-      </p>
-      <button type="button" class="primary" :disabled="disabled || pending" @click="send">
-        Confirmer l’appel
-      </button>
-      <button type="button" class="secondary" @click="confirming = false">Annuler</button>
-    </section>
-    <p v-if="pending" role="status">Traitement de la demande…</p>
-    <p v-if="result" role="status">
+    <div v-if="confirming" class="call-confirm" role="group" aria-label="Confirmer l’appel">
+      <div class="call-confirm-head">
+        <span class="call-confirm-icon"><PhoneCall :size="18" /></span>
+        <div>
+          <strong>Appeler le {{ confirmedPhone }} ?</strong>
+          <p>
+            Votre poste sonne d’abord : décrochez, puis le numéro est composé automatiquement. Le
+            son passe par votre téléphone ou votre softphone.
+          </p>
+        </div>
+      </div>
+      <div class="call-confirm-actions">
+        <button type="button" class="secondary" :disabled="pending" @click="confirming = false">
+          Annuler</button
+        ><button type="button" class="primary" :disabled="disabled || pending" @click="send">
+          <Phone :size="15" /> Lancer l’appel
+        </button>
+      </div>
+    </div>
+    <p v-if="pending" role="status" class="call-note">Traitement de la demande…</p>
+    <p v-if="result" role="status" class="call-note">
       {{ labels[result.state] || 'État inconnu' }}.
       {{ result.definition || 'Une acceptation ne prouve ni sonnerie distante ni décrochage.' }}
     </p>
-    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="error" role="alert" class="call-note call-error">{{ error }}</p>
     <template v-if="requestId">
       <small>Référence de commande : {{ requestId }}</small>
       <p v-if="unresolved">
@@ -151,18 +159,66 @@ onMounted(() => {
 </template>
 <style scoped>
 .call-action {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
   margin: 12px 0;
 }
 .call-action button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin: 4px;
 }
 .call-confirm {
+  display: grid;
+  gap: 14px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
   padding: 16px;
-  border: 1px solid var(--border, #dedfd3);
+  border: 1px solid #c9dafb;
   border-radius: 12px;
+  background: #f5f8ff;
+}
+.call-confirm-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.call-confirm-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #e3ecfd;
+  color: #2f6fed;
+}
+.call-confirm strong {
+  display: block;
+  color: #101828;
+  font-size: 15px;
+}
+.call-confirm p {
+  margin: 4px 0 0;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.call-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.call-note {
+  margin: 0;
+  color: #475467;
+  font-size: 13px;
+}
+.call-error {
+  color: #b42318;
 }
 .call-action small {
   display: block;
