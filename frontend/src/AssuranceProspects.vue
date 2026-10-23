@@ -4,6 +4,7 @@ import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown } from 'lucide-vue-
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import SidePanel from './SidePanel.vue';
+import ProspectExport from './ProspectExport.vue';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -161,6 +162,12 @@ onBeforeUnmount(() => {
             Liste et imports
           </button>
         </div>
+        <ProspectExport
+          v-if="!listView"
+          :request="request"
+          path="contacts/export/"
+          :filters="{ search: applied }"
+        />
         <button v-if="!listView" class="secondary" :disabled="busy" @click="load">
           <RefreshCw :size="16" />Actualiser
         </button>

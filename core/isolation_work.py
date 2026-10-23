@@ -105,9 +105,11 @@ def output(row):
 
 
 from .isolation_followups import FollowUpMixin
+from .isolation_export import ExportMixin
 
 
 class WorkViewSet(
+    ExportMixin,
     FollowUpMixin,
     C2Mixin,
     IsolationPhoneCallMixin,

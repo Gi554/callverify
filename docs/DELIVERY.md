@@ -1,5 +1,22 @@
 # Suivi des livraisons CRM AMX
 
+## Export des prospects — CSV et Excel
+
+L’écran Prospects propose désormais « Exporter : CSV / Excel » au setter et à l’administrateur, en Assurance comme en Isolation. Le conseiller Assurance dispose du même bouton, « Mes prospects », dans son agenda.
+
+L’export reprend exactement la visibilité de la liste. En Assurance, setter et administrateur voient tous les contacts, et le conseiller seulement ceux qui lui sont attribués ou liés à l’un de ses rendez-vous. En Isolation, le setter voit ses prospects affectés et l’administrateur toute l’équipe. L’export applique aussi les filtres en cours : recherche en Assurance ; recherche, responsable, statut et rappels à traiter en Isolation. Il porte sur toutes les pages, pas seulement sur celle affichée.
+
+- **Colonnes Assurance** : référence de la fiche, nom, téléphone, e-mail, étape, date de mise à jour, puis les champs métier actifs. Pour le conseiller, seuls les champs que l’administration lui a rendus visibles figurent dans l’export.
+- **Colonnes Isolation** : référence de la fiche, référence, nom, téléphone saisi, numéro normalisé, campagne, setter, statut commercial et rappel prévu.
+- **Format CSV** : UTF-8 avec BOM et séparateur point-virgule, pour une ouverture directe dans Excel en français.
+- **Protection contre les formules** : en CSV, les valeurs qui pourraient être lues comme des formules sont neutralisées, sans altérer les numéros de téléphone. En Excel, elles sont enregistrées comme du texte.
+
+Chaque export est journalisé (auteur, format, nombre de lignes, filtres). Endpoints : `GET /api/assurance/contacts/export/?file=csv|xlsx` et `GET /api/work-queue/export/?file=csv|xlsx`, réponses `no-store`.
+
+Validation : cinq tests Assurance (filtres et ordre, protection CSV et Excel, périmètre et champs du conseiller, refus, plafonds sans troncature) et trois tests Isolation (périmètre setter, filtres administrateur et Excel, refus). Deux tests frontend du composant d’export (filtres transmis, téléchargement, message d’erreur). Suites Assurance (325), Isolation (253) et frontend complètes, typage, ESLint, Prettier et Ruff. Mesure locale : 50 000 lignes en CSV en 0,5 s, contre environ 7 s pour Excel en openpyxl.
+
+Limites : au plus 50 000 lignes en CSV et 20 000 en Excel ; au-delà, l’export est refusé avec une invitation à filtrer ou à passer en CSV, sans jamais tronquer. Les données de qualification, les notes et l’historique ne sont pas exportés. Démo non vérifiée en conditions réelles : les services de démo, lancés par une autre session sans rechargement, n’ont pas été redémarrés.
+
 ## Appels — composeur, historique personnel et historique d’équipe
 
 Le module « Appels » est débloqué dans les deux espaces. L’icône téléphone de l’en-tête du setter, jusqu’ici désactivée, ouvre le composeur. Le setter tape un numéro (pavé numérique) ou un nom : la recherche porte sur ses prospects (`contacts/` en Assurance, `work-queue/` en Isolation). « Appeler » ouvre la fiche du prospect en mode appel, avec les contrôles, la qualification et l’historique habituels. Aucun appel ne part d’un numéro libre. Un numéro inconnu renvoie vers l’import des prospects, car il n’existe pas de création unitaire de fiche. Un bandeau signale que les appels réels ne sont pas encore activés, ou qu’aucun poste n’est associé au compte.
