@@ -7,7 +7,9 @@ Le VPS n’est pas configuré par la présence de ce workflow dans le dépôt.
 ## Première installation
 
 1. Choisir un domaine ou sous-domaine et faire pointer son DNS A vers le VPS.
-2. Vérifier la version d’Ubuntu et installer Docker Compose v2, Git, curl, tar et util-linux (`flock`).
+2. Vérifier la version d’Ubuntu et installer Docker Engine et son plugin Compose actuel depuis
+   le [dépôt APT officiel](https://docs.docker.com/engine/install/ubuntu/#install-using-the-apt-repository),
+   ainsi que Git, curl, tar et util-linux (`flock`). Le plugin doit prendre en charge `!reset` et `--wait`.
 3. Créer un utilisateur SSH dédié au déploiement, par exemple `amx-deploy`, puis lui permettre
    d’utiliser Docker. Cet accès Docker donne des pouvoirs élevés sur le serveur : conserver sa clé
    uniquement dans le secret GitHub prévu, sans la publier ni la coller dans le chat.
@@ -27,6 +29,8 @@ Ne pas désactiver HTTPS ou le contrôle de clé hôte pour contourner cette pr�
 
 Créer l’environnement **production** dans Settings → Environments. Des approbateurs peuvent
 y être configurés si souhaité ; ils seront sollicités par GitHub avant le déploiement.
+Dans « Deployment branches and tags », sélectionner uniquement la branche **main**
+(règle de type branche, sans règle de tag) avant d’ajouter les secrets de déploiement.
 
 Variables de dépôt (Settings → Secrets and variables → Actions → Variables) :
 
