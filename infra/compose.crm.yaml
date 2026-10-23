@@ -122,6 +122,16 @@ services:
     depends_on:
       assurance-db:
         condition: service_healthy
+  # NEWT 511 call durations; started by scripts/deploy.sh when NEWT_CDR_HISTORY_ENABLED=true.
+  portal-call-journal:
+    build: .
+    environment: *portal-environment
+    command: python manage.py reconcile_call_journal --settings=portal.backend.settings --loop --interval 900
+    restart: unless-stopped
+    profiles: [newt-journal]
+    depends_on:
+      portal-db:
+        condition: service_healthy
   api:
     environment:
       PORTAL_INTERNAL_URL: http://portal:8000
