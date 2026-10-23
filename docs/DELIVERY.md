@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Alertes des tâches — extension à l’espace Isolation
+
+Les alertes de l’en-tête fonctionnent désormais dans les deux espaces pour le setter et l’administrateur. Isolation n’ayant pas de boîte de notifications, les rappels en tiennent lieu : pastille et fenêtre (une fois par session et par espace) sur les rappels en retard, panneau des rappels ouverts avec le nom du prospect et la mention « en retard », bandeau « Nouvelle tâche » et notification du navigateur à l’apparition d’un nouveau rappel ; ouvrir un rappel mène aux tâches (pas d’accusé de lecture en Isolation). `follow-ups/` (Isolation) accepte `order=recent` pour lister les rappels les plus récemment créés d’abord ; l’ordre par défaut (échéance) est inchangé et toute autre valeur est refusée. Les priorités Assurance sont affichées en français (basse, normale, haute, urgente).
+
+Validation : test backend de l’ordre `recent` ; test frontend Isolation (pastille sur les retards, fenêtre par espace, bandeau et notification du navigateur, aucun appel aux notifications Assurance ni accusé de lecture) ; tests Assurance existants maintenus. Démo non vérifiée : la base PostgreSQL de démo ne répondait plus au moment du lot.
+
+Limites : en Isolation, la pastille compte les rappels en retard (pas de notion de « non lu ») ; un nouveau rappel n’est repéré que parmi les 25 plus récents.
+
 ## Alertes des tâches — cloche, bandeau, rappel des retards et notifications du navigateur
 
 Pour le setter et l’administrateur Assurance, la cloche de l’en-tête devient un centre d’alertes (`TaskAlerts`), interrogé toutes les 30 secondes : pastille du nombre de notifications non lues ; panneau listant les notifications ouvertes avec le nom du prospect, l’échéance et la priorité, le nombre de tâches en retard (de l’équipe pour l’administrateur) et l’accès aux tâches ; ouvrir une notification la marque comme lue et mène aux tâches. Une nouvelle notification affiche un bandeau « Nouvelle tâche » (Ouvrir, Fermer) ; les notifications présentes au chargement ne déclenchent pas de bandeau. S’il existe des tâches en retard, une fenêtre « N tâche(s) en retard » propose Traiter maintenant ou Plus tard, une seule fois par session. Les notifications du navigateur s’activent depuis le panneau (accord demandé au navigateur) et s’affichent quand l’onglet n’est pas au premier plan. L’API des notifications renvoie désormais `contact_id` et `contact_name` (fiche de la tâche, sinon celle de son rendez-vous) ; la liste blanche des champs est mise à jour.

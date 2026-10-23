@@ -314,6 +314,12 @@ class FollowUps(viewsets.GenericViewSet):
             rows = rows.filter(due_at__lt=timezone.now())
         if state == 'upcoming':
             rows = rows.filter(due_at__gte=timezone.now())
+        # Alerts read the latest reminders first to spot new ones; the default stays by due date.
+        order = self.request.query_params.get('order', '')
+        if order not in ('', 'recent'):
+            raise ValidationError('Ordre invalide.')
+        if order == 'recent':
+            rows = rows.order_by('-created_at', '-pk')
         return rows
 
     def list(self, request):
