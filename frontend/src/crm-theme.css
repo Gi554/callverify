@@ -854,3 +854,20 @@
     transform: none;
   }
 }
+
+/* The client directory owns its page spacing; keep legacy shell styles outside it. */
+.folders-page-layout .crm-connected .crm-stage .amx-main {
+  background: #f6f7fc;
+}
+.folders-page-layout .crm-connected .crm-stage .amx-workspace {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.folders-page-layout .crm-connected .crm-stage .amx-workspace > .amx-content {
+  padding: 0;
+}
+.folders-page-layout .client-folders small {
+  margin-top: 5px;
+}

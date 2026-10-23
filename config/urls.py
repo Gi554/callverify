@@ -53,3 +53,9 @@ urlpatterns += [path('api/webhooks/twilio/amd/', views.voice_webhook)]
 urlpatterns += [path('api/workspace-dashboard/', workspace_dashboard)]
 urlpatterns += [path('api/client-dashboard/', client_dashboard)]
 urlpatterns += [path('api/workspace-statistics/', isolation_statistics)]
+from core.client_folders import clients as client_folders
+
+urlpatterns += [
+    path('api/client-folders/', client_folders),
+    path('api/client-folders/<int:client_id>/', client_folders),
+]
