@@ -17,9 +17,10 @@ let code = compileScript(
   },
 ).content
 code = code
-  .replace(
-    /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
-    (_, name) => `const ${name}={render:()=>null}`,
+  .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
+    name === 'ProspectExport'
+      ? `const ProspectExport={props:['filters','path','filename','blocked'],setup:props=>{globalThis.__folderExportProps=props;return()=>null}}`
+      : `const ${name}={render:()=>null}`,
   )
   .replace(
     /import \{ actorNames \} from ['"]\.\/actor-names['"]/g,
@@ -167,4 +168,33 @@ test('isolation directory uses its own catalog and never creates extra clients',
   assert.ok(text(root).includes('Client unique · Isolation'))
   assert.ok(calls.some(([, path]) => path.startsWith('isolation/client-folders/')))
   app.unmount()
+})
+
+test('export uses the last applied list filters and a separate unfiltered summary', async () => {
+  const { root, app } = mount()
+  try {
+    await flush()
+    button(root, 'Synthetic Client').props.onClick()
+    await flush()
+    assert.equal(globalThis.__folderExportProps.path, 'client-folders/31/export/')
+    const input = all(root).find(
+      (n) =>
+        n.tag === 'input' && n.props['aria-label'] === 'Rechercher un prospect dans le dossier',
+    )
+    input.props['onUpdate:modelValue']('Draft search')
+    await flush()
+    assert.equal(globalThis.__folderExportProps.filters.search, '')
+    all(root)
+      .find((n) => n.tag === 'form')
+      .props.onSubmit({ preventDefault() {} })
+    await flush()
+    assert.equal(globalThis.__folderExportProps.filters.search, 'Draft search')
+    const select = all(root).find((n) => n.tag === 'select')
+    select.props['onUpdate:modelValue']('summary')
+    await flush()
+    assert.deepEqual({ ...globalThis.__folderExportProps.filters }, { section: 'summary' })
+    assert.match(globalThis.__folderExportProps.filename, /-summary$/)
+  } finally {
+    app.unmount()
+  }
 })
