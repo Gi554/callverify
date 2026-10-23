@@ -1,5 +1,24 @@
 # Suivi des livraisons CRM AMX
 
+## Tests d’intrusion (environnement local)
+
+Une série de tests d’intrusion a été menée sur l’environnement local (127.0.0.1), avec des comptes et des données fictives, pour vérifier les contrôles d’accès avant la mise en production. Aucune faille n’a été trouvée ; aucun correctif n’a été nécessaire.
+
+Scénarios vérifiés, tous bloqués comme attendu :
+
+- **Accès sans authentification** : les API métier et d’administration répondent 403.
+- **Élévation de privilèges** : un setter ne peut pas créer d’accès ni se faire passer pour administrateur ; un conseiller n’atteint pas les écrans d’administration.
+- **Accès horizontal** : un setter ne voit et n’ouvre que ses prospects (fiche d’un autre : 404) ; un conseiller ne voit que ses contacts attribués. L’isolement est appliqué côté serveur, pas seulement masqué à l’écran.
+- **Jetons d’espace** : un jeton Isolation réutilisé sur Assurance, tronqué ou falsifié est refusé (401). Le rôle est fixé par le serveur, non modifiable par le client.
+- **CSRF** : toute écriture sans jeton CSRF (connexion, création d’accès) est refusée (403).
+- **Force brute** : la connexion est limitée (429 au-delà du quota).
+- **Énumération de comptes** : un compte inexistant et un bon compte avec mauvais mot de passe renvoient le même message « Identifiants incorrects ».
+- **Injection** : les tentatives SQL dans la recherche ne renvoient aucun résultat ; un paramètre d’état invalide est rejeté (400).
+- **Routes internes entre services** : elles exigent une preuve signée (403 sans elle) et sont en plus masquées par Caddy en production (voir lot sécurité).
+- **En-têtes** : `X-Content-Type-Options: nosniff` présent sur les réponses.
+
+Limites : tests ciblés sur les contrôles d’accès et les abus courants, menés en local. Ils ne remplacent pas un test d’intrusion professionnel sur l’environnement de production réel, recommandé une fois le CRM en ligne avec de vraies données.
+
 ## Mes conseillers — contraste et rythme visuel
 
 Correction des surcharges du thème global qui aplatissaient les cartes (coins de 7 px, marges imposées, suppression des ombres) et réintroduisaient des bordures dans la recherche. La page setter possède désormais ses règles contextualisées : bandeau compact bleu/lavande, cartes arrondies avec accents bleu/menthe/abricot, textes plus contrastés et boutons visibles. L’état sans quota précise toujours l’absence d’objectif. Les cartes remontent dans la page sans déplacer les boutons sous une grande zone vide. Animation discrète au survol, désactivée avec la préférence de mouvement réduit. Données, permissions et parcours conservés.
