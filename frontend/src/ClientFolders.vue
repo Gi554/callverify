@@ -15,6 +15,7 @@ import SidePanel from './SidePanel.vue';
 import ClientCallHistory from './ClientCallHistory.vue';
 import ProspectExport from './ProspectExport.vue';
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
+import AssuranceAppointments from './AssuranceAppointments.vue';
 import IsolationProspectActivity from './IsolationProspectActivity.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import { actorNames } from './actor-names';
@@ -60,6 +61,25 @@ async function revealHeading() {
   heading.value?.focus?.({ preventScroll: true });
 }
 const callContact = ref<any>(null);
+const appointment = ref<any>(null),
+  appointmentBusy = ref(false),
+  appointmentDirty = ref(false);
+function openAppointment(row: any) {
+  if (busy.value || exporting.value || appointment.value) return;
+  appointmentDirty.value = false;
+  appointment.value = row;
+}
+function closeAppointment() {
+  if (appointmentBusy.value) return;
+  if (
+    appointmentDirty.value &&
+    !window.confirm('Quitter sans enregistrer les modifications du rendez-vous ?')
+  )
+    return;
+  appointment.value = null;
+  appointmentDirty.value = false;
+  void load();
+}
 const prospect = ref<any>(null),
   panelBusy = ref(false),
   visitProspect = ref<number | undefined>();
@@ -545,7 +565,15 @@ onMounted(load);
               </td>
               <td>
                 <button
+                  v-if="section === 'appointments'"
                   class="folder-link"
+                  :disabled="busy || exporting"
+                  @click="openAppointment(row)"
+                >
+                  Voir le rendez-vous <CalendarCheck :size="14" />
+                </button>
+                <button
+                  :class="section === 'appointments' ? 'folder-call-link' : 'folder-link'"
                   :disabled="busy || exporting"
                   @click="openProspect(row.contact_id || row.id)"
                 >
@@ -588,6 +616,37 @@ onMounted(load);
         Suivant
       </button>
     </footer>
+    <SidePanel
+      :open="!!appointment"
+      :title="appointment ? `Rendez-vous · ${appointment.name || 'Sans nom'}` : 'Rendez-vous'"
+      eyebrow="DOSSIER CLIENT · RENDEZ-VOUS"
+      :close-disabled="appointmentBusy"
+      @request-close="closeAppointment"
+    >
+      <div @input="appointmentDirty = true" @change="appointmentDirty = true">
+        <AssuranceAppointments
+          v-if="appointment && workspace === 'assurance'"
+          :key="appointment.id"
+          :appointment-id="appointment.id"
+          role="administrator"
+          :request="request"
+          :portal="portal"
+          @busy="appointmentBusy = $event"
+          @updated="appointmentDirty = false"
+        />
+        <IsolationVisits
+          v-else-if="appointment"
+          :key="appointment.id"
+          :visit-id="appointment.id"
+          role="administrator"
+          :request="request"
+          :portal="portal"
+          @busy="appointmentBusy = $event"
+          @updated="appointmentDirty = false"
+          @close="closeAppointment"
+        />
+      </div>
+    </SidePanel>
     <SidePanel
       :open="!!callContact"
       :title="callContact?.name || 'Appels CRM'"
