@@ -69,6 +69,25 @@ class IsolationStatisticsTests(TestCase):
         self.assertNotIn('Confidentiel', str(data))
         self.assertNotIn('raw_phone', str(data))
 
+    def test_dashboard_has_daily_series_and_previous_period(self):
+        self.visit(performed=True, outcome='interested')
+        earlier = self.day - timedelta(days=3)
+        old = self.visit()
+        IsolationVisit.objects.filter(pk=old.pk).update(
+            starts_at=earlier, ends_at=earlier + timedelta(hours=1)
+        )
+        day = self.day.date()
+        query = {'from': str(day - timedelta(days=2)), 'to': str(day), 'timezone': 'UTC'}
+        data = self.client.get(self.url, query).data
+        self.assertEqual(len(data['daily']), 3)
+        self.assertEqual(data['daily'][-1], {'day': day, 'visits': 1, 'performed': 1, 'closed': 0})
+        self.assertEqual(data['previous']['from'], day - timedelta(days=5))
+        self.assertEqual(data['previous']['totals']['visits'], 1)
+        self.auth(72, 'client')
+        self.assertEqual(self.client.get(self.url, query).data['previous']['totals']['visits'], 1)
+        self.auth(73, 'client')
+        self.assertEqual(self.client.get(self.url, query).data['previous']['totals']['visits'], 0)
+
     def test_empty_rates_are_not_false_zero(self):
         self.visit()
         data = self.client.get(self.url).data['totals']

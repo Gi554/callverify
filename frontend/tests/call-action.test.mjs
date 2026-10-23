@@ -14,8 +14,8 @@ let compiled = compileScript(parse(source).descriptor, {
   inlineTemplate: true,
 }).content
 compiled = compiled.replace(
-  /import \{\s*Phone,\s*RefreshCw,?\s*\} from 'lucide-vue-next'/,
-  'const Phone={render:()=>null},RefreshCw={render:()=>null}',
+  /import \{\s*Phone,\s*PhoneCall,\s*RefreshCw,?\s*\} from 'lucide-vue-next'/,
+  'const Phone={render:()=>null},PhoneCall={render:()=>null},RefreshCw={render:()=>null}',
 )
 compiled = compiled.replace(
   /from ['"]vue['"]/g,
@@ -116,7 +116,10 @@ test('explicit confirmation sends once; status inspection is GET-only', async ()
   try {
     await f.click('Appeler')
     assert.equal(sends, 0)
-    await f.click('Confirmer l’appel')
+    // The confirmation replaces the call button instead of duplicating it.
+    assert.match(text(f.root), /Appeler le .+ \?/)
+    assert.doesNotMatch(text(f.root), /Appeler(?! le)/)
+    await f.click('Lancer l’appel')
     assert.equal(sends, 1)
     await f.click('Vérifier la commande')
     assert.equal(sends, 1)
@@ -138,7 +141,7 @@ test('lost dispatch response preserves reference and prevents another send', asy
   })
   try {
     await f.click('Appeler')
-    await f.click('Confirmer l’appel')
+    await f.click('Lancer l’appel')
     assert.equal(f.saved.size, 1)
     await f.click('Vérifier la commande')
     assert.equal(sends, 1)

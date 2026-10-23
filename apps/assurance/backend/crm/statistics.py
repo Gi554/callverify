@@ -10,6 +10,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .models import Appointment, BusinessAudit
 from .statistics_export import response as export_response
+from packages.stats_series import daily, previous
 
 
 def metrics(now):
@@ -74,12 +75,15 @@ def statistics(request):
     except OverflowError:
         raise ValidationError('Date de fin hors limites')
     now = timezone.now()
-    qs = Appointment.objects.filter(
-        starts_at__gte=datetime.combine(start, time.min, dt_timezone.utc),
-        starts_at__lt=datetime.combine(exclusive, time.min, dt_timezone.utc),
-    )
-    if request.user.role == 'setter':
-        qs = qs.filter(setter_id=request.user.pk)
+
+    def scoped(first, upper):
+        rows = Appointment.objects.filter(
+            starts_at__gte=datetime.combine(first, time.min, dt_timezone.utc),
+            starts_at__lt=datetime.combine(upper, time.min, dt_timezone.utc),
+        )
+        return rows.filter(setter_id=request.user.pk) if request.user.role == 'setter' else rows
+
+    qs = scoped(start, exclusive)
     totals = finish(qs.aggregate(**metrics(now)))
     result = {
         'from': start,
@@ -89,6 +93,26 @@ def statistics(request):
         'totals': totals,
         'definition': 'Période selon le début actuel du rendez-vous (UTC). Attribution statistique au setter d’origine du rendez-vous, même si le suivi est réattribué. Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue. Absences uniquement selon la déclaration explicite du conseiller ; les anciens Non restent des non-effectués sans absence présumée.',
     }
+    if not kind:
+        # Dashboard only: same-length previous period for trends, and one point per day.
+        try:
+            before = previous(start, end)
+            result['previous'] = {
+                'from': before[0],
+                'to': before[1],
+                'totals': finish(scoped(before[0], start).aggregate(**metrics(now))),
+            }
+        except OverflowError:
+            result['previous'] = None
+        result['daily'] = daily(
+            qs,
+            start,
+            end,
+            dt_timezone.utc,
+            appointments=Count('pk', distinct=True),
+            performed=Count('pk', filter=Q(report__performed=True), distinct=True),
+            cancelled=Count('pk', filter=Q(status='cancelled'), distinct=True),
+        )
     groups = []
     if request.user.role == 'administrator':
         names = (

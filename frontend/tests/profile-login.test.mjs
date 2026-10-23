@@ -104,26 +104,15 @@ function fixture() {
   }
   return { root, submitted, click, all: () => all(root), close: () => app.unmount() }
 }
-test('CallVerify login starts with two explicit profiles and no password field', () => {
+test('login asks for credentials only, without choosing a space first', async () => {
   const f = fixture()
   try {
-    assert.match(text(f.root), /Assurance/)
-    assert.match(text(f.root), /Isolation/)
-    assert.equal(f.all().filter((n) => n.tag === 'input').length, 0)
-    assert.equal(f.submitted.length, 0)
-  } finally {
-    f.close()
-  }
-})
-test('profile selection opens credentials; switching clears password', async () => {
-  const f = fixture()
-  try {
-    await f.click('AssuranceContacts et rendez-vous')
+    assert.doesNotMatch(text(f.root), /Choisissez votre profil|Changer de profil/)
     const username = f.all().find((n) => n.props?.id === 'crm-username'),
       password = f.all().find((n) => n.props?.id === 'crm-password')
     assert.ok(username)
     assert.ok(password)
-    username.props['onUpdate:modelValue']('synthetic-setter')
+    username.props['onUpdate:modelValue']('synthetic-advisor')
     password.props['onUpdate:modelValue']('synthetic-secret')
     await nextTick()
     await f
@@ -131,12 +120,7 @@ test('profile selection opens credentials; switching clears password', async () 
       .find((n) => n.tag === 'form')
       .props.onSubmit({ preventDefault() {} })
     await nextTick()
-    assert.equal(f.submitted.length, 1)
-    assert.equal(f.submitted[0].workspace, 'assurance')
-    assert.equal(f.submitted[0].username, 'synthetic-setter')
-    assert.equal(f.all().find((n) => n.props?.id === 'crm-password').value, '')
-    await f.click('Changer de profil')
-    await f.click('IsolationProspects et visites')
+    assert.deepEqual(f.submitted, [{ username: 'synthetic-advisor', password: 'synthetic-secret' }])
     assert.equal(f.all().find((n) => n.props?.id === 'crm-password').value, '')
   } finally {
     f.close()

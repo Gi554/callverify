@@ -1,32 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import {
-  Phone,
-  ShieldCheck,
-  Home,
-  Eye,
-  EyeOff,
-  LogIn,
-  ArrowLeft,
-  LockKeyhole,
-} from 'lucide-vue-next';
+import { Phone, ShieldCheck, Eye, EyeOff, LogIn, LockKeyhole } from 'lucide-vue-next';
 defineProps<{ busy: boolean; error: string }>();
 const emit = defineEmits<{
-  submit: [value: { username: string; password: string; workspace: string }];
+  submit: [value: { username: string; password: string }];
   recover: [];
 }>();
-const profile = ref(''),
-  username = ref(''),
+// Credentials first: the portal then opens the only authorised space, or lists them.
+const username = ref(''),
   password = ref(''),
   visible = ref(false);
-function choose(value: string) {
-  profile.value = value;
-  password.value = '';
-}
 function submit() {
   const secret = password.value;
   password.value = '';
-  emit('submit', { username: username.value, password: secret, workspace: profile.value });
+  emit('submit', { username: username.value, password: secret });
 }
 </script>
 <template>
@@ -159,86 +146,55 @@ function submit() {
 
     <main class="login-main">
       <div class="login-form-wrap">
-        <template v-if="!profile"
-          ><span class="welcome-icon"><Phone :size="23" /></span>
-          <h2>Heureux de vous revoir !</h2>
-          <p>Choisissez votre profil pour vous connecter.</p>
-          <div class="login-profiles">
-            <button
-              type="button"
-              class="login-profile"
-              :disabled="busy"
-              @click="choose('assurance')"
-            >
-              <span class="profile-picture assurance"
-                ><ShieldCheck :size="42" :stroke-width="1.5" /></span
-              ><strong>Assurance</strong><small>Contacts et rendez-vous</small></button
+        <span class="welcome-icon"><Phone :size="23" /></span>
+        <h2>Heureux de vous revoir !</h2>
+        <p>Connectez-vous avec vos identifiants : votre espace s’ouvre ensuite automatiquement.</p>
+        <form @submit.prevent="submit">
+          <label for="crm-username">Votre identifiant</label
+          ><input
+            id="crm-username"
+            v-model="username"
+            autocomplete="username"
+            placeholder="Votre identifiant"
+            required
+            :disabled="busy"
+          />
+          <div class="label-line">
+            <label for="crm-password">Mot de passe</label
             ><button
               type="button"
-              class="login-profile"
+              class="text-button"
               :disabled="busy"
-              @click="choose('isolation')"
+              @click="
+                password = '';
+                emit('recover');
+              "
             >
-              <span class="profile-picture isolation"><Home :size="42" :stroke-width="1.5" /></span
-              ><strong>Isolation</strong><small>Prospects et visites</small>
+              Mot de passe oublié ?
             </button>
-          </div></template
-        >
-        <template v-else
-          ><button type="button" class="profile-back" :disabled="busy" @click="choose('')">
-            <ArrowLeft :size="15" />Changer de profil</button
-          ><span class="profile-picture selected" :class="profile"
-            ><ShieldCheck v-if="profile === 'assurance'" :size="38" /><Home v-else :size="38"
-          /></span>
-          <h2>{{ profile === 'assurance' ? 'Assurance' : 'Isolation' }}</h2>
-          <p>Connectez-vous avec vos identifiants.</p>
-          <form @submit.prevent="submit">
-            <label for="crm-username">Votre identifiant</label
-            ><input
-              id="crm-username"
-              v-model="username"
-              autocomplete="username"
-              placeholder="Votre identifiant"
+          </div>
+          <div class="password-input">
+            <input
+              id="crm-password"
+              v-model="password"
+              :type="visible ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Saisissez votre mot de passe"
               required
               :disabled="busy"
-            />
-            <div class="label-line">
-              <label for="crm-password">Mot de passe</label
-              ><button
-                type="button"
-                class="text-button"
-                :disabled="busy"
-                @click="
-                  password = '';
-                  emit('recover');
-                "
-              >
-                Mot de passe oublié ?
-              </button>
-            </div>
-            <div class="password-input">
-              <input
-                id="crm-password"
-                v-model="password"
-                :type="visible ? 'text' : 'password'"
-                autocomplete="current-password"
-                placeholder="Saisissez votre mot de passe"
-                required
-                :disabled="busy"
-              /><button
-                type="button"
-                :aria-label="visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
-                @click="visible = !visible"
-              >
-                <EyeOff v-if="visible" :size="19" /><Eye v-else :size="19" />
-              </button>
-            </div>
-            <p v-if="error" class="error" role="alert">{{ error }}</p>
-            <button class="primary login-submit" :disabled="busy">
-              <LogIn :size="20" />{{ busy ? 'Connexion…' : 'Se connecter' }}
+            /><button
+              type="button"
+              :aria-label="visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+              @click="visible = !visible"
+            >
+              <EyeOff v-if="visible" :size="19" /><Eye v-else :size="19" />
             </button>
-          </form></template
-        >
+          </div>
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
+          <button class="primary login-submit" :disabled="busy">
+            <LogIn :size="20" />{{ busy ? 'Connexion…' : 'Se connecter' }}
+          </button>
+        </form>
         <div class="access-note">
           <LockKeyhole :size="15" />
           <p>Seuls les espaces autorisés sur votre compte sont accessibles.</p>
@@ -261,77 +217,6 @@ function submit() {
 .profile-login .login-form-wrap {
   max-width: 470px;
 }
-.login-profiles {
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  margin: 36px 0;
-}
-.login-profile {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  padding: 14px 12px;
-  border-radius: 16px;
-  min-width: 160px;
-  color: #30352b;
-  transition:
-    background 0.15s,
-    transform 0.15s;
-}
-.login-profile:hover {
-  background: #eeede3;
-  transform: translateY(-3px);
-}
-.login-profile:focus-visible {
-  outline: 3px solid #9380dc;
-  outline-offset: 3px;
-}
-.profile-picture {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 5px 16px #30352b0a;
-  margin-bottom: 16px;
-}
-.profile-picture.assurance {
-  background: #e4ebd6;
-  color: #617a2d;
-}
-.profile-picture.isolation {
-  background: #e9e2f7;
-  color: #8a72bd;
-}
-.login-profile strong {
-  font-size: 17px;
-  font-weight: 600;
-}
-.login-profile small {
-  font-size: 11px;
-  color: #898a79;
-  margin-top: 8px;
-}
-.profile-picture.selected {
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 20px;
-}
-.profile-back {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 0;
-  background: none;
-  color: #8b8d76;
-  font-size: 11px;
-  cursor: pointer;
-  margin: 0 0 28px;
-}
 .profile-login .access-note {
   margin-top: 28px;
 }
@@ -347,17 +232,6 @@ function submit() {
   box-sizing: border-box;
 }
 @media (max-width: 600px) {
-  .login-profiles {
-    gap: 8px;
-  }
-  .login-profile {
-    min-width: 130px;
-    padding: 12px 8px;
-  }
-  .profile-picture {
-    width: 86px;
-    height: 86px;
-  }
   .profile-login .login-main {
     padding-top: 40px;
     padding-bottom: 40px;
