@@ -11,3 +11,8 @@ __pycache__
 frontend/dist
 .test-media
 output
+.claude
+*.sqlite3
+.env.*
+!.env.example
+!.env.crm.example

@@ -1,5 +1,22 @@
 # Suivi des livraisons CRM AMX
 
+## Préparation du déploiement
+
+Le dépôt contient désormais de quoi mettre le CRM en ligne sur un serveur Linux avec Docker :
+
+- `deploy/env.production.template` : la configuration complète, commentée en français.
+- `scripts/generate_production_env.py` : crée le `.env` du serveur à partir du domaine, avec des clés et mots de passe aléatoires (clés Fernet valides). Il refuse de remplacer un fichier existant et n’affiche jamais les valeurs.
+- `scripts/deploy.sh` : vérifie la configuration, construit, migre les trois bases, lance `check --deploy` puis démarre ; il est réutilisé tel quel pour les mises à jour.
+- `scripts/create_admin.sh` : crée le premier administrateur des deux espaces, avec un mot de passe saisi de façon masquée.
+- Nouveau service `portal-call-journal` (profil `newt-journal`) : il rapproche les durées NEWT et ne démarre que si `NEWT_CDR_HISTORY_ENABLED=true`.
+- `.dockerignore` exclut aussi `.claude`, toutes les bases SQLite et les variantes de `.env`.
+- `.gitattributes` garde des fins de ligne Linux pour les scripts shell.
+- `deploy/README.md` : guide pas à pas en français (prérequis, DNS, déploiement, premier administrateur, mises à jour, sauvegardes, dépannage).
+
+Validation : génération testée (aucun marqueur restant, 12 secrets distincts, clés Fernet valides, refus d’écrasement et de domaine invalide) ; `docker compose config` valide avec la configuration générée, avec et sans le profil `newt-journal` ; syntaxe bash des scripts ; Ruff.
+
+Limites : non exécuté de bout en bout, faute de Docker démarré sur le poste de développement ; la première mise en ligne sur le serveur fera office de recette. Le serveur, le domaine et le compte SMTP restent à fournir. Les sauvegardes automatiques restent à planifier sur le serveur.
+
 ## Mes conseillers — contraste et rythme visuel
 
 Correction des surcharges du thème global qui aplatissaient les cartes (coins de 7 px, marges imposées, suppression des ombres) et réintroduisaient des bordures dans la recherche. La page setter possède désormais ses règles contextualisées : bandeau compact bleu/lavande, cartes arrondies avec accents bleu/menthe/abricot, textes plus contrastés et boutons visibles. L’état sans quota précise toujours l’absence d’objectif. Les cartes remontent dans la page sans déplacer les boutons sous une grande zone vide. Animation discrète au survol, désactivée avec la préférence de mouvement réduit. Données, permissions et parcours conservés.
