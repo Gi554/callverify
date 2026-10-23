@@ -125,3 +125,7 @@ NEWT_CDR_SCHEMA_ENABLED = os.getenv('NEWT_CDR_SCHEMA_ENABLED', 'false').lower() 
 NEWT_CDR_HISTORY_ENABLED = os.getenv('NEWT_CDR_HISTORY_ENABLED', 'false').lower() == 'true'
 NEWT_CALLS_ENABLED = os.getenv('NEWT_CALLS_ENABLED', 'false').lower() == 'true'
 NEWT_ISOLATION_CALLS_ENABLED = os.getenv('NEWT_ISOLATION_CALLS_ENABLED', 'false').lower() == 'true'
+
+if os.getenv('TRUST_PROXY', 'false').lower() == 'true':
+    # Behind Caddy, throttles must count the visitor (last X-Forwarded-For hop), not the proxy.
+    REST_FRAMEWORK['NUM_PROXIES'] = 1

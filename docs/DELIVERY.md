@@ -1,5 +1,21 @@
 # Suivi des livraisons CRM AMX
 
+## Sécurité avant la mise en production
+
+Un audit ciblé a été mené : contrôles Django `check --deploy` des trois services en mode production, failles connues des dépendances avec pip-audit, recherche de motifs à risque (routes publiques, SQL brut, HTML non échappé, exécution de commandes, secrets en dur).
+
+Corrections :
+
+- **Dépendances** : `cryptography` passe de 46.0.7 à 50.0.0 (sept avis de sécurité) et `certifi` de 2026.7.22 à 2026.10.19. pip-audit ne signale plus aucune faille.
+- **Limites de connexion derrière Caddy** : le portail et l’API Isolation ne retiennent plus que l’adresse ajoutée par le proxy (`NUM_PROXIES=1` quand `TRUST_PROXY=true`). Un en-tête `X-Forwarded-For` falsifié ne permet plus de contourner la limite de tentatives.
+- **Caddy** : les routes internes entre services (`/api/portal/internal/`, `/api/assurance/internal/`) répondent 404 depuis Internet ; elles restaient de toute façon protégées par des preuves signées. Ajout de l’en-tête HSTS et suppression de l’en-tête `Server`.
+
+Points vérifiés sans correction nécessaire : cookies de session `Secure`, `HttpOnly` et `SameSite=Strict` ; protection CSRF du portail (Assurance n’utilise pas de cookie) ; limite de tentatives sur la connexion et la récupération de mot de passe ; webhook Twilio vérifié par signature ; aucun SQL construit à partir de données utilisateur ; aucun HTML non échappé dans l’interface ; aucun secret en dur.
+
+Validation : suites portail (231), Assurance (334) et Isolation (253) complètes avec les nouvelles versions ; `pip check` ; pip-audit sans faille ; contrôle de l’adresse retenue avec et sans en-tête falsifié ; Ruff.
+
+Limites : le Caddyfile n’a pas pu être validé par Caddy lui-même (Docker indisponible sur le poste). Audit ciblé, qui ne remplace pas un test d’intrusion. Les points relevés par `check --deploy` restants sont couverts par Caddy (redirection HTTPS, X-Frame-Options, HSTS).
+
 ## Mes conseillers — contraste et rythme visuel
 
 Correction des surcharges du thème global qui aplatissaient les cartes (coins de 7 px, marges imposées, suppression des ombres) et réintroduisaient des bordures dans la recherche. La page setter possède désormais ses règles contextualisées : bandeau compact bleu/lavande, cartes arrondies avec accents bleu/menthe/abricot, textes plus contrastés et boutons visibles. L’état sans quota précise toujours l’absence d’objectif. Les cartes remontent dans la page sans déplacer les boutons sous une grande zone vide. Animation discrète au survol, désactivée avec la préférence de mouvement réduit. Données, permissions et parcours conservés.
