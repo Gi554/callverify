@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Préparation réelle du VPS Ubuntu — publication en attente
+
+Le VPS a été inspecté par SSH après connexion initiale de l’utilisateur et autorisation d’une clé dédiée : Ubuntu 24.04.5 LTS, architecture amd64, environ 24 Go de RAM et 290 Go de disque. Ubuntu était déjà installé ; aucune réinstallation ni remise à zéro du serveur n’a été réalisée. Docker Engine 29.9.2 et le plugin Compose 5.6.1 ont été installés depuis le dépôt APT officiel Docker. Docker démarre avec le système. Le compte de déploiement `amx-deploy`, avec une clé distincte de l’accès administrateur, appartient au groupe Docker ; le clone de main est placé dans `/opt/amx-crm`. Le pare-feu UFW autorise SSH, HTTP et HTTPS, en IPv4 et IPv6. Les connexions par clé administrateur et déploiement ont été vérifiées avec contrôle strict de la clé hôte déjà approuvée par l’utilisateur.
+
+L’environnement GitHub `production` est limité à la branche main, et les variables de dépôt de connexion sont préparées ; `CD_ENABLED=false` reste explicite. Les secrets SSH ne sont pas enregistrés dans GitHub : le contrôle d’approbation automatique a refusé ce transfert vers les secrets du dépôt public en attendant une autorisation explicite de l’utilisateur. Les clés privées et journaux de préparation restent dans le répertoire local ignoré par Git. Aucun mot de passe du VPS n’a été collecté dans le chat ou publié.
+
+Validation sur le VPS : Docker actif et utilisable par le compte de déploiement, clone propre, construction des images backend et frontend (avec typage Vue et build Vite), téléchargement des images PostgreSQL, Redis et Caddy. Aucun conteneur applicatif lancé ; seuls SSH et les services DNS locaux écoutent à ce stade. Aucun `.env` de production ni base métier initialisée ; aucune donnée de démonstration transférée. La documentation de première installation utilise maintenant le dépôt APT officiel et ne propose plus le script de commodité Docker en production.
+
+Limites : l’utilisateur n’a pas encore de domaine. La préparation du serveur ne constitue pas une production fonctionnelle. Restent à faire : domaine et DNS, génération et conservation de la configuration privée, paramètres SMTP, première installation avec migrations, administrateur de production, recette HTTPS authentifiée, sauvegardes hors serveur et restauration, autorisation/configuration des secrets GitHub puis activation et recette du CD. Aucun appel ni envoi métier effectué.
+
+Suite : enregistrer la clé dédiée dans les secrets de l’environnement GitHub production après accord explicite, puis finaliser l’installation dès réception du domaine et des paramètres de messagerie.
+
+
 ## Pipeline CD préparée — activation serveur en attente
 
 Le workflow « Deploy CRM production » attend la réussite du workflow de validation sur un push de main du dépôt d’origine. Le commit validé doit encore être la tête de main, vérifiée côté GitHub puis côté serveur. Les PR et branches ne déclenchent pas ce déploiement. Les secrets sont limités à l’environnement production ; clé SSH et known_hosts vérifiés sont requis, sans collecte de clé hôte automatique ni désactivation de sa vérification. Les déploiements sont sérialisés et ne s’interrompent pas à chaque nouveau commit.
