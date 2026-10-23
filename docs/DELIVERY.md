@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Alertes des tâches — cloche, bandeau, rappel des retards et notifications du navigateur
+
+Pour le setter et l’administrateur Assurance, la cloche de l’en-tête devient un centre d’alertes (`TaskAlerts`), interrogé toutes les 30 secondes : pastille du nombre de notifications non lues ; panneau listant les notifications ouvertes avec le nom du prospect, l’échéance et la priorité, le nombre de tâches en retard (de l’équipe pour l’administrateur) et l’accès aux tâches ; ouvrir une notification la marque comme lue et mène aux tâches. Une nouvelle notification affiche un bandeau « Nouvelle tâche » (Ouvrir, Fermer) ; les notifications présentes au chargement ne déclenchent pas de bandeau. S’il existe des tâches en retard, une fenêtre « N tâche(s) en retard » propose Traiter maintenant ou Plus tard, une seule fois par session. Les notifications du navigateur s’activent depuis le panneau (accord demandé au navigateur) et s’affichent quand l’onglet n’est pas au premier plan. L’API des notifications renvoie désormais `contact_id` et `contact_name` (fiche de la tâche, sinon celle de son rendez-vous) ; la liste blanche des champs est mise à jour.
+
+Validation : trois tests frontend (pastille, panneau et lecture ; bandeau et notification du navigateur onglet masqué, sans doublon ; rappel des retards une fois par session) ; test backend des champs exposés ; suite Assurance 311. Démo `admin.demo` : panneau « 668 tâche(s) de l’équipe en retard », fenêtre de retards puis « Traiter maintenant » vers les tâches. Tests frontend, typage, ESLint, Prettier, build, Ruff.
+
+Limites : pas de service worker, donc pas de notification navigateur lorsque l’application est fermée ; e-mails toujours en attente de la configuration SMTP ; alertes limitées à Assurance (les rappels Isolation n’ont pas de boîte de notifications). La démo ne contient pas de notification non lue.
+
 ## Pilotage Assurance (4/4) — refonte UX/UI des paramètres métier
 
 Paramètres métier repensés sans changer l’API ni les données envoyées. Deux onglets : « Statuts du pipeline » et « Champs personnalisés ». Chaque élément devient une ligne compacte éditable sur place : numéro d’ordre, libellé, interrupteurs (Actif/Archivé ; pour les champs Obligatoire et Visible au conseiller), flèches pour réordonner les statuts, type et choix pour les champs. La « clé stable » n’est plus saisie : pour un nouvel élément elle est générée depuis le libellé (minuscules, sans accents, unique), puis affichée en petit et jamais modifiée pour un élément existant. Une barre d’enregistrement signale les modifications non enregistrées et ne demande le motif qu’à ce moment, avec Annuler. Explications réduites à une phrase, détails dans « À savoir ».
