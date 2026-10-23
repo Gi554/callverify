@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Pilotage Assurance (2/4) — refonte UX/UI des affectations
+
+Écran Affectations repensé sans changer l’API ni les règles (attestation du portail, révision, historique). Administrateur : barre d’outils avec recherche, filtre d’état en un clic (Toutes, Actives, Suspendues) et bouton « Nouvelle association » ; la création (deux sélecteurs avec recherche et pagination) passe dans un panneau latéral et se referme après l’association ; liste lisible (avatars, setter → conseiller, pastille Active/Suspendue, actions Suspendre/Réactiver et Historique) ; historique dans un panneau latéral en langage clair (« Association créée », « suspendue », « réactivée », date, auteur) au lieu du JSON brut. Setter (« Mes conseillers ») : liste simple des conseillers avec lesquels il peut réserver ; texte obsolète sur le « lot dédié » retiré.
+
+Validation : trois tests (filtre d’état et historique lisible, création dans le panneau puis fermeture, vue setter sans commandes) ; démo `admin.demo` à 1 440 px (filtre, historique, panneau de création avec 10 setters et 5 conseillers). Tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : pas de confirmation avant suspension (action réversible) ; l’auteur de l’historique reste un numéro d’utilisateur.
+
 ## Pilotage Assurance (1/4) — refonte UX/UI des statistiques
 
 Écran Statistiques (administrateur et « Mes statistiques » du setter) repensé sans changer les calculs ni l’API : barre d’outils avec raccourcis de période (7 jours, 30 jours, ce mois, mois dernier), dates libres et Calculer, exports Excel/CSV regroupés à droite ; ligne de contexte (période, périmètre, heure de calcul) ; quatre cartes clés (Rendez-vous avec annulés et à venir, Taux effectué avec jauge, Absences déclarées, Comptes rendus manquants mis en évidence) et indicateurs secondaires en pastilles ; détail par setter allégé (identifiant technique retiré, « dont N absents », badge orange des comptes rendus manquants, jauge du taux) ; méthodologie et réserves regroupées dans « Comment sont calculés ces chiffres ? ». Intitulés de colonnes disponibles pour l’affichage en cartes sur téléphone.
