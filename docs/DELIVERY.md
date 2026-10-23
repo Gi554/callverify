@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Pilotage Assurance (4/4) — refonte UX/UI des paramètres métier
+
+Paramètres métier repensés sans changer l’API ni les données envoyées. Deux onglets : « Statuts du pipeline » et « Champs personnalisés ». Chaque élément devient une ligne compacte éditable sur place : numéro d’ordre, libellé, interrupteurs (Actif/Archivé ; pour les champs Obligatoire et Visible au conseiller), flèches pour réordonner les statuts, type et choix pour les champs. La « clé stable » n’est plus saisie : pour un nouvel élément elle est générée depuis le libellé (minuscules, sans accents, unique), puis affichée en petit et jamais modifiée pour un élément existant. Une barre d’enregistrement signale les modifications non enregistrées et ne demande le motif qu’à ce moment, avec Annuler. Explications réduites à une phrase, détails dans « À savoir ».
+
+Validation : trois tests (génération des clés, pipeline avec barre d’enregistrement, réorganisation et charge utile identique, champs en onglet avec clé générée) ; démo `admin.demo` (interrupteurs, clé « date_de_naissance » générée, rien enregistré). 83 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : réorganisation par flèches (pas de glisser-déposer) ; la clé générée n’est pas modifiable manuellement.
+
 ## Pilotage Assurance (3/4) — refonte UX/UI des mandats et contrats
 
 Registre des mandats et contrats repensé sans changer l’API ni l’export. Barre d’outils : recherche, type en un clic (Tous, Mandats, Contrats), « Plus de filtres » replié (état, horizon, bornes de début et de fin, avec compteur de filtres actifs) et export Excel à droite. Cartes d’alerte (dates dépassées, échéances dans l’horizon, sans date de fin, total mandats/contrats) : les deux premières appliquent ou retirent le filtre d’échéance. Pastilles de répartition par état. Tableau allégé : référence et prospect (identifiant technique retiré), type et état en pastilles, période lisible « début → fin », échéance, pièces jointes. Fiche du prospect ouverte dans un panneau latéral avec garde des modifications, comme sur l’écran Prospects. État vide explicatif (création depuis la fiche d’un prospect, réinitialisation). Mentions juridiques et périmètre de l’export regroupés dans « À savoir ».
