@@ -52,6 +52,8 @@ const props = defineProps<{
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
+  // Prospect to open on arrival, e.g. from the calls module.
+  focus?: { id: number; mode: 'edit' | 'call' } | null;
 }>();
 const activityPanel = ref<any>(null),
   activityBusy = ref(false);
@@ -206,6 +208,7 @@ async function loadHistory() {
 }
 onMounted(async () => {
   await load();
+  if (props.focus) await openActivity({ id: props.focus.id }, props.focus.mode);
   if (props.role === 'administrator') void run(() => directory());
 });
 onBeforeUnmount(() => {

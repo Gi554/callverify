@@ -59,6 +59,7 @@ class PhoneCallMixin(HistoryMixin):
                 data['request_id'],
                 dial_number(contact.phone),
                 data['token'],
+                label=contact.name,
             )
             BusinessAudit.objects.create(
                 actor_id=request.user.pk,

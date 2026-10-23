@@ -8,6 +8,8 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
   role: string;
+  // Prospect to open on arrival, e.g. from the calls module.
+  focus?: { id: number; mode: 'edit' | 'call' } | null;
 }>();
 const emit = defineEmits<{ imported: [count: number] }>();
 const admin = computed(() => props.role === 'administrator');
@@ -124,7 +126,10 @@ function closed() {
       document.querySelector<HTMLButtonElement>(`[data-prospect-id="${Number(id)}"]`)?.focus();
   });
 }
-onMounted(load);
+onMounted(async () => {
+  await load();
+  if (props.focus) await open({ id: props.focus.id }, props.focus.mode);
+});
 onBeforeUnmount(() => {
   disposed = true;
   generation++;

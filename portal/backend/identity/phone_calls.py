@@ -159,6 +159,7 @@ def calls(request, workspace='assurance'):
                     user=request.user,
                     workspace=workspace,
                     contact_id=claims['contact'],
+                    contact_label=claims['label'],
                     extension=link.extension,
                     fingerprint=fingerprint,
                 )

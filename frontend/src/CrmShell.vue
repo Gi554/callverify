@@ -80,6 +80,7 @@ const icons: Record<string, any> = {
   agreements: Files,
   fields: Settings2,
   qualification: ShieldCheck,
+  calls: Phone,
 };
 const roles: Record<string, string> = {
   administrator: 'Administrateur',
@@ -126,9 +127,9 @@ function navigate(id: string) {
         <button
           v-if="role === 'setter'"
           class="setter-phone"
-          disabled
-          title="Appels : ouvrez une fiche prospect pour appeler"
-          aria-label="Appels, accessibles depuis une fiche prospect"
+          title="Composer un appel"
+          aria-label="Ouvrir le composeur d’appel"
+          @click="navigate('calls')"
         >
           <Phone :size="22" /></button
         ><slot name="alerts"
@@ -204,10 +205,14 @@ function navigate(id: string) {
           :style="{
             order:
               (
-                { overview: 1, contacts: 2, appointments: 4, pipeline: 5, followups: 6 } as Record<
-                  string,
-                  number
-                >
+                {
+                  overview: 1,
+                  contacts: 2,
+                  calls: 3,
+                  appointments: 4,
+                  pipeline: 5,
+                  followups: 6,
+                } as Record<string, number>
               )[item.id] || 7,
           }"
           :class="{ 'is-active': active === item.id && !accountOpen && !accessOpen }"
@@ -218,14 +223,7 @@ function navigate(id: string) {
             v-else
             :is="icons[item.icon] || ContactRound"
             :size="26"
-          /><span>{{ setterLabel(item) }}</span></button
-        ><button
-          v-if="role === 'setter'"
-          style="order: 3"
-          disabled
-          title="Les appels se lancent depuis une fiche prospect"
-        >
-          <Phone :size="26" /><span>Appels</span>
+          /><span>{{ setterLabel(item) }}</span>
         </button>
       </nav>
       <div v-if="steeringItems.length || (admin && canManage)" class="setter-statistics">

@@ -66,6 +66,7 @@ class IsolationPhoneCallMixin(HistoryMixin):
                 data['request_id'],
                 destination(row),
                 workspace='isolation',
+                label=row.name,
             )
             AuditEvent.objects.create(
                 action='isolation.prospect.call_intent',
