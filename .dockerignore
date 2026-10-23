@@ -1,4 +1,5 @@
 .git
+.backups
 .venv
 .env
 private-media
