@@ -99,6 +99,7 @@ class AdvisorWorkspaceMixin:
             # Match the contact-first lock order used by booking and setter edits.
             if request.method == 'POST':
                 Contact.objects.filter(pk=original.contact_id).update(revision=F('revision'))
+                Appointment.objects.filter(pk=original.pk).update(revision=F('revision'))
             contact = Contact.objects.get(pk=original.contact_id)
             appointment = Appointment.objects.get(pk=original.pk)
             if appointment.advisor_id != request.user.pk or contact.assigned_advisor_id not in (

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from copy import copy
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -139,6 +140,19 @@ class AdvisorWorkspaceTests(TestCase):
         self.contact.refresh_from_db()
         self.assertEqual(self.contact.revision, 0)
         self.assertEqual(self.contact.lease_owner_id, 21)
+
+    def test_scope_is_rechecked_after_locking_the_appointment(self):
+        reassigned = copy(self.appointment)
+        reassigned.advisor_id = 32
+        with patch(
+            'apps.assurance.backend.crm.advisor_workspace.Appointment.objects.get',
+            return_value=reassigned,
+        ):
+            self.assertEqual(self.edit().status_code, 403)
+            self.assertEqual(self.result().status_code, 403)
+        self.contact.refresh_from_db()
+        self.assertEqual(self.contact.name, 'Prospect')
+        self.assertFalse(AppointmentReport.objects.exists())
 
     def test_audit_failure_rolls_back_client_and_result(self):
         with patch.object(
