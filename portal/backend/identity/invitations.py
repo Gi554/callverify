@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from .models import Invitation, Membership, AccessAudit, ROLES
 from .management_api import require_admin, lock_admin, AccessInput, AccessPagination
 from .client_policy import available as client_available
+from .advisor_quotas import quota_field, check_quota
 from .recovery import public_url, ResetThrottle
 
 
@@ -35,6 +36,7 @@ class InviteInput(serializers.Serializer):
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField(max_length=254)
     role = serializers.CharField()
+    prospect_quota = quota_field()
 
     def validate_username(self, value):
         return AccessInput().validate_username(value)
@@ -44,6 +46,7 @@ class InviteInput(serializers.Serializer):
             raise ValidationError('Champs non autorisés')
         if data['role'] not in ROLES[self.context['workspace']]:
             raise ValidationError('Rôle incompatible avec cet espace')
+        check_quota(self.context['workspace'], data['role'], data.get('prospect_quota'))
         return data
 
 
@@ -53,6 +56,7 @@ def output(row):
         'username': row.username,
         'email': row.email,
         'role': row.role,
+        'prospect_quota': row.prospect_quota,
         'expires_at': row.expires_at,
         'status': 'accepted'
         if row.accepted_at
@@ -121,7 +125,11 @@ def invitations(request, workspace):
                 user=request.user,
                 workspace=workspace,
                 action='invitation.created',
-                metadata={'invitation': str(row.pk), 'role': row.role},
+                metadata={
+                    'invitation': str(row.pk),
+                    'role': row.role,
+                    'prospect_quota': row.prospect_quota,
+                },
             )
             deliver(row, token)
     except IntegrityError:
@@ -213,7 +221,12 @@ def accept(request):
                 raise ValidationError({'password': error.messages})
             user.set_password(values['password'])
             user.save()
-            Membership.objects.create(user=user, workspace=row.workspace, role=row.role)
+            Membership.objects.create(
+                user=user,
+                workspace=row.workspace,
+                role=row.role,
+                prospect_quota=row.prospect_quota,
+            )
             row.accepted_at = timezone.now()
             row.save(update_fields=['accepted_at'])
             AccessAudit.objects.create(

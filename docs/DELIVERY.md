@@ -1,5 +1,36 @@
 # Suivi des livraisons CRM AMX
 
+## Quota de prospects du conseiller et décompte
+
+Lorsqu’il invite un conseiller Assurance ou lui crée un compte, l’administrateur doit saisir le « Nombre de prospects à fournir » au client de ce conseiller : le champ est obligatoire dans les deux formulaires dès que le rôle Conseiller est choisi. Une invitation conserve ce quota jusqu’à son acceptation, puis le transmet à l’accès créé. L’écran Utilisateurs et accès permet de le modifier ou de l’effacer. Un conseiller qui change de rôle perd son quota. Toutes ces opérations sont journalisées, avec les valeurs avant et après.
+
+Décompte : chaque rendez-vous réservé pour le conseiller consomme une unité, et une annulation la rend. Le quota est visible par tous les membres Assurance :
+
+- **Le conseiller** voit, en tête de son agenda, le nombre de prospects qui lui restent à recevoir et le nombre de rendez-vous réservés sur le quota. Une fois le quota atteint, la carte passe en orange.
+- **Le setter et l’administrateur** voient le reste de chaque conseiller lors du choix du conseiller à la réservation, avec un avertissement quand le quota est atteint, ainsi que dans « Mes conseillers » / « Affectations » (« N restant(s) sur Q » ou « Non défini »).
+
+API :
+
+- `GET /api/portal/assurance/advisor-quotas/` : réservé aux membres Assurance actifs, liste les conseillers actifs et leur quota.
+- `GET /api/assurance/advisor-usage/` : nombre de rendez-vous non annulés par conseiller.
+- `prospect_quota` (1 à 100 000) est accepté par les invitations, la création d’accès et la modification d’accès ; il est refusé pour tout autre rôle que conseiller Assurance.
+
+Les données sont enregistrées par la migration additive `identity.0017`.
+
+Validation :
+
+- Backend : quatre tests portail (transmission de l’invitation à l’accès et journal, réservation aux conseillers et bornes, modification et effacement au changement de rôle, lecture par les membres et refus hors espace) et un test Assurance (réservations consommées, annulation rendue, authentification).
+- Frontend : calcul du décompte, carte du conseiller (reste, quota atteint, absence de quota) et colonne « Prospects à fournir » vue par un setter.
+- Suites complètes : portail 227, Assurance 326, frontend 100 ; typage, ESLint, Prettier, Ruff et build.
+
+Démo non vérifiée : la migration 0017 n’y est pas appliquée, et les services de démo, lancés par une autre session, n’ont pas été redémarrés.
+
+Limites :
+
+- Le quota n’empêche pas de réserver au-delà : il informe et avertit.
+- Tous les rendez-vous non annulés du conseiller sont comptés, y compris ceux antérieurs au quota et les absences, et sans notion de période.
+- Le quota est obligatoire dans l’interface, mais facultatif dans l’API ; les conseillers existants affichent « Non défini » tant qu’un administrateur ne l’a pas saisi.
+
 ## Export des prospects — CSV et Excel
 
 L’écran Prospects propose désormais « Exporter : CSV / Excel » au setter et à l’administrateur, en Assurance comme en Isolation. Le conseiller Assurance dispose du même bouton, « Mes prospects », dans son agenda.

@@ -667,6 +667,7 @@ const roleLabels: Record<string, string> = {
                       :request="assurance"
                       :portal="portal"
                       :role="role"
+                      :username="user?.username || ''"
                       @navigate="selectModule"
                     />
                     <AssuranceAppointments

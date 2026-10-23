@@ -12,6 +12,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .models import Membership, AccessAudit, ROLES
 from .client_policy import available as client_available, immutable as client_immutable
+from .advisor_quotas import quota_field, check_quota
 
 
 def require_admin(user, workspace):
@@ -41,7 +42,7 @@ class MembershipOutput(serializers.ModelSerializer):
 
     class Meta:
         model = Membership
-        fields = ['id', 'username', 'email', 'role', 'active', 'account_active']
+        fields = ['id', 'username', 'email', 'role', 'active', 'account_active', 'prospect_quota']
 
 
 class AccessInput(serializers.Serializer):
@@ -52,6 +53,7 @@ class AccessInput(serializers.Serializer):
     )
     role = serializers.CharField()
     existing = serializers.BooleanField(default=False)
+    prospect_quota = quota_field()
 
     def validate_username(self, value):
         for validator in get_user_model()._meta.get_field('username').validators:
@@ -86,6 +88,7 @@ class AccessInput(serializers.Serializer):
 class GrantUpdate(serializers.Serializer):
     role = serializers.CharField(required=False)
     active = serializers.BooleanField(required=False)
+    prospect_quota = quota_field()
 
     def validate(self, data):
         if not data:
@@ -117,6 +120,7 @@ def users(request, workspace):
     serializer = AccessInput(data=request.data, context={'workspace': workspace})
     serializer.is_valid(raise_exception=True)
     values = serializer.validated_data
+    check_quota(workspace, values['role'], values.get('prospect_quota'))
     try:
         with transaction.atomic():
             lock_admin(request.user, workspace)
@@ -139,12 +143,22 @@ def users(request, workspace):
                 )
             if Membership.objects.filter(user=user, workspace=workspace).exists():
                 raise ValidationError('Compte indisponible ou déjà associé à cet espace')
-            row = Membership.objects.create(user=user, workspace=workspace, role=values['role'])
+            row = Membership.objects.create(
+                user=user,
+                workspace=workspace,
+                role=values['role'],
+                prospect_quota=values.get('prospect_quota'),
+            )
             AccessAudit.objects.create(
                 user=request.user,
                 action='membership.granted',
                 workspace=workspace,
-                metadata={'subject': user.pk, 'role': row.role, 'existing': values['existing']},
+                metadata={
+                    'subject': user.pk,
+                    'role': row.role,
+                    'existing': values['existing'],
+                    'prospect_quota': row.prospect_quota,
+                },
             )
     except IntegrityError:
         raise ValidationError('Identifiant ou accès déjà utilisé')
@@ -163,12 +177,18 @@ def update_access(request, workspace, pk):
             return Response({'detail': 'Accès introuvable dans cet espace'}, status=404)
         if row.user_id == request.user.pk:
             raise ValidationError('Modification de votre propre accès interdite')
-        before = {'role': row.role, 'active': row.active}
-        client_immutable(row, serializer.validated_data.get('role', row.role))
-        client_available(workspace, serializer.validated_data.get('role', row.role), exclude=row.pk)
-        for key, value in serializer.validated_data.items():
+        before = {'role': row.role, 'active': row.active, 'prospect_quota': row.prospect_quota}
+        changes = dict(serializer.validated_data)
+        role = changes.get('role', row.role)
+        client_immutable(row, role)
+        client_available(workspace, role, exclude=row.pk)
+        # Leaving the advisor role drops a quota that no longer applies.
+        if role != 'advisor' and row.prospect_quota is not None:
+            changes.setdefault('prospect_quota', None)
+        check_quota(workspace, role, changes.get('prospect_quota', row.prospect_quota))
+        for key, value in changes.items():
             setattr(row, key, value)
-        row.save(update_fields=list(serializer.validated_data))
+        row.save(update_fields=list(changes))
         AccessAudit.objects.create(
             user=request.user,
             action='membership.updated',
@@ -176,7 +196,11 @@ def update_access(request, workspace, pk):
             metadata={
                 'subject': row.user_id,
                 'before': before,
-                'after': {'role': row.role, 'active': row.active},
+                'after': {
+                    'role': row.role,
+                    'active': row.active,
+                    'prospect_quota': row.prospect_quota,
+                },
             },
         )
     return Response(MembershipOutput(row).data)

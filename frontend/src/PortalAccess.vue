@@ -25,7 +25,14 @@ const space = ref(props.spaces[0] || ''),
   error = ref(''),
   message = ref(''),
   adding = ref(false);
-const form = ref({ username: '', email: '', password: '', role: 'setter', existing: false });
+const form = ref({
+  username: '',
+  email: '',
+  password: '',
+  role: 'setter',
+  existing: false,
+  prospect_quota: '' as string | number,
+});
 const roles = () =>
   space.value === 'assurance'
     ? ['administrator', 'setter', 'advisor']
@@ -71,15 +78,25 @@ async function update(row: any, changes: any) {
 }
 function close() {
   adding.value = false;
-  form.value = { username: '', email: '', password: '', role: 'setter', existing: false };
+  form.value = {
+    username: '',
+    email: '',
+    password: '',
+    role: 'setter',
+    existing: false,
+    prospect_quota: '' as string | number,
+  };
 }
 async function create() {
   busy.value = true;
   error.value = '';
   try {
-    const body = form.value.existing
-      ? { username: form.value.username, role: form.value.role, existing: true }
-      : form.value;
+    const { prospect_quota, ...values } = form.value;
+    const body: Record<string, any> = values.existing
+      ? { username: values.username, role: values.role, existing: true }
+      : values;
+    // Assurance advisors carry the number of prospects owed to their client.
+    if (values.role === 'advisor') body.prospect_quota = Number(prospect_quota);
     await props.request(base(), body);
     close();
     page.value = 1;
@@ -184,6 +201,16 @@ onMounted(load);
                     {{ labels[role] }}
                   </option>
                 </select>
+                <label v-if="row.role === 'advisor'" class="access-quota"
+                  >Prospects à fournir<input
+                    v-model.number="row.prospect_quota"
+                    type="number"
+                    min="1"
+                    max="100000"
+                    inputmode="numeric"
+                    :disabled="busy"
+                    :aria-label="'Prospects à fournir pour ' + row.username"
+                /></label>
               </td>
               <td>
                 <span
@@ -201,7 +228,14 @@ onMounted(load);
                   <button
                     class="secondary"
                     :disabled="busy || row.username === username"
-                    @click="update(row, { role: row.role })"
+                    @click="
+                      update(
+                        row,
+                        row.role === 'advisor'
+                          ? { role: row.role, prospect_quota: row.prospect_quota || null }
+                          : { role: row.role },
+                      )
+                    "
                     :aria-label="'Enregistrer le rôle de ' + row.username"
                   >
                     <Save :size="16" />Enregistrer</button
@@ -288,7 +322,15 @@ onMounted(load);
             >Rôle<select v-model="form.role">
               <option v-for="role in roles()" :key="role" :value="role">{{ labels[role] }}</option>
             </select></label
-          >
+          ><label v-if="form.role === 'advisor'"
+            >Nombre de prospects à fournir<input
+              v-model="form.prospect_quota"
+              type="number"
+              min="1"
+              max="100000"
+              required
+              inputmode="numeric"
+          /></label>
           <p class="subtle">
             L’association d’un compte existant conserve ses autres accès et son mot de passe.
           </p>
@@ -322,6 +364,16 @@ onMounted(load);
   </section>
 </template>
 <style scoped>
+.access-quota {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #475467;
+}
+.access-quota input {
+  max-width: 130px;
+}
 .access-panel {
   margin-top: 35px;
 }

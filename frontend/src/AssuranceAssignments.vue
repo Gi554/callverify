@@ -2,11 +2,20 @@
 import { ref, reactive, onMounted } from 'vue';
 import { Plus, Search, ArrowRight, History, PauseCircle, PlayCircle } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
+import { loadQuotas, type AdvisorQuota } from './advisor-quota';
 const props = defineProps<{
   role: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
 }>();
+const quotas = ref(new Map<number, AdvisorQuota>());
+async function loadQuotaBoard() {
+  try {
+    quotas.value = await loadQuotas(props.portal, props.request);
+  } catch {
+    quotas.value = new Map();
+  }
+}
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -140,6 +149,7 @@ function describe(entry: any) {
 onMounted(() =>
   run(async () => {
     await load();
+    void loadQuotaBoard();
     if (props.role === 'administrator') {
       await loadPeople('setter');
       await loadPeople('advisor');
@@ -193,6 +203,7 @@ onMounted(() =>
           <tr>
             <th v-if="role === 'administrator'">Setter</th>
             <th>Conseiller</th>
+            <th>Prospects à fournir</th>
             <th>État</th>
             <th v-if="role === 'administrator'"><span class="sr-only">Actions</span></th>
           </tr>
@@ -212,6 +223,14 @@ onMounted(() =>
                   >{{ initials(row.advisor.name) }}</span
                 >{{ row.advisor.name }}</span
               >
+            </td>
+            <td data-label="Prospects à fournir">
+              <span
+                v-if="quotas.get(row.advisor.id)?.quota != null"
+                :class="['quota', { done: !quotas.get(row.advisor.id)?.remaining }]"
+                >{{ quotas.get(row.advisor.id)?.remaining }} restant(s) sur
+                {{ quotas.get(row.advisor.id)?.quota }}</span
+              ><span v-else class="quota unset">Non défini</span>
             </td>
             <td data-label="État">
               <span :class="['state', row.active ? 'active' : 'suspended']">{{
@@ -234,7 +253,7 @@ onMounted(() =>
             </td>
           </tr>
           <tr v-if="!rows.length">
-            <td :colspan="role === 'administrator' ? 4 : 2" class="empty">
+            <td :colspan="role === 'administrator' ? 5 : 3" class="empty">
               {{ busy ? 'Chargement…' : 'Aucune association pour ces critères.' }}
             </td>
           </tr>
@@ -375,6 +394,17 @@ onMounted(() =>
 </template>
 
 <style scoped>
+.quota {
+  font-weight: 600;
+  color: #054f31;
+}
+.quota.done {
+  color: #b54708;
+}
+.quota.unset {
+  font-weight: 400;
+  color: #667085;
+}
 .assignments {
   display: grid;
   gap: 14px;

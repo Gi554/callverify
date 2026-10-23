@@ -60,3 +60,7 @@ urlpatterns += [path('api/assurance/agreement-registry/export/', agreement_expor
 from .crm.agreement_registry import deadlines as agreement_deadlines
 
 urlpatterns += [path('api/assurance/agreement-deadlines/', agreement_deadlines)]
+
+from .crm.advisor_usage import usage as advisor_usage
+
+urlpatterns += [path('api/assurance/advisor-usage/', advisor_usage)]

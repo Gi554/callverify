@@ -39,6 +39,7 @@ code = code
   .replace(/from ['"]vue['"]/g, `from '${vue}'`)
   .replace("'./calendar-grid'", JSON.stringify(grid))
   .replace("'./appointment-status'", JSON.stringify(status))
+  .replace("'./advisor-quota'", JSON.stringify(url(source('advisor-quota'))))
   .replace(
     /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
     (_, name) =>
@@ -135,15 +136,17 @@ const isolationRows = [
     closer: null,
   },
 ]
-function fixture({ workspace = 'assurance', role = 'administrator' } = {}) {
+function fixture({ workspace = 'assurance', role = 'administrator', quota = null } = {}) {
   const root = { children: [] },
     requests = []
   const rows = workspace === 'assurance' ? assuranceRows : isolationRows
   const app = renderer.createApp(component, {
     workspace,
     role,
+    username: 'chloe.conseil',
     request: async (path) => {
       requests.push(path)
+      if (path === 'advisor-usage/') return { results: [{ advisor_id: 7, booked: 38 }] }
       // Mirrors the API: participant parameters narrow the returned rows.
       const query = new URLSearchParams(path.split('?')[1])
       const of = {
@@ -159,7 +162,10 @@ function fixture({ workspace = 'assurance', role = 'administrator' } = {}) {
       )
       return { results, count: results.length, next: null }
     },
-    portal: async () => ({}),
+    portal: async (path) =>
+      path === 'assurance/advisor-quotas/'
+        ? { results: [{ id: 7, name: 'chloe.conseil', quota }] }
+        : {},
   })
   app.mount(root)
   return { root, requests, close: () => app.unmount() }
@@ -275,6 +281,29 @@ test('advisor uses the calendar and its own appointment panel without booking to
       all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAdvisorAppointment'),
     )
     assert.ok(!all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAppointments'))
+  } finally {
+    f.close()
+  }
+})
+
+test('the advisor sees the countdown of prospects still owed to their client', async () => {
+  for (const [quota, expected] of [
+    [50, '12prospect(s) restant(s) à recevoir38 rendez-vous réservé(s) sur 50'],
+    [30, '0Quota de prospects atteint38 rendez-vous réservé(s) sur 30'],
+  ]) {
+    const f = fixture({ role: 'advisor', quota })
+    try {
+      await flush()
+      const card = all(f.root).find((n) => String(n.props?.class).includes('quota-countdown'))
+      assert.equal(text(card), expected)
+    } finally {
+      f.close()
+    }
+  }
+  const f = fixture({ role: 'advisor' })
+  try {
+    await flush()
+    assert.ok(!all(f.root).some((n) => String(n.props?.class).includes('quota-countdown')))
   } finally {
     f.close()
   }

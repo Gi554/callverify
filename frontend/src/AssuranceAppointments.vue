@@ -4,6 +4,7 @@ import { bookingInterval } from './booking-time';
 import { appointmentStatus, appointmentStatusLabels } from './appointment-status';
 import AssuranceQualificationSnapshot from './AssuranceQualificationSnapshot.vue';
 import AvailabilitySlots from './AvailabilitySlots.vue';
+import { loadQuotas, quotaText, type AdvisorQuota } from './advisor-quota';
 const props = defineProps<{
   role: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -26,6 +27,8 @@ const rows = ref<any[]>([]),
   error = ref(''),
   message = ref('');
 watch(busy, (value) => emit('busy', value), { flush: 'sync' });
+// Prospect countdown of each advisor, shown while choosing who receives the appointment.
+const quotas = ref(new Map<number, AdvisorQuota>());
 const choices = ref<any[]>([]),
   choicePage = ref(1),
   choiceCount = ref(0),
@@ -139,7 +142,16 @@ async function loadChoices() {
   choices.value = result.results;
   choiceCount.value = result.count;
   assignment.value = '';
+  try {
+    quotas.value = await loadQuotas(props.portal, props.request);
+  } catch {
+    quotas.value = new Map();
+  }
 }
+const chosenQuota = computed(() => {
+  const row = choices.value.find((item) => item.id === Number(assignment.value));
+  return row ? quotas.value.get(row.advisor.id) : undefined;
+});
 async function bookingProof(row: any) {
   return (
     await props.portal('assurance/booking-proof/', {
@@ -351,10 +363,23 @@ onMounted(() =>
           >Conseiller<select v-model="assignment" required :disabled="busy">
             <option value="">Choisir un conseiller</option>
             <option v-for="row in choices" :key="row.id" :value="String(row.id)">
-              {{ role === 'administrator' ? row.setter.name + ' → ' : '' }}{{ row.advisor.name }}
+              {{ role === 'administrator' ? row.setter.name + ' → ' : '' }}{{ row.advisor.name
+              }}{{
+                quotaText(quotas.get(row.advisor.id))
+                  ? ' · ' + quotaText(quotas.get(row.advisor.id))
+                  : ''
+              }}
             </option>
           </select></label
         >
+        <p
+          v-if="chosenQuota && chosenQuota.quota != null && !chosenQuota.remaining"
+          class="no-advisor"
+          role="status"
+        >
+          Le nombre de prospects à fournir à ce conseiller ({{ chosenQuota.quota }}) est déjà
+          atteint.
+        </p>
         <p v-if="compact && !busy && !choiceCount" class="no-advisor">
           Aucun conseiller ne vous est attribué dans cet espace. Un administrateur doit vous en
           attribuer un pour réserver.
