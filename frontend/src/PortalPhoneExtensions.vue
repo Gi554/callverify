@@ -59,6 +59,7 @@ const draftValid = computed(() => /^[0-9]{1,10}$/.test(draft.value.extension.tri
 // Another person already holds this extension in the loaded page.
 const takenBy = computed(() => {
   const value = draft.value.extension.trim();
+  if (!value) return undefined;
   return rows.value.find((row) => row.extension === value && row.membership_id !== editing.value)
     ?.username;
 });
@@ -370,10 +371,12 @@ onMounted(load);
   background: white;
   color: #667085;
 }
-.extensions-search input {
+.extensions .extensions-search input {
   flex: 1;
   min-height: 40px;
-  border: 0;
+  /* The shell styles every input with a stronger selector. */
+  border: 0 !important;
+  box-shadow: none;
   padding: 0;
   background: none;
   outline: none;
