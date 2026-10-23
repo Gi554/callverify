@@ -146,7 +146,8 @@ function fixture({ workspace = 'assurance', role = 'administrator', quota = null
     username: 'chloe.conseil',
     request: async (path) => {
       requests.push(path)
-      if (path === 'advisor-usage/') return { results: [{ advisor_id: 7, booked: 38 }] }
+      if (path === 'advisor-usage/')
+        return { results: [{ advisor_id: 7, booked: 99, attended: 38 }] }
       // Mirrors the API: participant parameters narrow the returned rows.
       const query = new URLSearchParams(path.split('?')[1])
       const of = {
@@ -288,8 +289,14 @@ test('advisor uses the calendar and its own appointment panel without booking to
 
 test('the advisor sees the countdown of prospects still owed to their client', async () => {
   for (const [quota, expected] of [
-    [50, '12prospect(s) restant(s) à recevoir38 rendez-vous réservé(s) sur 50'],
-    [30, '0Quota de prospects atteint38 rendez-vous réservé(s) sur 30'],
+    [
+      50,
+      '12prospect(s) restant(s) à recevoir38 rendez-vous tenu(s) sur 50 · Les absences ne sont pas décomptées',
+    ],
+    [
+      30,
+      '0Quota de prospects atteint38 rendez-vous tenu(s) sur 30 · Les absences ne sont pas décomptées',
+    ],
   ]) {
     const f = fixture({ role: 'advisor', quota })
     try {
