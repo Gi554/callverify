@@ -19,7 +19,7 @@ const rows = ref<any[]>([]),
   busy = ref(false),
   error = ref(''),
   message = ref('');
-const form = ref({ username: '', email: '', role: 'setter' });
+const form = ref({ username: '', email: '', role: 'setter', prospect_quota: '' });
 const composing = ref(false),
   loading = ref(false);
 const roleLabels: Record<string, string> = {
@@ -31,7 +31,7 @@ const roleLabels: Record<string, string> = {
 };
 function cancel() {
   composing.value = false;
-  form.value = { username: '', email: '', role: 'setter' };
+  form.value = { username: '', email: '', role: 'setter', prospect_quota: '' };
 }
 const base = () => `workspaces/${props.space}/invitations/`;
 async function load() {
@@ -53,7 +53,12 @@ async function create() {
   error.value = '';
   message.value = '';
   try {
-    const result = await props.request(base(), { ...form.value });
+    const { prospect_quota, ...values } = form.value;
+    // Assurance advisors carry the number of prospects owed to their client.
+    const result = await props.request(
+      base(),
+      values.role === 'advisor' ? { ...values, prospect_quota: Number(prospect_quota) } : values,
+    );
     cancel();
     page.value = 1;
     await load();
@@ -147,7 +152,15 @@ onMounted(load);
               <option value="closer">Closer</option></template
             >
           </select></label
-        >
+        ><label v-if="form.role === 'advisor'"
+          >Nombre de prospects à fournir<input
+            v-model="form.prospect_quota"
+            type="number"
+            min="1"
+            max="100000"
+            required
+            inputmode="numeric"
+        /></label>
       </fieldset>
       <div class="form-actions">
         <button type="button" class="secondary" :disabled="busy" @click="cancel">Annuler</button
@@ -183,7 +196,12 @@ onMounted(load);
                 </div>
               </div>
             </td>
-            <td>{{ roleLabels[row.role] || row.role }}</td>
+            <td>
+              {{ roleLabels[row.role] || row.role
+              }}<small v-if="row.prospect_quota" class="quota-note">
+                · {{ row.prospect_quota }} prospects à fournir</small
+              >
+            </td>
             <td>
               <span class="invitation-status" :class="row.status">{{
                 labels[row.status] || row.status
@@ -249,6 +267,9 @@ onMounted(load);
   </section>
 </template>
 <style scoped>
+.quota-note {
+  color: #475467;
+}
 .invitations {
   color: #29394e;
 }

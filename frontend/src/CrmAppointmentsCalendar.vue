@@ -11,6 +11,7 @@ import {
   Search,
 } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
+import { loadQuotas, type AdvisorQuota } from './advisor-quota';
 import ProspectExport from './ProspectExport.vue';
 import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status';
 import AssuranceAppointments from './AssuranceAppointments.vue';
@@ -29,6 +30,7 @@ const props = defineProps<{
   role: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
+  username?: string;
 }>();
 const emit = defineEmits<{ navigate: [value: string]; changed: [] }>();
 const zone = ref('America/Toronto'),
@@ -236,6 +238,18 @@ function closeDetail() {
   void load();
 }
 watch([month, zone, status, member], load, { immediate: true });
+// The advisor's countdown: prospects still owed to their client out of the quota.
+const ownQuota = ref<AdvisorQuota | null>(null);
+async function loadOwnQuota() {
+  if (!assurance.value || props.role !== 'advisor') return;
+  try {
+    const quotas = await loadQuotas(props.portal, props.request);
+    ownQuota.value = [...quotas.values()].find((row) => row.name === props.username) || null;
+  } catch {
+    ownQuota.value = null;
+  }
+}
+void loadOwnQuota();
 onBeforeUnmount(() => {
   disposed = true;
   generation++;
@@ -267,6 +281,18 @@ onBeforeUnmount(() => {
         >
           Liste
         </button>
+      </div>
+      <div
+        v-if="ownQuota && ownQuota.quota != null"
+        class="quota-countdown"
+        :class="{ done: !ownQuota.remaining }"
+        role="status"
+      >
+        <strong>{{ ownQuota.remaining }}</strong
+        ><span>{{
+          ownQuota.remaining ? 'prospect(s) restant(s) à recevoir' : 'Quota de prospects atteint'
+        }}</span
+        ><small>{{ ownQuota.booked }} rendez-vous réservé(s) sur {{ ownQuota.quota }}</small>
       </div>
       <ProspectExport
         v-if="assurance && role === 'advisor'"
@@ -570,6 +596,43 @@ onBeforeUnmount(() => {
   </section>
 </template>
 <style scoped>
+.quota-countdown {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #b7e4c7;
+  border-radius: 12px;
+  background: #ecfdf3;
+  color: #054f31;
+}
+.quota-countdown strong {
+  grid-row: span 2;
+  font-size: 28px;
+  line-height: 1;
+}
+.quota-countdown span {
+  font-weight: 600;
+  font-size: 14px;
+}
+.quota-countdown small {
+  color: #3b6f53;
+  font-size: 12px;
+}
+.quota-countdown.done {
+  border-color: #fedf89;
+  background: #fffaeb;
+  color: #7a2e0e;
+}
+.quota-countdown.done small {
+  color: #93370d;
+}
+@media (max-width: 640px) {
+  .quota-countdown {
+    width: 100%;
+  }
+}
 .appointment-calendar {
   color: #282830;
   padding: 28px;

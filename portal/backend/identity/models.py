@@ -27,6 +27,8 @@ class Membership(models.Model):
     workspace = models.CharField(max_length=20, choices=[(key, key) for key in ROLES])
     role = models.CharField(max_length=30)
     active = models.BooleanField(default=True)
+    # Assurance advisors only: total prospects (booked appointments) owed to their client.
+    prospect_quota = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -127,6 +129,7 @@ class Invitation(models.Model):
     email = models.EmailField()
     workspace = models.CharField(max_length=20)
     role = models.CharField(max_length=30)
+    prospect_quota = models.PositiveIntegerField(null=True, blank=True)
     issuer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     token_hash = models.CharField(max_length=64)
     expires_at = models.DateTimeField()

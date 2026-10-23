@@ -8,6 +8,13 @@ import { createRenderer, nextTick } from 'vue'
 import ts from 'typescript'
 const require = createRequire(import.meta.url)
 const vue = pathToFileURL(require.resolve('vue')).href
+const quota =
+  'data:text/javascript;base64,' +
+  Buffer.from(
+    ts.transpileModule(readFileSync(new URL('../src/advisor-quota.ts', import.meta.url), 'utf8'), {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+    }).outputText,
+  ).toString('base64')
 let code = compileScript(
   parse(readFileSync(new URL('../src/AssuranceAssignments.vue', import.meta.url), 'utf8'))
     .descriptor,
@@ -28,6 +35,7 @@ code =
         .join(';'),
     )
     .replace(/from ['"]vue['"]/g, `from '${vue}'`)
+    .replace("'./advisor-quota'", JSON.stringify(quota))
     .replace(
       /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
       (_, name) =>
@@ -98,6 +106,7 @@ function fixture(role = 'administrator') {
     role,
     request: async (path, body, method) => {
       requests.push([path, body, method])
+      if (path === 'advisor-usage/') return { results: [{ advisor_id: 31, booked: 3 }] }
       if (path.includes('/history/'))
         return {
           count: 2,
@@ -122,6 +131,8 @@ function fixture(role = 'administrator') {
     },
     portal: async (path, body) => {
       portal.push([path, body])
+      if (path === 'assurance/advisor-quotas/')
+        return { results: [{ id: 31, name: 'Conseiller Démo 01', quota: 10 }] }
       return body ? { proof: 'proof' } : { count: 1, results: [{ id: 99, name: 'Nouveau' }] }
     },
   })
@@ -191,7 +202,9 @@ test('setter only sees the advisors available for booking', async () => {
     assert.equal(button(f, 'Nouvelle association'), undefined)
     assert.equal(button(f, 'Historique'), undefined)
     assert.doesNotMatch(text(f.root), /lot dédié/)
-    assert.equal(f.portal.length, 0)
+    // Only the quota board, readable by every Assurance member, comes from the portal.
+    assert.deepEqual(f.portal, [['assurance/advisor-quotas/', undefined]])
+    assert.match(text(f.root), /7 restant\(s\) sur\s+10/)
   } finally {
     f.close()
   }

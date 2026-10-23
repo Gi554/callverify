@@ -31,6 +31,7 @@ function compile(name, stub) {
     .replace(/from ['"]vue['"]/g, `from '${vue}'`)
     .replace("'./booking-time'", JSON.stringify(bookingSource))
     .replace("'./appointment-status'", JSON.stringify(url(source('appointment-status'))))
+    .replace("'./advisor-quota'", JSON.stringify(url(source('advisor-quota'))))
     .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, component) => stub(component))
   code =
     code
