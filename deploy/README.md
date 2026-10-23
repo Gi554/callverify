@@ -1,15 +1,74 @@
-# Déploiement à finaliser avec vos informations
+# Mettre le CRM AMX en ligne
 
-L'API, le frontend Nginx, les workers et Celery Beat sont définis dans `compose.yaml`. Beat redispatche l'outbox toutes les 30 secondes et purge les fichiers expirés chaque heure. Un seul Beat doit fonctionner.
+Ce guide installe le CRM sur un serveur, avec HTTPS automatique. Le serveur fait tourner 16 services Docker : trois bases PostgreSQL, Redis, l’API Isolation, le portail, Assurance, les tâches de fond, l’interface et Caddy pour le HTTPS. Aucun secret n’est stocké dans le dépôt.
 
-1. Copier `.env.example` vers `.env` et définir les secrets côté serveur.
-2. Générer une clé Fernet : `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Placer la valeur dans `MFA_ENCRYPTION_KEY` et conserver cette clé dans un coffre indépendant des sauvegardes de base. Ne pas la régénérer à chaque démarrage.
-3. Configurer PostgreSQL, SMTP, Twilio, région S3 si utilisée, coût unitaire Lookup et devise. Les packages avancés sont facultatifs : `LOOKUP_PACKAGES=line_type_intelligence,line_status` après confirmation des droits et de la tarification.
-4. Pour la recette locale : `docker compose build`, puis `docker compose up -d db redis`, `docker compose run --rm api python manage.py migrate`, `docker compose run --rm api python manage.py bootstrap_admin votre.identifiant`, `docker compose up -d`. Frontend : `http://127.0.0.1:8080`.
-5. Pour la production : `DEBUG=false`, `CALLVERIFY_DOMAIN`, `ALLOWED_HOSTS`, `FRONTEND_URL=https://votre-domaine`, origines HTTPS exactes et SMTP configuré. Lancer avec `docker compose -f compose.yaml -f compose.production.yaml up -d --build`. Caddy termine HTTPS ; les ports directs du frontend et de l'API sont retirés par l'override.
-6. Exécuter `encrypt_mfa`, `preflight` et `check --deploy`. Une migration de secrets d'un environnement DEBUG vers la production exige de conserver la clé utilisée pour les données existantes ou de réenrôler les comptes.
-7. Sauvegarder PostgreSQL et le stockage privé, tester une restauration isolée, puis effectuer la recette fournisseur réelle.
+## 1. Ce qu’il faut avant de commencer
 
-Pour les sauvegardes PostgreSQL, utiliser `pg_dump -Fc` puis chiffrer l'archive dans votre outil de sauvegarde. Restaurer avec `pg_restore` dans une base isolée. Les clés Fernet et SECRET_KEY nécessaires à la restauration restent dans le coffre. Aucun secret réel n'est fourni dans le dépôt.
+| Élément | Détail |
+|---|---|
+| Un serveur Linux | Ubuntu 24.04, 2 processeurs, 4 Go de mémoire et 40 Go de disque au minimum. Par exemple un VPS OVH, Hetzner ou DigitalOcean, de préférence au Canada. |
+| Un nom de domaine | Par exemple `crm.votre-entreprise.com`. |
+| Un enregistrement DNS | Type **A** du domaine vers l’adresse IP du serveur, à créer chez votre registraire. |
+| Un compte d’envoi d’e-mails (SMTP) | Pour les invitations, les mots de passe oubliés et les rappels : Google Workspace, Microsoft 365, Brevo, Mailgun… |
+| Ports ouverts | 80 et 443 (web) et 22 (SSH) sur le pare-feu du serveur. |
 
-Les appels réels ne sont pas activables dans cette version : leur scénario, horaires, émetteur et conditions d'autorisation restent à fournir et à valider. Les écrans de préparation et le contrôle des exclusions sont disponibles.
+## 2. Préparer le serveur (une seule fois)
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER   # puis se reconnecter
+git clone https://github.com/Gi554/callverify.git crm && cd crm
+```
+
+## 3. Créer la configuration (une seule fois)
+
+```bash
+python3 scripts/generate_production_env.py crm.votre-entreprise.com
+```
+
+Le script crée le fichier `.env` avec toutes les clés et tous les mots de passe internes, générés au hasard. Ensuite :
+
+1. Ouvrez `.env` (par exemple avec `nano .env`) et complétez la section **E-mails** : serveur, identifiant et mot de passe SMTP.
+2. **Copiez `.env` dans un coffre-fort** (gestionnaire de mots de passe de l’entreprise). Sans ce fichier, les données chiffrées, les sessions et les e-mails en attente sont perdus.
+3. Laissez la téléphonie à `false` tant que les appels ne sont pas ouverts. Pour les activer plus tard, renseignez `NEWT_USERNAME`, `NEWT_PASSWORD` et `NEWT_CALLS_ENABLED=true`, puis relancez le déploiement.
+
+## 4. Déployer
+
+```bash
+./scripts/deploy.sh
+```
+
+Le script vérifie la configuration, construit l’application, met à jour les trois bases de données, lance les contrôles de sécurité Django, puis démarre tout. Caddy obtient le certificat HTTPS automatiquement ; il faut que le DNS pointe déjà vers le serveur.
+
+## 5. Créer le premier administrateur (une seule fois)
+
+```bash
+./scripts/create_admin.sh prenom.nom
+```
+
+Le mot de passe est demandé de façon masquée. Cet administrateur a accès à Assurance et à Isolation. Il invite ensuite tous les autres utilisateurs depuis le CRM (**Utilisateurs et accès → Invitations**). Chacun reçoit un e-mail et choisit son mot de passe.
+
+## 6. Mettre à jour
+
+```bash
+git pull
+./scripts/deploy.sh
+```
+
+Les migrations sont appliquées automatiquement, et les données sont conservées dans les volumes Docker.
+
+## 7. Sauvegardes (à mettre en place dès le premier jour)
+
+- **Bases** : chaque nuit, `pg_dump -Fc` des trois bases (`db`, `portal-db`, `assurance-db`). Voir `docs/BACKUP_POSTGRES.md`.
+- **Fichiers** : le volume `media` (documents importés).
+- **Hors du serveur** : gardez les archives sur un autre stockage, avec le fichier `.env` dans le coffre-fort.
+- **Restauration** : testez une restauration au moins une fois, sur une machine séparée.
+
+## 8. En cas de souci
+
+| Problème | Que faire |
+|---|---|
+| Voir l’état des services | `docker compose -f compose.yaml -f infra/compose.crm.yaml -f compose.production.yaml ps` |
+| Lire les journaux d’un service | Même commande avec `logs -f portal` (ou `assurance`, `api`, `caddy`). |
+| Le HTTPS ne s’obtient pas | Vérifiez que le DNS pointe bien vers le serveur et que les ports 80 et 443 sont ouverts, puis consultez les journaux de `caddy`. |
+| Les e-mails ne partent pas | Vérifiez la section E-mails de `.env` et les journaux de `portal-mail`. |
