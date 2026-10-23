@@ -51,6 +51,9 @@ esac
             self.bin / 'docker',
             """
 echo "docker $*" >> "$LOG"
+if [[ "${CONSUME_INPUT:-0}" == 1 && " $* " == *" exec "* && " $* " != *pg_restore* ]]; then
+  cat >/dev/null
+fi
 case " $* " in
  *" ps "*) if [[ "${NOT_RUNNING:-0}" != 1 ]]; then echo synthetic-container; fi ;;
  *pg_dump*) if [[ "${FAIL_BACKUP:-0}" == 1 ]]; then exit 1; fi; echo synthetic-dump ;;
@@ -75,13 +78,15 @@ if [[ " $* " == *" -w "* ]]; then printf 401; fi
         )
         path.chmod(0o700)
 
-    def run_release(self, deploy_sha=SHA, deploy_path=None, **changes):
+    def run_release(self, deploy_sha=SHA, deploy_path=None, via_stdin=False, **changes):
         env = {**os.environ, 'LOG': shell_path(self.log), 'OLD': OLD, 'LATEST': SHA, **changes}
         result = subprocess.run(
             [
                 BASH,
                 '-c',
-                'export PATH="$1:$PATH"; exec bash "$2" "$3" "$4"',
+                'export PATH="$1:$PATH"; exec bash -s -- "$3" "$4"'
+                if via_stdin
+                else 'export PATH="$1:$PATH"; exec bash "$2" "$3" "$4"',
                 '--',
                 shell_path(self.bin),
                 shell_path(ROOT / 'scripts' / 'deploy-release.sh'),
@@ -89,12 +94,27 @@ if [[ " $* " == *" -w "* ]]; then printf 401; fi
                 shell_path(self.repo) if deploy_path is None else deploy_path,
             ],
             env=env,
+            input=(ROOT / 'scripts' / 'deploy-release.sh').read_text() if via_stdin else None,
             capture_output=True,
             text=True,
             timeout=30,
         )
         log = self.log.read_text() if self.log.exists() else ''
         return result, log
+
+    def test_script_transmitted_over_ssh_stdin_reaches_verification_despite_interactive_children(
+        self,
+    ):
+        self.write(
+            self.repo / 'scripts' / 'deploy.sh',
+            'cat >/dev/null\necho deployed >> "$LOG"',
+        )
+        result, log = self.run_release(via_stdin=True, CONSUME_INPUT='1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('deployed', log)
+        self.assertIn('https://crm.example.com/api/isolation/work-queue/', log)
+        self.assertTrue((self.repo / '.git/crm-last-successful-deploy').is_file())
+        self.assertEqual((self.repo / '.git/crm-last-successful-deploy').read_text().strip(), SHA)
 
     def test_success_backs_up_before_checkout_and_records_verified_sha(self):
         result, log = self.run_release()
