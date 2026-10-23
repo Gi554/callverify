@@ -6,6 +6,7 @@ import AssuranceContactFollowups from './AssuranceContactFollowups.vue';
 import AssuranceQualification from './AssuranceQualification.vue';
 import {
   UserRound,
+  History,
   ClipboardList,
   CalendarDays,
   Phone,
@@ -408,6 +409,14 @@ onBeforeUnmount(() => {
       >
         <CalendarDays :size="17" />Rendez-vous
       </button>
+      <button
+        v-if="role === 'administrator'"
+        :aria-current="flowTab === 'history' ? 'page' : undefined"
+        :disabled="blocked"
+        @click="changeFlow('history')"
+      >
+        <History :size="17" />Historique
+      </button>
     </nav>
     <div ref="flowBody" class="drawer-scroll">
       <p v-if="error" role="alert" class="drawer-feedback drawer-error">{{ error }}</p>
@@ -443,6 +452,63 @@ onBeforeUnmount(() => {
           :before-open="prepareCall"
           :disabled="!token || busy || saving || bookingBusy"
         />
+      </div>
+      <div v-if="flowTab === 'history' && role === 'administrator'" class="drawer-view">
+        <AssuranceContactInteractions
+          :contact-id="current.id"
+          :request="request"
+          :portal="portal"
+        />
+        <section class="sheet-section">
+          <h3>Modifications de la fiche</h3>
+          <button
+            class="secondary"
+            :disabled="blocked"
+            @click="
+              historyPage = 1;
+              loadHistory();
+            "
+          >
+            Consulter le journal des modifications</button
+          ><template v-if="showHistory"
+            ><p v-if="!history.length">Aucune modification enregistrée.</p>
+            <article v-for="entry in history" :key="entry.id">
+              <strong>{{ entry.action }}</strong>
+              <p>
+                Compte n° {{ entry.actor_id }} ·
+                {{ new Date(entry.created_at).toLocaleString('fr-FR') }}
+              </p>
+              <details>
+                <summary>Détails de la modification</summary>
+                <pre style="white-space: pre-wrap; overflow-wrap: anywhere">{{
+                  JSON.stringify(entry.metadata, null, 2)
+                }}</pre>
+              </details>
+            </article>
+            <div class="history-pages">
+              <button
+                class="secondary"
+                :disabled="blocked || historyPage === 1"
+                @click="
+                  historyPage--;
+                  loadHistory();
+                "
+              >
+                Précédent</button
+              ><span>Page {{ historyPage }} · {{ historyCount }} action(s)</span
+              ><button
+                class="secondary"
+                :disabled="blocked || historyPage * 25 >= historyCount"
+                @click="
+                  historyPage++;
+                  loadHistory();
+                "
+              >
+                Suivant
+              </button>
+            </div></template
+          >
+        </section>
       </div>
       <div v-show="flowTab === 'exchange'" class="drawer-view">
         <PhoneHistory
@@ -920,7 +986,11 @@ onBeforeUnmount(() => {
       <main v-if="!workflow" class="record-timeline">
         <div class="record-panel-title">Activité du dossier</div>
         <div class="record-panel-body">
-          <AssuranceContactInteractions :contact-id="current.id" :request="request" /><PhoneHistory
+          <AssuranceContactInteractions
+            :contact-id="current.id"
+            :request="request"
+            :portal="portal"
+          /><PhoneHistory
             v-if="role === 'setter'"
             workspace="assurance"
             :resource-id="current.id"

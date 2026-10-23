@@ -39,8 +39,11 @@ code = code
   )
 code =
   `import {h as stubH} from '${vue}';` +
-  code.replace(/vModelText as _vModelText,?/g, '').replace(/vModelSelect as _vModelSelect,?/g, '') +
-  ';const _vModelText={},_vModelSelect={};'
+  code
+    .replace(/vModelText as _vModelText,?/g, '')
+    .replace(/vModelSelect as _vModelSelect,?/g, '')
+    .replace(/vModelCheckbox as _vModelCheckbox,?/g, '') +
+  ';const _vModelText={},_vModelSelect={},_vModelCheckbox={};'
 const component = (await import(url(code))).default
 const renderer = createRenderer({
   createElement: (tag) => ({ tag, children: [], props: {} }),
@@ -134,6 +137,12 @@ test('administrator sees the team board with call preparation', async () => {
     assert.match(text(f.root), /Tous les prospects de l’équipe/)
     assert.match(text(f.root), /Dossier Alpha/)
     assert.equal(callButtons(f).length, 1)
+    assert.ok(f.requests.some((path) => path.includes('queue=active')))
+    const processed = all(f.root).find((n) => n.tag === 'input' && n.props.type === 'checkbox')
+    processed.props['onUpdate:modelValue'](true)
+    processed.props.onChange()
+    await flush()
+    assert.ok(f.requests.some((path) => path.includes('queue=all')))
     assert.ok(all(f.root).some((n) => /Modifier le numéro/.test(n.props?.['aria-label'] || '')))
     assert.equal(component_(f, 'AssuranceContacts'), undefined)
   } finally {
