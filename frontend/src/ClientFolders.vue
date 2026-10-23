@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, nextTick, ref } from 'vue';
 import {
   FolderOpen,
   Search,
@@ -52,6 +52,13 @@ const section = ref('prospects'),
   busy = ref(false),
   error = ref('');
 const names = ref<Record<number, string>>({});
+const heading = ref<HTMLElement | null>(null);
+let directory = { search: '', page: 1 };
+async function revealHeading() {
+  await nextTick();
+  heading.value?.scrollIntoView?.({ block: 'start' });
+  heading.value?.focus?.({ preventScroll: true });
+}
 const callContact = ref<any>(null);
 const prospect = ref<any>(null),
   panelBusy = ref(false),
@@ -123,6 +130,7 @@ async function load() {
       const data = await props.portal(`${props.workspace}/client-folders/?${query}`);
       if (version !== generation) return;
       count.value = data.count;
+      directory = { search: query.get('search') || '', page: Number(query.get('page')) };
       // Keep accounts visible if business statistics are temporarily unavailable; never invent zeros.
       folders.value = data.results;
       if (data.results.length) {
@@ -173,11 +181,14 @@ function open(row: any) {
   section.value = 'prospects';
   status.value = '';
   reset();
+  void revealHeading();
 }
 function back() {
   selected.value = null;
-  search.value = '';
-  reset();
+  search.value = directory.search;
+  page.value = directory.page;
+  void load();
+  void revealHeading();
 }
 function tab(id: string) {
   section.value = id;
@@ -224,7 +235,9 @@ onMounted(load);
         <span v-else class="folder-eyebrow"
           >VOTRE ESPACE CLIENTS · {{ workspace === 'assurance' ? 'ASSURANCE' : 'ISOLATION' }}</span
         >
-        <h1>{{ selected ? selected.name : 'Dossiers clients' }}<span>.</span></h1>
+        <h1 ref="heading" tabindex="-1" class="folder-title">
+          {{ selected ? selected.name : 'Dossiers clients' }}<span>.</span>
+        </h1>
         <p>
           {{
             selected
@@ -330,7 +343,13 @@ onMounted(load);
           }}</small>
         </div>
       </div>
-      <div v-if="metrics" class="folder-statuses">
+      <h2 v-if="metrics" class="status-group-title">Résultats des rendez-vous</h2>
+      <div
+        v-if="metrics"
+        class="folder-statuses"
+        role="group"
+        aria-label="Filtrer les rendez-vous par résultat"
+      >
         <button
           v-for="state in appointmentStates.filter(
             (key) => workspace === 'assurance' || !['absent', 'rescheduled'].includes(key),
@@ -338,6 +357,7 @@ onMounted(load);
           :key="state"
           :disabled="busy || exporting"
           :class="['status-pill', state]"
+          :aria-pressed="section === 'appointments' && status === state"
           @click="
             section = 'appointments';
             status = state;
@@ -355,12 +375,21 @@ onMounted(load);
             : 'Les visites non tenues restent distinctes des comptes rendus manquants. Aucun compte rendu manquant n’est compté comme une absence.'
         }}
       </p>
-      <div v-if="metrics && section === 'prospects'" class="folder-statuses">
+      <h2 v-if="metrics && section === 'prospects'" class="status-group-title">
+        Étapes commerciales des prospects
+      </h2>
+      <div
+        v-if="metrics && section === 'prospects'"
+        class="folder-statuses"
+        role="group"
+        aria-label="Filtrer les prospects par étape commerciale"
+      >
         <button
           v-for="stage in metrics.prospect_statuses"
           :key="stage.status"
           :disabled="busy || exporting"
           class="status-pill"
+          :aria-pressed="status === stage.status"
           @click="
             status = stage.status;
             reset();
@@ -626,6 +655,24 @@ onMounted(load);
 </template>
 
 <style scoped>
+.folder-title {
+  scroll-margin-top: 100px;
+}
+.folder-title:focus {
+  outline: none;
+}
+.status-group-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: #536079;
+  margin: 22px 0 8px;
+}
+.status-group-title + .folder-statuses {
+  margin-top: 0;
+}
+.status-pill[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px #7563db;
+}
 .client-folders {
   padding: 28px;
   background: #f6f7fc;
