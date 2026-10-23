@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Pilotage Assurance (3/4) — refonte UX/UI des mandats et contrats
+
+Registre des mandats et contrats repensé sans changer l’API ni l’export. Barre d’outils : recherche, type en un clic (Tous, Mandats, Contrats), « Plus de filtres » replié (état, horizon, bornes de début et de fin, avec compteur de filtres actifs) et export Excel à droite. Cartes d’alerte (dates dépassées, échéances dans l’horizon, sans date de fin, total mandats/contrats) : les deux premières appliquent ou retirent le filtre d’échéance. Pastilles de répartition par état. Tableau allégé : référence et prospect (identifiant technique retiré), type et état en pastilles, période lisible « début → fin », échéance, pièces jointes. Fiche du prospect ouverte dans un panneau latéral avec garde des modifications, comme sur l’écran Prospects. État vide explicatif (création depuis la fiche d’un prospect, réinitialisation). Mentions juridiques et périmètre de l’export regroupés dans « À savoir ».
+
+Validation : trois tests (cartes d’alerte et filtre de type, filtres avancés repliés et fiche en panneau, état vide) ; démo `admin.demo` à 1 440 px. 80 tests frontend, typage, ESLint, Prettier et build. Aucun changement backend.
+
+Limites : la démo ne contient aucun mandat ni contrat (seul l’état vide est visible) ; dates d’échéance toujours calculées en UTC.
+
 ## Pilotage Assurance (2/4) — refonte UX/UI des affectations
 
 Écran Affectations repensé sans changer l’API ni les règles (attestation du portail, révision, historique). Administrateur : barre d’outils avec recherche, filtre d’état en un clic (Toutes, Actives, Suspendues) et bouton « Nouvelle association » ; la création (deux sélecteurs avec recherche et pagination) passe dans un panneau latéral et se referme après l’association ; liste lisible (avatars, setter → conseiller, pastille Active/Suspendue, actions Suspendre/Réactiver et Historique) ; historique dans un panneau latéral en langage clair (« Association créée », « suspendue », « réactivée », date, auteur) au lieu du JSON brut. Setter (« Mes conseillers ») : liste simple des conseillers avec lesquels il peut réserver ; texte obsolète sur le « lot dédié » retiré.
