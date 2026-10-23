@@ -268,11 +268,13 @@ test('advisor uses the calendar and its own appointment panel without booking to
     assert.equal(memberSelect(f), undefined)
     assert.equal(button(f, 'Liste'), undefined)
     assert.equal(button(f, 'Nouveau rendez-vous'), undefined)
-    const event = all(f.root).find(n => n.tag === 'button' && text(n).includes('Dossier Alpha'))
+    const event = all(f.root).find((n) => n.tag === 'button' && text(n).includes('Dossier Alpha'))
     event.props.onClick()
     await flush()
-    assert.ok(all(f.root).some(n => n.props?.['data-component'] === 'AssuranceAdvisorAppointment'))
-    assert.ok(!all(f.root).some(n => n.props?.['data-component'] === 'AssuranceAppointments'))
+    assert.ok(
+      all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAdvisorAppointment'),
+    )
+    assert.ok(!all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAppointments'))
   } finally {
     f.close()
   }
