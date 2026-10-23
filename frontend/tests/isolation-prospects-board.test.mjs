@@ -207,14 +207,14 @@ test('phone opens the prospect drawer in preparation mode without posting a call
     f.app.unmount()
   }
 })
-test('administrator retains assignment drawer and has no setter call button', async () => {
+test('administrator retains assignment drawer and can prepare calls', async () => {
   const f = fixture('administrator')
   try {
     await flush()
     assert.equal(f.portalCalls.length, 1)
     assert.equal(
       all(f.root).some((n) => n.props?.title === 'Préparer l’appel'),
-      false,
+      true,
     )
     await all(f.root)
       .find((n) => n.props?.title === 'Affecter ou réattribuer')

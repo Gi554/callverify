@@ -46,7 +46,7 @@ class IsolationCallIntentTests(TestCase):
     def test_other_setter_client_admin_and_other_space_cannot_authorize(self):
         self.auth(22, 'setter')
         self.assertEqual(self.post().status_code, 404)
-        for role in ('administrator', 'client'):
+        for role in ('client',):
             self.auth(21, role)
             self.assertEqual(self.post().status_code, 403)
         self.auth(21, 'setter', 'assurance')
@@ -116,3 +116,25 @@ class IsolationCallIntentTests(TestCase):
                 ).status_code,
                 400,
             )
+
+    def test_administrator_calls_team_prospect_without_reassignment_but_keeps_controls(self):
+        self.auth(31, 'administrator')
+        result = self.post()
+        self.assertEqual(result.status_code, 200, result.data)
+        proof = result.data['proof']
+        self.assertEqual(verify(proof, 31, 'isolation')['contact'], self.row.pk)
+        self.assertTrue(
+            self.client.post(
+                self.base + 'call-intent-check/', {'proof': proof}, format='json'
+            ).data['eligible']
+        )
+        self.row.refresh_from_db()
+        self.assertEqual(self.row.assigned_setter_id, 21)
+        self.assertEqual(self.post(revision=99).status_code, 409)
+        Suppression.objects.create(e164=self.row.phone.e164, reason='synthetic exclusion')
+        self.assertEqual(self.post().status_code, 400)
+        self.assertFalse(
+            self.client.post(
+                self.base + 'call-intent-check/', {'proof': proof}, format='json'
+            ).data['eligible']
+        )

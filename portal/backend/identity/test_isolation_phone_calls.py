@@ -64,10 +64,18 @@ class IsolationCallsTests(TestCase):
             self.assertEqual(self.post().status_code, 503)
         with override_settings(NEWT_CALLS_ENABLED=False):
             self.assertEqual(self.post().status_code, 503)
-        for role in ('client', 'administrator'):
+        for role in ('client',):
             Membership.objects.filter(pk=self.membership.pk).update(role=role)
             self.assertEqual(self.post().status_code, 403)
         self.provider.assert_not_called()
+
+    def test_administrator_can_call_isolation_from_own_post(self):
+        self.membership.role = 'administrator'
+        self.membership.save()
+        self.assertEqual(self.post().status_code, 200)
+        self.provider.assert_called_once_with('test-user', 'test-secret', '501', '14165550123')
+        self.assertEqual(self.post().data['state'], 'accepted')
+        self.assertEqual(self.provider.call_count, 1)
 
     def test_preflight_uses_isolation_only_and_checks_exact_response(self):
         response = Mock()

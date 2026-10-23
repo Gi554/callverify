@@ -36,7 +36,12 @@ class PhoneExtensionTests(TestCase):
             self.assertEqual(self.post().status_code, 204)
             result = self.client.get(self.url)
             self.assertEqual(result['Cache-Control'], 'no-store')
-            self.assertEqual(result.data['results'][0]['extension'], '505')
+            self.assertEqual(
+                next(row for row in result.data['results'] if row['username'] == 'setter')[
+                    'extension'
+                ],
+                '505',
+            )
             self.assertEqual(self.post(revision=0, extension='506').status_code, 204)
             self.assertEqual(self.post(revision=1, remove=True).status_code, 204)
         row = PhoneExtension.objects.get()
@@ -68,9 +73,13 @@ class PhoneExtensionTests(TestCase):
         Membership.objects.create(user=self.admin, workspace='isolation', role='administrator')
         self.assertEqual(self.post().status_code, 204)
         self.assertEqual(
-            self.client.get('/api/portal/workspaces/isolation/phone-extensions/').data['results'][
-                0
-            ]['extension'],
+            next(
+                row
+                for row in self.client.get(
+                    '/api/portal/workspaces/isolation/phone-extensions/'
+                ).data['results']
+                if row['username'] == 'setter'
+            )['extension'],
             '505',
         )
 
@@ -105,3 +114,18 @@ class PhoneExtensionTests(TestCase):
         self.admin.is_superuser = True
         self.admin.save()
         self.assertEqual(self.client.get(self.url).status_code, 403)
+
+    def test_admin_can_associate_own_post_and_multi_workspace_role_requires_both_admin_rights(self):
+        grant = Membership.objects.get(user=self.admin, workspace='assurance')
+        self.assertEqual(self.post(membership_id=grant.pk, extension='501').status_code, 204)
+        self.assertEqual(PhoneExtension.objects.get(user=self.admin).extension, '501')
+        Membership.objects.create(user=self.admin, workspace='isolation', role='setter')
+        self.assertEqual(
+            self.post(membership_id=grant.pk, extension='502', revision=0).status_code, 403
+        )
+        Membership.objects.filter(user=self.admin, workspace='isolation').update(
+            role='administrator'
+        )
+        self.assertEqual(
+            self.post(membership_id=grant.pk, extension='502', revision=0).status_code, 204
+        )

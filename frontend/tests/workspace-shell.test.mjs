@@ -144,7 +144,8 @@ test('administrator gets the setter frame with team modules and a steering block
     'Utilisateurs et accès',
   ])
     assert.match(steering, new RegExp(label))
-  assert.doesNotMatch(html, /Mes statistiques|setter-phone/)
+  assert.doesNotMatch(html, /Mes statistiques/)
+  assert.match(html, /Ouvrir le composeur d’appel/)
   assert.match(html, /Tâches de l’équipe/)
   assert.match(html, /Assurance · Administration/)
 })
