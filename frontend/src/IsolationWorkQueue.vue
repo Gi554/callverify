@@ -17,6 +17,7 @@ import SidePanel from './SidePanel.vue';
 import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
+const includeProcessed = ref(false);
 const adminTools = ref(false),
   callPending = ref(false),
   workflow = ref<'edit' | 'call'>('edit');
@@ -104,6 +105,7 @@ async function loadColumn(column: Column, version: number, append = false) {
       owner: applied.value.owner,
       commercial_status: column.key,
       due: String(applied.value.due),
+      queue: includeProcessed.value ? 'all' : 'active',
     });
     const data = await props.request(`work-queue/?${q}`);
     if (version !== generation || disposed) return;
@@ -236,6 +238,7 @@ onBeforeUnmount(() => {
             owner: applied.owner,
             commercial_status: commercialStatus,
             due: applied.due ? 'true' : '',
+            queue: includeProcessed ? 'all' : 'active',
           }"
         /><button class="secondary" :disabled="busy" @click="load">
           <RefreshCw :size="16" />Actualiser
@@ -243,6 +246,10 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <div class="prospects-toolbar">
+      <label class="processed-toggle"
+        ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les
+        fiches traitées</label
+      >
       <label class="stage-filter"
         ><select v-model="commercialStatus" aria-label="Filtrer les prospects par statut">
           <option value="">Tous les statuts</option>
@@ -348,7 +355,7 @@ onBeforeUnmount(() => {
                 >
                   <Pencil :size="15" /></button
                 ><button
-                  v-if="role === 'setter'"
+                  v-if="['setter', 'administrator'].includes(role)"
                   class="phone-button"
                   :disabled="!row.phone && !row.raw_phone"
                   :aria-label="'Préparer l’appel vers ' + (row.phone || row.raw_phone)"
@@ -371,7 +378,11 @@ onBeforeUnmount(() => {
               {{ new Date(row.callback_at).toLocaleString('fr-FR') }}
             </p>
             <footer class="isolation-card-footer">
-              <span class="prospect-stage">{{ row.commercial_label || column.label }}</span>
+              <span class="prospect-stage">{{
+                row.queue_reason === 'appointment_booked'
+                  ? 'RDV pris'
+                  : row.commercial_label || column.label
+              }}</span>
               <div>
                 <button
                   title="Visites et formulaire C2"
@@ -425,7 +436,7 @@ onBeforeUnmount(() => {
       :close-disabled="activityBusy || callPending"
       @request-close="activityPanel?.close()"
       ><CallAction
-        v-if="activity && role === 'setter'"
+        v-if="activity && ['setter', 'administrator'].includes(role)"
         workspace="isolation"
         :resource-id="activity.id"
         :phone="activity.phone || activity.raw_phone"
@@ -889,6 +900,13 @@ onBeforeUnmount(() => {
     max-height: 95dvh;
   }
 }
+.processed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #536b91;
+}
 </style>
 <style scoped>
 /* Let the remaining stages fill the board instead of keeping fixed narrow lanes. */
@@ -969,6 +987,13 @@ onBeforeUnmount(() => {
   .single-status .prospect-stack {
     grid-template-columns: 1fr;
   }
+}
+.processed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #536b91;
 }
 </style>
 
@@ -1060,5 +1085,12 @@ onBeforeUnmount(() => {
   .isolation-board .prospects-columns {
     height: 65dvh;
   }
+}
+.processed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #536b91;
 }
 </style>

@@ -205,9 +205,9 @@ test('an administrator sees the team history with callers and filters', async ()
   })
   try {
     await flush()
-    assert.ok(!f.portals.some((path) => path.endsWith('/calls/options/')))
+    assert.ok(f.portals.some((path) => path.endsWith('/calls/options/')))
     assert.ok(f.portals.includes('isolation/setters/?page=1'))
-    assert.equal(button(f, /Composer/), undefined)
+    assert.ok(button(f, /Composer/))
     assert.match(text(f.root), /Appels de l’équipe/)
     assert.match(text(f.root), /Fiche n° 7/)
     assert.match(text(f.root), /setter\.demo02 · poste 501/)
@@ -261,6 +261,28 @@ test('setters read durations without the reconciliation button', async () => {
     button(f, /Mon historique/).props.onClick()
     await flush()
     assert.equal(button(f, /Rapprocher/), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('administrator opens the composer and prepares a call without posting a command', async () => {
+  const f = fixture({
+    role: 'administrator',
+    options: { enabled: true, post_associated: true },
+    contacts: [{ id: 4, name: 'Synthetic', phone: '+15145550101' }],
+  })
+  try {
+    await flush()
+    button(f, /^Composer$/).props.onClick()
+    await flush()
+    button(f, /^5$/).props.onClick()
+    await flush()
+    button(f, /Trouver la fiche/).props.onClick()
+    await flush()
+    button(f, /Appeler/).props.onClick()
+    assert.deepEqual(f.opened, [{ id: 4, mode: 'call' }])
+    assert.ok(f.portals.every((path) => !path.endsWith('/calls/')))
   } finally {
     f.close()
   }

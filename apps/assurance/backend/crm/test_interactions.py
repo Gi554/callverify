@@ -94,8 +94,17 @@ class InteractionTests(TestCase):
         for row in result.data['results']:
             self.assertEqual(
                 set(row),
-                {'event_type', 'event_id', 'occurred_at', 'detail', 'state', 'reference_id'},
+                {
+                    'event_type',
+                    'event_id',
+                    'occurred_at',
+                    'detail',
+                    'state',
+                    'reference_id',
+                    'actor_id',
+                },
             )
+        self.assertEqual({row['actor_id'] for row in result.data['results']}, {21, 31, 32, 99})
         for value in (
             'SECRET SETTER',
             'author_id',
@@ -110,6 +119,7 @@ class InteractionTests(TestCase):
         self.auth(31, 'advisor')
         result = self.client.get(self.url)
         self.assertEqual(result.data['count'], 5)
+        self.assertTrue(all('actor_id' not in row for row in result.data['results']))
         text = str(result.data)
         self.assertIn('own advisor note', text)
         for value in (
@@ -131,6 +141,7 @@ class InteractionTests(TestCase):
         self.auth(21, 'setter')
         result = self.client.get(self.url)
         self.assertEqual(result.data['count'], 5)
+        self.assertTrue(all('actor_id' not in row for row in result.data['results']))
         text = str(result.data)
         self.assertIn('INTERNAL SECRET', text)
         for value in ('own advisor note', 'other advisor note', 'report-32', 'incident-32'):

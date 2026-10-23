@@ -26,6 +26,18 @@ class StatusTests(TestCase):
         self.link = PhoneExtension.objects.create(user=self.setter, extension='505')
         self.url = f'/api/portal/workspaces/assurance/phone-extensions/{self.grant.pk}/status/'
 
+    def test_administrator_post_can_be_observed_without_calling(self):
+        member = Membership.objects.get(user=self.user, workspace='assurance')
+        PhoneExtension.objects.create(user=self.user, extension='501')
+        url = f'/api/portal/workspaces/assurance/phone-extensions/{member.pk}/status/'
+        with patch(
+            'portal.backend.identity.phone_status.fetch_status',
+            return_value={'codes': [], 'observations': 0, 'conclusion': 'indeterminate'},
+        ) as fetch:
+            response = self.client.post(url, {}, format='json')
+        self.assertEqual(response.status_code, 200)
+        fetch.assert_called_once_with('test-user', 'test-secret', '501')
+
     def test_only_assigned_post_and_sanitized_observation_are_used(self):
         with patch(
             'portal.backend.identity.phone_status.fetch_status',

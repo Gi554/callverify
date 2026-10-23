@@ -59,7 +59,7 @@ class CallIntentTests(TestCase):
         self.assertEqual(self.client.get(self.base + 'call-intent/').status_code, 405)
 
     def test_role_and_space_fences(self):
-        for role in ('administrator', 'advisor'):
+        for role in ('advisor',):
             self.auth(21, role)
             self.assertEqual(
                 self.client.post(self.base + 'call-intent/', self.body, format='json').status_code,
@@ -101,3 +101,26 @@ class CallIntentTests(TestCase):
                 self.client.post(self.base + 'call-intent/', self.body, format='json').status_code,
                 400,
             )
+
+    def test_administrator_uses_own_lease_and_never_steals_setter_lease(self):
+        self.auth(31, 'administrator')
+        self.assertEqual(
+            self.client.post(self.base + 'call-intent/', self.body, format='json').status_code, 409
+        )
+        self.auth(21, 'setter')
+        self.client.delete(self.base + 'lease/', {'token': self.token}, format='json')
+        self.auth(31, 'administrator')
+        lease = self.client.post(self.base + 'lease/', {}, format='json')
+        self.assertEqual(lease.status_code, 201)
+        body = {**self.body, 'token': lease.data['token']}
+        result = self.client.post(self.base + 'call-intent/', body, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        proof = result.data['proof']
+        self.assertEqual(verify(proof, 31)['contact'], self.contact.pk)
+        self.assertTrue(
+            self.client.post(
+                self.base + 'call-intent-check/', {'proof': proof}, format='json'
+            ).data['eligible']
+        )
+        self.contact.refresh_from_db()
+        self.assertEqual(self.contact.created_by_id, 21)

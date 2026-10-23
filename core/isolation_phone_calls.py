@@ -43,8 +43,8 @@ class IsolationPhoneCallMixin(HistoryMixin):
     def call_intent(self, request, pk=None):
         from .isolation_work import Conflict
 
-        if request.user.role != 'setter':
-            raise PermissionDenied('Seul le setter connecté peut demander son appel.')
+        if request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied('Setter ou administrateur requis pour demander son appel.')
         if request.query_params:
             raise ValidationError('Paramètres interdits.')
         serializer = Input(data=request.data)
@@ -52,11 +52,10 @@ class IsolationPhoneCallMixin(HistoryMixin):
         data = serializer.validated_data
         prospect = self.get_object()
         with transaction.atomic():
-            if not Prospect.objects.filter(
-                pk=prospect.pk,
-                assigned_setter_id=request.user.pk,
-                assignment_revision=data['revision'],
-            ).update(assignment_revision=F('assignment_revision')):
+            scoped = Prospect.objects.filter(pk=prospect.pk, assignment_revision=data['revision'])
+            if request.user.role == 'setter':
+                scoped = scoped.filter(assigned_setter_id=request.user.pk)
+            if not scoped.update(assignment_revision=F('assignment_revision')):
                 raise Conflict('Prospect modifié ou réattribué.')
             row = Prospect.objects.select_related('phone').get(pk=prospect.pk)
             proof = issue(
@@ -86,8 +85,8 @@ class IsolationPhoneCallMixin(HistoryMixin):
 
     @action(detail=True, methods=['post'], url_path='call-intent-check')
     def call_intent_check(self, request, pk=None):
-        if request.user.role != 'setter':
-            raise PermissionDenied('Setter requis.')
+        if request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied('Setter ou administrateur requis.')
         if request.query_params or set(request.data) != {'proof'}:
             raise ValidationError('Preuve seule requise.')
         try:

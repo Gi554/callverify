@@ -16,6 +16,7 @@ const emit = defineEmits<{ imported: [count: number] }>();
 const admin = computed(() => props.role === 'administrator');
 // Administrator only: the existing list keeps imports, filters and history.
 const listView = ref(false);
+const includeProcessed = ref(false);
 function showBoard() {
   if (!listView.value) return;
   listView.value = false;
@@ -58,7 +59,7 @@ async function loadColumn(column: Column, version: number, append = false) {
   column.error = '';
   try {
     const data = await props.request(
-      `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}`,
+      `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}&queue=${includeProcessed.value ? 'all' : 'active'}`,
     );
     if (version !== generation || disposed) return;
     column.rows = append ? [...column.rows, ...data.results] : data.results;
@@ -166,7 +167,7 @@ onBeforeUnmount(() => {
           v-if="!listView"
           :request="request"
           path="contacts/export/"
-          :filters="{ search: applied }"
+          :filters="{ search: applied, queue: includeProcessed ? 'all' : 'active' }"
         />
         <button v-if="!listView" class="secondary" :disabled="busy" @click="load">
           <RefreshCw :size="16" />Actualiser
@@ -182,6 +183,10 @@ onBeforeUnmount(() => {
     />
     <template v-else>
       <div class="prospects-toolbar">
+        <label class="processed-toggle"
+          ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les
+          fiches traitées</label
+        >
         <label class="stage-filter"
           ><select v-model="stage" aria-label="Filtrer les prospects par statut">
             <option value="">Tous les statuts</option>
@@ -264,7 +269,6 @@ onBeforeUnmount(() => {
                   >
                     <Pencil :size="15" /></button
                   ><button
-                    v-if="!admin"
                     class="phone-button"
                     :disabled="opening || !row.phone"
                     :aria-label="'Préparer l’appel vers ' + row.phone"
@@ -279,7 +283,13 @@ onBeforeUnmount(() => {
                 <Mail :size="14" /><span>{{ row.email || 'E-mail non renseigné' }}</span>
               </p>
               <footer>
-                <span class="prospect-stage">{{ row.status_label || column.label }}</span>
+                <span class="prospect-stage">{{
+                  row.queue_reason === 'appointment_booked'
+                    ? 'RDV pris'
+                    : row.queue_reason === 'not_interested'
+                      ? 'Pas intéressé'
+                      : row.status_label || column.label
+                }}</span>
               </footer>
             </article>
             <p v-if="!column.busy && !column.error && !column.count" class="board-empty">
@@ -660,6 +670,13 @@ onBeforeUnmount(() => {
     max-height: 95dvh;
   }
 }
+.processed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #536b91;
+}
 </style>
 <style scoped>
 /* Let the remaining stages fill the board instead of keeping fixed narrow lanes. */
@@ -740,5 +757,12 @@ onBeforeUnmount(() => {
   .single-status .prospect-stack {
     grid-template-columns: 1fr;
   }
+}
+.processed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #536b91;
 }
 </style>

@@ -125,7 +125,7 @@ function navigate(id: string) {
       </button>
       <div class="setter-tools">
         <button
-          v-if="role === 'setter'"
+          v-if="role === 'setter' || admin"
           class="setter-phone"
           title="Composer un appel"
           aria-label="Ouvrir le composeur d’appel"

@@ -43,6 +43,7 @@ class ContactExportMixin:
                 'rows': len(rows),
                 'search': request.query_params.get('search', '')[:250],
                 'status': request.query_params.get('status', '')[:40],
+                'queue': request.query_params.get('queue', ''),
             },
         )
         return response(file, headers, values, 'prospects-assurance', 'Prospects')

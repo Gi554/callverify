@@ -43,8 +43,10 @@ class PhoneCallMixin(HistoryMixin):
 
     @action(detail=True, methods=['post'], url_path='call-intent')
     def call_intent(self, request, pk=None):
-        if request.user.role != 'setter':
-            raise PermissionDenied('Seul le setter connecté peut autoriser son propre appel.')
+        if request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied(
+                'Seul un setter ou administrateur connecté peut autoriser son propre appel.'
+            )
         if request.query_params:
             raise ValidationError('Aucun paramètre de requête autorisé.')
         serializer = Intent(data=request.data)
@@ -75,8 +77,8 @@ class PhoneCallMixin(HistoryMixin):
 
     @action(detail=True, methods=['post'], url_path='call-intent-check')
     def call_intent_check(self, request, pk=None):
-        if request.user.role != 'setter':
-            raise PermissionDenied('Setter requis.')
+        if request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied('Setter ou administrateur requis.')
         if request.query_params or set(request.data) != {'proof'}:
             raise ValidationError('Preuve seule requise.')
         try:

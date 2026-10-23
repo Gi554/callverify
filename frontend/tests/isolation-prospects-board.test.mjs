@@ -35,8 +35,9 @@ code =
   code
     .replace(/vModelText as _vModelText,?/g, '')
     .replace(/vModelSelect as _vModelSelect,?/g, '')
+    .replace(/vModelCheckbox as _vModelCheckbox,?/g, '')
     .replace(/vModelDynamic as _vModelDynamic,?/g, '') +
-  ';const _vModelText={},_vModelSelect={},_vModelDynamic={};'
+  ';const _vModelText={},_vModelSelect={},_vModelDynamic={},_vModelCheckbox={};'
 code = code.replace(
   /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
   (_, name) =>
@@ -207,14 +208,14 @@ test('phone opens the prospect drawer in preparation mode without posting a call
     f.app.unmount()
   }
 })
-test('administrator retains assignment drawer and has no setter call button', async () => {
+test('administrator retains assignment drawer and can prepare calls', async () => {
   const f = fixture('administrator')
   try {
     await flush()
     assert.equal(f.portalCalls.length, 1)
     assert.equal(
       all(f.root).some((n) => n.props?.title === 'Préparer l’appel'),
-      false,
+      true,
     )
     await all(f.root)
       .find((n) => n.props?.title === 'Affecter ou réattribuer')

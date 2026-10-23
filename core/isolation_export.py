@@ -44,7 +44,7 @@ class ExportMixin:
                 'rows': len(rows),
                 'filters': {
                     key: request.query_params.get(key, '')[:250]
-                    for key in ('search', 'owner', 'commercial_status', 'due')
+                    for key in ('search', 'owner', 'commercial_status', 'due', 'queue')
                 },
             },
         )

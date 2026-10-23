@@ -98,6 +98,7 @@ def output(row):
         else {'id': row.assigned_setter_id, 'name': row.assigned_setter_name},
         'revision': row.assignment_revision,
         'commercial_status': row.commercial_status,
+        **({'queue_reason': row._queue_reason} if hasattr(row, '_queue_reason') else {}),
         'commercial_label': STATUSES.get(row.commercial_status, row.commercial_status),
         'callback_at': row.callback_at,
         'callback_due': row.callback_at is not None and row.callback_at <= timezone.now(),
@@ -154,6 +155,28 @@ class WorkViewSet(
                 .distinct()
                 .order_by('callback_at', 'pk')
             )
+        mode = self.request.query_params.get('queue', '')
+        if mode:
+            if mode not in ('active', 'all'):
+                raise ValidationError('File de prospection invalide.')
+            from django.db.models import Exists, OuterRef, Case, When, Value, CharField
+            from .models import IsolationVisit
+
+            qs = qs.annotate(
+                _queue_booking=Exists(
+                    IsolationVisit.objects.filter(prospect_id=OuterRef('pk'), status='scheduled')
+                )
+            )
+            qs = qs.annotate(
+                _queue_reason=Case(
+                    When(_queue_booking=True, then=Value('appointment_booked')),
+                    When(commercial_status='not_interested', then=Value('not_interested')),
+                    default=Value(''),
+                    output_field=CharField(),
+                )
+            )
+            if mode == 'active':
+                qs = qs.filter(_queue_reason='')
         return qs
 
     def list(self, request):

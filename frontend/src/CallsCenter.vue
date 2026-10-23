@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Calls module: setters dial through a prospect card (search by number or name), everyone in
+// Calls module: setters and administrators dial through a prospect card; everyone in
 // charge reads the call history. Real dialing stays governed by the telephony settings.
 import { ref, computed, onMounted } from 'vue';
 import {
@@ -85,7 +85,6 @@ async function reconcile() {
   }
 }
 async function loadOptions() {
-  if (admin.value) return;
   try {
     options.value = await props.portal(`${props.workspace}/calls/options/`);
   } catch {
@@ -177,7 +176,7 @@ onMounted(() => {
       </button>
     </header>
     <div class="calls-topline">
-      <div v-if="!admin" class="calls-tabs" role="tablist" aria-label="Appels">
+      <div class="calls-tabs" role="tablist" aria-label="Appels">
         <button
           type="button"
           role="tab"
@@ -194,13 +193,13 @@ onMounted(() => {
           :class="{ 'is-active': tab === 'history' }"
           @click="show('history')"
         >
-          <History :size="15" />Mon historique
+          <History :size="15" />{{ admin ? 'Historique de l’équipe' : 'Mon historique' }}
         </button>
       </div>
       <span class="phone-status"
         ><i :class="{ ready: options?.enabled && options?.post_associated }"></i
         >{{
-          admin
+          admin && tab === 'history'
             ? 'Historique de l’équipe'
             : !options
               ? 'Téléphonie à vérifier'
@@ -211,7 +210,7 @@ onMounted(() => {
       >
     </div>
     <p
-      v-if="!admin && options && (!options.enabled || !options.post_associated)"
+      v-if="options && (!options.enabled || !options.post_associated)"
       class="calls-notice"
       role="status"
     >
@@ -228,7 +227,7 @@ onMounted(() => {
     </p>
     <p v-if="error" role="alert" class="calls-error">{{ error }}</p>
     <p v-if="reconciled" role="status" class="calls-reconciled">{{ reconciled }}</p>
-    <div v-if="!admin && tab === 'compose'" class="compose-layout">
+    <div v-if="tab === 'compose'" class="compose-layout">
       <div class="dialer">
         <header class="dialer-heading">
           <span class="dialer-symbol"><Phone :size="23" /></span>
