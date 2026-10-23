@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Présentation de la page Appels
+
+Page commune Assurance/Isolation : en-tête propre, tons lavande et menthe cohérents avec l’accueil, composition en deux panneaux (pavé numérique et résultats), état vide explicatif et historique en carte. Le parcours reste une recherche de fiche puis ouverture du prospect ; aucun appel automatique ajouté. Adaptation en une colonne sur petit écran, focus clavier et réduction des animations. Aucun indicateur fictif.
+
+Validation : tests existants de recherche, ouverture de fiche, historique et droits ; typage, lint et build frontend. Contrôle visuel navigateur non effectué : accès navigateur local désactivé dans Work. Le journal des durées NEWT reste un lot séparé sur staging.
+
+
 ## Agenda et disponibilités personnelles du conseiller Assurance
 
 Le menu conseiller donne un accès direct à « Mon agenda et disponibilités », avec deux onglets : horaires CRM et connexion Google/Microsoft. Le conseiller définit ses plages hebdomadaires (plusieurs par jour), son fuseau et leur activation dans un panneau à droite. Sans plage un jour est fermé ; avec les horaires activés et aucune plage, aucune nouvelle réservation n’est acceptée. Les profils existants restent sans restriction horaire personnalisée jusqu’à activation explicite. Les rendez-vous déjà pris restent conservés.

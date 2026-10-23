@@ -2,7 +2,17 @@
 // Calls module: setters dial through a prospect card (search by number or name), everyone in
 // charge reads the call history. Real dialing stays governed by the telephony settings.
 import { ref, computed, onMounted } from 'vue';
-import { Phone, Search, Delete, History, Info, ArrowUpRight } from 'lucide-vue-next';
+import {
+  Phone,
+  Search,
+  Delete,
+  History,
+  Info,
+  ArrowUpRight,
+  RefreshCw,
+  ContactRound,
+  ArrowRight,
+} from 'lucide-vue-next';
 const props = defineProps<{
   workspace: string;
   role: string;
@@ -111,25 +121,58 @@ onMounted(() => {
 
 <template>
   <section class="calls">
-    <div v-if="!admin" class="calls-tabs" role="tablist" aria-label="Appels">
+    <header class="calls-heading">
+      <div>
+        <span class="calls-eyebrow"
+          >MON ESPACE · {{ workspace === 'assurance' ? 'ASSURANCE' : 'ISOLATION' }}</span
+        >
+        <h1>Gardez le contact<span>.</span></h1>
+        <p>Un prospect, un échange, une prochaine étape.</p>
+      </div>
       <button
-        type="button"
-        role="tab"
-        :aria-selected="tab === 'compose'"
-        :class="{ 'is-active': tab === 'compose' }"
-        @click="show('compose')"
+        class="secondary"
+        :disabled="loading"
+        @click="
+          loadOptions();
+          tab === 'history' && loadHistory();
+        "
       >
-        <Phone :size="15" />Composer
+        <RefreshCw :size="16" />Actualiser
       </button>
-      <button
-        type="button"
-        role="tab"
-        :aria-selected="tab === 'history'"
-        :class="{ 'is-active': tab === 'history' }"
-        @click="show('history')"
+    </header>
+    <div class="calls-topline">
+      <div v-if="!admin" class="calls-tabs" role="tablist" aria-label="Appels">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'compose'"
+          :class="{ 'is-active': tab === 'compose' }"
+          @click="show('compose')"
+        >
+          <Phone :size="15" />Composer
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'history'"
+          :class="{ 'is-active': tab === 'history' }"
+          @click="show('history')"
+        >
+          <History :size="15" />Mon historique
+        </button>
+      </div>
+      <span class="phone-status"
+        ><i :class="{ ready: options?.enabled && options?.post_associated }"></i
+        >{{
+          admin
+            ? 'Historique de l’équipe'
+            : !options
+              ? 'Téléphonie à vérifier'
+              : options.enabled && options.post_associated
+                ? 'Poste associé'
+                : 'Préparation des appels'
+        }}</span
       >
-        <History :size="15" />Mon historique
-      </button>
     </div>
     <p
       v-if="!admin && options && (!options.enabled || !options.post_associated)"
@@ -148,54 +191,91 @@ onMounted(() => {
       >
     </p>
     <p v-if="error" role="alert" class="calls-error">{{ error }}</p>
-    <div v-if="!admin && tab === 'compose'" class="dialer">
-      <form class="dialer-input" @submit.prevent="search">
-        <Search :size="18" />
-        <input
-          v-model="query"
-          aria-label="Numéro ou nom du prospect"
-          placeholder="Numéro ou nom du prospect"
-          autocomplete="off"
-        />
-        <button
-          v-if="query"
-          type="button"
-          class="dialer-erase"
-          aria-label="Effacer le dernier caractère"
-          @click="query = query.slice(0, -1)"
-        >
-          <Delete :size="18" />
-        </button>
-      </form>
-      <div class="dialer-pad" aria-label="Pavé numérique">
-        <button v-for="key in keys" :key="key" type="button" @click="press(key)">{{ key }}</button>
-      </div>
-      <button class="primary dialer-search" :disabled="searching || !query.trim()" @click="search">
-        <Search :size="16" />{{ searching ? 'Recherche…' : 'Trouver la fiche' }}
-      </button>
-      <ul v-if="matches" class="dialer-results">
-        <li v-for="row in matches" :key="row.id">
+    <div v-if="!admin && tab === 'compose'" class="compose-layout">
+      <div class="dialer">
+        <header class="dialer-heading">
+          <span class="dialer-symbol"><Phone :size="23" /></span>
           <div>
-            <strong>{{ row.name || 'Prospect sans nom' }}</strong>
-            <span>{{ phoneOf(row) || 'Numéro non renseigné' }}</span>
+            <h2>À qui pensez-vous ?</h2>
+            <p>Retrouvez un prospect par nom ou numéro.</p>
           </div>
+        </header>
+        <form class="dialer-input" @submit.prevent="search">
+          <Search :size="18" />
+          <input
+            v-model="query"
+            aria-label="Numéro ou nom du prospect"
+            placeholder="Numéro ou nom du prospect"
+            autocomplete="off"
+          />
           <button
-            class="primary"
-            :disabled="!phoneOf(row)"
-            @click="emit('openProspect', { id: row.id, mode: 'call' })"
+            v-if="query"
+            type="button"
+            class="dialer-erase"
+            aria-label="Effacer le dernier caractère"
+            @click="query = query.slice(0, -1)"
           >
-            <Phone :size="15" />Appeler
+            <Delete :size="18" />
           </button>
-        </li>
-        <li v-if="!matches.length" class="dialer-empty">
-          Aucune fiche ne correspond. Les prospects s’ajoutent par import depuis l’écran Prospects ;
-          vérifiez le numéro ou cherchez par nom.
-        </li>
-      </ul>
-      <p class="dialer-hint">
-        L’appel se lance toujours depuis la fiche du prospect : contrôles, qualification et
-        historique restent rattachés au bon dossier.
-      </p>
+        </form>
+        <div class="dialer-pad" aria-label="Pavé numérique">
+          <button v-for="key in keys" :key="key" type="button" @click="press(key)">
+            {{ key }}
+          </button>
+        </div>
+        <button
+          class="primary dialer-search"
+          :disabled="searching || !query.trim()"
+          @click="search"
+        >
+          <Search :size="16" />{{ searching ? 'Recherche…' : 'Trouver la fiche' }}
+        </button>
+        <p class="dialer-hint">
+          L’appel se lance toujours depuis la fiche du prospect : contrôles, qualification et
+          historique restent rattachés au bon dossier.
+        </p>
+      </div>
+      <aside class="contact-results" aria-live="polite" :aria-busy="searching">
+        <header>
+          <span class="results-icon"><ContactRound :size="21" /></span>
+          <div>
+            <h2>La bonne fiche, au bon moment</h2>
+            <p>Préparez votre échange sans perdre le fil.</p>
+          </div>
+        </header>
+        <ul v-if="matches" class="dialer-results">
+          <li v-for="row in matches" :key="row.id">
+            <div>
+              <strong>{{ row.name || 'Prospect sans nom' }}</strong>
+              <span>{{ phoneOf(row) || 'Numéro non renseigné' }}</span>
+            </div>
+            <button
+              class="primary"
+              :disabled="!phoneOf(row)"
+              @click="emit('openProspect', { id: row.id, mode: 'call' })"
+            >
+              <Phone :size="15" />Appeler
+            </button>
+          </li>
+          <li v-if="!matches.length" class="dialer-empty">
+            Aucune fiche ne correspond. Les prospects s’ajoutent par import depuis l’écran Prospects
+            ; vérifiez le numéro ou cherchez par nom.
+          </li>
+        </ul>
+
+        <div v-if="matches === null" class="contact-placeholder">
+          <span class="placeholder-orbit"><ContactRound :size="38" /></span>
+          <h3>Votre prochain échange commence ici</h3>
+          <p>
+            Saisissez un nom ou un numéro, puis ouvrez la fiche pour retrouver les informations du
+            prospect et préparer l’appel.
+          </p>
+          <div class="contact-steps">
+            <span>01 · Trouver</span><ArrowRight :size="15" /><span>02 · Échanger</span
+            ><ArrowRight :size="15" /><span>03 · Qualifier</span>
+          </div>
+        </div>
+      </aside>
     </div>
     <div v-else class="calls-history">
       <header class="history-toolbar">
@@ -247,6 +327,7 @@ onMounted(() => {
             </tr>
             <tr v-if="!history.length">
               <td :colspan="admin ? 5 : 4" class="calls-empty">
+                <History :size="28" />
                 {{
                   loading
                     ? 'Chargement…'
@@ -499,6 +580,313 @@ onMounted(() => {
 @media (max-width: 700px) {
   .dialer {
     max-width: none;
+  }
+}
+
+.calls {
+  padding: 28px;
+  gap: 22px;
+  color: #243147;
+}
+.calls-heading,
+.calls-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.calls-heading h1 {
+  margin: 8px 0;
+  font-size: 30px;
+  letter-spacing: -1px;
+  color: #19253a;
+}
+.calls-heading h1 span {
+  color: #8264df;
+}
+.calls-heading p,
+.dialer-heading p,
+.contact-results header p {
+  margin: 0;
+  color: #718096;
+  font-size: 14px;
+}
+.calls-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #8877ad;
+}
+.calls-heading button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: white;
+}
+.calls-tabs {
+  background: #eae8f3;
+  border-radius: 14px;
+  padding: 5px;
+}
+.calls-tabs button {
+  padding: 11px 20px;
+  border-radius: 11px;
+}
+.phone-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #65728a;
+}
+.phone-status i {
+  width: 7px;
+  height: 7px;
+  background: #d99a47;
+  border-radius: 50%;
+}
+.phone-status i.ready {
+  background: #3aab86;
+}
+.calls-notice {
+  border: 0;
+  background: #f0edf9;
+  color: #625580;
+  padding: 13px 18px;
+  font-size: 12px;
+}
+.compose-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+.dialer {
+  max-width: none;
+  padding: 24px;
+  background: white;
+  border: 1px solid #e9e8f0;
+  border-radius: 24px;
+  gap: 18px;
+  box-shadow: 0 8px 30px #24314704;
+}
+.dialer-heading,
+.contact-results header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dialer-heading h2,
+.contact-results h2 {
+  font-size: 17px;
+  margin: 0 0 5px;
+  letter-spacing: -0.3px;
+}
+.dialer-heading p {
+  font-size: 12px;
+}
+.dialer-symbol,
+.results-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  background: #e5f5ef;
+  color: #3a9375;
+  border-radius: 16px;
+}
+.calls .dialer-input {
+  border: 1px solid #e8e7f0;
+  background: #f8f8fc;
+  padding: 0 12px;
+  min-width: 0;
+}
+.calls .dialer-input input {
+  border: 0;
+  box-shadow: none;
+  min-width: 0;
+  width: 100%;
+  font-size: 14px;
+  letter-spacing: 0;
+  background: transparent;
+  padding: 16px 0;
+}
+.dialer-input:focus-within {
+  outline: 2px solid #b7a3e8;
+  outline-offset: 2px;
+}
+.dialer-pad {
+  gap: 10px;
+}
+.dialer-pad button {
+  border: 0;
+  background: #f5f5fa;
+  height: 58px;
+  border-radius: 16px;
+  font-size: 23px;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.dialer-pad button:hover {
+  background: #ece7fa;
+  transform: translateY(-2px);
+}
+.calls .dialer-search {
+  background: #7658cc;
+  color: white;
+  border: 0;
+  border-radius: 14px;
+  min-height: 46px;
+  font-size: 13px;
+}
+.calls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.calls button:focus-visible {
+  outline: 3px solid #b8a4ed;
+  outline-offset: 3px;
+}
+.contact-results {
+  padding: 26px;
+  background: #fff;
+  border: 1px solid #e9e8f0;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.results-icon {
+  background: #eeebfa;
+  color: #8665cd;
+}
+.contact-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 30px 12px;
+  background: radial-gradient(ellipse at center, #f3eefc, transparent 70%);
+}
+.placeholder-orbit {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  border: 14px solid #f3eefb;
+  background: #e9e1f8;
+  border-radius: 36px;
+  color: #8a70b7;
+  transform: rotate(-7deg);
+  margin-bottom: 16px;
+}
+.contact-placeholder h3 {
+  font-size: 19px;
+  margin: 10px 0;
+}
+.contact-placeholder p {
+  max-width: 360px;
+  font-size: 14px;
+  color: #788397;
+  line-height: 1.8;
+}
+.contact-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  color: #8f7aa9;
+  font-size: 11px;
+  margin-top: 20px;
+}
+.dialer-results li {
+  padding: 18px;
+  border-radius: 16px;
+  border-color: #eae8f1;
+  background: #faf9fd;
+}
+.dialer-results li strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.dialer-results button {
+  border-radius: 12px;
+}
+.dialer-hint {
+  line-height: 1.7;
+}
+.calls-history {
+  background: white;
+  border: 1px solid #e9e8f0;
+  padding: 24px;
+  border-radius: 24px;
+  gap: 22px;
+}
+.history-toolbar h3 {
+  font-size: 20px;
+}
+.calls .history-toolbar select {
+  background: #f8f7fc;
+  border-color: #e9e6f1;
+  border-radius: 12px;
+  min-width: 175px;
+}
+.calls-empty {
+  height: 210px;
+}
+.calls-empty svg {
+  display: block;
+  margin: 0 auto 16px;
+  color: #a995ca;
+}
+.calls .table-scroll {
+  border-radius: 16px;
+}
+.calls table th {
+  background: #f6f4fb;
+}
+.calls table td {
+  padding: 18px 14px;
+}
+@media (max-width: 950px) {
+  .compose-layout {
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  }
+  .contact-steps {
+    gap: 6px;
+  }
+  .contact-results {
+    padding: 20px;
+  }
+}
+@media (max-width: 760px) {
+  .calls {
+    padding: 18px;
+  }
+  .calls-heading h1 {
+    font-size: 26px;
+  }
+  .compose-layout {
+    grid-template-columns: 1fr;
+  }
+  .contact-results {
+    min-height: 300px;
+  }
+  .calls-history {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialer-pad button {
+    transition: none;
   }
 }
 </style>

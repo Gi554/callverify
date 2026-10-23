@@ -411,6 +411,7 @@ const roleLabels: Record<string, string> = {
         activeModule === 'overview' &&
         !passwordOpen &&
         !managing,
+      'calls-page-layout': !!user && activeModule === 'calls' && !passwordOpen && !managing,
       'tasks-page-layout':
         !!user &&
         ['setter', 'administrator'].includes(role) &&
