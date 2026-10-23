@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import PortalLogin from './PortalLogin.vue';
+import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
@@ -308,6 +309,8 @@ const navigation = computed(() => {
       items.push({ id: 'qualification', label: 'Vérification des numéros', icon: 'qualification' });
   }
   // Setters and administrators call from a prospect card; administrators keep team history.
+  if (role.value === 'administrator')
+    items.splice(1, 0, { id: 'client-folders', label: 'Dossiers clients', icon: 'agreements' });
   if (['setter', 'administrator'].includes(role.value))
     items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
   return items;
@@ -406,6 +409,8 @@ const roleLabels: Record<string, string> = {
         !managing,
       'advisors-page-layout':
         !!user && activeModule === 'assignments' && role === 'setter' && !passwordOpen && !managing,
+      'folders-page-layout':
+        !!user && activeModule === 'client-folders' && !passwordOpen && !managing,
       'calls-page-layout': !!user && activeModule === 'calls' && !passwordOpen && !managing,
       'tasks-page-layout':
         !!user &&
@@ -484,7 +489,11 @@ const roleLabels: Record<string, string> = {
         />
         <template v-else-if="user">
           <div
-            v-if="activeModule !== 'agenda-settings' || passwordOpen || managing"
+            v-if="
+              !['agenda-settings', 'client-folders'].includes(activeModule) ||
+              passwordOpen ||
+              managing
+            "
             class="amx-heading"
           >
             <div>
@@ -591,8 +600,14 @@ const roleLabels: Record<string, string> = {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
+                  <ClientFolders
+                    v-if="activeModule === 'client-folders' && role === 'administrator'"
+                    :workspace="workspace === 'assurance' ? 'assurance' : 'isolation'"
+                    :request="workspace === 'assurance' ? assurance : isolation"
+                    :portal="portal"
+                  />
                   <CallsCenter
-                    v-if="activeModule === 'calls'"
+                    v-else-if="activeModule === 'calls'"
                     :key="'calls-' + workspace"
                     :workspace="workspace"
                     :role="role"

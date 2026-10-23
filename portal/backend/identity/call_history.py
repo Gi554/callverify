@@ -49,6 +49,13 @@ def history(request, workspace):
         .order_by('-created_at', '-pk')
     )
     administrator = role == 'administrator'
+    contact = request.query_params.get('contact_id', '')
+    if contact:
+        if not administrator:
+            raise PermissionDenied('Filtre par fiche réservé aux administrateurs.')
+        if not contact.isascii() or not contact.isdigit() or len(contact) > 18 or int(contact) < 1:
+            raise ValidationError('Fiche invalide.')
+        rows = rows.filter(contact_id=int(contact))
     if not administrator:
         rows = rows.filter(user=request.user)
     caller = request.query_params.get('user_id', '')

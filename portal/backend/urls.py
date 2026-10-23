@@ -132,3 +132,6 @@ urlpatterns += [
 ]
 
 urlpatterns += [path('api/portal/<str:workspace>/actor-names/', actor_names)]
+from .identity.client_folders import clients as client_folders
+
+urlpatterns += [path('api/portal/<str:workspace>/client-folders/', client_folders)]
