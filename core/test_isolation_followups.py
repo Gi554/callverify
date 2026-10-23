@@ -93,6 +93,17 @@ class FollowUpTests(TestCase):
             2,
         )
 
+    def test_recent_order_lists_newest_reminders_first(self):
+        first = self.task().data
+        second = self.task(revision=1, due_at=(self.due + timedelta(days=2)).isoformat()).data
+
+        def ids(query):
+            return [row['id'] for row in self.client.get('/api/follow-ups/', query).data['results']]
+
+        self.assertEqual(ids({}), [first['id'], second['id']])
+        self.assertEqual(ids({'order': 'recent'}), [second['id'], first['id']])
+        self.assertEqual(self.client.get('/api/follow-ups/', {'order': 'oldest'}).status_code, 400)
+
     def test_results_are_declared_and_do_not_change_lookup_or_commercial_status(self):
         for index, result in enumerate(
             ('voicemail', 'invalid_number', 'disconnected', 'not_interested', 'unreachable')

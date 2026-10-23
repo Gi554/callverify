@@ -4,6 +4,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Bell, X, ArrowRight, Clock3, BellRing } from 'lucide-vue-next';
 const props = defineProps<{
+  workspace: string;
   role: string;
   username: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -20,7 +21,7 @@ const unread = ref(0),
 let known: Set<number> | null = null,
   timer: ReturnType<typeof setInterval> | undefined,
   disposed = false;
-const promptKey = computed(() => `amx-overdue-prompt:${props.username}`);
+const promptKey = computed(() => `amx-overdue-prompt:${props.workspace}:${props.username}`);
 const badge = computed(() => (unread.value > 99 ? '99+' : String(unread.value)));
 const teamWord = computed(() => (props.role === 'administrator' ? 'de l’équipe' : ''));
 function due(row: any) {
@@ -43,16 +44,53 @@ function announce(row: any) {
     }
   }
 }
+const isolation = computed(() => props.workspace === 'isolation');
+const priorities: Record<string, string> = {
+  low: 'basse',
+  normal: 'normale',
+  high: 'haute',
+  urgent: 'urgente',
+};
+// Assurance has a notification inbox with read receipts.
+async function loadAssurance() {
+  const [summary, tasks, list] = await Promise.all([
+    props.request('notifications/summary/'),
+    props.request('follow-ups/summary/'),
+    props.request('notifications/?state=open&unread=true'),
+  ]);
+  unread.value = summary.unread_open;
+  overdue.value = tasks.overdue;
+  return list;
+}
+// Isolation has no inbox: open reminders, newest first, stand in for notifications and the
+// badge counts overdue reminders.
+async function loadIsolation() {
+  const [late, list] = await Promise.all([
+    props.request('follow-ups/?state=overdue'),
+    props.request('follow-ups/?state=open&order=recent'),
+  ]);
+  overdue.value = late.count;
+  unread.value = late.count;
+  return {
+    results: list.results.map((row: any) => ({
+      id: row.id,
+      label: 'Rappel à effectuer',
+      contact_name: row.prospect_name,
+      priority: '',
+      late: row.overdue,
+      due_at: row.due_at,
+    })),
+  };
+}
+const badgeLabel = computed(() =>
+  isolation.value
+    ? `${unread.value} rappel(s) en retard`
+    : `${unread.value} notification(s) non lue(s)`,
+);
 async function refresh() {
   try {
-    const [summary, tasks, list] = await Promise.all([
-      props.request('notifications/summary/'),
-      props.request('follow-ups/summary/'),
-      props.request('notifications/?state=open&unread=true'),
-    ]);
+    const list = isolation.value ? await loadIsolation() : await loadAssurance();
     if (disposed) return;
-    unread.value = summary.unread_open;
-    overdue.value = tasks.overdue;
     recent.value = list.results.slice(0, 6);
     // The first load only remembers what exists: banners are for notifications arriving later.
     if (known) for (const row of list.results) if (!known.has(row.id)) announce(row);
@@ -79,7 +117,7 @@ async function openTask(row: any) {
   banners.value = banners.value.filter((item) => item.id !== row.id);
   open.value = false;
   try {
-    await props.request(`notifications/${row.id}/read/`, {});
+    if (!isolation.value) await props.request(`notifications/${row.id}/read/`, {});
   } catch {
     /* Reading is optional: the task stays open until it is closed. */
   }
@@ -119,8 +157,8 @@ onBeforeUnmount(() => {
       type="button"
       class="alerts-bell"
       :aria-expanded="open"
-      :aria-label="unread ? `${unread} notification(s) non lue(s)` : 'Notifications'"
-      :title="unread ? `${unread} notification(s) non lue(s)` : 'Notifications'"
+      :aria-label="unread ? badgeLabel : 'Notifications'"
+      :title="unread ? badgeLabel : 'Notifications'"
       @click="open = !open"
     >
       <Bell :size="22" /><span v-if="unread" class="alerts-badge">{{ badge }}</span>
@@ -142,12 +180,17 @@ onBeforeUnmount(() => {
           <button type="button" @click="openTask(row)">
             <strong>{{ row.label }}</strong>
             <span>{{ prospect(row) }}</span>
-            <small :class="row.priority"
-              >Échéance {{ due(row) }} · priorité {{ row.priority }}</small
+            <small :class="[row.priority, { high: row.late }]"
+              >Échéance {{ due(row)
+              }}<template v-if="row.priority">
+                · priorité {{ priorities[row.priority] || row.priority }}</template
+              ><template v-if="row.late"> · en retard</template></small
             >
           </button>
         </li>
-        <li v-if="!recent.length" class="alerts-empty">Aucune nouvelle notification.</li>
+        <li v-if="!recent.length" class="alerts-empty">
+          {{ isolation ? 'Aucun rappel ouvert.' : 'Aucune nouvelle notification.' }}
+        </li>
       </ul>
       <footer>
         <button type="button" class="secondary" @click="goToTasks">Voir mes tâches</button>

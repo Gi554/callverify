@@ -438,15 +438,13 @@ const roleLabels: Record<string, string> = {
       @access="openAccess"
       @logout="logout"
     >
-      <template
-        v-if="user && workspace === 'assurance' && ['setter', 'administrator'].includes(role)"
-        #alerts
-      >
+      <template v-if="user && workspace && ['setter', 'administrator'].includes(role)" #alerts>
         <TaskAlerts
           :key="workspace + user.username"
+          :workspace="workspace"
           :role="role"
           :username="user.username"
-          :request="assurance"
+          :request="workspace === 'assurance' ? assurance : isolation"
           @navigate="selectModule"
         />
       </template>

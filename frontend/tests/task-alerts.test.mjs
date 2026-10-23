@@ -104,12 +104,13 @@ function environment({ permission = 'default', hidden = false } = {}) {
   globalThis.clearInterval = () => {}
   return { store, shown, tick: async () => (ticks.at(-1)(), await flush()) }
 }
-function fixture(state, options) {
+function fixture(state, options, workspace = 'assurance') {
   const env = environment(options)
   const root = { children: [] },
     requests = [],
     navigations = []
   const app = renderer.createApp(component, {
+    workspace,
     role: 'setter',
     username: 'setter.demo01',
     request: async (path, body) => {
@@ -117,6 +118,8 @@ function fixture(state, options) {
       if (path === 'notifications/summary/') return { unread_open: state.unread.length }
       if (path === 'follow-ups/summary/') return { overdue: state.overdue }
       if (path.startsWith('notifications/?')) return { results: state.unread }
+      if (path === 'follow-ups/?state=overdue') return { count: state.overdue, results: [] }
+      if (path === 'follow-ups/?state=open&order=recent') return { results: state.reminders }
       return {}
     },
     onNavigate: (value) => navigations.push(value),
@@ -173,13 +176,46 @@ test('overdue tasks prompt once per session and lead to the task board', async (
   try {
     await flush()
     assert.match(text(f.root), /3 tâche\(s\)\s+en retard/)
-    assert.equal(f.store.get('amx-overdue-prompt:setter.demo01'), '1')
+    assert.equal(f.store.get('amx-overdue-prompt:assurance:setter.demo01'), '1')
     button(f, /Traiter maintenant/).props.onClick()
     await flush()
     assert.deepEqual(f.navigations, ['followups'])
     assert.equal(button(f, /Traiter maintenant/), undefined)
     await f.tick()
     assert.equal(button(f, /Traiter maintenant/), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('Isolation alerts come from reminders without read receipts', async () => {
+  const reminder = (id, name, overdue = false) => ({
+    id,
+    prospect_name: name,
+    due_at: '2026-10-24T14:00:00Z',
+    overdue,
+  })
+  const state = { unread: [], overdue: 1, reminders: [reminder(5, 'Maison Gamma', true)] }
+  const f = fixture(state, { permission: 'granted', hidden: true }, 'isolation')
+  try {
+    await flush()
+    const bell = all(f.root).find((n) => String(n.props?.class).includes('alerts-bell'))
+    assert.equal(bell.props['aria-label'], '1 rappel(s) en retard')
+    assert.equal(f.store.get('amx-overdue-prompt:isolation:setter.demo01'), '1')
+    assert.ok(!f.requests.some(([path]) => path.startsWith('notifications')))
+    state.reminders = [reminder(6, 'Maison Delta'), ...state.reminders]
+    await f.tick()
+    assert.match(text(f.root), /Nouvelle tâche · Rappel à effectuer/)
+    assert.deepEqual(f.shown, [['AMX · Rappel à effectuer', 'Maison Delta']])
+    bell.props.onClick()
+    await flush()
+    assert.match(text(f.root), /Maison Gamma/)
+    assert.match(text(f.root), /en retard/)
+    assert.doesNotMatch(text(f.root), /priorité/)
+    button(f, /Maison Gamma/).props.onClick()
+    await flush()
+    assert.ok(!f.requests.some(([path]) => path.includes('/read/')))
+    assert.deepEqual(f.navigations, ['followups'])
   } finally {
     f.close()
   }
