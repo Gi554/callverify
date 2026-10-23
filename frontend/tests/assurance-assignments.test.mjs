@@ -106,7 +106,8 @@ function fixture(role = 'administrator') {
     role,
     request: async (path, body, method) => {
       requests.push([path, body, method])
-      if (path === 'advisor-usage/') return { results: [{ advisor_id: 31, booked: 3 }] }
+      if (path === 'advisor-usage/')
+        return { results: [{ advisor_id: 31, booked: 3, attended: 3 }] }
       if (path.includes('/history/'))
         return {
           count: 2,

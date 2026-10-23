@@ -19,6 +19,7 @@ import AssuranceAgreementAlerts from './AssuranceAgreementAlerts.vue';
 import AssuranceAssignments from './AssuranceAssignments.vue';
 import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue';
 import AssuranceAppointments from './AssuranceAppointments.vue';
+import AssuranceAdvisorProspects from './AssuranceAdvisorProspects.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import IsolationTasksBoard from './IsolationTasksBoard.vue';
 import IsolationCloserVisits from './IsolationCloserVisits.vue';
@@ -263,7 +264,10 @@ const activeModule = computed(() =>
 const navigation = computed(() => {
   if (!workspace.value) return [];
   if (workspace.value === 'assurance' && role.value === 'advisor')
-    return [{ id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' }];
+    return [
+      { id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' },
+      { id: 'contacts', label: 'Mes prospects', icon: 'contacts' },
+    ];
   if (role.value === 'closer')
     return [
       { id: 'overview', label: 'Mes visites', icon: 'appointments' },
@@ -606,6 +610,12 @@ const roleLabels: Record<string, string> = {
                       :request="assurance"
                       :role="role"
                       @imported="summary.contacts = $event"
+                    />
+                    <AssuranceAdvisorProspects
+                      v-else-if="assuranceModule === 'contacts' && role === 'advisor'"
+                      :portal="portal"
+                      :request="assurance"
+                      :username="user.username"
                     />
                     <AssuranceContacts
                       v-else-if="assuranceModule === 'contacts'"

@@ -236,6 +236,7 @@ function closeDetail() {
   if (advisorDetail.value && !advisorDetail.value.close()) return;
   selected.value = null;
   void load();
+  void loadOwnQuota();
 }
 watch([month, zone, status, member], load, { immediate: true });
 // The advisor's countdown: prospects still owed to their client out of the quota.
@@ -292,7 +293,10 @@ onBeforeUnmount(() => {
         ><span>{{
           ownQuota.remaining ? 'prospect(s) restant(s) à recevoir' : 'Quota de prospects atteint'
         }}</span
-        ><small>{{ ownQuota.booked }} rendez-vous réservé(s) sur {{ ownQuota.quota }}</small>
+        ><small
+          >{{ ownQuota.attended }} rendez-vous tenu(s) sur {{ ownQuota.quota }} · Les absences ne
+          sont pas décomptées</small
+        >
       </div>
       <ProspectExport
         v-if="assurance && role === 'advisor'"
@@ -345,7 +349,10 @@ onBeforeUnmount(() => {
             class="calendar-icon-button"
             :disabled="busy"
             aria-label="Actualiser le calendrier"
-            @click="load"
+            @click="
+              load();
+              loadOwnQuota();
+            "
           >
             <RefreshCw :size="16" />
           </button>
@@ -518,7 +525,10 @@ onBeforeUnmount(() => {
         :appointment-id="selected.id"
         :request="request"
         @busy="detailBusy = $event"
-        @updated="selected = $event" /><AssuranceAppointments
+        @updated="
+          selected = $event;
+          loadOwnQuota();
+        " /><AssuranceAppointments
         v-else-if="selected && assurance"
         :key="selected.id"
         :appointment-id="selected.id"

@@ -1,6 +1,16 @@
 # Suivi des livraisons CRM AMX
 
-## Quota de prospects du conseiller et décompte
+## Mes prospects du conseiller et décompte sur les présences uniquement
+
+Le conseiller dispose désormais d’un onglet « Mes prospects » : liste personnelle paginée (25 lignes), recherche nom/téléphone/courriel, total des clients distincts attribués, nombre de rendez-vous tenus, absences et reste sur l’objectif fixé par l’administration. Un dossier lié à un rendez-vous s’ouvre dans le panneau existant pour consulter/modifier la fiche et son résultat. Un prospect directement attribué sans rendez-vous est listé, sans inventer de rendez-vous ni de qualification. Une fiche explicitement réattribuée à un autre conseiller sort de ce portefeuille ; les dossiers historiques sans attribution explicite restent liés à leurs rendez-vous.
+
+Correction de la règle précédente : l’objectif n’est plus consommé à la réservation. Seuls les rendez-vous non annulés avec présence explicitement confirmée (`report.performed=True`) consomment une unité. Absence, rendez-vous non tenu, planifié, en attente de résultat ou annulé : zéro unité. Une correction du résultat recalcule le compteur ; enregistrer deux fois le même résultat ne le double pas. Le reste est borné à zéro, l’objectif n’interdit pas de dépasser. Cette règle est commune à l’agenda, au choix du conseiller lors de la réservation et à la liste des affectations. L’usage d’un conseiller est limité à lui-même dans son API ; setters/administrateurs conservent leur vue de préparation des réservations.
+
+Vérifications : tests backend de présence/absence/annulation, correction aller-retour et répétition, droits, unicité des prospects, recherche, pagination et réattribution ; tests frontend du calcul (réservations différentes des présences), des compteurs et de la pagination, et suites existantes de réservation/affectation/calendrier ; typage, ESLint, Prettier, Ruff et build.
+
+Limites : pas de période ni de remise à zéro par lot : tous les rendez-vous historiques tenus comptent. Plusieurs rendez-vous tenus pour le même client consomment plusieurs unités, tandis que la liste affiche des clients distincts. Le quota reste une information, sans blocage automatique des réservations. La connexion d’agenda et le paramétrage des disponibilités constituent le lot suivant.
+
+## Historique — quota initial et ancien décompte à la réservation
 
 Lorsqu’il invite un conseiller Assurance ou lui crée un compte, l’administrateur doit saisir le « Nombre de prospects à fournir » au client de ce conseiller : le champ est obligatoire dans les deux formulaires dès que le rôle Conseiller est choisi. Une invitation conserve ce quota jusqu’à son acceptation, puis le transmet à l’accès créé. L’écran Utilisateurs et accès permet de le modifier ou de l’effacer. Un conseiller qui change de rôle perd son quota. Toutes ces opérations sont journalisées, avec les valeurs avant et après.
 
