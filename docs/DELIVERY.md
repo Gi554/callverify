@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Mes conseillers — disposition annuaire selon référence
+
+La présentation setter reprend la référence fournie : fond gris bleuté, bandeau de recherche intégré, filtres nom/association, compteur des résultats, grille de trois cartes sur grand écran (deux puis une sur petit écran), identité par initiales et boutons bleus arrondis. Les quotas, états et rendez-vous tenus proviennent des données existantes. Aucun portrait, tarif, avis ou indicateur de disponibilité horaire fictif. Le bouton « Préparer un rendez-vous » ouvre les prospects : la réservation reste effectuée depuis une fiche et le conseiller doit y être sélectionné. Les associations suspendues ne proposent pas cette action. Administration conservée.
+
+Validation : tests associations et navigation/filtre setter, typage, ESLint, Prettier, build, contrôles GitHub. Aucun appel ni rendez-vous déclenché. Contrôle visuel navigateur non effectué : accès au navigateur local désactivé dans Work.
+
+
 ## Mes conseillers — présentation setter
 
 La liste setter Assurance utilise des cartes sans photo, avec nom, association active/suspendue et objectif du conseiller : quota restant, rendez-vous tenus et progression. Les objectifs non définis, en chargement ou indisponibles sont distingués. Le total compte les associations accessibles ; recherche et pagination restent côté serveur. Les absences ne consomment pas le quota ; la progression est celle du conseiller, non une statistique personnelle du setter. Présentation lavande/menthe cohérente avec l’accueil et Appels, grille adaptative et état vide. Le tableau administratif, ses commandes et panneaux restent disponibles.
