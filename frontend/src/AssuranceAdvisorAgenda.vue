@@ -46,6 +46,15 @@ function close() {
   if (!busy.value && (!dirty.value || confirm('Abandonner les horaires non enregistrés ?')))
     draft.value = null;
 }
+async function reloadDraft() {
+  if (
+    busy.value ||
+    (dirty.value && !confirm('Abandonner les saisies et recharger les horaires actuels ?'))
+  )
+    return;
+  draft.value = null;
+  await load();
+}
 function add(day: number) {
   draft.value.windows.push({ weekday: day, start: '09:00', end: '17:00' });
 }
@@ -138,7 +147,12 @@ onMounted(load);
     >
       <form v-if="draft" class="hours-form" @submit.prevent="save">
         <fieldset :disabled="busy">
-          <p v-if="error" role="alert">{{ error }}</p>
+          <p v-if="error" role="alert">
+            {{ error }}
+            <button type="button" :disabled="busy" @click="reloadDraft">
+              Recharger les horaires
+            </button>
+          </p>
           <label class="hours-toggle"
             ><input v-model="draft.enabled" type="checkbox" />Appliquer mes horaires aux
             réservations</label

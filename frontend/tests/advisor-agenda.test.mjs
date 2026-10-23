@@ -150,6 +150,7 @@ test('a stale weekly schedule keeps the draft open for correction', async () => 
     await flush()
     assert.match(text(f.root), /Disponibilités modifiées/)
     assert.ok(button(f, 'Enregistrer mes disponibilités'))
+    assert.ok(button(f, 'Recharger les horaires'))
   } finally {
     f.close()
   }
