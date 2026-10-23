@@ -348,7 +348,7 @@ onBeforeUnmount(() => {
                 >
                   <Pencil :size="15" /></button
                 ><button
-                  v-if="role === 'setter'"
+                  v-if="['setter', 'administrator'].includes(role)"
                   class="phone-button"
                   :disabled="!row.phone && !row.raw_phone"
                   :aria-label="'Préparer l’appel vers ' + (row.phone || row.raw_phone)"
@@ -425,7 +425,7 @@ onBeforeUnmount(() => {
       :close-disabled="activityBusy || callPending"
       @request-close="activityPanel?.close()"
       ><CallAction
-        v-if="activity && role === 'setter'"
+        v-if="activity && ['setter', 'administrator'].includes(role)"
         workspace="isolation"
         :resource-id="activity.id"
         :phone="activity.phone || activity.raw_phone"

@@ -34,14 +34,13 @@ class Unavailable(APIException):
     default_detail = 'Appels Phonetico non activés.'
 
 
-def setter(user, workspace='assurance'):
-    if (
-        not user.is_active
-        or not Membership.objects.filter(
-            user=user, workspace=workspace, role='setter', active=True
-        ).exists()
-    ):
-        raise PermissionDenied('Setter actif requis dans cet espace.')
+def caller_access(user, workspace='assurance'):
+    member = Membership.objects.filter(
+        user=user, workspace=workspace, role__in=('setter', 'administrator'), active=True
+    ).first()
+    if not user.is_active or member is None:
+        raise PermissionDenied('Setter ou administrateur actif requis dans cet espace.')
+    return member
 
 
 def output(row):
@@ -87,7 +86,10 @@ def eligible(user, claims, proof, workspace='assurance'):
         with requests.post(
             base + path,
             json={'proof': proof},
-            headers={'Authorization': 'Bearer ' + access_ticket(user.pk, workspace, 'setter')},
+            headers={
+                'Authorization': 'Bearer '
+                + access_ticket(user.pk, workspace, caller_access(user, workspace).role)
+            },
             timeout=(5, 5),
             allow_redirects=False,
             stream=True,
@@ -111,7 +113,7 @@ class Input(serializers.Serializer):
 
 @api_view(['POST'])
 def calls(request, workspace='assurance'):
-    setter(request.user, workspace)
+    caller_access(request.user, workspace)
     if request.query_params:
         raise ValidationError('Paramètres interdits.')
     serializer = Input(data=request.data)
@@ -129,7 +131,7 @@ def calls(request, workspace='assurance'):
             .update(password=F('password'))
         ):
             raise PermissionDenied('Compte indisponible.')
-        setter(request.user, workspace)
+        caller_access(request.user, workspace)
         row = PhoneCallAttempt.objects.filter(pk=claims['request_id']).first()
         if row:
             if (
@@ -207,7 +209,7 @@ def calls(request, workspace='assurance'):
 
 @api_view(['GET'])
 def options(request, workspace='assurance'):
-    setter(request.user, workspace)
+    caller_access(request.user, workspace)
     enabled = bool(
         settings.NEWT_CALLS_ENABLED
         and (workspace != 'isolation' or settings.NEWT_ISOLATION_CALLS_ENABLED)
@@ -222,7 +224,7 @@ def options(request, workspace='assurance'):
 
 @api_view(['GET'])
 def status(request, request_id, workspace='assurance'):
-    setter(request.user, workspace)
+    caller_access(request.user, workspace)
     return reply(
         get_object_or_404(PhoneCallAttempt, pk=request_id, user=request.user, workspace=workspace)
     )

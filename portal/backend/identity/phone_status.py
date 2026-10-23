@@ -35,10 +35,14 @@ def status(request, workspace, pk):
             for space in ('assurance', 'isolation'):
                 require_admin(request.user, space)
             member = Membership.objects.filter(
-                pk=pk, workspace=workspace, role='setter', active=True, user__is_active=True
+                pk=pk,
+                workspace=workspace,
+                role__in=('setter', 'administrator'),
+                active=True,
+                user__is_active=True,
             ).first()
             if member is None:
-                raise ValidationError('Setter actif introuvable dans cet espace')
+                raise ValidationError('Appelant actif introuvable dans cet espace')
             # Serialize with reassignment; never take the post from the browser.
             from django.contrib.auth import get_user_model
 

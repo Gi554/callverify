@@ -31,7 +31,10 @@ def assignments(request, workspace):
     require_admin(request.user, workspace)
     targets = (
         Membership.objects.filter(workspace=workspace)
-        .filter(Q(role='setter') | Q(user__phoneextension__extension__isnull=False))
+        .filter(
+            Q(role__in=('setter', 'administrator'))
+            | Q(user__phoneextension__extension__isnull=False)
+        )
         .select_related('user')
         .order_by('pk')
     )
@@ -47,7 +50,9 @@ def assignments(request, workspace):
                 {
                     'membership_id': row.pk,
                     'username': row.user.username,
-                    'eligible': row.role == 'setter' and row.active and row.user.is_active,
+                    'eligible': row.role in ('setter', 'administrator')
+                    and row.active
+                    and row.user.is_active,
                     'extension': (links[row.user_id].extension or '')
                     if row.user_id in links
                     else '',
@@ -64,18 +69,20 @@ def assignments(request, workspace):
             lock_admin(request.user, workspace)
             target = targets.filter(pk=data['membership_id']).first()
             if target is None:
-                raise ValidationError('Setter introuvable dans cet espace')
+                raise ValidationError('Utilisateur appelant introuvable dans cet espace')
             get_user_model().objects.filter(pk=target.user_id).update(password=F('password'))
             target.user.refresh_from_db()
             # A physical post is global to a user, so other-space admins must not change it.
             other = (
-                Membership.objects.filter(user=target.user, role='setter', active=True)
+                Membership.objects.filter(
+                    user=target.user, role__in=('setter', 'administrator'), active=True
+                )
                 .exclude(workspace=workspace)
                 .exists()
             )
             if other:
                 for space in Membership.objects.filter(
-                    user=target.user, role='setter', active=True
+                    user=target.user, role__in=('setter', 'administrator'), active=True
                 ).values_list('workspace', flat=True):
                     require_admin(request.user, space)
             link = PhoneExtension.objects.filter(user=target.user).first()
@@ -89,8 +96,12 @@ def assignments(request, workspace):
                     ):
                         raise ValidationError('Association modifiée : actualisez')
                 else:
-                    if target.role != 'setter' or not target.active or not target.user.is_active:
-                        raise ValidationError('Setter actif requis')
+                    if (
+                        target.role not in ('setter', 'administrator')
+                        or not target.active
+                        or not target.user.is_active
+                    ):
+                        raise ValidationError('Setter ou administrateur actif requis')
                     if not PhoneExtension.objects.filter(pk=link.pk, revision=link.revision).update(
                         extension=data['extension'], revision=F('revision') + 1
                     ):
@@ -98,8 +109,12 @@ def assignments(request, workspace):
             else:
                 if data.get('revision') is not None or data['remove']:
                     raise ValidationError('Association absente : actualisez')
-                if target.role != 'setter' or not target.active or not target.user.is_active:
-                    raise ValidationError('Setter actif requis')
+                if (
+                    target.role not in ('setter', 'administrator')
+                    or not target.active
+                    or not target.user.is_active
+                ):
+                    raise ValidationError('Setter ou administrateur actif requis')
                 PhoneExtension.objects.create(user=target.user, extension=data['extension'])
             AccessAudit.objects.create(
                 user=request.user,

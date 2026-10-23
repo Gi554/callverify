@@ -75,6 +75,31 @@ class PhoneCallsTests(TestCase):
                 self.assertNotIn('1514', value)
         self.assertEqual(AccessAudit.objects.filter(action='phone.call_reserved').count(), 1)
 
+    def test_administrator_calls_with_own_extension_and_same_one_shot_guards(self):
+        self.membership.role = 'administrator'
+        self.membership.save()
+        self.assertEqual(
+            self.client.get(self.url + 'options/').data, {'enabled': True, 'post_associated': True}
+        )
+        self.assertEqual(self.post().status_code, 200)
+        self.assertEqual(self.post().status_code, 200)
+        self.provider.assert_called_once_with(
+            'synthetic-user', 'synthetic-secret', '501', '15145550101'
+        )
+        self.assertEqual(PhoneCallAttempt.objects.get().user, self.user)
+        self.membership.active = False
+        self.membership.save()
+        self.assertEqual(self.client.get(self.url + str(self.key) + '/').status_code, 403)
+        self.assertEqual(self.post().status_code, 403)
+
+    def test_administrator_without_extension_cannot_borrow_another_post(self):
+        self.membership.role = 'administrator'
+        self.membership.save()
+        PhoneExtension.objects.filter(user=self.user).delete()
+        self.assertEqual(self.post().status_code, 400)
+        self.assertEqual(self.client.get(self.url + 'options/').data['post_associated'], False)
+        self.provider.assert_not_called()
+
     def test_timeout_or_crash_is_not_retried(self):
         self.provider.side_effect = RuntimeError('private provider error')
         self.assertEqual(self.post().data['state'], 'unknown')
@@ -103,7 +128,7 @@ class PhoneCallsTests(TestCase):
             self.assertEqual(self.post().status_code, 503)
         PhoneExtension.objects.all().delete()
         self.assertEqual(self.post().status_code, 400)
-        for role in ('advisor', 'administrator'):
+        for role in ('advisor',):
             Membership.objects.filter(pk=self.membership.pk).update(role=role)
             self.assertEqual(self.post().status_code, 403)
         self.assertFalse(PhoneCallAttempt.objects.exists())
@@ -162,6 +187,16 @@ class PhoneCallsTests(TestCase):
             self.assertTrue(post.call_args.args[0].endswith('/contacts/42/call-intent-check/'))
             self.assertFalse(post.call_args.kwargs['allow_redirects'])
             self.assertTrue(post.call_args.kwargs['headers']['Authorization'].startswith('Bearer '))
+        self.membership.role = 'administrator'
+        self.membership.save()
+        with patch(
+            'portal.backend.identity.phone_calls.requests.post', return_value=response
+        ) as post:
+            self.assertTrue(eligible(self.user, verify(self.proof, self.user.pk), self.proof))
+            from packages.access.tickets import verify as verify_access
+
+            bearer = post.call_args.kwargs['headers']['Authorization'].split()[1]
+            self.assertEqual(verify_access(bearer, 'assurance')['role'], 'administrator')
         response.raw.read.return_value = b'bad'
         with patch('portal.backend.identity.phone_calls.requests.post', return_value=response):
             self.assertFalse(eligible(self.user, verify(self.proof, self.user.pk), self.proof))

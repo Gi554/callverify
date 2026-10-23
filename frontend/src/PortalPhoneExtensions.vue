@@ -87,8 +87,8 @@ onMounted(load);
     <p>
       Association locale uniquement, aucun appel. La consultation facultative de l’annuaire
       ci-dessous utilise exclusivement la fonction 343. Un poste par compte, unique sur ce
-      déploiement. Vérifiez le numéro dans votre PBX. Pour un setter actif dans les deux espaces, la
-      modification exige les droits administrateur dans les deux.
+      déploiement. Vérifiez le numéro dans votre PBX. Pour un setter ou administrateur actif dans
+      les deux espaces, la modification exige les droits administrateur dans les deux.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
@@ -97,7 +97,9 @@ onMounted(load);
         <strong>{{ row.username }}</strong>
         <p>
           {{
-            row.eligible ? 'Setter actif' : 'Accès ou compte suspendu : retrait possible uniquement'
+            row.eligible
+              ? 'Setter ou administrateur actif'
+              : 'Accès ou compte suspendu : retrait possible uniquement'
           }}
         </p>
         <label
