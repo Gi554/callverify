@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Présentation de la page Appels
+
+Page commune Assurance/Isolation : en-tête propre, tons lavande et menthe cohérents avec l’accueil, composition en deux panneaux (pavé numérique et résultats), état vide explicatif et historique en carte. Le parcours reste une recherche de fiche puis ouverture du prospect ; aucun appel automatique ajouté. Adaptation en une colonne sur petit écran, focus clavier et réduction des animations. Aucun indicateur fictif.
+
+Validation : tests existants de recherche, ouverture de fiche, historique et droits ; typage, lint et build frontend. Contrôle visuel navigateur non effectué : accès navigateur local désactivé dans Work. Le journal des durées NEWT, livré séparément, est conservé.
+
 ## Appels — durée réelle via le journal NEWT 511
 
 L’historique des appels affiche une colonne « Durée », renseignée à partir du journal NEWT (fonction 511). Ce journal est en heure de Montréal ; ses colonnes From, To, Description, DNID, Date, Time, Duration et Amount ont été confirmées par NEWT.
