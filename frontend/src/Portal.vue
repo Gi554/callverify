@@ -314,7 +314,7 @@ const navigation = computed(() => {
     if (role.value === 'administrator')
       items.push({ id: 'qualification', label: 'Vérification des numéros', icon: 'qualification' });
   }
-  // Calls: setters dial from a prospect card, administrators read the team history.
+  // Setters and administrators call from a prospect card; administrators keep team history.
   if (['setter', 'administrator'].includes(role.value))
     items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
   return items;

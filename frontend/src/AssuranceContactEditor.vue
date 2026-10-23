@@ -432,7 +432,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <CallAction
-          v-if="role === 'setter' && token"
+          v-if="canWrite && token"
           :auto-open="workflow === 'call'"
           @busy="callBusy = $event"
           workspace="assurance"
@@ -762,7 +762,7 @@ onBeforeUnmount(() => {
             </button></template
           >
           <CallAction
-            v-if="role === 'setter' && (!workflow || !!token)"
+            v-if="canWrite && (!workflow || !!token)"
             :auto-open="workflow === 'call'"
             @busy="callBusy = $event"
             workspace="assurance"

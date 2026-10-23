@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Appels sortants pour les administrateurs
+
+Les administrateurs actifs peuvent préparer et confirmer leur propre appel dans Assurance et Isolation : icône de téléphone de l’en-tête, boutons sur les prospects, action de la fiche et onglet Composer dans Appels. Leur historique d’équipe reste accessible. Ils doivent disposer de leur propre poste NEWT, configurable dans l’association des postes (qui accepte désormais setters et administrateurs). Aucun poste d’un setter n’est utilisé implicitement. Les règles de modification d’un poste partagé entre espaces exigent les droits administrateur dans chaque espace concerné. Le diagnostic de poste accepte aussi les postes des administrateurs.
+
+Le serveur transmet le rôle effectif au service métier pour la vérification finale, sans déguiser l’administrateur en setter. Assurance conserve un verrou de fiche personnel et la révision ; Isolation permet l’appel d’un prospect du périmètre administratif sans réattribution, tout en conservant autorisation, exclusions, numéro utilisable et révision. Les autres rôles restent refusés. Confirmation explicite, activation serveur, preuve liée à l’acteur, déduplication, délai entre commandes, audit et vérification du résultat restent inchangés. Les identifiants NEWT ne sont ni ajoutés ni exposés.
+
+Validation : 236 tests portail (11 ignorés sur SQLite), 6 tests de preuve Assurance, 7 de preuve Isolation, 108 tests frontend sur le lot isolé ; rôle réel de la vérification, poste propre ou absent, accès révoqué, droits multi-espaces, non-vol du verrou, conservation du setter assigné et exclusion tardive. Typage, ESLint, Ruff, Prettier, build. Aucun appel réel ni lecture réelle du fournisseur. Pas de recette navigateur (accès local désactivé). GitHub Actions ne démarre pas ses jobs (paiement/plafond du compte) ; les validations locales sont conservées dans la PR. Les appels effectifs nécessitent toujours les secrets et l’activation NEWT ; la démo reste sans appel réel.
+
+
 ## Statistiques — tableau de bord (indicateurs, tendances, anneau et histogramme)
 
 Les pages Statistiques Assurance et Isolation adoptent une présentation de tableau de bord :

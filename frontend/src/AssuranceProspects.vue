@@ -264,7 +264,6 @@ onBeforeUnmount(() => {
                   >
                     <Pencil :size="15" /></button
                   ><button
-                    v-if="!admin"
                     class="phone-button"
                     :disabled="opening || !row.phone"
                     :aria-label="'Préparer l’appel vers ' + row.phone"

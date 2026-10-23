@@ -126,14 +126,14 @@ const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-componen
 const callButtons = (f) =>
   all(f.root).filter((n) => String(n.props?.['aria-label'] || '').startsWith('Préparer l’appel'))
 
-test('administrator sees the team board without call commands', async () => {
+test('administrator sees the team board with call preparation', async () => {
   const f = fixture()
   try {
     await flush()
     assert.match(text(f.root), /ÉQUIPE ASSURANCE/)
     assert.match(text(f.root), /Tous les prospects de l’équipe/)
     assert.match(text(f.root), /Dossier Alpha/)
-    assert.equal(callButtons(f).length, 0)
+    assert.equal(callButtons(f).length, 1)
     assert.ok(all(f.root).some((n) => /Modifier le numéro/.test(n.props?.['aria-label'] || '')))
     assert.equal(component_(f, 'AssuranceContacts'), undefined)
   } finally {
