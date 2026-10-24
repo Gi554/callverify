@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Vérification du domaine pour Google Search Console
+
+Ajout du fichier de vérification Google à la racine publique (), servi tel quel par Nginx sans session, afin de prouver la propriété de orvia-crm.com avant la validation de l’écran de consentement OAuth. Le fichier ne contient aucun secret. Limite : la validation elle-même se fait dans Search Console après déploiement.
+
 ## Import de contacts visible pour l’administrateur Assurance
 
 Sur la page Prospects, l’administrateur voit désormais un bouton « Importer des contacts » en haut à droite : il ouvre directement l’écran d’import (CSV ou Excel) sans passer par « Liste et imports ». Quand le tableau est vide, un message l’invite à importer une liste avec le même bouton. Les setters et conseillers ne voient pas ce bouton. Limite : aucun changement du format d’import ni des règles de dédoublonnage ; revue esthétique reportée à la revue finale.
