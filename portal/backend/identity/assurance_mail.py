@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from packages.access.mail_bridge import issue
 from .models import Membership, AssuranceMailRelay, AssuranceMailCursor
+from .email_layout import layout
 
 STREAMS = {
     'incidents': (1, 'mail-events', 'events', 'eligible', 'assurance_follow_up'),
@@ -142,17 +143,32 @@ def sync(stream='incidents'):
                 counts['already_queued'] += 1
                 continue
             intro = (
-                'Un rappel nécessite votre attention dans AMX Assurance.'
+                'Un rappel nécessite votre attention dans votre espace Assurance.'
                 if stream == 'reminders'
-                else 'Un signalement nécessite votre suivi dans AMX Assurance.'
+                else 'Un signalement nécessite votre suivi dans votre espace Assurance.'
             )
             if stream == 'escalations':
-                intro = 'Une situation durablement en attente nécessite votre supervision dans AMX Assurance.'
+                intro = 'Une situation durablement en attente nécessite votre supervision dans votre espace Assurance.'
+            title = {
+                'reminders': 'Votre prochain suivi vous attend',
+                'incidents': 'Un suivi nécessite votre attention',
+                'escalations': 'Une situation attend votre supervision',
+            }[stream]
+            notice = 'La lecture de cet e-mail ne clôture aucune tâche et ne renseigne aucun compte rendu. Retrouvez les détails uniquement après connexion à votre espace autorisé.'
             relay.mail = enqueue(
                 user=user,
                 workspace='assurance',
-                subject='AMX Assurance — Un suivi nécessite votre attention',
-                body=f'{intro}\nConnectez-vous au CRM pour consulter vos notifications, rendez-vous et tâches.\n\n{public_url()}/crm\n\nLa lecture de cet e-mail ne clôture aucune tâche et ne renseigne aucun compte rendu.',
+                subject=f'Orvia CRM · Assurance — {title}',
+                body=f'Bonjour,\n\n{intro}\nConnectez-vous au CRM pour consulter vos notifications, rendez-vous et tâches.\n\n{public_url()}/crm\n\n{notice}\n\nOrvia CRM',
+                html=layout(
+                    title=title,
+                    intro=intro
+                    + ' Connectez-vous pour consulter vos notifications, rendez-vous et tâches.',
+                    action='Consulter mon espace',
+                    url=f'{public_url()}/crm',
+                    notice=notice,
+                    details=(('Espace', 'Assurance'),),
+                ),
                 recipient=user.email,
                 guard={'kind': guard_kind, 'event': event_id, 'user': user_id, 'role': role},
                 expires_at=created + timedelta(days=7),

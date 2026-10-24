@@ -88,6 +88,12 @@ class InvitationTests(TestCase):
         self.assertNotIn('_auth_user_id', self.public.session)
         self.assertIn('l’espace Assurance en tant que Conseiller', mail.outbox[0].body)
         self.assertNotIn('advisor', mail.outbox[0].body)
+        html, mime = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime, 'text/html')
+        self.assertIn('Activer mon compte', html)
+        self.assertIn('Conseiller', html)
+        self.assertIn('newperson', html)
+        self.assertIn(f'#invite={body["id"]}:{body["token"]}', html)
         self.assertEqual(self.accept(body).status_code, 400)
 
     def test_permissions_scoping_and_roles(self):

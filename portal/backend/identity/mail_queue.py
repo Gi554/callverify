@@ -28,12 +28,18 @@ def cipher():
     return Fernet(key)
 
 
-def enqueue(*, user, workspace='', subject, body, recipient, guard, expires_at):
+def enqueue(*, user, workspace='', subject, body, recipient, guard, expires_at, html=None):
     payload = (
         cipher()
         .encrypt(
             json.dumps(
-                {'subject': subject, 'body': body, 'recipient': recipient, 'guard': guard},
+                {
+                    'subject': subject,
+                    'body': body,
+                    'recipient': recipient,
+                    'guard': guard,
+                    'html': html,
+                },
                 ensure_ascii=False,
             ).encode()
         )
@@ -150,6 +156,7 @@ def dispatch(limit=100):
                             settings.DEFAULT_FROM_EMAIL,
                             [payload['recipient']],
                             fail_silently=False,
+                            html_message=payload.get('html'),
                         )
                         if not sent:
                             raise RuntimeError('No delivery accepted')
