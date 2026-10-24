@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Transport Brevo de production configuré et test SMTP accepté
+
+Après autorisation de l’IP du VPS dans Brevo par l’utilisateur, l’authentification SMTP réussit sur le port 587 avec STARTTLS et validation du certificat. Le refus précédent était identifié par le code 525 (IP non autorisée), distinct du refus 535 d’identifiants. Le transport du portail et celui d’Isolation sont configurés dans le `.env` privé du VPS, avec l’expéditeur validé indiqué par l’utilisateur et le nom Orvia CRM. La configuration précédente a été sauvegardée hors Git avant modification ; Compose valide la configuration et les services ont été relancés. Aucune clé SMTP ni adresse de destinataire n’est ajoutée au dépôt.
+
+Validation : authentification SMTP depuis le VPS, envoi d’un seul message de test explicitement autorisé via `django.core.mail.send_mail` du portail (un message accepté par le relais), connexion SMTP Isolation sans envoi supplémentaire, quinze services en cours d’exécution et page CRM en HTTPS à 200 via le DNS normal du VPS. Le secret est utilisé sans affichage et reste dans des fichiers privés exclus de Git. L’utilisateur doit encore constater la réception : l’acceptation SMTP ne prouve pas la livraison en boîte ni le classement hors spam.
+
+Limites : test du transport, pas recette exhaustive des invitations, réinitialisations et rappels planifiés. L’expéditeur utilise l’adresse Gmail choisie par l’utilisateur ; l’authentification d’un domaine d’expédition propre et la délivrabilité restent à valider dans Brevo. Aucun autre message métier, appel ou jeu de démonstration ajouté. CD toujours désactivé à cette étape ; les sauvegardes hors serveur et la restauration réelle restent à mettre en place.
+
+Suite : confirmer la réception du test, puis activer et valider le workflow CD sur un commit main contrôlé. Vérifier ensuite les parcours transactionnels e-mail avec les destinataires autorisés.
+
+
 ## Première installation HTTPS et administrateur de production
 
 Le domaine racine pointe vers le VPS sur les serveurs DNS LWS ; l’ancien AAAA a disparu de la zone autoritaire et du résolveur Cloudflare. La première installation réelle a été exécutée avec la configuration privée existante : images reconstruites, trois bases PostgreSQL initialisées et migrées, services CRM démarrés et certificat HTTPS valide obtenu pour `orvia-crm.com`. Un premier administrateur dispose des deux espaces ; son mot de passe aléatoire reste dans des fichiers privés sur le serveur et sur le PC de l’utilisateur, jamais dans Git ni les journaux. Aucune donnée de démonstration n’a été transférée.
