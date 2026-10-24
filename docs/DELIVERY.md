@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## CD activé et premier déploiement GitHub validé
+
+La variable de dépôt `CD_ENABLED` est à true après autorisation explicite de l’utilisateur. La validation CI de main a été relancée, puis le workflow Deploy CRM production a réellement exécuté le déploiement du commit validé via le compte SSH dédié et la clé hôte vérifiée. Exécution GitHub `40044574801` réussie : sauvegarde préalable des trois bases, fichiers et configuration privée, mise à jour du clone, construction, migrations et contrôles HTTPS par DNS normal. Le marqueur de déploiement n’est écrit qu’après les réponses attendues. L’environnement production reste limité à main et les secrets restent hors Git.
+
+Validation après ce premier CD : recette authentifiée HTTPS du portail (connexion, session, rôle administrateur des deux espaces), lecture des listes Assurance et Isolation de production vides, déconnexion effective. Aucun appel, réservation, e-mail supplémentaire ou jeu de démonstration créé par cette recette. Le CD est désormais opérationnel pour les futures fusions de main dont les contrôles réussissent ; ce lot ne promet ni absence d’interruption pendant les migrations ni rollback automatique.
+
+Limites conservées : sauvegardes privées locales au VPS, sans copie hors serveur ni recette de restauration complète ; vérifications HTTP et parcours d’accès restreints, pas recette métier exhaustive. La réception du précédent test Brevo reste à confirmer par l’utilisateur. Les connecteurs d’appels, Twilio et agendas ne sont pas activés par le CD.
+
+Suite : travailler avec l’utilisateur la présentation des e-mails transactionnels du CRM, puis vérifier les gabarits et les parcours concernés.
+
+
 ## Transport Brevo de production configuré et test SMTP accepté
 
 Après autorisation de l’IP du VPS dans Brevo par l’utilisateur, l’authentification SMTP réussit sur le port 587 avec STARTTLS et validation du certificat. Le refus précédent était identifié par le code 525 (IP non autorisée), distinct du refus 535 d’identifiants. Le transport du portail et celui d’Isolation sont configurés dans le `.env` privé du VPS, avec l’expéditeur validé indiqué par l’utilisateur et le nom Orvia CRM. La configuration précédente a été sauvegardée hors Git avant modification ; Compose valide la configuration et les services ont été relancés. Aucune clé SMTP ni adresse de destinataire n’est ajoutée au dépôt.
