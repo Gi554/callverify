@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## E-mails — nouveau format avec bandeau et mise en page mobile
+
+Les e-mails du portail adoptent un format à bandeau : logo en haut à droite, titre en majuscules sur fond bleu, « Bonjour Prénom, », informations en liste à puces, bouton arrondi et pied de page en deux colonnes. Le modèle s’adapte aux téléphones : sous 480 px, le bouton occupe toute la largeur, les marges se resserrent et le pied de page s’empile. Le prénom est déduit de l’identifiant (« camille.exemple » devient « Camille Exemple ») ; une adresse e-mail n’est jamais affichée. Les appelants (invitation, mot de passe oublié, rappels Assurance) passent simplement l’identifiant, et `layout()` reste compatible avec l’existant.
+
+Validation : deux tests du modèle (prénom et échappement, règles responsives) ; suites portail (246) et Assurance (347) ; Ruff ; galerie bureau et mobile contrôlée dans le navigateur : trois e-mails en deux tailles, sans débordement horizontal à 360 px, bouton en pleine largeur uniquement sur mobile.
+
+Limites : rendu vérifié dans un navigateur, pas dans chaque messagerie (Outlook de bureau applique ses propres règles ; le bouton y reste lisible mais sans coins arrondis). Pas de logo image ni de mode sombre. Le texte brut de chaque e-mail est inchangé.
+
 ## E-mails transactionnels Orvia CRM — HTML et texte
 
 Les nouvelles invitations aux espaces Assurance/Isolation, réinitialisations de mot de passe et notifications de suivi Assurance (rappels, signalements, escalades) utilisent une présentation commune Orvia CRM : bandeau bleu nuit, titre explicite, bouton bleu, encadré d’information et lien de secours copiable. Le HTML autonome utilise des tableaux et styles en ligne, sans police distante, image externe ni pixel de suivi. Les valeurs dynamiques sont échappées et les liens d’action utilisent les URL existantes du CRM. Les objets et versions texte sont harmonisés avec Orvia CRM ; les détails de dossiers ne sont pas ajoutés aux notifications de suivi.

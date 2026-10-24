@@ -118,6 +118,7 @@ def request_reset(request):
                 title='Un nouvel accès, en toute sécurité',
                 intro='Une réinitialisation de votre mot de passe a été demandée. Choisissez un nouveau mot de passe pour retrouver votre espace Orvia CRM.',
                 action='Choisir mon mot de passe',
+                name=user.get_username(),
                 url=link,
                 notice=notice,
             ),
