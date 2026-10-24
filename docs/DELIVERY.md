@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Pages publiques Orvia CRM pour l’identité OAuth
+
+Trois pages publiques sont servies sans session : `/presentation/` (fonctionnalités et accès CRM), `/confidentialite/` et `/conditions/`. Les informations confirmées sont AMX, Bénin et l’adresse de contact assistance/confidentialité choisie par l’utilisateur. Les pages sont du HTML statique avec une feuille de style locale, une navigation commune, liens croisés et raccourci vers `/crm`, sans script, suivi ni requête à l’API. Le build les copie dans ses fichiers publics ; le fallback existant de Nginx sert leurs index. La racine/connexion et les callbacks OAuth ne sont pas modifiés.
+
+La politique décrit comptes/dossiers, données de calendrier lues/utilisées/conservées/partagées, permissions Google, publication facultative d’événements neutres, jetons chiffrés, arrêt de publication, retrait/déconnexion et révocation Google, demandes de suppression et autres droits, cookies nécessaires, fournisseurs Contabo/Brevo et traitement hors Bénin. Elle précise l’utilisation limitée des données Google et leurs exclusions publicitaires/vente/entraînement général. Aucun renseignement d’immatriculation, adresse postale, durée fixe de conservation ou déclaration réglementaire non confirmé n’est inventé. Les conditions décrivent comptes autorisés, responsabilités de saisie, usages, agendas et disponibilité sans garantie absolue.
+
+Validation : format des fichiers publics, contrôle des liens internes et de l’absence de script, identité/contact, compilation Vite et présence des trois documents/feuille de style dans le build. Les contrôles GitHub précèdent la fusion ; la recette de production vérifiera chaque contenu HTTPS sans authentification après CD. Aucun consentement, appel, e-mail ni événement externe créé. Aucune donnée privée ni secret ajouté.
+
+Limites : ces pages ne constituent ni une validation juridique exhaustive, ni une approbation Google, ni une publication automatique de l’application OAuth. Les durées opérationnelles de rétention restent à préciser par AMX. Aucun logo raster ajouté. `docs/GOOGLE_PUBLIC_PAGES.md` fournit les champs à recopier dans Branding et distingue ces liens de l’URI de retour OAuth.
+
+Suite : vérifier les pages publiques après CD, renseigner les liens dans Google Auth Platform, vérifier le domaine dans Search Console, puis terminer le premier consentement et les étapes Google nécessaires à la publication.
+
+
 ## Google Calendar configuré en production — consentement propriétaire attendu
 
 Le client OAuth Web Google créé par l’utilisateur est configuré dans le `.env` privé du VPS. L’ID et le vrai secret client ont été saisis localement puis transmis par SSH vérifié après autorisation explicite de l’utilisateur. Une première saisie avait confondu ID et secret ; cette valeur a été retirée, puis remplacée après contrôle qu’ils sont distincts. La configuration précédente est sauvegardée hors Git ; la clé de chiffrement calendrier existante reste inchangée. Aucun secret, fichier OAuth ni jeton n’est ajouté au dépôt. Les services ont été rechargés avec la configuration Compose valide.
