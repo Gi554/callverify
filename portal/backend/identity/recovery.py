@@ -7,6 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .mail_queue import enqueue
+from .email_layout import layout
 from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
@@ -107,10 +108,19 @@ def request_reset(request):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
         link = f'{public_url()}/crm#reset={uid}:{token}'
+        minutes = max(1, settings.PASSWORD_RESET_TIMEOUT // 60)
+        notice = f'Ce lien personnel expire dans {minutes} minutes et ne peut être utilisé qu’une fois. Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail : votre mot de passe reste inchangé.'
         enqueue(
             user=user,
-            subject='AMX — Réinitialiser votre mot de passe',
-            body=f'Une récupération du mot de passe AMX a été demandée.\n\n{link}\n\nCe lien expire dans 30 minutes et ne peut être utilisé qu’une fois. Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail.',
+            subject='Orvia CRM — Réinitialiser votre mot de passe',
+            body=f'Bonjour,\n\nUne réinitialisation de votre mot de passe Orvia CRM a été demandée.\nChoisissez un nouveau mot de passe en ouvrant ce lien :\n\n{link}\n\n{notice}\n\nOrvia CRM',
+            html=layout(
+                title='Un nouvel accès, en toute sécurité',
+                intro='Une réinitialisation de votre mot de passe a été demandée. Choisissez un nouveau mot de passe pour retrouver votre espace Orvia CRM.',
+                action='Choisir mon mot de passe',
+                url=link,
+                notice=notice,
+            ),
             recipient=user.email,
             guard={'kind': 'recovery', 'user': user.pk, 'token': token},
             expires_at=timezone.now() + timedelta(seconds=settings.PASSWORD_RESET_TIMEOUT),
