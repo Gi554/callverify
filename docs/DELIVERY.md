@@ -4,6 +4,16 @@
 
 Ajout du fichier de vérification Google à la racine publique (/google6195fcacccb8a875.html), servi tel quel par Nginx sans session, afin de prouver la propriété de orvia-crm.com avant la validation de l’écran de consentement OAuth. Le fichier ne contient aucun secret. Limite : la validation elle-même se fait dans Search Console après déploiement.
 
+## Connexion des agendas — présentation et logos des fournisseurs
+
+L’onglet conseiller « Mes agendas connectés » présente Google Calendar et Microsoft Outlook dans deux cartes distinctes avec leurs logos officiels, conservés localement dans le build. Le composant partagé reprend cette présentation dans les autres accès personnels aux agendas. Le bandeau et les trois étapes expliquent connexion, horaires puis activation volontaire de la publication. L’état de chaque fournisseur provient toujours de l’API : non connecté, connecté ou connexion non activée (« À venir »). Un compte déjà connecté doit être déconnecté avant de choisir un autre fournisseur ; les commandes de retrait des événements et de récupération restent accessibles.
+
+Les outils de consultation des périodes occupées, publication, pause, synchronisation manuelle et historique sont conservés. Le retrait des événements, la récupération par mot de passe/confirmation et les limites de confidentialité restent regroupés dans des détails dépliables. Les boutons désactivés ne présentent plus d’explication technique OAuth ; aucune activation Microsoft/Calendly ni changement d’autorisations ou d’API dans ce lot. La mise en page passe en une colonne sur petit écran, possède des états de chargement/erreur et respecte la réduction des animations.
+
+Validation : typage Vue, ESLint sur les composants modifiés, trois tests du parcours agenda (horaires, conflit de révision, fournisseur non configuré et conversion des dates avec fuseau), build Vite et contrôle visuel du parcours conseiller dans la recette locale (connexion, ouverture des deux onglets, logos et fournisseurs non configurés). Les contrôles CI précèdent la fusion. Aucun consentement Google réel, écriture calendrier, appel ou e-mail déclenché ; les états connectés et la publication réelle restent à recetter avec le propriétaire du compte. Les logos sont documentés dans `frontend/src/assets/calendar/README.md`.
+
+Suite : le conseiller autorise son compte Google en production ; vérifier ses créneaux occupés, puis la publication sur un rendez-vous de test explicitement choisi. Microsoft et Calendly restent en attente à la demande de l’utilisateur.
+
 ## Import de contacts visible pour l’administrateur Assurance
 
 Sur la page Prospects, l’administrateur voit désormais un bouton « Importer des contacts » en haut à droite : il ouvre directement l’écran d’import (CSV ou Excel) sans passer par « Liste et imports ». Quand le tableau est vide, un message l’invite à importer une liste avec le même bouton. Les setters et conseillers ne voient pas ce bouton. Limite : aucun changement du format d’import ni des règles de dédoublonnage ; revue esthétique reportée à la revue finale.

@@ -135,7 +135,7 @@ test('advisor configures weekly hours and saves the chosen timezone and revision
     })
     assert.match(text(f.root), /Vos disponibilités sont enregistrées/)
     assert.match(text(f.root), /09:00 – 17:00/)
-    assert.ok(button(f, 'Connexion Google / Microsoft'))
+    assert.ok(button(f, 'Mes agendas connectés'))
   } finally {
     f.close()
   }
@@ -164,6 +164,17 @@ let connectionCode = compileScript(
   },
 ).content
 connectionCode = connectionCode
+  .replace(/import \{([^}]+)\} from 'lucide-vue-next'/g, (_, names) =>
+    names
+      .split(',')
+      .filter((name) => name.trim())
+      .map((name) => `const ${name.trim()}={render:()=>null}`)
+      .join(';'),
+  )
+  .replace(
+    /import (\w+) from ['"]([^'"]+\.png)['"]/g,
+    (_, name, asset) => `const ${name}=${JSON.stringify(asset)}`,
+  )
   .replace(/from ['"]vue['"]/g, `from '${vue}'`)
   .replace("'./booking-time'", JSON.stringify(booking))
 for (const directive of ['vModelText', 'vModelSelect', 'vModelDynamic', 'vModelCheckbox'])
@@ -186,6 +197,7 @@ test('calendar connection shows missing OAuth configuration and uses local dates
             {
               workspace: 'assurance',
               connected: true,
+              provider: 'google',
               revision: 1,
               configured: { google: false, microsoft: false },
             },
@@ -197,8 +209,13 @@ test('calendar connection shows missing OAuth configuration and uses local dates
   app.mount(root)
   try {
     await flush()
-    const google = all(root).find((n) => n.tag === 'button' && text(n).includes('Connecter Google'))
+    const google = all(root).find((n) => n.tag === 'button' && text(n).includes('Agenda connecté'))
     assert.equal(google.props.disabled, true)
+    const unavailable = all(root).find(
+      (n) => n.tag === 'button' && text(n).includes('Disponible prochainement'),
+    )
+    assert.equal(unavailable.props.disabled, true)
+    assert.match(text(root), /La connexion à ce service n’est pas encore activée/)
     const dates = all(root).filter((n) => n.tag === 'input' && n.props.type === 'datetime-local')
     assert.equal(dates.length, 2)
     dates[0].props['onUpdate:modelValue']('2026-11-02T09:00')
