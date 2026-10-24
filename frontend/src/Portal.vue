@@ -584,10 +584,9 @@ const roleLabels: Record<string, string> = {
                       agreementDeadline = $event;
                       assuranceModule = 'agreements';
                     " /><AssuranceReminders
+                    v-if="role === 'administrator'"
                     :role="role"
-                    :request="assurance"
-                    @open-tasks="selectModule('followups')"
-                    @open-appointments="selectModule('appointments')" /><AssuranceNotifications
+                    :request="assurance" /><AssuranceNotifications
                     v-if="role !== 'advisor'"
                     :request="assurance"
                     :refresh-version="notificationVersion"
