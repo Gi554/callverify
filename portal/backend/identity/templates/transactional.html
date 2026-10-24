@@ -1,27 +1,64 @@
 <!doctype html>
 <html lang="fr">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>{{ title }} — Orvia CRM</title></head>
-<body style="margin:0;padding:0;background-color:#f3f5fb;color:#182b40;font-family:Arial,Helvetica,sans-serif;">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="x-apple-disable-message-reformatting">
+<title>{{ title }} — Orvia CRM</title>
+<style>
+body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+table,td{mso-table-lspace:0;mso-table-rspace:0}
+@media only screen and (max-width:480px){
+  .outer{padding:0 !important}
+  .container{width:100% !important}
+  .hero{padding:22px 20px 0 !important}
+  .hero-title{padding:44px 4px 54px !important;font-size:22px !important;line-height:1.3 !important}
+  .pad{padding:28px 20px !important}
+  .greeting{font-size:17px !important}
+  .btn-wrap{width:100% !important}
+  .btn-link{display:block !important;padding:16px 20px !important;text-align:center !important}
+  .col{display:block !important;width:100% !important;text-align:left !important;padding-bottom:6px !important}
+  .footer{padding:22px 20px !important}
+}
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eceef1;color:#1b2430;font-family:'Open Sans',Arial,Helvetica,sans-serif;">
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{{ title }}. {{ intro }}</div>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f5fb;"><tr><td align="center" style="padding:32px 12px;">
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e4e9f2;border-radius:18px;">
-<tr><td style="padding:28px 32px;background-color:#122635;border-radius:18px 18px 0 0;">
-<p style="margin:0;color:#ffffff;font-size:25px;font-weight:700;letter-spacing:-0.5px;">orvia<span style="color:#8baaff;">.</span> <span style="font-size:12px;letter-spacing:2px;color:#c3d2e6;">CRM</span></p>
-<p style="margin:7px 0 0;color:#c3d2e6;font-size:12px;">Votre espace, vos prochaines actions.</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#eceef1;">
+<tr><td class="outer" align="center" style="padding:32px 12px;">
+
+<table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;">
+
+<tr><td class="hero" bgcolor="#2463eb" style="background-color:#2463eb;padding:28px 36px 0;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+<td align="right" style="font-size:26px;font-weight:700;letter-spacing:-0.5px;color:#ffffff;line-height:1;">orvia<span style="color:#9dbbff;">.</span> <span style="font-size:11px;letter-spacing:2px;color:#d6e3ff;vertical-align:middle;">CRM</span></td>
+</tr></table>
+<h1 class="hero-title" style="margin:0;padding:70px 12px 84px;text-align:center;color:#ffffff;font-size:27px;line-height:1.3;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;">{{ title }}</h1>
 </td></tr>
-<tr><td style="padding:32px;">
-<p style="margin:0 0 12px;color:#4265cf;font-size:11px;font-weight:700;letter-spacing:1.5px;">VOTRE ESPACE ORVIA</p>
-<h1 style="margin:0 0 20px;font-size:27px;line-height:1.25;color:#182b40;">{{ title }}</h1>
-<p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Bonjour,</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.7;">{{ intro }}</p>
-{% if details %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:26px;background-color:#f3f6fc;border-radius:10px;">{% for label, value in details %}<tr><td style="padding:10px 16px;font-size:13px;color:#64758b;">{{ label }}</td><td style="padding:10px 16px;font-size:14px;font-weight:700;word-break:break-word;">{{ value }}</td></tr>{% endfor %}</table>{% endif %}
-<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#2463eb" style="border-radius:9px;background-color:#2463eb;mso-padding-alt:15px 24px;"><a href="{{ url }}" style="display:inline-block;padding:15px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;line-height:1.4;">{{ action }}</a></td></tr></table>
-<p style="margin:26px 0 0;padding:16px;background-color:#f5f3ff;border-left:3px solid #8b7be2;font-size:13px;line-height:1.65;color:#4c5273;">{{ notice }}</p>
-<p style="margin:26px 0 8px;color:#64758b;font-size:12px;line-height:1.6;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+
+<tr><td class="pad" style="padding:38px 40px 32px;">
+<p class="greeting" style="margin:0 0 18px;font-size:18px;line-height:1.4;font-weight:700;color:#0e1621;">Bonjour{% if name %} {{ name }}{% endif %},</p>
+<p style="margin:0 0 22px;font-size:14px;line-height:1.7;color:#1b2430;">{{ intro }}</p>
+{% if details %}<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 26px;width:100%;">{% for label, value in details %}<tr>
+<td width="18" valign="top" style="padding:5px 0;font-size:14px;line-height:1.6;color:#2463eb;">&bull;</td>
+<td style="padding:5px 0;font-size:14px;line-height:1.6;color:#1b2430;word-break:break-word;"><span style="color:#64758b;">{{ label }} :</span> <strong>{{ value }}</strong></td>
+</tr>{% endfor %}</table>{% endif %}
+<table role="presentation" class="btn-wrap" align="center" cellspacing="0" cellpadding="0" border="0" style="margin:30px auto 8px;"><tr><td bgcolor="#2463eb" align="center" style="border-radius:999px;background-color:#2463eb;mso-padding-alt:15px 44px;"><a class="btn-link" href="{{ url }}" style="display:inline-block;padding:15px 44px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;line-height:1.3;border-radius:999px;">{{ action }}</a></td></tr></table>
+<p style="margin:30px 0 0;padding:15px 16px;background-color:#f1f5ff;border-left:3px solid #2463eb;font-size:13px;line-height:1.65;color:#3a4a63;">{{ notice }}</p>
+<p style="margin:26px 0 6px;color:#64758b;font-size:12px;line-height:1.6;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
 <p style="margin:0;font-size:12px;line-height:1.6;word-break:break-all;overflow-wrap:anywhere;"><a href="{{ url }}" style="color:#2463eb;text-decoration:underline;">{{ url }}</a></p>
 </td></tr>
-<tr><td style="padding:22px 32px;border-top:1px solid #e9edf4;color:#64758b;font-size:12px;line-height:1.7;">Ce message automatique vous est adressé par Orvia CRM.<br>Gardez vos liens d’accès confidentiels. Aucun mot de passe ne vous sera demandé par e-mail.</td></tr>
+
+<tr><td class="footer" style="padding:6px 40px 34px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+<td class="col" valign="top" style="font-size:13px;line-height:1.7;color:#8a94a3;">Cordialement,<br>l’équipe Orvia CRM</td>
+<td class="col" valign="top" align="right" style="font-size:13px;line-height:1.7;color:#8a94a3;">{% if site %}{{ site }}<br>{% endif %}Message automatique</td>
+</tr></table>
+<p style="margin:26px 0 0;font-size:12px;line-height:1.7;color:#8a94a3;">Gardez vos liens d’accès confidentiels : aucun mot de passe ne vous sera jamais demandé par e-mail.</p>
+</td></tr>
+
 </table>
-<p style="margin:20px 0 0;color:#6f7f94;font-size:11px;line-height:1.6;">Orvia CRM · Une action claire, au bon moment.</p>
+
 </td></tr></table>
 </body></html>

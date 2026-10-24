@@ -83,3 +83,15 @@ Le générateur existant produit les escalades de la période courante, sans rat
 Chaque destinataire doit avoir un compte actif, un rôle administrateur Assurance actif et une adresse valide non partagée. Ces conditions et l’état métier sont revérifiés avant SMTP. Une tâche transférée reste supervisée ; résolution, report, nouvelle échéance, réponse ou règles désactivées rendent l’escalade obsolète. Le message ne contient aucune donnée de dossier. L’écran Rappels actifs propose un compteur et un filtre réservé aux administrateurs. Ni lecture ni envoi ne clôturent ou réaffectent une tâche, et aucun résultat négatif n’est déduit d’un compte rendu absent.
 
 Limites : tous les administrateurs Assurance actifs sont concernés, sans sélection individuelle, quotas ou acquittement dédié ; historique en base seulement. Les limites SMTP, de reprise, de fenêtre entre contrôle et envoi et de capacité exposées ci-dessus restent applicables. Aucun SMTP réel validé dans ce lot.
+
+## Présentation des e-mails
+
+Tous les e-mails du portail (invitation, mot de passe oublié, rappels Assurance) partagent le modèle `portal/backend/identity/templates/transactional.html`, appelé par `layout()` :
+
+- **Bandeau bleu** avec le logo Orvia en haut à droite et le titre en majuscules, centré.
+- **Corps blanc** : « Bonjour Prénom, » (mis en forme à partir de l’identifiant ; jamais une adresse e-mail), texte d’introduction, liste à puces des informations utiles, bouton arrondi, encadré d’avertissement et lien de secours.
+- **Pied de page** en deux colonnes : signature de l’équipe à gauche, domaine du CRM et « Message automatique » à droite.
+- **Responsive** : colonne fluide de 600 px au plus. Sous 480 px, le bandeau et les marges se resserrent, le bouton occupe toute la largeur et le pied de page passe sur une seule colonne.
+- **Sans image** ni suivi : tout est en texte et en couleurs, ce qui évite les images bloquées par défaut dans les messageries. Toute donnée affichée est échappée.
+
+Pour voir le résultat sans rien envoyer : `python scripts/preview_crm_emails.py apercu.html` génère une galerie bureau et mobile avec des données fictives.
