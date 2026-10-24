@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>{{ title }} — Orvia CRM</title></head>
+<body style="margin:0;padding:0;background-color:#f3f5fb;color:#182b40;font-family:Arial,Helvetica,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{{ title }}. {{ intro }}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f5fb;"><tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e4e9f2;border-radius:18px;">
+<tr><td style="padding:28px 32px;background-color:#122635;border-radius:18px 18px 0 0;">
+<p style="margin:0;color:#ffffff;font-size:25px;font-weight:700;letter-spacing:-0.5px;">orvia<span style="color:#8baaff;">.</span> <span style="font-size:12px;letter-spacing:2px;color:#c3d2e6;">CRM</span></p>
+<p style="margin:7px 0 0;color:#c3d2e6;font-size:12px;">Votre espace, vos prochaines actions.</p>
+</td></tr>
+<tr><td style="padding:32px;">
+<p style="margin:0 0 12px;color:#4265cf;font-size:11px;font-weight:700;letter-spacing:1.5px;">VOTRE ESPACE ORVIA</p>
+<h1 style="margin:0 0 20px;font-size:27px;line-height:1.25;color:#182b40;">{{ title }}</h1>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Bonjour,</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.7;">{{ intro }}</p>
+{% if details %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:26px;background-color:#f3f6fc;border-radius:10px;">{% for label, value in details %}<tr><td style="padding:10px 16px;font-size:13px;color:#64758b;">{{ label }}</td><td style="padding:10px 16px;font-size:14px;font-weight:700;word-break:break-word;">{{ value }}</td></tr>{% endfor %}</table>{% endif %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#2463eb" style="border-radius:9px;background-color:#2463eb;mso-padding-alt:15px 24px;"><a href="{{ url }}" style="display:inline-block;padding:15px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;line-height:1.4;">{{ action }}</a></td></tr></table>
+<p style="margin:26px 0 0;padding:16px;background-color:#f5f3ff;border-left:3px solid #8b7be2;font-size:13px;line-height:1.65;color:#4c5273;">{{ notice }}</p>
+<p style="margin:26px 0 8px;color:#64758b;font-size:12px;line-height:1.6;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+<p style="margin:0;font-size:12px;line-height:1.6;word-break:break-all;overflow-wrap:anywhere;"><a href="{{ url }}" style="color:#2463eb;text-decoration:underline;">{{ url }}</a></p>
+</td></tr>
+<tr><td style="padding:22px 32px;border-top:1px solid #e9edf4;color:#64758b;font-size:12px;line-height:1.7;">Ce message automatique vous est adressé par Orvia CRM.<br>Gardez vos liens d’accès confidentiels. Aucun mot de passe ne vous sera demandé par e-mail.</td></tr>
+</table>
+<p style="margin:20px 0 0;color:#6f7f94;font-size:11px;line-height:1.6;">Orvia CRM · Une action claire, au bon moment.</p>
+</td></tr></table>
+</body></html>

@@ -53,6 +53,11 @@ class AssuranceMailTests(TestCase):
         self.assertIn('http://localhost:5173/crm', mail.outbox[0].body)
         self.assertNotIn('setter', mail.outbox[0].body)
         self.assertNotIn('prospect', mail.outbox[0].body)
+        html, mime = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime, 'text/html')
+        self.assertIn('Consulter mon espace', html)
+        self.assertNotIn(self.user.email, html)
+        self.assertNotIn('setter', html)
         self.assertEqual(PortalMail.objects.get().payload, '')
 
     def test_role_account_email_and_ambiguous_address_checks(self):

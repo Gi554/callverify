@@ -1,5 +1,20 @@
 # Suivi des livraisons CRM AMX
 
+## E-mails transactionnels Orvia CRM — HTML et texte
+
+Les nouvelles invitations aux espaces Assurance/Isolation, réinitialisations de mot de passe et notifications de suivi Assurance (rappels, signalements, escalades) utilisent une présentation commune Orvia CRM : bandeau bleu nuit, titre explicite, bouton bleu, encadré d’information et lien de secours copiable. Le HTML autonome utilise des tableaux et styles en ligne, sans police distante, image externe ni pixel de suivi. Les valeurs dynamiques sont échappées et les liens d’action utilisent les URL existantes du CRM. Les objets et versions texte sont harmonisés avec Orvia CRM ; les détails de dossiers ne sont pas ajoutés aux notifications de suivi.
+
+Le HTML est conservé dans la charge utile chiffrée de la file d’envoi avec le texte, le destinataire et les garde-fous existants, puis envoyé en multipart texte/HTML. Les messages en attente issus de l’ancienne version, sans clé HTML dans leur charge utile, restent envoyables en texte seul. Les liens à usage unique, vérifications d’éligibilité, expirations, reprises SMTP, audits et effacement terminal restent en place ; aucune migration de schéma. Les messages déjà en attente ne sont pas réécrits. Les rappels concernés sont les notifications existantes destinées aux utilisateurs autorisés, pas de nouveaux rappels de rendez-vous adressés aux prospects ni d’e-mails Isolation ajoutés.
+
+Validation : 244 tests du portail réussis localement (11 scénarios PostgreSQL ignorés sur SQLite), dont quatre nouveaux tests de rendu sécurisé, liens identiques et échappement HTML, refus d’URL dangereuses, chiffrement/envoi multipart/effacement et compatibilité des anciennes charges utiles. Les parcours invitation, récupération et suivi existants vérifient maintenant aussi leur HTML. Après ces ajouts d’assertions, 45 tests e-mail ciblés réussis (3 scénarios PostgreSQL ignorés localement), Ruff et génération de la galerie synthétique. La CI exécute aussi les parcours PostgreSQL. `python scripts/preview_crm_emails.py CHEMIN.html` génère une galerie locale bureau/mobile avec liens non utilisables et sans SMTP.
+
+Point de production relevé pendant ce lot : le CD de la livraison documentaire précédente (40045103279) a appliqué le commit et terminé ses migrations, puis échoué au contrôle HTTPS /crm à 404. Les quatre DNS autoritaires LWS publient à nouveau un AAAA vers l’ancien hébergement ; le VPS ciblé avec certificat valide et le domaine en IPv4 répondent 200. La résolution normale privilégie l’ancien serveur en IPv6. La correction DNS est demandée à l’utilisateur avant de déclarer le prochain CD validé.
+
+Limites : aperçu HTML généré, pas de validation visuelle exhaustive dans Gmail/Outlook ni en mode sombre. Les styles en ligne et tableaux facilitent la compatibilité sans la garantir dans tous les clients. Aucun e-mail réel supplémentaire envoyé par ce lot ; la réception en boîte et les rendus natifs restent à vérifier avec l’utilisateur. Le transport et l’expéditeur Brevo restent ceux configurés sur le VPS. Aucun nouveau type d’événement métier ni connecteur ajouté.
+
+Suite : valider les aperçus avec l’utilisateur et relever les retouches précises, puis vérifier les parcours transactionnels autorisés en messagerie réelle.
+
+
 ## CD activé et premier déploiement GitHub validé
 
 La variable de dépôt `CD_ENABLED` est à true après autorisation explicite de l’utilisateur. La validation CI de main a été relancée, puis le workflow Deploy CRM production a réellement exécuté le déploiement du commit validé via le compte SSH dédié et la clé hôte vérifiée. Exécution GitHub `40044574801` réussie : sauvegarde préalable des trois bases, fichiers et configuration privée, mise à jour du clone, construction, migrations et contrôles HTTPS par DNS normal. Le marqueur de déploiement n’est écrit qu’après les réponses attendues. L’environnement production reste limité à main et les secrets restent hors Git.

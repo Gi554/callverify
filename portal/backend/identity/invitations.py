@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .mail_queue import enqueue
+from .email_layout import layout
 from django.db import transaction, IntegrityError
 from django.db.models import Q, F
 from django.utils import timezone
@@ -90,17 +91,26 @@ ROLE_NAMES = {
 def deliver(row, token):
     space = SPACES.get(row.workspace, row.workspace)
     role = ROLE_NAMES.get(row.role, row.role)
+    link = f'{public_url()}/crm#invite={row.pk}:{token}'
     enqueue(
         user=row.issuer,
         workspace=row.workspace,
-        subject=f'AMX — Invitation à l’espace {space}',
+        subject=f'Orvia CRM — Votre invitation à l’espace {space}',
+        html=layout(
+            title='Bienvenue dans votre équipe',
+            intro=f'Vous êtes invité dans l’espace {space} en tant que {role}. Activez votre compte en choisissant votre mot de passe.',
+            details=(('Espace', space), ('Votre rôle', role), ('Votre identifiant', row.username)),
+            action='Activer mon compte',
+            url=link,
+            notice='Ce lien personnel expire dans 24 heures et ne peut être utilisé qu’une fois. Si vous n’attendiez pas cette invitation, contactez votre administrateur.',
+        ),
         body=(
             f'Bonjour,\n\nVous êtes invité dans l’espace {space} en tant que {role}.\n'
             f'Votre identifiant : {row.username}\n\n'
             'Pour activer votre compte, ouvrez ce lien et choisissez votre mot de passe :\n'
-            f'{public_url()}/crm#invite={row.pk}:{token}\n\n'
+            f'{link}\n\n'
             'Ce lien expire dans 24 heures. Ensuite, connectez-vous avec votre identifiant '
-            f'et votre mot de passe : votre espace {space} s’ouvrira directement.'
+            f'et votre mot de passe : votre espace {space} s’ouvrira directement.\n\nOrvia CRM'
         ),
         recipient=row.email,
         guard={'kind': 'invitation', 'id': str(row.pk), 'hash': row.token_hash},

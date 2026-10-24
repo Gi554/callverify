@@ -60,6 +60,12 @@ class RecoveryTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ['alice@example.test'])
         self.assertIn('http://localhost:5173/crm#reset=', mail.outbox[0].body)
+        html, mime = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime, 'text/html')
+        self.assertIn('Choisir mon mot de passe', html)
+        self.assertIn('http://localhost:5173/crm#reset=', html)
+        self.assertIn('30 minutes', html)
+        self.assertIn('Orvia CRM', mail.outbox[0].subject)
         self.assertNotIn('token', str(known.data))
         self.assertEqual(known['Cache-Control'], 'no-store')
         self.assertEqual(AccessAudit.objects.get(action='account.recovery_requested').metadata, {})
