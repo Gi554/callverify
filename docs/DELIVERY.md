@@ -1,5 +1,37 @@
 # Suivi des livraisons CRM AMX
 
+## Google Calendar configuré en production — consentement propriétaire attendu
+
+Le client OAuth Web Google créé par l’utilisateur est configuré dans le `.env` privé du VPS. L’ID et le vrai secret client ont été saisis localement puis transmis par SSH vérifié après autorisation explicite de l’utilisateur. Une première saisie avait confondu ID et secret ; cette valeur a été retirée, puis remplacée après contrôle qu’ils sont distincts. La configuration précédente est sauvegardée hors Git ; la clé de chiffrement calendrier existante reste inchangée. Aucun secret, fichier OAuth ni jeton n’est ajouté au dépôt. Les services ont été rechargés avec la configuration Compose valide.
+
+Validation serveur : paramètres Google chargés, redirection exacte `https://orvia-crm.com/crm/oauth/google`, URL d’autorisation vers Google avec PKCE S256 et accès hors ligne, absence du secret dans cette URL et page de retour HTTPS à 200. Aucun compte Google interrogé par cette recette ; aucun consentement réel, échange de code, lecture des périodes occupées ni publication d’événement encore validé. Zéro agenda connecté à ce stade. Cette livraison est une configuration serveur, pas une intégration fournisseur entièrement recettée.
+
+Le parcours existant permet au conseiller Assurance et au client Isolation de connecter leur propre agenda principal. Les administrateurs et setters ne consentent pas à leur place. Chaque propriétaire doit être autorisé dans l’audience du client OAuth ; en mode Google Test, ajouter ses comptes aux utilisateurs tests. La publication automatique des rendez-vous demande ensuite une activation explicite du propriétaire. Aucun rappel, e-mail, appel ou événement externe n’a été créé par ce lot. Microsoft reste non configuré et Calendly est reporté.
+
+Suite : effectuer le premier consentement Google depuis le compte propriétaire, vérifier la connexion et les périodes occupées, puis activer et recetter la publication sur un rendez-vous de test autorisé. Préparer ensuite Microsoft et la publication/validation OAuth Google pour l’accès hors mode test.
+
+## Accueil — section « Alertes et notifications » refondue
+
+Les deux panneaux repliables de l’accueil Assurance (« Alertes et notifications » pour l’administrateur, « Rappels et notifications » pour le setter) deviennent une seule section toujours visible, avec des cartes à chiffres.
+
+- **Échéances des mandats et contrats** (administrateur) : trois tuiles — date de fin dépassée, dans les 30 jours, sans date de fin. Les deux premières sont cliquables, et se colorent quand elles sont non nulles.
+- **Notifications de suivi** (administrateur et setter) : tuiles « liées à un suivi ouvert » et « non lues », puis « Voir les notifications » (filtres, marquer comme lue, pagination, inchangés) et « Ouvrir les tâches de suivi ».
+- **Rappels automatiques** (administrateur seulement) : compteur d’escalades administratives actives et réglage de la cadence des rappels, avec le même formulaire et les mêmes règles qu’avant.
+- Le bloc **« Rappels actifs »** et ses boutons (liste des rappels, tâches de suivi, rendez-vous et comptes rendus) sont retirés pour tous les rôles : les notifications de suivi couvrent les mêmes événements. Le réglage des rappels n’est pas perdu : il reste dans la carte des administrateurs.
+- Mise en page adaptée : deux colonnes sur ordinateur, une colonne sur téléphone, sans débordement.
+
+Validation : typage, ESLint, Prettier, 119 tests frontend et build ; contrôle dans le CRM local en administrateur (trois cartes, réglage des rappels et liste des notifications qui s’ouvrent et se ferment), en setter (une seule carte) et en vue téléphone 375 px (une colonne, aucun débordement).
+
+Limites : aucun test automatisé dédié à ces trois composants (vérifiés dans le navigateur). Les chiffres étaient à zéro dans la base locale : le rendu avec des données réelles (listes de notifications, tuiles colorées) reste à voir en production.
+
+## E-mails — nouveau format avec bandeau et mise en page mobile
+
+Les e-mails du portail adoptent un format à bandeau : logo en haut à droite, titre en majuscules sur fond bleu, « Bonjour Prénom, », informations en liste à puces, bouton arrondi et pied de page en deux colonnes. Le modèle s’adapte aux téléphones : sous 480 px, le bouton occupe toute la largeur, les marges se resserrent et le pied de page s’empile. Le prénom est déduit de l’identifiant (« camille.exemple » devient « Camille Exemple ») ; une adresse e-mail n’est jamais affichée. Les appelants (invitation, mot de passe oublié, rappels Assurance) passent simplement l’identifiant, et `layout()` reste compatible avec l’existant.
+
+Validation : deux tests du modèle (prénom et échappement, règles responsives) ; suites portail (246) et Assurance (347) ; Ruff ; galerie bureau et mobile contrôlée dans le navigateur : trois e-mails en deux tailles, sans débordement horizontal à 360 px, bouton en pleine largeur uniquement sur mobile.
+
+Limites : rendu vérifié dans un navigateur, pas dans chaque messagerie (Outlook de bureau applique ses propres règles ; le bouton y reste lisible mais sans coins arrondis). Pas de logo image ni de mode sombre. Le texte brut de chaque e-mail est inchangé.
+
 ## E-mails transactionnels Orvia CRM — HTML et texte
 
 Les nouvelles invitations aux espaces Assurance/Isolation, réinitialisations de mot de passe et notifications de suivi Assurance (rappels, signalements, escalades) utilisent une présentation commune Orvia CRM : bandeau bleu nuit, titre explicite, bouton bleu, encadré d’information et lien de secours copiable. Le HTML autonome utilise des tableaux et styles en ligne, sans police distante, image externe ni pixel de suivi. Les valeurs dynamiques sont échappées et les liens d’action utilisent les URL existantes du CRM. Les objets et versions texte sont harmonisés avec Orvia CRM ; les détails de dossiers ne sont pas ajoutés aux notifications de suivi.

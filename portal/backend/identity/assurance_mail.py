@@ -165,6 +165,7 @@ def sync(stream='incidents'):
                     intro=intro
                     + ' Connectez-vous pour consulter vos notifications, rendez-vous et tâches.',
                     action='Consulter mon espace',
+                    name=user.get_username(),
                     url=f'{public_url()}/crm',
                     notice=notice,
                     details=(('Espace', 'Assurance'),),
