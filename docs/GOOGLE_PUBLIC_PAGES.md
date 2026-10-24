@@ -16,6 +16,8 @@ Le logo est facultatif et aucun nouveau logo raster n’est livré dans ce lot. 
 
 Le client OAuth Web conserve sa redirection exacte : https://orvia-crm.com/crm/oauth/google. Ne pas utiliser la page de présentation comme callback.
 
+L’image web normalise les répertoires publics en 755 et les fichiers en 644. Le checkout de déploiement utilise un umask restrictif ; sans cette normalisation, Vite conserve les fichiers publics en 600 et Nginx retourne 403. Cette normalisation se limite aux assets compilés dans /usr/share/nginx/html, sans modifier les fichiers privés du serveur.
+
 La présence des pages ne publie pas automatiquement le projet Google, ne valide pas le consentement et ne prouve pas sa conformité juridique ou l’approbation de Google. L’utilisateur doit compléter Branding, vérifier la propriété du domaine dans Search Console avec un compte propriétaire/éditeur du projet, puis suivre la vérification des autorisations demandées. Le code de vérification DNS éventuel doit être fourni par Google ; ne pas en inventer.
 
 Les textes décrivent les usages existants et les limites connues : calendrier principal, jetons chiffrés, publication optionnelle, événements neutres, retrait/déconnexion distincts, révocation côté fournisseur, demandes de droits au contact, hébergement Contabo en Europe et envois Brevo. Aucun numéro d’immatriculation, adresse postale, durée fixe de rétention, certification ou déclaration APDP non confirmé n’est inventé. Les informations d’organisation et les pratiques de conservation devront être actualisées quand AMX les précisera.
