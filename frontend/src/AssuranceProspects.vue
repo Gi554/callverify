@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown } from 'lucide-vue-next';
+import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown, Upload } from 'lucide-vue-next';
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import SidePanel from './SidePanel.vue';
@@ -16,11 +16,22 @@ const emit = defineEmits<{ imported: [count: number] }>();
 const admin = computed(() => props.role === 'administrator');
 // Administrator only: the existing list keeps imports, filters and history.
 const listView = ref(false);
+// « Importer des contacts » opens the list view directly on the import screen.
+const importFirst = ref(false);
 const includeProcessed = ref(false);
 function showBoard() {
+  importFirst.value = false;
   if (!listView.value) return;
   listView.value = false;
   void load();
+}
+function showImport() {
+  importFirst.value = true;
+  listView.value = true;
+}
+function showList() {
+  importFirst.value = false;
+  listView.value = true;
 }
 type Column = {
   key: string;
@@ -155,14 +166,13 @@ onBeforeUnmount(() => {
         <div v-if="admin" class="prospects-view-switch" role="group" aria-label="Affichage">
           <button :class="{ 'is-active': !listView }" :aria-pressed="!listView" @click="showBoard">
             Tableau</button
-          ><button
-            :class="{ 'is-active': listView }"
-            :aria-pressed="listView"
-            @click="listView = true"
-          >
+          ><button :class="{ 'is-active': listView }" :aria-pressed="listView" @click="showList">
             Liste et imports
           </button>
         </div>
+        <button v-if="admin && !listView" class="primary prospects-import" @click="showImport">
+          <Upload :size="16" />Importer des contacts
+        </button>
         <ProspectExport
           v-if="!listView"
           :request="request"
@@ -179,6 +189,7 @@ onBeforeUnmount(() => {
       :portal="portal"
       :request="request"
       :role="role"
+      :auto-import="importFirst"
       @imported="emit('imported', $event)"
     />
     <template v-else>
@@ -210,6 +221,17 @@ onBeforeUnmount(() => {
       <p v-if="!busy && !error && !columns.length" class="board-empty">
         Aucun statut configuré. Contactez votre administrateur.
       </p>
+      <div
+        v-else-if="admin && !busy && !error && !total && !applied && !stage"
+        class="board-empty board-empty-import"
+        role="status"
+      >
+        <strong>Aucun prospect à afficher pour l’instant.</strong>
+        <span>Importez une liste (CSV ou Excel) pour commencer à travailler.</span>
+        <button class="primary" @click="showImport">
+          <Upload :size="16" />Importer des contacts
+        </button>
+      </div>
       <p v-else-if="!busy && !error && !visible.length" class="board-empty" role="status">
         {{
           stage
@@ -349,7 +371,20 @@ onBeforeUnmount(() => {
 .prospects-heading-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+}
+.prospects-import,
+.board-empty-import button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.board-empty-import {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 .prospects-view-switch {
   display: inline-flex;

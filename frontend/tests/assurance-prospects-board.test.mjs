@@ -172,6 +172,33 @@ test('administrator switches to the list with imports and back to a refreshed bo
   }
 })
 
+test('administrator opens the import screen directly from the board', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    button(f, 'Importer des contacts').props.onClick()
+    await flush()
+    const list = component_(f, 'AssuranceContacts')
+    assert.ok(list)
+    assert.equal(list.props.autoImport ?? list.props['auto-import'], true)
+    button(f, 'Tableau').props.onClick()
+    await flush()
+    assert.ok(button(f, 'Importer des contacts'))
+  } finally {
+    f.close()
+  }
+})
+
+test('setter has no import button', async () => {
+  const f = fixture('setter')
+  try {
+    await flush()
+    assert.equal(button(f, 'Importer des contacts'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
 test('setter keeps call commands and has no list switch', async () => {
   const f = fixture('setter')
   try {
