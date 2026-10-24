@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { CalendarDays, Clock3, Plus, Save, X } from 'lucide-vue-next';
+import { CalendarDays, Clock3, Link2, Plus, Save, X } from 'lucide-vue-next';
 import PortalCalendars from './PortalCalendars.vue';
 import SidePanel from './SidePanel.vue';
 const props = defineProps<{
@@ -89,7 +89,7 @@ onMounted(load);
       <button :class="{ active: tab === 'hours' }" @click="tab = 'hours'">
         <Clock3 :size="17" />Mes disponibilités</button
       ><button :class="{ active: tab === 'connection' }" @click="tab = 'connection'">
-        <CalendarDays :size="17" />Connexion Google / Microsoft
+        <Link2 :size="17" />Mes agendas connectés
       </button>
     </nav>
     <p v-if="error && !draft" role="alert">
@@ -282,12 +282,16 @@ onMounted(load);
   opacity: 0.45;
   cursor: default;
 }
-.advisor-agenda .agenda-hours,
-.advisor-agenda .agenda-connection {
+.advisor-agenda .agenda-hours {
   background: #fff;
   padding: 24px;
   border: 1px solid #e0e7f1;
   border-radius: 16px;
+}
+.advisor-agenda .agenda-connection {
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .advisor-agenda .hours-heading {
   display: flex;
