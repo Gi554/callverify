@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Google Calendar configuré en production — consentement propriétaire attendu
+
+Le client OAuth Web Google créé par l’utilisateur est configuré dans le `.env` privé du VPS. L’ID et le vrai secret client ont été saisis localement puis transmis par SSH vérifié après autorisation explicite de l’utilisateur. Une première saisie avait confondu ID et secret ; cette valeur a été retirée, puis remplacée après contrôle qu’ils sont distincts. La configuration précédente est sauvegardée hors Git ; la clé de chiffrement calendrier existante reste inchangée. Aucun secret, fichier OAuth ni jeton n’est ajouté au dépôt. Les services ont été rechargés avec la configuration Compose valide.
+
+Validation serveur : paramètres Google chargés, redirection exacte `https://orvia-crm.com/crm/oauth/google`, URL d’autorisation vers Google avec PKCE S256 et accès hors ligne, absence du secret dans cette URL et page de retour HTTPS à 200. Aucun compte Google interrogé par cette recette ; aucun consentement réel, échange de code, lecture des périodes occupées ni publication d’événement encore validé. Zéro agenda connecté à ce stade. Cette livraison est une configuration serveur, pas une intégration fournisseur entièrement recettée.
+
+Le parcours existant permet au conseiller Assurance et au client Isolation de connecter leur propre agenda principal. Les administrateurs et setters ne consentent pas à leur place. Chaque propriétaire doit être autorisé dans l’audience du client OAuth ; en mode Google Test, ajouter ses comptes aux utilisateurs tests. La publication automatique des rendez-vous demande ensuite une activation explicite du propriétaire. Aucun rappel, e-mail, appel ou événement externe n’a été créé par ce lot. Microsoft reste non configuré et Calendly est reporté.
+
+Suite : effectuer le premier consentement Google depuis le compte propriétaire, vérifier la connexion et les périodes occupées, puis activer et recetter la publication sur un rendez-vous de test autorisé. Préparer ensuite Microsoft et la publication/validation OAuth Google pour l’accès hors mode test.
+
 ## Accueil — section « Alertes et notifications » refondue
 
 Les deux panneaux repliables de l’accueil Assurance (« Alertes et notifications » pour l’administrateur, « Rappels et notifications » pour le setter) deviennent une seule section toujours visible, avec des cartes à chiffres.
