@@ -25,6 +25,7 @@ def main():
             title='Bienvenue dans votre équipe',
             intro='Vous êtes invité dans l’espace Assurance en tant que Conseiller. Activez votre compte en choisissant votre mot de passe.',
             action='Activer mon compte',
+            name='camille.exemple',
             url='https://example.invalid/crm#invite=EXEMPLE:NON-UTILISABLE',
             notice='Ce lien personnel expire dans 24 heures et ne peut être utilisé qu’une fois.',
             details=(
@@ -37,6 +38,7 @@ def main():
             title='Un nouvel accès, en toute sécurité',
             intro='Une réinitialisation de votre mot de passe a été demandée. Choisissez un nouveau mot de passe pour retrouver votre espace Orvia CRM.',
             action='Choisir mon mot de passe',
+            name='camille.exemple',
             url='https://example.invalid/crm#reset=EXEMPLE:NON-UTILISABLE',
             notice='Ce lien personnel expire dans 30 minutes et ne peut être utilisé qu’une fois. Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail : votre mot de passe reste inchangé.',
         ),
@@ -44,6 +46,7 @@ def main():
             title='Votre prochain suivi vous attend',
             intro='Un rappel nécessite votre attention dans votre espace Assurance. Connectez-vous pour consulter vos notifications, rendez-vous et tâches.',
             action='Consulter mon espace',
+            name='camille.exemple',
             url='https://example.invalid/crm',
             notice='La lecture de cet e-mail ne clôture aucune tâche et ne renseigne aucun compte rendu. Retrouvez les détails uniquement après connexion à votre espace autorisé.',
             details=(('Espace', 'Assurance'),),

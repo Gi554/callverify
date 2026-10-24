@@ -1,32 +1,22 @@
 <script setup lang="ts">
+// Administrator only: how often reminders are produced and how many escalations are active.
 import { ref, onMounted, onUnmounted } from 'vue';
+import { RefreshCw } from 'lucide-vue-next';
 const props = defineProps<{ role: string; request: (path: string, body?: any) => Promise<any> }>();
-defineEmits<{ openTasks: []; openAppointments: [] }>();
-const rows = ref<any[]>([]),
-  count = ref(0),
-  page = ref(1),
-  expanded = ref(false),
-  busy = ref(false),
+const busy = ref(false),
   error = ref(''),
   message = ref(''),
   rules = ref<any>(null),
   reason = ref(''),
   editing = ref(false),
-  escalationsOnly = ref(false),
-  escalationCount = ref(0);
+  escalationCount = ref<number | null>(null);
 let timer: ReturnType<typeof setInterval> | undefined;
 async function refresh() {
-  if (busy.value) return;
+  if (busy.value || props.role !== 'administrator') return;
   busy.value = true;
   error.value = '';
   try {
-    const data = await props.request(
-      `reminders/?page=${page.value}&category=${escalationsOnly.value ? 'escalations' : 'all'}`,
-    );
-    rows.value = data.results;
-    count.value = data.count;
-    if (props.role === 'administrator')
-      escalationCount.value = (await props.request('reminders/?category=escalations')).count;
+    escalationCount.value = (await props.request('reminders/?category=escalations')).count;
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -55,7 +45,6 @@ async function save() {
     message.value =
       'Règles enregistrées. Le worker produira les rappels applicables lors de son prochain passage.';
     editing.value = false;
-    page.value = 1;
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -74,82 +63,40 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <section aria-label="Rappels Assurance">
-    <h3>Rappels actifs</h3>
-    <p role="status">
-      {{ count }} rappel(s) actif(s). Lire un rappel ne résout ni la tâche ni le compte rendu.
-    </p>
-    <p v-if="role === 'administrator'" role="status">
-      {{ escalationCount }} escalade(s) administrative(s) active(s).
-    </p>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="message" role="status">{{ message }}</p>
-    <button
-      class="secondary"
-      :disabled="busy"
-      @click="
-        expanded = !expanded;
-        refresh();
-      "
-    >
-      {{ expanded ? 'Masquer les rappels' : 'Voir les rappels' }}</button
-    ><button class="secondary" :disabled="busy" @click="refresh">Actualiser</button
-    ><button v-if="role !== 'advisor'" class="secondary" @click="$emit('openTasks')">
-      Tâches de suivi</button
-    ><button class="secondary" @click="$emit('openAppointments')">
-      Rendez-vous et comptes rendus</button
-    ><button v-if="role === 'administrator'" class="secondary" :disabled="busy" @click="configure">
-      Régler les rappels
-    </button>
-    <section v-if="expanded">
-      <label v-if="role === 'administrator'"
-        ><input
-          v-model="escalationsOnly"
-          type="checkbox"
-          :disabled="busy"
-          @change="
-            page = 1;
-            refresh();
-          "
-        />Escalades uniquement</label
-      >
-      <article v-for="row in rows" :key="row.id">
-        <h4>{{ row.label }}</h4>
-        <p>
-          {{ row.appointment_id ? 'RDV ' + row.appointment_id : 'Rappel contact'
-          }}<span v-if="row.task_id"> · Tâche {{ row.task_id }}</span> ·
-          {{ new Date(row.created_at).toLocaleString('fr-FR') }}
-        </p>
-      </article>
-      <p v-if="!rows.length">Aucun rappel actif pour votre périmètre.</p>
+  <div v-if="role === 'administrator'" class="alert-card" aria-label="Rappels automatiques">
+    <header>
+      <h3>Rappels automatiques</h3>
       <button
-        class="secondary"
-        :disabled="busy || page === 1"
-        @click="
-          page--;
-          refresh();
-        "
+        type="button"
+        class="alert-refresh"
+        :disabled="busy"
+        title="Actualiser"
+        aria-label="Actualiser les escalades"
+        @click="refresh"
       >
-        Précédent</button
-      ><span> Page {{ page }} </span
-      ><button
-        class="secondary"
-        :disabled="busy || page * 25 >= count"
-        @click="
-          page++;
-          refresh();
-        "
-      >
-        Suivant
+        <RefreshCw :size="15" />
       </button>
-    </section>
-    <form v-if="editing && rules && role === 'administrator'" @submit.prevent="save">
+    </header>
+    <div class="alert-tiles one">
+      <div class="alert-tile" :class="escalationCount ? 'warning' : 'static'">
+        <strong>{{ escalationCount ?? '—' }}</strong
+        ><span>Escalade(s) administrative(s) active(s)</span>
+      </div>
+    </div>
+    <p v-if="error" role="alert" class="alert-error">{{ error }}</p>
+    <p v-if="message" role="status" class="alert-ok">{{ message }}</p>
+    <div v-if="!editing" class="alert-actions">
+      <button type="button" class="secondary" :disabled="busy" @click="configure">
+        Régler les rappels
+      </button>
+    </div>
+    <form v-if="editing && rules" class="reminder-form" @submit.prevent="save">
       <h4>Cadence des rappels</h4>
       <p>
         Les changements invalident les anciens rappels. Les nouveaux sont générés par le worker ;
         aucune clôture automatique.
       </p>
-      <label
+      <label class="check"
         ><input v-model="rules.tasks_enabled" type="checkbox" :disabled="busy" />Rappeler les tâches
         en retard</label
       ><label
@@ -160,7 +107,7 @@ onUnmounted(() => {
           max="720"
           required
           :disabled="busy" /></label
-      ><label
+      ><label class="check"
         ><input v-model="rules.reports_enabled" type="checkbox" :disabled="busy" />Rappeler les
         comptes rendus manquants</label
       ><label
@@ -185,7 +132,7 @@ onUnmounted(() => {
         Désactivées initialement. Les seuils s’ajoutent à l’échéance de la tâche ou au délai initial
         du compte rendu ; les rappels du type doivent être actifs.
       </p>
-      <label
+      <label class="check"
         ><input v-model="rules.escalations_enabled" type="checkbox" :disabled="busy" />Activer les
         escalades</label
       ><label
@@ -218,11 +165,117 @@ onUnmounted(() => {
           required
           maxlength="1000"
           :disabled="busy"
-        ></textarea></label
-      ><button class="primary" :disabled="busy">Enregistrer</button
-      ><button type="button" class="secondary" :disabled="busy" @click="editing = false">
-        Annuler
-      </button>
+        ></textarea>
+      </label>
+      <div class="alert-actions">
+        <button class="primary" :disabled="busy">Enregistrer</button
+        ><button type="button" class="secondary" :disabled="busy" @click="editing = false">
+          Annuler
+        </button>
+      </div>
     </form>
-  </section>
+  </div>
 </template>
+<style scoped>
+.alert-card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #ece8f4;
+  border-radius: 16px;
+  background: #fff;
+}
+.alert-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.alert-card h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #2d2640;
+}
+.alert-refresh {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #e4dff0;
+  border-radius: 10px;
+  background: #faf8fe;
+  color: #7a6d86;
+}
+.alert-tile {
+  display: grid;
+  gap: 4px;
+  padding: 14px 12px;
+  border: 1px solid #ece8f4;
+  border-radius: 14px;
+  background: #faf9fd;
+}
+.alert-tile strong {
+  font-size: 26px;
+  line-height: 1;
+  color: #2d2640;
+}
+.alert-tile span {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #7a6d86;
+}
+.alert-tile.warning {
+  border-color: #f6dca8;
+  background: #fff9ec;
+}
+.alert-tile.warning strong {
+  color: #b54708;
+}
+.alert-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 13px;
+}
+.alert-ok {
+  margin: 0;
+  color: #067647;
+  font-size: 13px;
+}
+.alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reminder-form {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #f0edf6;
+  font-size: 12px;
+  color: #5b4f68;
+}
+.reminder-form h4 {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #2d2640;
+}
+.reminder-form p {
+  margin: 0;
+  line-height: 1.6;
+  color: #7a6d86;
+}
+.reminder-form label {
+  display: grid;
+  gap: 4px;
+}
+.reminder-form label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>

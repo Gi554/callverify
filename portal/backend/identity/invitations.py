@@ -101,6 +101,7 @@ def deliver(row, token):
             intro=f'Vous êtes invité dans l’espace {space} en tant que {role}. Activez votre compte en choisissant votre mot de passe.',
             details=(('Espace', space), ('Votre rôle', role), ('Votre identifiant', row.username)),
             action='Activer mon compte',
+            name=row.username,
             url=link,
             notice='Ce lien personnel expire dans 24 heures et ne peut être utilisé qu’une fois. Si vous n’attendiez pas cette invitation, contactez votre administrateur.',
         ),

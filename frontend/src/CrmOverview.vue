@@ -9,7 +9,6 @@ import {
   UserRoundCheck,
   ArrowRight,
   RefreshCw,
-  ChevronDown,
   Sparkles,
   Clock3,
   BarChart3,
@@ -388,14 +387,16 @@ onMounted(refreshHome);
         </button>
       </aside>
     </div>
-    <details v-if="assurance" class="home-followup-details">
-      <summary>
-        <span class="followup-summary-icon"><ListTodo :size="18" /></span
-        ><span><strong>Rappels et notifications</strong><small>Le détail de mes suivis</small></span
-        ><ChevronDown :size="18" />
-      </summary>
-      <div class="home-followup-content"><slot /></div>
-    </details>
+    <section v-if="assurance" class="home-alerts" aria-labelledby="home-alerts-title">
+      <header class="home-alerts-head">
+        <span class="followup-summary-icon"><ListTodo :size="18" /></span>
+        <div>
+          <h2 id="home-alerts-title">Alertes et notifications</h2>
+          <p>Les notifications de vos suivis, en un coup d’œil.</p>
+        </div>
+      </header>
+      <div class="home-alerts-grid"><slot /></div>
+    </section>
   </section>
   <section v-else-if="admin" class="setter-homepage admin-homepage">
     <div class="home-topline">
@@ -528,16 +529,16 @@ onMounted(refreshHome);
         Voir l’agenda de l’équipe<ArrowRight :size="16" />
       </button>
     </section>
-    <details v-if="assurance" class="home-followup-details" open>
-      <summary>
-        <span class="followup-summary-icon"><ListTodo :size="18" /></span
-        ><span
-          ><strong>Alertes et notifications</strong
-          ><small>Échéances des mandats, rappels et suivis</small></span
-        ><ChevronDown :size="18" />
-      </summary>
-      <div class="home-followup-content"><slot /></div>
-    </details>
+    <section v-if="assurance" class="home-alerts" aria-labelledby="home-alerts-title-team">
+      <header class="home-alerts-head">
+        <span class="followup-summary-icon"><ListTodo :size="18" /></span>
+        <div>
+          <h2 id="home-alerts-title-team">Alertes et notifications</h2>
+          <p>Échéances des mandats et suivis de l’équipe, en un coup d’œil.</p>
+        </div>
+      </header>
+      <div class="home-alerts-grid"><slot /></div>
+    </section>
   </section>
   <section v-else class="crm-overview">
     <div class="crm-metrics">
@@ -965,8 +966,7 @@ onMounted(refreshHome);
   cursor: wait;
   opacity: 0.6;
 }
-.setter-homepage button:focus-visible,
-.home-followup-details summary:focus-visible {
+.setter-homepage button:focus-visible {
   outline: 3px solid #9271ef;
   outline-offset: 4px;
 }
@@ -1489,22 +1489,28 @@ onMounted(refreshHome);
   font-size: 10px;
   margin-top: 12px;
 }
-.home-followup-details {
+.home-alerts {
   border: 1px solid #fff;
   background: #ffffffb8;
   border-radius: 20px;
   margin-top: 20px;
+  padding: 20px 22px 22px;
 }
-.home-followup-details > summary {
+.home-alerts-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  cursor: pointer;
-  list-style: none;
-  padding: 16px 22px;
+  margin-bottom: 16px;
 }
-.home-followup-details > summary::-webkit-details-marker {
-  display: none;
+.home-alerts-head h2 {
+  margin: 0;
+  font-size: 15px;
+  color: #2d2640;
+}
+.home-alerts-head p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #7a6d86;
 }
 .followup-summary-icon {
   background: #eee8fa;
@@ -1514,44 +1520,13 @@ onMounted(refreshHome);
   border-radius: 12px;
   display: grid;
   place-items: center;
+  flex: none;
 }
-.home-followup-details summary > span:nth-child(2) {
-  flex: 1;
-}
-.home-followup-details summary strong {
-  display: block;
-  font-size: 12px;
-  color: #675b76;
-}
-.home-followup-details summary small {
-  display: block;
-  margin-top: 4px;
-  font-size: 10px;
-  color: #96899f;
-}
-.home-followup-details summary > svg {
-  color: #ad9eb9;
-}
-.home-followup-details[open] summary > svg {
-  transform: rotate(180deg);
-}
-.home-followup-content {
+.home-alerts-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  padding: 0 22px 22px;
-}
-.home-followup-content:deep(> section) {
-  font-size: 12px;
-  color: #72627e;
-  line-height: 1.7;
-}
-.home-followup-content:deep(h3) {
-  font-size: 14px !important;
-}
-.home-followup-content:deep(button) {
-  font-size: 11px;
-  margin: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  align-items: start;
 }
 @media (min-width: 1550px) {
   .home-highlight {
@@ -1620,9 +1595,6 @@ onMounted(refreshHome);
   }
   .action-tile-title {
     flex-wrap: wrap;
-  }
-  .home-followup-content {
-    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 600px) {

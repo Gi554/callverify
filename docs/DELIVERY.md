@@ -10,6 +10,27 @@ Le parcours existant permet au conseiller Assurance et au client Isolation de co
 
 Suite : effectuer le premier consentement Google depuis le compte propriétaire, vérifier la connexion et les périodes occupées, puis activer et recetter la publication sur un rendez-vous de test autorisé. Préparer ensuite Microsoft et la publication/validation OAuth Google pour l’accès hors mode test.
 
+## Accueil — section « Alertes et notifications » refondue
+
+Les deux panneaux repliables de l’accueil Assurance (« Alertes et notifications » pour l’administrateur, « Rappels et notifications » pour le setter) deviennent une seule section toujours visible, avec des cartes à chiffres.
+
+- **Échéances des mandats et contrats** (administrateur) : trois tuiles — date de fin dépassée, dans les 30 jours, sans date de fin. Les deux premières sont cliquables, et se colorent quand elles sont non nulles.
+- **Notifications de suivi** (administrateur et setter) : tuiles « liées à un suivi ouvert » et « non lues », puis « Voir les notifications » (filtres, marquer comme lue, pagination, inchangés) et « Ouvrir les tâches de suivi ».
+- **Rappels automatiques** (administrateur seulement) : compteur d’escalades administratives actives et réglage de la cadence des rappels, avec le même formulaire et les mêmes règles qu’avant.
+- Le bloc **« Rappels actifs »** et ses boutons (liste des rappels, tâches de suivi, rendez-vous et comptes rendus) sont retirés pour tous les rôles : les notifications de suivi couvrent les mêmes événements. Le réglage des rappels n’est pas perdu : il reste dans la carte des administrateurs.
+- Mise en page adaptée : deux colonnes sur ordinateur, une colonne sur téléphone, sans débordement.
+
+Validation : typage, ESLint, Prettier, 119 tests frontend et build ; contrôle dans le CRM local en administrateur (trois cartes, réglage des rappels et liste des notifications qui s’ouvrent et se ferment), en setter (une seule carte) et en vue téléphone 375 px (une colonne, aucun débordement).
+
+Limites : aucun test automatisé dédié à ces trois composants (vérifiés dans le navigateur). Les chiffres étaient à zéro dans la base locale : le rendu avec des données réelles (listes de notifications, tuiles colorées) reste à voir en production.
+
+## E-mails — nouveau format avec bandeau et mise en page mobile
+
+Les e-mails du portail adoptent un format à bandeau : logo en haut à droite, titre en majuscules sur fond bleu, « Bonjour Prénom, », informations en liste à puces, bouton arrondi et pied de page en deux colonnes. Le modèle s’adapte aux téléphones : sous 480 px, le bouton occupe toute la largeur, les marges se resserrent et le pied de page s’empile. Le prénom est déduit de l’identifiant (« camille.exemple » devient « Camille Exemple ») ; une adresse e-mail n’est jamais affichée. Les appelants (invitation, mot de passe oublié, rappels Assurance) passent simplement l’identifiant, et `layout()` reste compatible avec l’existant.
+
+Validation : deux tests du modèle (prénom et échappement, règles responsives) ; suites portail (246) et Assurance (347) ; Ruff ; galerie bureau et mobile contrôlée dans le navigateur : trois e-mails en deux tailles, sans débordement horizontal à 360 px, bouton en pleine largeur uniquement sur mobile.
+
+Limites : rendu vérifié dans un navigateur, pas dans chaque messagerie (Outlook de bureau applique ses propres règles ; le bouton y reste lisible mais sans coins arrondis). Pas de logo image ni de mode sombre. Le texte brut de chaque e-mail est inchangé.
 
 ## E-mails transactionnels Orvia CRM — HTML et texte
 

@@ -52,6 +52,26 @@ class EmailLayoutTests(TestCase):
         self.assertIn('lang="fr"', html)
         self.assertNotIn('<link ', html)
 
+    def test_banner_greeting_and_responsive_rules(self):
+        html = self.message(name='camille.exemple')
+        self.assertIn('Bonjour Camille Exemple,', html)
+        self.assertIn('class="hero-title"', html)
+        self.assertIn('border-radius:999px', html)
+        # Fluid 600 px column, a mobile breakpoint, and stacking footer columns.
+        self.assertIn('max-width:600px', html)
+        self.assertIn('@media only screen and (max-width:480px)', html)
+        self.assertIn('.col{display:block', html)
+        self.assertIn('width=device-width', html)
+        self.assertEqual(html.count('class="btn-link"'), 1)
+
+    def test_greeting_is_generic_without_a_name_and_never_shows_an_address(self):
+        self.assertIn('Bonjour,', self.message())
+        self.assertIn('Bonjour,', self.message(name='camille@example.test'))
+        self.assertNotIn('camille@example.test', self.message(name='camille@example.test'))
+        escaped = self.message(name='<b>')
+        self.assertIn('Bonjour &lt;B&gt;,', escaped)
+        self.assertNotIn('Bonjour <', escaped)
+
     def test_unsafe_action_urls_rejected_and_production_requires_https(self):
         for url in ('javascript:alert(1)', '//host/crm', 'https://user:pass@host/crm'):
             with self.subTest(url=url), self.assertRaises(ValueError):
