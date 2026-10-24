@@ -16,6 +16,8 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
+  // Open the import screen on arrival (administrators, from « Importer des contacts »).
+  autoImport?: boolean;
 }>();
 const emit = defineEmits<{ imported: [count: number] }>();
 const rows = ref<any[]>([]),
@@ -176,6 +178,7 @@ async function inspectContact(row: any) {
 }
 onMounted(async () => {
   await load();
+  if (props.autoImport && props.role === 'administrator') await openImport();
   try {
     stages.value = (await props.request('pipeline/')).stages;
   } catch (e: any) {

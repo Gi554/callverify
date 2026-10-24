@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Import de contacts visible pour l’administrateur Assurance
+
+Sur la page Prospects, l’administrateur voit désormais un bouton « Importer des contacts » en haut à droite : il ouvre directement l’écran d’import (CSV ou Excel) sans passer par « Liste et imports ». Quand le tableau est vide, un message l’invite à importer une liste avec le même bouton. Les setters et conseillers ne voient pas ce bouton. Limite : aucun changement du format d’import ni des règles de dédoublonnage ; revue esthétique reportée à la revue finale.
+
 ## Pages publiques Orvia CRM pour l’identité OAuth
 
 Correctif de permissions après la première recette HTTPS : le checkout de production en umask restrictif produit des fichiers publics en 600, conservés par Vite, qui répondent 403 pour Nginx. L’image web normalise uniquement son répertoire d’assets compilés en dossiers 755/fichiers 644 ; aucun fichier privé ni secret n’est concerné. La correction est vérifiée sur les trois pages et la feuille de style, puis intégrée au build pour résister aux prochains déploiements.
