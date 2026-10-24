@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Vérification du domaine pour Google Search Console
+
+Ajout du fichier de vérification Google à la racine publique (/google6195fcacccb8a875.html), servi tel quel par Nginx sans session, afin de prouver la propriété de orvia-crm.com avant la validation de l’écran de consentement OAuth. Le fichier ne contient aucun secret. Limite : la validation elle-même se fait dans Search Console après déploiement.
+
 ## Connexion des agendas — présentation et logos des fournisseurs
 
 L’onglet conseiller « Mes agendas connectés » présente Google Calendar et Microsoft Outlook dans deux cartes distinctes avec leurs logos officiels, conservés localement dans le build. Le composant partagé reprend cette présentation dans les autres accès personnels aux agendas. Le bandeau et les trois étapes expliquent connexion, horaires puis activation volontaire de la publication. L’état de chaque fournisseur provient toujours de l’API : non connecté, connecté ou connexion non activée (« À venir »). Un compte déjà connecté doit être déconnecté avant de choisir un autre fournisseur ; les commandes de retrait des événements et de récupération restent accessibles.
