@@ -2,7 +2,7 @@
 
 ## Vérification du domaine pour Google Search Console
 
-Ajout du fichier de vérification Google à la racine publique (), servi tel quel par Nginx sans session, afin de prouver la propriété de orvia-crm.com avant la validation de l’écran de consentement OAuth. Le fichier ne contient aucun secret. Limite : la validation elle-même se fait dans Search Console après déploiement.
+Ajout du fichier de vérification Google à la racine publique (/google6195fcacccb8a875.html), servi tel quel par Nginx sans session, afin de prouver la propriété de orvia-crm.com avant la validation de l’écran de consentement OAuth. Le fichier ne contient aucun secret. Limite : la validation elle-même se fait dans Search Console après déploiement.
 
 ## Import de contacts visible pour l’administrateur Assurance
 
