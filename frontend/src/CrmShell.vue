@@ -210,7 +210,6 @@ function navigate(id: string) {
                   contacts: 2,
                   calls: 3,
                   appointments: 4,
-                  pipeline: 5,
                   followups: 6,
                 } as Record<string, number>
               )[item.id] || 7,
