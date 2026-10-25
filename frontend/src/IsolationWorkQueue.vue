@@ -17,8 +17,10 @@ import SidePanel from './SidePanel.vue';
 import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
+import IsolationLots from './IsolationLots.vue';
 const includeProcessed = ref(false);
-const adminTools = ref(false),
+const lotsOpen = ref(false),
+  adminTools = ref(false),
   callPending = ref(false),
   workflow = ref<'edit' | 'call'>('edit');
 const statuses = [
@@ -228,7 +230,18 @@ onBeforeUnmount(() => {
         <p>Vos fiches, vos rappels et vos prochaines visites, au même endroit.</p>
       </div>
       <div class="board-actions">
-        <button v-if="role === 'administrator'" class="secondary" @click="adminTools = !adminTools">
+        <button
+          v-if="role === 'administrator'"
+          class="secondary"
+          :aria-expanded="lotsOpen"
+          @click="lotsOpen = !lotsOpen"
+        >
+          <Users :size="16" />Lot de la semaine</button
+        ><button
+          v-if="role === 'administrator'"
+          class="secondary"
+          @click="adminTools = !adminTools"
+        >
           <Users :size="16" />Répartir les prospects</button
         ><ProspectExport
           :request="request"
@@ -294,6 +307,12 @@ onBeforeUnmount(() => {
       </button>
     </div>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
+    <IsolationLots
+      v-if="lotsOpen && role === 'administrator'"
+      :request="request"
+      :portal="portal"
+      @changed="load"
+    />
     <section v-if="adminTools && role === 'administrator'" class="admin-tools">
       <h2>Répartition et affectation</h2>
       <p>

@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Lot de la semaine aux setters (Isolation)
+
+Sur la page Prospects Isolation, l’administrateur ouvre « Lot de la semaine », choisit un setter et un nombre de prospects (1 à 1000) : les prochains prospects non attribués, ni en rendez-vous ni refusés, lui sont donnés. Le panneau indique la semaine en cours, les prospects non attribués, le nombre en cours par setter avec la date de son lot, et « Reprendre » rend à l’équipe les prospects que le setter n’a pas encore travaillés (statut « À contacter »). L’attribution se fait à la main, chaque semaine ; elle est rejouable sans doublon, tracée dans l’audit, et le setter est attesté par le portail. Un setter Isolation ne voyait déjà que ses prospects : rien ne change pour lui.
+
+Limites : la répartition existante par sélection (25 prospects) est conservée ; pas d’attribution automatique chaque semaine ; les prospects dont la conformité d’appel n’est pas validée peuvent faire partie d’un lot (l’appel reste bloqué pour eux) ; la session d’appels enchaînés Isolation est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
+
 ## Session d’appels enchaînés avec compte à rebours (Assurance)
 
 Sur la page Prospects, le setter lance une « session d’appels » : le premier prospect de son tableau (avec un numéro) s’ouvre en parcours d’appel et la commande d’appel part d’elle-même, sans étape de confirmation, une fois les contrôles habituels passés (appels activés, poste associé). Le setter qualifie le prospect, réserve éventuellement un rendez-vous, puis clique sur « Terminer · prospect suivant » : un compte à rebours de 10 secondes s’affiche avec « Appeler maintenant » et « Arrêter la session ». À zéro, le prospect suivant est ouvert et appelé ; à la fin de la liste, la session s’arrête avec un message.

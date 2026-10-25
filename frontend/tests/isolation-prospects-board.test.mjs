@@ -227,3 +227,35 @@ test('administrator retains assignment drawer and can prepare calls', async () =
     f.app.unmount()
   }
 })
+test('administrator opens the weekly lot panel; setter does not get it', async () => {
+  const f = fixture('administrator')
+  try {
+    await flush()
+    const open = all(f.root).find(
+      (n) => n.tag === 'button' && text(n).trim() === 'Lot de la semaine',
+    )
+    assert.ok(open)
+    assert.equal(
+      all(f.root).some((n) => n.props?.['data-component'] === 'IsolationLots'),
+      false,
+    )
+    open.props.onClick()
+    await flush()
+    assert.equal(
+      all(f.root).some((n) => n.props?.['data-component'] === 'IsolationLots'),
+      true,
+    )
+  } finally {
+    f.app.unmount()
+  }
+  const g = fixture('setter')
+  try {
+    await flush()
+    assert.equal(
+      all(g.root).some((n) => n.tag === 'button' && text(n).trim() === 'Lot de la semaine'),
+      false,
+    )
+  } finally {
+    g.app.unmount()
+  }
+})

@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from .management_api import require_admin
 from .models import Membership, AccessAudit
-from packages.access.isolation import issue_owner
+from packages.access.isolation import issue_owner, issue_lot
 
 
 class AssignmentInput(serializers.Serializer):
@@ -92,6 +92,45 @@ def visit_proof(request):
                 client.user_id,
                 client.user.username,
             ),
+            'expires_in': 120,
+        }
+    )
+
+
+class LotInput(serializers.Serializer):
+    setter_id = serializers.IntegerField(min_value=1)
+
+    def validate(self, data):
+        if set(self.initial_data) - set(self.fields):
+            raise ValidationError('Champs non autorisés')
+        return data
+
+
+@api_view(['POST'])
+def lot_proof(request):
+    require_admin(request.user, 'isolation')
+    serializer = LotInput(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    target = (
+        Membership.objects.filter(
+            workspace='isolation',
+            role='setter',
+            active=True,
+            user__is_active=True,
+            user_id=data['setter_id'],
+        )
+        .select_related('user')
+        .first()
+    )
+    if target is None:
+        raise ValidationError('Setter Isolation actif requis')
+    AccessAudit.objects.create(
+        user=request.user, workspace='isolation', action='lot.setter_attested', metadata=data
+    )
+    return Response(
+        {
+            'proof': issue_lot(request.user.pk, target.user_id, target.user.username),
             'expires_in': 120,
         }
     )
