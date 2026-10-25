@@ -1,5 +1,6 @@
 """Administrators hand out lots of unprocessed prospects to setters, and take them back."""
 
+from django.core import signing
 from django.db import transaction
 from django.db.models import Count
 from django.utils import timezone
@@ -7,8 +8,9 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from packages.access.followups import verify_lot
 from .assignments import admin
-from .models import AdvisorAssignment, BusinessAudit, Contact, ContactImport
+from .models import BusinessAudit, Contact, ContactImport
 from .prospect_queue import apply_queue
 
 MAX_LOT = 1000
@@ -16,7 +18,7 @@ MAX_LOT = 1000
 
 class LotInput(serializers.Serializer):
     request_id = serializers.UUIDField()
-    setter_id = serializers.IntegerField(min_value=1)
+    proof = serializers.CharField(max_length=3000)
     count = serializers.IntegerField(min_value=1, max_value=MAX_LOT)
     import_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
 
@@ -36,14 +38,6 @@ class ReleaseInput(serializers.Serializer):
         return data
 
 
-def setters():
-    """Setters known to Assurance through an active advisor association."""
-    names = {}
-    for row in AdvisorAssignment.objects.filter(active=True).order_by('setter_name', 'pk'):
-        names.setdefault(row.setter_id, row.setter_name)
-    return names
-
-
 def unassigned():
     return apply_queue(Contact.objects.filter(assigned_setter_id__isnull=True), 'active')
 
@@ -61,6 +55,12 @@ def summary():
         .values('assigned_setter_id')
         .annotate(n=Count('pk'))
     }
+    names = dict(
+        Contact.objects.filter(assigned_setter_id__in=list(owned))
+        .order_by('assigned_setter_name')
+        .values_list('assigned_setter_id', 'assigned_setter_name')
+        .distinct()
+    )
     free = unassigned()
     per_import = {
         row['import_batch_id']: row['n']
@@ -74,9 +74,7 @@ def summary():
     ]
     return {
         'available': free.count(),
-        'setters': [
-            {'id': pk, 'name': name, 'assigned': owned.get(pk, 0)} for pk, name in setters().items()
-        ],
+        'setters': [{'id': pk, 'name': name, 'assigned': owned[pk]} for pk, name in names.items()],
         'imports': imports,
     }
 
@@ -94,24 +92,23 @@ def lots(request):
     previous = done(data['request_id'])
     if previous:
         return Response({'assigned': previous.metadata.get('count', 0), 'replayed': True})
-    name = setters().get(data['setter_id'])
-    if name is None:
-        raise ValidationError(
-            'Ce setter n’a aucun conseiller associé : créez d’abord l’association.'
-        )
+    try:
+        setter = verify_lot(data['proof'], request.user.pk)
+    except (signing.BadSignature, ValueError, TypeError):
+        raise ValidationError('Attestation invalide ou expirée : recommencez')
     with transaction.atomic():
         qs = unassigned()
         if data.get('import_id'):
             qs = qs.filter(import_batch_id=data['import_id'])
         ids = list(qs.order_by('pk').values_list('pk', flat=True)[: data['count']])
         count = Contact.objects.filter(pk__in=ids, assigned_setter_id__isnull=True).update(
-            assigned_setter_id=data['setter_id'],
-            assigned_setter_name=name,
+            assigned_setter_id=setter['id'],
+            assigned_setter_name=setter['name'],
             assigned_at=timezone.now(),
         )
         BusinessAudit.objects.create(
             actor_id=request.user.pk,
-            object_id=data['setter_id'],
+            object_id=setter['id'],
             action='lot.assigned',
             metadata={
                 'request_id': str(data['request_id']),

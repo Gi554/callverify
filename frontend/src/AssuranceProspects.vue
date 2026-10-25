@@ -290,7 +290,7 @@ onBeforeUnmount(() => {
         <button class="secondary" @click="stopSession">Arrêter la session</button>
       </div>
       <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
-      <AssuranceLots v-if="admin && lotsOpen" :request="request" @changed="load" />
+      <AssuranceLots v-if="admin && lotsOpen" :request="request" :portal="portal" @changed="load" />
       <div class="prospects-toolbar">
         <label class="processed-toggle"
           ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les

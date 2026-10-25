@@ -35,6 +35,12 @@ conflit externe et compte rendu préservé ; reprise Vue après timeout/fermetur
 concurrence PostgreSQL et contrôles CI avant fusion. Les tests fournisseur sont simulés :
 identifiants, consentement, activation et réservation réelle de recette restent à effectuer.
 
+## Lots Assurance : tous les setters du portail proposés
+
+Correctif de la première livraison des lots Assurance : le panneau « Attribuer des lots » n’affichait ni setter ni champ de nombre tant qu’aucun conseiller n’était associé à un setter. Il liste maintenant tous les setters Assurance actifs depuis le portail, avec le nombre de prospects en cours de chacun, et le formulaire (setter, nombre de prospects — les premiers, par défaut 100 —, provenance) est toujours visible. Le setter est attesté par une nouvelle preuve signée du portail (lot-proof), comme pour Isolation, au lieu de dépendre d’une association avec un conseiller.
+
+Vérifié sur le CRM local : attribution des deux fiches de démonstration au setter de recette, le cloisonnement s’active ensuite. Limite : revue visuelle reportée à la revue finale.
+
 
 
 ## Calendly — réservation depuis la fiche Assurance, heure de Montréal

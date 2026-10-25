@@ -1,17 +1,15 @@
 import uuid
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
+from packages.access.followups import issue_lot
 from packages.access.tickets import issue
-from .models import AdvisorAssignment, BusinessAudit, Contact, ContactImport
+from .models import BusinessAudit, Contact, ContactImport
 
 
 @override_settings(DEBUG=True)
 class LotTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        AdvisorAssignment.objects.create(
-            setter_id=21, setter_name='Setter Un', advisor_id=31, advisor_name='Conseiller'
-        )
         self.contacts = [
             Contact.objects.create(name=f'Prospect {n}', phone=f'0{n}', created_by_id=1)
             for n in range(5)
@@ -20,13 +18,13 @@ class LotTests(TestCase):
     def auth(self, pk, role):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(pk, 'assurance', role))
 
-    def give(self, count, setter=21, request_id=None, **extra):
+    def give(self, count, setter=21, request_id=None, actor=1, **extra):
         self.auth(1, 'administrator')
         return self.client.post(
             '/api/assurance/lots/',
             {
                 'request_id': str(request_id or uuid.uuid4()),
-                'setter_id': setter,
+                'proof': issue_lot(actor, setter, 'Setter Un'),
                 'count': count,
                 **extra,
             },
@@ -86,14 +84,18 @@ class LotTests(TestCase):
             {self.contacts[3].pk, self.contacts[4].pk},
         )
 
-    def test_unknown_setter_and_non_admin_are_refused(self):
-        self.assertEqual(self.give(1, setter=99).status_code, 400)
+    def test_proof_of_another_actor_and_non_admin_are_refused(self):
+        self.assertEqual(self.give(1, actor=2).status_code, 400)
         self.auth(21, 'setter')
         self.assertEqual(self.client.get('/api/assurance/lots/').status_code, 403)
         self.assertEqual(
             self.client.post(
                 '/api/assurance/lots/',
-                {'request_id': str(uuid.uuid4()), 'setter_id': 21, 'count': 1},
+                {
+                    'request_id': str(uuid.uuid4()),
+                    'proof': issue_lot(21, 21, 'Setter Un'),
+                    'count': 1,
+                },
                 format='json',
             ).status_code,
             403,
