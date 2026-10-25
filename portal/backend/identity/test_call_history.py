@@ -5,7 +5,7 @@ from django.core import signing
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.phone_calls import issue, verify
-from .models import Membership, PhoneExtension, PhoneCallAttempt
+from .models import Membership, PhoneExtension, PhoneCallAttempt, CallRules
 
 
 @override_settings(
@@ -16,6 +16,7 @@ from .models import Membership, PhoneExtension, PhoneCallAttempt
 )
 class CallHistoryTests(TestCase):
     def setUp(self):
+        CallRules.objects.update_or_create(pk=1, defaults={'enforce_hours': False})
         users = get_user_model().objects
         self.setter = users.create_user('history-setter')
         self.other = users.create_user('history-other')

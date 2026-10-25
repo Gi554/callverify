@@ -169,6 +169,25 @@ test('call session never sends when calls are disabled', async () => {
     f.close()
   }
 })
+test('outside the permitted hours no intent and no send happen, with the reason shown', async () => {
+  let sends = 0
+  const f = fixture(async (path, body) => {
+    if (body) sends++
+    return {
+      enabled: true,
+      post_associated: true,
+      call_window: { allowed: false, message: 'Appels autorisés de 09:30 à 21:30.' },
+    }
+  })
+  try {
+    await f.click('Appeler')
+    assert.match(text(f.root), /Appels autorisés de 09:30/)
+    assert.equal(sends, 0)
+    assert.equal(f.intents(), 0)
+  } finally {
+    f.close()
+  }
+})
 test('lost dispatch response preserves reference and prevents another send', async () => {
   let sends = 0
   const f = fixture(async (path, body) => {
