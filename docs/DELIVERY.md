@@ -1,6 +1,7 @@
 # Suivi des livraisons CRM AMX
 
 
+
 ## Calendly — réservation depuis la fiche Assurance, heure de Montréal
 
 Le setter ou administrateur choisit Calendly dans la réservation du prospect, puis une attribution
@@ -23,6 +24,13 @@ RPC interne signé, conversion Montréal et non-régression services/Vue. Les co
 la fusion. Tests externes simulés ; aucun rendez-vous réel créé, recette fournisseur en attente.
 La synchronisation créations/annulations/reports et le rapprochement automatique restent le lot
 suivant, demandé dans la même tâche.
+
+## Garde-fous d’appel : heures autorisées et liste d’exclusion (Assurance et Isolation)
+
+Le portail refuse désormais, avant toute commande à l’opérateur, un appel placé hors des heures autorisées ou vers un numéro de la liste d’exclusion. Les heures par défaut sont 9 h 30–21 h 30 en semaine et 10 h–18 h le week-end, heure de Montréal ; elles sont réglables, désactivables et le fuseau est modifiable. L’administrateur gère les deux dans Accès → « Règles d’appel » : réglage des heures avec l’état du moment, ajout de numéros en lot (collés, un par ligne ou séparés par des virgules, normalisés comme les numéros composés), recherche et retrait. Le message de refus est affiché au setter (y compris en session d’appels, qui n’envoie rien), le refus est tracé dans l’audit sans enregistrer le numéro, et aucune commande ni ligne d’historique n’est créée.
+
+Comportement à connaître : le contrôle des heures est actif dès le déploiement ; pour un test hors horaires, l’administrateur le désactive dans « Règles d’appel ». Limites : l’heure est celle d’un seul fuseau, pas celle du prospect ; l’exclusion porte sur le numéro composé exact, sans importer de liste officielle ; la liste est partagée par les deux espaces ; revue visuelle reportée à la revue finale.
+
 
 ## Session d’appels enchaînés avec compte à rebours (Isolation)
 

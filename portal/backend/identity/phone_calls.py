@@ -22,6 +22,7 @@ from packages.access.tickets import issue as access_ticket
 from packages.newt.calls import place
 from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
 from .call_journal import digest
+from .call_rules import refusal, rules, window
 
 
 class Conflict(APIException):
@@ -151,6 +152,15 @@ def calls(request, workspace='assurance'):
         link = PhoneExtension.objects.filter(user=request.user, extension__isnull=False).first()
         if not link:
             raise ValidationError('Aucun poste associé à votre compte.')
+        reason = refusal(claims['destination'])
+        if reason:
+            AccessAudit.objects.create(
+                user=request.user,
+                workspace=workspace,
+                action='phone.call_refused',
+                metadata={'request_id': claims['request_id'], 'reason': reason[:80]},
+            )
+            return Response({'detail': reason}, status=400)
         if PhoneCallAttempt.objects.filter(
             user=request.user, created_at__gt=timezone.now() - timedelta(seconds=60)
         ).exists():
@@ -217,7 +227,14 @@ def options(request, workspace='assurance'):
         and settings.NEWT_PASSWORD
     )
     linked = PhoneExtension.objects.filter(user=request.user, extension__isnull=False).exists()
-    response = Response({'enabled': enabled, 'post_associated': linked})
+    allowed, message = window(rules())
+    response = Response(
+        {
+            'enabled': enabled,
+            'post_associated': linked,
+            'call_window': {'allowed': allowed, 'message': message},
+        }
+    )
     response['Cache-Control'] = 'no-store'
     return response
 

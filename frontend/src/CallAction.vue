@@ -56,6 +56,8 @@ async function open() {
     if (!state.enabled) throw new Error('Les appels sont désactivés pour cet espace.');
     if (!state.post_associated)
       throw new Error('Un administrateur doit associer votre poste Phonetico à votre compte.');
+    if (state.call_window && !state.call_window.allowed)
+      throw new Error(state.call_window.message || 'Appels interdits à cette heure.');
     confirmedPhone.value = props.phone;
     confirming.value = true;
     launch = !!props.autoSend;

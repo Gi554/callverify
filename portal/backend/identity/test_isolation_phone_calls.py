@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.phone_calls import issue, verify
-from .models import Membership, PhoneExtension, PhoneCallAttempt
+from .models import Membership, PhoneExtension, PhoneCallAttempt, CallRules
 from .phone_calls import eligible
 
 
@@ -18,6 +18,7 @@ from .phone_calls import eligible
 )
 class IsolationCallsTests(TestCase):
     def setUp(self):
+        CallRules.objects.update_or_create(pk=1, defaults={'enforce_hours': False})
         self.user = get_user_model().objects.create_user('isolation-setter')
         self.membership = Membership.objects.create(
             user=self.user, workspace='isolation', role='setter'
@@ -121,7 +122,14 @@ class IsolationCallsTests(TestCase):
         with override_settings(NEWT_ISOLATION_CALLS_ENABLED=False):
             response = self.client.get(self.url + 'options/')
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.data, {'enabled': False, 'post_associated': True})
+            self.assertEqual(
+                response.data,
+                {
+                    'enabled': False,
+                    'post_associated': True,
+                    'call_window': {'allowed': True, 'message': ''},
+                },
+            )
             self.assertEqual(response['Cache-Control'], 'no-store')
         self.assertTrue(self.client.get(self.url + 'options/').data['enabled'])
         Membership.objects.filter(pk=self.membership.pk).update(role='client')

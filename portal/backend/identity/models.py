@@ -236,3 +236,28 @@ class PhoneDirectoryGate(models.Model):
     # Serialize provider directory reads across API workers, no cached personnel data.
     id = models.PositiveSmallIntegerField(primary_key=True, default=1)
     revision = models.PositiveIntegerField(default=0)
+
+
+class CallRules(models.Model):
+    """Single row: the hours during which a call may be placed, in one time zone."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True)
+    enforce_hours = models.BooleanField(default=True)
+    timezone = models.CharField(max_length=60, default='America/Montreal')
+    weekday_start = models.TimeField(default='09:30')
+    weekday_end = models.TimeField(default='21:30')
+    weekend_start = models.TimeField(default='10:00')
+    weekend_end = models.TimeField(default='18:00')
+    revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class CallExclusion(models.Model):
+    """Do-not-call list: a refused number is never dialed, whoever the caller is."""
+
+    number = models.CharField(max_length=11, unique=True)
+    reason = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+'
+    )
