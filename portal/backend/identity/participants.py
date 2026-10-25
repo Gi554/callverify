@@ -60,6 +60,47 @@ def task_owner_proof(request):
     )
 
 
+class LotInput(serializers.Serializer):
+    setter_id = serializers.IntegerField(min_value=1)
+
+    def validate(self, data):
+        if set(self.initial_data) - set(self.fields):
+            raise ValidationError('Champs non autorisés')
+        return data
+
+
+@api_view(['POST'])
+def lot_proof(request):
+    from packages.access.followups import issue_lot
+
+    require_admin(request.user, 'assurance')
+    serializer = LotInput(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    target = (
+        Membership.objects.filter(
+            workspace='assurance',
+            role='setter',
+            active=True,
+            user__is_active=True,
+            user_id=data['setter_id'],
+        )
+        .select_related('user')
+        .first()
+    )
+    if target is None:
+        raise ValidationError('Setter Assurance actif requis')
+    AccessAudit.objects.create(
+        user=request.user, action='lot.setter_attested', workspace='assurance', metadata=data
+    )
+    return Response(
+        {
+            'proof': issue_lot(request.user.pk, target.user_id, target.user.username),
+            'expires_in': 120,
+        }
+    )
+
+
 @api_view(['GET', 'POST'])
 def participants(request):
     require_admin(request.user, 'assurance')
