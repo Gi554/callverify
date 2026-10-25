@@ -164,6 +164,10 @@ let connectionCode = compileScript(
   },
 ).content
 connectionCode = connectionCode
+  .replace(
+    /import PortalCalendly from ['"]\.\/PortalCalendly\.vue['"]/g,
+    'const PortalCalendly={render:()=>null}',
+  )
   .replace(/import \{([^}]+)\} from 'lucide-vue-next'/g, (_, names) =>
     names
       .split(',')
@@ -182,6 +186,105 @@ for (const directive of ['vModelText', 'vModelSelect', 'vModelDynamic', 'vModelC
     connectionCode.replace(new RegExp(directive + ' as _' + directive + ',?', 'g'), '') +
     `;const _${directive}={};`
 const connectionComponent = (await import(url(connectionCode))).default
+
+let calendlyCode = compileScript(
+  parse(readFileSync(new URL('../src/PortalCalendly.vue', import.meta.url), 'utf8')).descriptor,
+  {
+    id: 'calendly-connection',
+    inlineTemplate: true,
+    templateOptions: { compilerOptions: { hoistStatic: false } },
+  },
+).content
+calendlyCode =
+  calendlyCode
+    .replace(/import \{([^}]+)\} from 'lucide-vue-next'/g, (_, names) =>
+      names
+        .split(',')
+        .filter((name) => name.trim())
+        .map((name) => `const ${name.trim()}={render:()=>null}`)
+        .join(';'),
+    )
+    .replace(/from ['"]vue['"]/g, `from '${vue}'`)
+    .replace(/vModelSelect as _vModelSelect,?/g, '') + ';const _vModelSelect={};'
+const calendlyComponent = (await import(url(calendlyCode))).default
+
+test('Calendly keeps unconfigured accounts disabled and explains booking limits', async () => {
+  const root = { children: [] }
+  const app = renderer.createApp(calendlyComponent, {
+    request: async () => ({
+      configured: false,
+      connected: false,
+      revision: 0,
+      event_types: [],
+      selected_event_type: '',
+    }),
+  })
+  app.mount(root)
+  try {
+    await flush()
+    assert.equal(button({ root }, 'Connecter mon Calendly').props.disabled, true)
+    assert.match(text(root), /ne sont pas encore importés/)
+    assert.match(text(root), /en attente côté Orvia/)
+  } finally {
+    app.unmount()
+  }
+})
+
+test('Calendly saves a selected page then removes revoked pages after refresh', async () => {
+  const root = { children: [] },
+    calls = []
+  const entry = {
+    uri: 'https://api.calendly.com/event_types/own',
+    name: 'Qualification',
+    duration: 30,
+    scheduling_url: 'https://calendly.com/conseiller/qualification',
+  }
+  let account = {
+    configured: true,
+    connected: true,
+    revision: 2,
+    profile: { name: 'Conseiller', scheduling_url: 'https://calendly.com/conseiller' },
+    event_types: [entry],
+    selected_event_type: '',
+    checked_at: null,
+  }
+  const app = renderer.createApp(calendlyComponent, {
+    request: async (path, body) => {
+      calls.push({ path, body })
+      if (path.endsWith('/selection/'))
+        account = { ...account, revision: 3, selected_event_type: body.event_type }
+      if (path.endsWith('/refresh/'))
+        account = { ...account, revision: 4, event_types: [], selected_event_type: '' }
+      return account
+    },
+  })
+  app.mount(root)
+  try {
+    await flush()
+    all(root)
+      .find((n) => n.tag === 'select')
+      .props['onUpdate:modelValue'](entry.uri)
+    await flush()
+    await all(root)
+      .find((n) => n.tag === 'form')
+      .props.onSubmit({ preventDefault() {} })
+    await flush()
+    assert.deepEqual(calls.find((c) => c.path.endsWith('/selection/')).body, {
+      revision: 2,
+      event_type: entry.uri,
+    })
+    assert.ok(all(root).find((n) => n.tag === 'a' && n.props.href === entry.scheduling_url))
+    await button({ root }, 'Actualiser mes pages').props.onClick()
+    await flush()
+    assert.equal(
+      all(root).some((n) => n.tag === 'a' && n.props.href === entry.scheduling_url),
+      false,
+    )
+    assert.match(text(root), /Aucune page personnelle active/)
+  } finally {
+    app.unmount()
+  }
+})
 
 test('calendar connection shows missing OAuth configuration and uses local dates with explicit timezone', async () => {
   const root = { children: [] },
