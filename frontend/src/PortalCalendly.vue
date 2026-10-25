@@ -11,6 +11,7 @@ type Connection = {
   event_types: EventType[];
   selected_event_type: string;
   checked_at: string | null;
+  booking_in_crm: boolean;
 };
 const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
 const account = ref<Connection | null>(null);
@@ -101,6 +102,17 @@ onMounted(() => run(load));
     <p v-if="busy" role="status">Chargement de Calendly…</p>
     <template v-if="account">
       <template v-if="account.connected">
+        <p v-if="!account.booking_in_crm">
+          Reconnectez Calendly pour autoriser les créneaux et la réservation depuis Orvia.
+        </p>
+        <button
+          v-if="!account.booking_in_crm"
+          type="button"
+          :disabled="busy || !account.configured"
+          @click="connect"
+        >
+          Autoriser la réservation Calendly
+        </button>
         <div class="calendly-account">
           <strong>{{ account.profile?.name }}</strong>
           <a
@@ -171,9 +183,9 @@ onMounted(() => run(load));
         <small v-if="!account.configured">L’activation Calendly est en attente côté Orvia.</small>
       </div>
       <p class="calendly-note">
-        Ce parcours ouvre la page Calendly dans un nouvel onglet. Les réservations, annulations et
-        changements effectués sur Calendly ne sont pas encore importés dans Orvia. Aucun prospect ni
-        aucune note de qualification n’est transmis par cette connexion.
+        Votre page peut être ouverte dans un nouvel onglet. La réservation depuis une fiche Orvia
+        transmet le nom et le courriel du prospect à Calendly ; sa qualification reste dans Orvia.
+        La mise à jour automatique des annulations et reports est en cours d’intégration.
       </p>
     </template>
     <button v-else-if="!busy" type="button" @click="run(load)">Réessayer</button>

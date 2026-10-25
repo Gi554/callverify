@@ -1,10 +1,36 @@
 # Suivi des livraisons CRM AMX
 
+
+
+## Calendly — réservation depuis la fiche Assurance, heure de Montréal
+
+Le setter ou administrateur choisit Calendly dans la réservation du prospect, puis une attribution
+active, une date au Québec et un créneau proposé par le compte personnel du conseiller. Montréal
+(`America/Toronto`) est imposé pour ce parcours, avec conversion des instants et tests des passages
+été/hiver, dont les deux occurrences de l’heure répétée en automne. Bail de fiche, révision de
+qualification, attribution et conflits internes sont contrôlés avant envoi. La durée vient de la
+page personnelle choisie par le conseiller. Nom, courriel et identifiant opaque sont transmis à
+Calendly ; la qualification reste partagée dans Orvia, via le snapshot du rendez-vous confirmé.
+
+Une confirmation canonique Calendly crée un rendez-vous dans les parcours existants. Les demandes
+incertaines persistent sans compter comme rendez-vous, bloquent le créneau et se retrouvent depuis
+la fiche ; aucun renvoi automatique d’écriture après timeout. Google/Microsoft ne republient pas
+ces événements. Annulations/reprogrammations Orvia bloquées pour ce fournisseur en attendant le
+lot webhooks, afin d’éviter la divergence. Les anciennes connexions doivent être réautorisées avec
+les nouveaux scopes. Identifiants/consentement et forfait compatible restent nécessaires.
+
+Tests de bail/droits/qualification/idempotence, attente, conflit, timeout et refus fournisseur,
+RPC interne signé, conversion Montréal et non-régression services/Vue. Les contrôles CI précèdent
+la fusion. Tests externes simulés ; aucun rendez-vous réel créé, recette fournisseur en attente.
+La synchronisation créations/annulations/reports et le rapprochement automatique restent le lot
+suivant, demandé dans la même tâche.
+
 ## Garde-fous d’appel : heures autorisées et liste d’exclusion (Assurance et Isolation)
 
 Le portail refuse désormais, avant toute commande à l’opérateur, un appel placé hors des heures autorisées ou vers un numéro de la liste d’exclusion. Les heures par défaut sont 9 h 30–21 h 30 en semaine et 10 h–18 h le week-end, heure de Montréal ; elles sont réglables, désactivables et le fuseau est modifiable. L’administrateur gère les deux dans Accès → « Règles d’appel » : réglage des heures avec l’état du moment, ajout de numéros en lot (collés, un par ligne ou séparés par des virgules, normalisés comme les numéros composés), recherche et retrait. Le message de refus est affiché au setter (y compris en session d’appels, qui n’envoie rien), le refus est tracé dans l’audit sans enregistrer le numéro, et aucune commande ni ligne d’historique n’est créée.
 
 Comportement à connaître : le contrôle des heures est actif dès le déploiement ; pour un test hors horaires, l’administrateur le désactive dans « Règles d’appel ». Limites : l’heure est celle d’un seul fuseau, pas celle du prospect ; l’exclusion porte sur le numéro composé exact, sans importer de liste officielle ; la liste est partagée par les deux espaces ; revue visuelle reportée à la revue finale.
+
 
 ## Session d’appels enchaînés avec compte à rebours (Isolation)
 
@@ -29,6 +55,7 @@ Limites : le décompte démarre à la fermeture de la fiche, pas à la détectio
 Sur la page Prospects, l’administrateur Assurance ouvre « Attribuer des lots », choisit un setter, un nombre de prospects (1 à 1000) et éventuellement un import d’origine : les prochains prospects non attribués et non traités lui sont donnés. Il voit le nombre de prospects en cours par setter et peut « Reprendre » les prospects non travaillés (ceux qui ne sont pas verrouillés). Chaque opération est rejouable sans doublon et tracée dans l’audit. Changement de comportement : tant qu’aucun lot n’a été attribué, les setters partagent la liste comme avant ; dès le premier lot, chaque setter ne voit que les prospects de son lot, et l’administrateur voit tout. Les setters proposés sont ceux qui ont un conseiller associé actif.
 
 Limites : l’équivalent côté Isolation existe déjà (répartition par sélection de 25 prospects maximum) et n’est pas modifié ; l’appel automatique avec compte à rebours est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
+
 
 ## Calendly — connexion personnelle et page préférée du conseiller Assurance
 

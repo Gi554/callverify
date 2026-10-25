@@ -119,6 +119,18 @@ class CalendlyAuthorization(models.Model):
     used = models.BooleanField(default=False)
 
 
+class CalendlyReservation(models.Model):
+    request_id = models.UUIDField(primary_key=True)
+    connection = models.ForeignKey(CalendlyConnection, on_delete=models.PROTECT)
+    actor_id = models.PositiveBigIntegerField()
+    fingerprint = models.CharField(max_length=64)
+    owner_uri = models.CharField(max_length=300)
+    event_type = models.CharField(max_length=300)
+    state = models.CharField(max_length=20, default='dispatching')
+    payload = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class CalendarSync(models.Model):
     import uuid
 

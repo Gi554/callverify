@@ -13,6 +13,7 @@ from .crm.mail_bridge import reminder_events, reminder_eligible
 from .crm.mail_bridge import escalation_events, escalation_eligible
 from .crm.assignments import AssignmentViewSet
 from .crm.appointments import AppointmentViewSet
+from .crm import calendly
 from .crm.views import ContactViewSet, dashboard
 from .crm.lots import lots, release as lots_release
 
@@ -23,6 +24,11 @@ router.register('assignments', AssignmentViewSet, basename='assurance-assignment
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
 urlpatterns = [path('api/assurance/pipeline/', configuration)]
+urlpatterns += [path('api/assurance/calendly/pending/', calendly.pending)]
+urlpatterns += [
+    path('api/assurance/calendly/slots/', calendly.slots),
+    path('api/assurance/calendly/book/', calendly.book),
+]
 urlpatterns += [
     path('api/assurance/reminders/', reminders),
     path('api/assurance/reminder-policy/', reminder_configuration),
