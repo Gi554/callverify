@@ -26,6 +26,14 @@ def setters(request):
         workspace='isolation', role='setter', active=True, user__is_active=True
     ).select_related('user')
     if request.method == 'GET':
+        if request.query_params.get('with_admins') == '1':
+            # Lots: administrators can take a lot to call it themselves.
+            qs = Membership.objects.filter(
+                workspace='isolation',
+                role__in=('setter', 'administrator'),
+                active=True,
+                user__is_active=True,
+            ).select_related('user')
         term = request.query_params.get('search', '').strip()[:150]
         if term:
             qs = qs.filter(Q(user__username__icontains=term) | Q(user__email__icontains=term))
@@ -115,7 +123,7 @@ def lot_proof(request):
     target = (
         Membership.objects.filter(
             workspace='isolation',
-            role='setter',
+            role__in=('setter', 'administrator'),
             active=True,
             user__is_active=True,
             user_id=data['setter_id'],
@@ -124,7 +132,7 @@ def lot_proof(request):
         .first()
     )
     if target is None:
-        raise ValidationError('Setter Isolation actif requis')
+        raise ValidationError('Setter ou administrateur Isolation actif requis')
     AccessAudit.objects.create(
         user=request.user, workspace='isolation', action='lot.setter_attested', metadata=data
     )

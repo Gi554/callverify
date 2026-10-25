@@ -139,6 +139,8 @@ class WorkViewSet(
         if owner:
             if owner == 'unassigned':
                 qs = qs.filter(assigned_setter_id__isnull=True)
+            elif owner == 'me':
+                qs = qs.filter(assigned_setter_id=self.request.user.pk)
             elif owner.isdigit():
                 qs = qs.filter(assigned_setter_id=int(owner))
             else:

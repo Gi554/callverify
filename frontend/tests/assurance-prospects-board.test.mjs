@@ -82,7 +82,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture(role = 'administrator', second = false) {
+function fixture(role = 'administrator', second = false, ownLot = false) {
   const root = { children: [] },
     requests = [],
     imported = []
@@ -95,7 +95,10 @@ function fixture(role = 'administrator', second = false) {
           { key: 'won', label: 'Gagné', active: true },
         ],
       }
-    if (path.startsWith('contacts/?status=new'))
+    if (
+      path.startsWith('contacts/?status=new') ||
+      (ownLot && path.startsWith('contacts/?mine=true'))
+    )
       return {
         count: second ? 2 : 1,
         next: null,
@@ -272,11 +275,31 @@ test('setter can stop the countdown', async () => {
   }
 })
 
-test('administrator has no call session', async () => {
+test('administrator without a lot is told to take one before calling', async () => {
   const f = fixture()
   try {
     await flush()
-    assert.equal(button(f, 'Lancer une session d’appels'), undefined)
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    assert.match(text(f.root), /Aucun prospect dans votre lot/)
+    assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('administrator calls the prospects of their own lot', async () => {
+  const f = fixture('administrator', true, true)
+  try {
+    await flush()
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    assert.ok(f.requests.some((path) => path.startsWith('contacts/?mine=true')))
+    const first = component_(f, 'AssuranceContactEditor')
+    assert.equal(first.props.workflow, 'call')
+    first.props.onClose()
+    await flush()
+    assert.match(text(f.root), /Prochain appel dans 10 s/)
   } finally {
     f.close()
   }

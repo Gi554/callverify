@@ -109,3 +109,16 @@ class IsolationLotProofTests(TestCase):
             self.client.post(self.url, {'setter_id': self.setter.pk}, format='json').status_code,
             403,
         )
+
+    def test_administrator_can_take_a_lot_and_is_listed_only_on_request(self):
+        from packages.access.isolation import verify_lot
+
+        result = self.client.post(self.url, {'setter_id': self.admin.pk}, format='json')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(verify_lot(result.data['proof'], self.admin.pk)['setter'], self.admin.pk)
+        listing = '/api/portal/isolation/setters/'
+        self.assertEqual(
+            [row['id'] for row in self.client.get(listing).data['results']], [self.setter.pk]
+        )
+        both = self.client.get(listing, {'with_admins': '1'}).data['results']
+        self.assertEqual({row['id'] for row in both}, {self.admin.pk, self.setter.pk})

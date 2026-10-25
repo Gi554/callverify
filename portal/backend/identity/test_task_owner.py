@@ -118,3 +118,17 @@ class AssuranceLotProofTests(TestCase):
             self.client.post(self.url, {'setter_id': self.setter.pk}, format='json').status_code,
             403,
         )
+
+    def test_administrator_can_take_a_lot_for_themselves(self):
+        from packages.access.followups import verify_lot
+
+        result = self.client.post(self.url, {'setter_id': self.admin.pk}, format='json')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(
+            verify_lot(result.data['proof'], self.admin.pk),
+            {'id': self.admin.pk, 'name': 'admin'},
+        )
+        listing = self.client.get(
+            '/api/portal/assurance/participants/', {'role': 'administrator'}
+        ).data['results']
+        self.assertEqual([row['id'] for row in listing], [self.admin.pk])

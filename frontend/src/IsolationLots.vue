@@ -33,7 +33,7 @@ async function load() {
     lots.value = data.setters;
     const found: Person[] = [];
     for (let page = 1; page <= 8; page++) {
-      const part = await props.portal(`isolation/setters/?page=${page}`);
+      const part = await props.portal(`isolation/setters/?with_admins=1&page=${page}`);
       found.push(...part.results);
       if (!part.next) break;
     }

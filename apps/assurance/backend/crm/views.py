@@ -78,6 +78,8 @@ class ContactViewSet(
             qs = qs.filter(
                 Q(name__icontains=term) | Q(phone__icontains=term) | Q(email__icontains=term)
             )
+        if self.request.query_params.get('mine') == 'true':
+            qs = qs.filter(assigned_setter_id=self.request.user.pk)
         status = self.request.query_params.get('status', '')
         if status:
             qs = qs.filter(status=status)
