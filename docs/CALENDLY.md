@@ -1,5 +1,14 @@
 # Calendly — connexion personnelle du conseiller Assurance
 
+> Mise à jour réservation : le parcours ajoute le choix de créneaux et la création depuis les
+> fiches Assurance, avec qualification conservée dans Orvia. Les webhooks restent au lot suivant.
+> Scopes actuels : **users:read**, **event_types:read**, **availability:read**,
+> **scheduled_events:write**, **webhooks:write**. Les anciennes connexions doivent être
+> réautorisées. Le parcours impose Montréal (`America/Toronto`), indépendamment de l’heure du PC.
+> Les demandes incertaines se retrouvent par « Vérifier la réservation », sans recréation.
+> Les sections historiques ci-dessous décrivent le périmètre initial de connexion, remplacé
+> pour la réservation par cette mise à jour et par le suivi `docs/DELIVERY.md`.
+
 ## Parcours livré
 
 Dans **Mon agenda et mes disponibilités → Mes agendas connectés**, ou dans les agendas de

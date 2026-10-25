@@ -3,11 +3,13 @@
 import base64
 import hashlib
 import re
+import requests
 from urllib.parse import urlencode, urlsplit
 
-from .providers import ProviderError, http
+from .providers import ProviderError, http, instant
 
 SCOPES = ('users:read', 'event_types:read')
+BOOKING_SCOPES = (*SCOPES, 'availability:read', 'scheduled_events:write', 'webhooks:write')
 API = 'https://api.calendly.com'
 
 
@@ -18,7 +20,7 @@ def authorization(options, state, verifier):
             'client_id': options['client_id'],
             'response_type': 'code',
             'redirect_uri': options['redirect'],
-            'scope': ' '.join(SCOPES),
+            'scope': ' '.join(BOOKING_SCOPES),
             'state': state,
             'code_challenge': challenge.rstrip(b'=').decode(),
             'code_challenge_method': 'S256',
@@ -95,6 +97,8 @@ def tokens(options, *, code=None, verifier=None, refresh=None):
         'access': access,
         'refresh': renew,
         'owner': resource_uri(result.get('owner'), 'users'),
+        'scopes': scope.split() if isinstance(scope, str) else [],
+        'organization': result.get('organization', ''),
     }, seconds
 
 
@@ -162,3 +166,109 @@ def event_types(access, owner):
         # Never follow next_page URLs supplied by the provider.
         params['page_token'] = token
     raise ProviderError(code='too_many_event_types')
+
+
+def times(access, event_type, start, end):
+    resource_uri(event_type, 'event_types')
+    data = http(
+        'GET',
+        API + '/event_type_available_times',
+        headers={'Authorization': 'Bearer ' + access},
+        params={
+            'event_type': event_type,
+            'start_time': start.isoformat(),
+            'end_time': end.isoformat(),
+        },
+    )
+    values = data.get('collection')
+    if not isinstance(values, list) or len(values) > 2000:
+        raise ProviderError()
+    result = set()
+    for value in values:
+        if not isinstance(value, dict):
+            raise ProviderError()
+        when = instant(value.get('start_time'))
+        if value.get('status') == 'available' and start <= when < end:
+            result.add(when.isoformat())
+    return sorted(result)
+
+
+def invitee_uri(value):
+    if not isinstance(value, str) or not re.fullmatch(
+        re.escape(API) + r'/scheduled_events/[A-Za-z0-9_-]{1,128}/invitees/[A-Za-z0-9_-]{1,128}',
+        value,
+    ):
+        raise ProviderError()
+    return value
+
+
+def create_invitee(access, event_type, start, name, email, request_id):
+    resource_uri(event_type, 'event_types')
+    try:
+        with requests.post(
+            API + '/invitees',
+            headers={'Authorization': 'Bearer ' + access},
+            json={
+                'event_type': event_type,
+                'start_time': start.isoformat(),
+                'invitee': {'name': name, 'email': email, 'timezone': 'America/Toronto'},
+                'tracking': {'utm_source': 'orvia', 'utm_content': str(request_id)},
+            },
+            timeout=15,
+            stream=True,
+            allow_redirects=False,
+        ) as response:
+            if response.status_code in (400, 401, 403, 404, 409, 422):
+                raise ProviderError(code='rejected')
+            if response.status_code != 201:
+                raise ProviderError(code='uncertain')
+            body = response.raw.read(262145, decode_content=True)
+            if len(body) > 262144:
+                raise ProviderError(code='uncertain')
+            import json
+
+            data = json.loads(body)
+            value = data.get('resource')
+            if not isinstance(value, dict) or value.get('status') != 'active':
+                raise ProviderError(code='uncertain')
+            return invitee_uri(value.get('uri'))
+    except (requests.RequestException, ValueError, AttributeError, TypeError):
+        raise ProviderError(code='uncertain') from None
+
+
+def appointment(access, uri, owner, event_type):
+    """Fetch canonical provider state; only known, validated resource URLs are requested."""
+    value = http('GET', invitee_uri(uri), headers={'Authorization': 'Bearer ' + access}).get(
+        'resource'
+    )
+    if (
+        not isinstance(value, dict)
+        or value.get('uri') != uri
+        or value.get('status') not in ('active', 'canceled')
+    ):
+        raise ProviderError()
+    event_uri = resource_uri(value.get('event'), 'scheduled_events')
+    event = http('GET', event_uri, headers={'Authorization': 'Bearer ' + access}).get('resource')
+    if (
+        not isinstance(event, dict)
+        or event.get('uri') != event_uri
+        or event.get('event_type') != event_type
+        or owner
+        not in {
+            member.get('user')
+            for member in event.get('event_memberships', [])
+            if isinstance(member, dict)
+        }
+    ):
+        raise ProviderError()
+    first, last = instant(event.get('start_time')), instant(event.get('end_time'))
+    if not 0 < (last - first).total_seconds() <= 86400:
+        raise ProviderError()
+    return {
+        'invitee': uri,
+        'starts_at': first.isoformat(),
+        'ends_at': last.isoformat(),
+        'status': 'cancelled' if value['status'] == 'canceled' else 'scheduled',
+        'new_invitee': value.get('new_invitee'),
+        'old_invitee': value.get('old_invitee'),
+    }

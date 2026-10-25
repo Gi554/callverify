@@ -99,7 +99,11 @@ def view(row, ready):
         'event_types': payload.get('event_types', []),
         'selected_event_type': payload.get('selected', ''),
         'checked_at': row.checked_at if row else None,
-        'booking_in_crm': False,
+        'booking_in_crm': bool(
+            row
+            and row.connected
+            and set(provider.BOOKING_SCOPES) <= set(payload.get('tokens', {}).get('scopes', []))
+        ),
     }
 
 

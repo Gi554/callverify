@@ -17,7 +17,14 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from packages.access.assignments import verify_booking
-from .models import Appointment, AdvisorAssignment, AdvisorSchedule, Contact, BusinessAudit
+from .models import (
+    Appointment,
+    AdvisorAssignment,
+    AdvisorSchedule,
+    Contact,
+    BusinessAudit,
+    CalendlyBooking,
+)
 from .leases import Conflict, writer, held, LEASE_SECONDS
 from .calendar_checks import check as external_check
 from .appointment_status import output as business_status, filter_status
@@ -111,7 +118,14 @@ def calendar_lock(advisor_id):
     AdvisorSchedule.objects.filter(pk=advisor_id).update(version=F('version') + 1)
 
 
-def prevent_overlap(contact_id, advisor_id, start, end, exclude=None):
+def prevent_overlap(contact_id, advisor_id, start, end, exclude=None, booking_id=None):
+    pending = CalendlyBooking.objects.filter(
+        state__in=['pending', 'uncertain'], starts_at__lt=end, ends_at__gt=start
+    ).filter(Q(contact_id=contact_id) | Q(assignment__advisor_id=advisor_id))
+    if booking_id:
+        pending = pending.exclude(pk=booking_id)
+    if pending.exists():
+        raise Conflict('Une réservation Calendly est en cours de vérification sur ce créneau.')
     qs = Appointment.objects.filter(
         status='scheduled', starts_at__lt=end, ends_at__gt=start
     ).filter(Q(contact_id=contact_id) | Q(advisor_id=advisor_id))
@@ -165,7 +179,7 @@ def output(row, user):
         'timezone': row.timezone,
         'status': row.status,
         'revision': row.revision,
-        'calendar': 'internal',
+        'calendar': row.calendar,
         'qualification_snapshot': row.qualification_snapshot,
     }
     result.update(business_status(row))
@@ -322,6 +336,10 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
     def reschedule(self, request, pk=None):
         writer(request)
         original = self.get_object()
+        if original.calendar == 'calendly':
+            raise Conflict(
+                'Reprogrammez ce rendez-vous depuis Calendly ; Orvia recevra sa mise à jour.'
+            )
         serializer = RescheduleInput(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -374,6 +392,8 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
     def cancel(self, request, pk=None):
         writer(request)
         original = self.get_object()
+        if original.calendar == 'calendly':
+            raise Conflict('Annulez ce rendez-vous depuis Calendly ; Orvia recevra sa mise à jour.')
         serializer = CancelInput(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data

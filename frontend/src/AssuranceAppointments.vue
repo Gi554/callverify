@@ -4,6 +4,7 @@ import { bookingInterval } from './booking-time';
 import { appointmentStatus, appointmentStatusLabels } from './appointment-status';
 import AssuranceQualificationSnapshot from './AssuranceQualificationSnapshot.vue';
 import AvailabilitySlots from './AvailabilitySlots.vue';
+import AssuranceCalendlyBooking from './AssuranceCalendlyBooking.vue';
 import { loadQuotas, quotaText, type AdvisorQuota } from './advisor-quota';
 const props = defineProps<{
   role: string;
@@ -18,6 +19,7 @@ const props = defineProps<{
   blocked?: boolean;
 }>();
 const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; booked: [row: any] }>();
+const bookingMode = ref('internal');
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -338,8 +340,45 @@ onMounted(() =>
         })
       "
     >
-      Réessayer</button
-    ><template v-if="canWrite && contactId && !editing"
+      Réessayer
+    </button>
+    <div v-if="canWrite && contactId && leaseToken && !editing" class="appointment-actions">
+      <button
+        type="button"
+        class="secondary"
+        :disabled="busy"
+        :aria-pressed="bookingMode === 'internal'"
+        @click="bookingMode = 'internal'"
+      >
+        Agenda Orvia
+      </button>
+      <button
+        type="button"
+        class="secondary"
+        :disabled="busy"
+        :aria-pressed="bookingMode === 'calendly'"
+        @click="bookingMode = 'calendly'"
+      >
+        Calendly
+      </button>
+    </div>
+    <AssuranceCalendlyBooking
+      v-if="canWrite && contactId && leaseToken && !editing && bookingMode === 'calendly'"
+      :role="role"
+      :contact-id="contactId"
+      :contact-revision="contactRevision"
+      :lease-token="leaseToken"
+      :blocked="blocked"
+      :before-book="beforeBook"
+      :request="request"
+      :portal="portal"
+      @busy="busy = $event"
+      @booked="
+        emit('booked', $event);
+        run(load);
+      "
+    />
+    <template v-if="canWrite && contactId && !editing && bookingMode === 'internal'"
       ><p v-if="!leaseToken">Prenez en charge la fiche pour réserver un rendez-vous.</p>
       <form v-else-if="!compact || choiceCount > 0" @submit.prevent="book" @input="resetId">
         <template v-if="!compact"

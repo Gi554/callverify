@@ -261,7 +261,7 @@ class CalendlyAdapterTests(SimpleTestCase):
         query = parse_qs(urlsplit(provider.authorization(options, 'state', 'verifier')).query)
         self.assertEqual(query['code_challenge_method'], ['S256'])
         self.assertNotIn('private-secret', str(query))
-        self.assertEqual(set(query['scope'][0].split()), set(provider.SCOPES))
+        self.assertEqual(set(query['scope'][0].split()), set(provider.BOOKING_SCOPES))
         token = {
             'access_token': 'access',
             'refresh_token': 'rotated',

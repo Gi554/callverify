@@ -223,7 +223,7 @@ test('Calendly keeps unconfigured accounts disabled and explains booking limits'
   try {
     await flush()
     assert.equal(button({ root }, 'Connecter mon Calendly').props.disabled, true)
-    assert.match(text(root), /ne sont pas encore importés/)
+    assert.match(text(root), /sa qualification reste dans Orvia/)
     assert.match(text(root), /en attente côté Orvia/)
   } finally {
     app.unmount()

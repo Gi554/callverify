@@ -71,6 +71,7 @@ class AdvisorSchedule(models.Model):
 
 
 class Appointment(models.Model):
+    calendar = models.CharField(max_length=20, default='internal')
     rescheduled_at = models.DateTimeField(null=True, blank=True)
     reschedule_count = models.PositiveIntegerField(default=0)
     qualification_snapshot = models.JSONField(default=dict)
@@ -108,6 +109,24 @@ class Appointment(models.Model):
             models.Index(fields=['advisor_id', 'status', 'starts_at']),
             models.Index(fields=['setter_id', 'starts_at']),
         ]
+
+
+class CalendlyBooking(models.Model):
+    request_id = models.UUIDField(primary_key=True)
+    contact = models.ForeignKey(Contact, on_delete=models.PROTECT)
+    assignment = models.ForeignKey(AdvisorAssignment, on_delete=models.PROTECT)
+    appointment = models.OneToOneField(
+        Appointment, on_delete=models.PROTECT, null=True, related_name='calendly_booking'
+    )
+    actor_id = models.PositiveBigIntegerField()
+    fingerprint = models.CharField(max_length=64)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    event_type = models.CharField(max_length=300)
+    snapshot = models.JSONField()
+    state = models.CharField(max_length=20, default='pending')
+    provider_revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class AppointmentReport(models.Model):

@@ -1,5 +1,28 @@
 # Suivi des livraisons CRM AMX
 
+## Calendly — réservation depuis la fiche Assurance, heure de Montréal
+
+Le setter ou administrateur choisit Calendly dans la réservation du prospect, puis une attribution
+active, une date au Québec et un créneau proposé par le compte personnel du conseiller. Montréal
+(`America/Toronto`) est imposé pour ce parcours, avec conversion des instants et tests des passages
+été/hiver, dont les deux occurrences de l’heure répétée en automne. Bail de fiche, révision de
+qualification, attribution et conflits internes sont contrôlés avant envoi. La durée vient de la
+page personnelle choisie par le conseiller. Nom, courriel et identifiant opaque sont transmis à
+Calendly ; la qualification reste partagée dans Orvia, via le snapshot du rendez-vous confirmé.
+
+Une confirmation canonique Calendly crée un rendez-vous dans les parcours existants. Les demandes
+incertaines persistent sans compter comme rendez-vous, bloquent le créneau et se retrouvent depuis
+la fiche ; aucun renvoi automatique d’écriture après timeout. Google/Microsoft ne republient pas
+ces événements. Annulations/reprogrammations Orvia bloquées pour ce fournisseur en attendant le
+lot webhooks, afin d’éviter la divergence. Les anciennes connexions doivent être réautorisées avec
+les nouveaux scopes. Identifiants/consentement et forfait compatible restent nécessaires.
+
+Tests de bail/droits/qualification/idempotence, attente, conflit, timeout et refus fournisseur,
+RPC interne signé, conversion Montréal et non-régression services/Vue. Les contrôles CI précèdent
+la fusion. Tests externes simulés ; aucun rendez-vous réel créé, recette fournisseur en attente.
+La synchronisation créations/annulations/reports et le rapprochement automatique restent le lot
+suivant, demandé dans la même tâche.
+
 ## Calendly — connexion personnelle et page préférée du conseiller Assurance
 
 Premier parcours livré : OAuth par conseiller, profil, pages personnelles actives, choix persistant
