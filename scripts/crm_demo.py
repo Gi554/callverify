@@ -164,7 +164,7 @@ def create_demo(output, count=5000, seed=20261022):
         manifest['demo']['state'] = 'ready'
         save()
         access = (
-            'CRM AMX — RECETTE FICTIVE UNIQUEMENT\nhttp://localhost:5174/crm\n\nMot de passe commun aux comptes de recette : '
+            'CRM Orvia — RECETTE FICTIVE UNIQUEMENT\nhttp://localhost:5174/crm\n\nMot de passe commun aux comptes de recette : '
             + manifest['demo']['password']
             + '\n\n'
         )

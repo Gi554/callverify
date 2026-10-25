@@ -809,7 +809,7 @@ def mfa(request):
         import qrcode.image.svg
         from urllib.parse import quote
 
-        uri = f'otpauth://totp/CallVerify:{quote(request.user.username)}?secret={secret}&issuer=CallVerify'
+        uri = f'otpauth://totp/Orvia:{quote(request.user.username)}?secret={secret}&issuer=Orvia'
         output = io.BytesIO()
         qrcode.make(uri, image_factory=qrcode.image.svg.SvgPathImage).save(output)
         return Response(

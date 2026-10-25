@@ -497,7 +497,7 @@ const roleLabels: Record<string, string> = {
             class="amx-heading"
           >
             <div>
-              <p class="amx-eyebrow">{{ workspace ? title(workspace) : 'AMX CRM' }}</p>
+              <p class="amx-eyebrow">{{ workspace ? title(workspace) : 'Orvia CRM' }}</p>
               <h1>
                 {{ passwordOpen ? 'Mon compte' : managing ? 'Utilisateurs et accès' : pageTitle }}
               </h1>
@@ -770,7 +770,7 @@ const roleLabels: Record<string, string> = {
         </template></main
     ></CrmShell>
     <footer v-if="!user && (recoveryOpen || inviteId)" class="amx-footer">
-      AMX · Votre espace de travail.
+      Orvia · Votre espace de travail.
     </footer>
   </div>
 </template>

@@ -109,11 +109,11 @@ function navigate(id: string) {
       >
         <Menu :size="23" />
       </button>
-      <a class="setter-brand" href="/crm" aria-label="AMX CRM, accueil"
+      <a class="setter-brand" href="/crm" aria-label="Orvia CRM, accueil"
         ><svg viewBox="0 0 48 48" aria-hidden="true">
           <path d="M3 42 24 5l21 37H30l-6-11-6 11H3Z" fill="#0875ed" />
           <path d="m14 35 10-18 10 18h-6l-4-7-4 7Z" fill="white" /></svg
-        ><span><strong>AMX</strong><small>CRM</small></span></a
+        ><span><strong>Orvia</strong><small>CRM</small></span></a
       >
       <button
         v-if="!simple"
@@ -267,7 +267,7 @@ function navigate(id: string) {
       aria-label="Navigation principale"
     >
       <a class="crm-logo" href="/crm"
-        ><span><Layers :size="23" /></span>amx<span class="crm-logo-dot">.</span
+        ><span><Layers :size="23" /></span>orvia<span class="crm-logo-dot">.</span
         ><small>CRM</small></a
       >
       <div class="crm-space-switch">
@@ -375,7 +375,7 @@ function navigate(id: string) {
       </header>
       <header v-else class="crm-public-header">
         <a class="crm-logo" href="/crm"
-          ><span><Layers :size="23" /></span>amx<span class="crm-logo-dot">.</span
+          ><span><Layers :size="23" /></span>orvia<span class="crm-logo-dot">.</span
           ><small>CRM</small></a
         ><span>Vos équipes. Vos contacts. Un seul espace.</span>
       </header>

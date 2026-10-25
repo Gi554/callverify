@@ -1,4 +1,4 @@
-# Mettre le CRM AMX en ligne
+# Mettre le CRM Orvia en ligne
 
 Ce guide installe le CRM sur un serveur, avec HTTPS automatique. Le serveur fait tourner 16 services Docker : trois bases PostgreSQL, Redis, l’API Isolation, le portail, Assurance, les tâches de fond, l’interface et Caddy pour le HTTPS. Aucun secret n’est stocké dans le dépôt.
 

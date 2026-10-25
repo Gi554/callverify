@@ -27,7 +27,7 @@ async function revoke() {
   <section>
     <h3>Déconnecter mes autres appareils</h3>
     <p>
-      Cette action concerne toutes vos autres sessions du portail AMX, dans les deux espaces.
+      Cette action concerne toutes vos autres sessions du portail Orvia, dans les deux espaces.
       Confirmez avec votre mot de passe actuel ; cette session reste ouverte.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>

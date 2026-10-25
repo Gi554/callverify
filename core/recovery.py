@@ -30,7 +30,7 @@ def reset_request(request):
         token = default_token_generator.make_token(user)
         url = f'{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}'
         send_mail(
-            'Réinitialisation CallVerify',
+            'Réinitialisation Orvia',
             f'Lien valable une heure : {url}',
             settings.DEFAULT_FROM_EMAIL,
             [user.email],

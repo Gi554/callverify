@@ -85,7 +85,7 @@ async function disconnect(row: any) {
   await run(async () => {
     await props.request(`calendar/${row.workspace}/disconnect/`, { revision: row.revision });
     message.value =
-      'Connexion retirée de AMX. Vous pouvez aussi révoquer le consentement dans votre compte Google ou Microsoft.';
+      'Connexion retirée d’Orvia. Vous pouvez aussi révoquer le consentement dans votre compte Google ou Microsoft.';
     periods.value = [];
     checkedSpace.value = '';
     await load();
@@ -124,7 +124,7 @@ async function sync(row: any) {
 async function withdraw(row: any) {
   if (
     !confirm(
-      'Retirer les événements AMX de cet agenda et arrêter leur synchronisation ? Les rendez-vous CRM sont conservés.',
+      'Retirer les événements Orvia de cet agenda et arrêter leur synchronisation ? Les rendez-vous CRM sont conservés.',
     )
   )
     return;
@@ -447,20 +447,20 @@ onMounted(() => run(load));
             :disabled="busy"
             @click="withdraw(row)"
           >
-            Retirer les événements AMX de cet agenda
+            Retirer les événements Orvia de cet agenda
           </button>
           <h4>Récupération après nettoyage manuel</h4>
           <p>
             Si le fournisseur refuse l’accès ou si une création reste incertaine, vérifiez et
-            supprimez vous-même les anciens événements AMX chez Google/Microsoft. Cette confirmation
-            efface la connexion locale et arrête la synchronisation ; elle ne supprime aucun
-            événement distant.
+            supprimez vous-même les anciens événements Orvia chez Google/Microsoft. Cette
+            confirmation efface la connexion locale et arrête la synchronisation ; elle ne supprime
+            aucun événement distant.
           </p>
           <form @submit.prevent="detach(row)">
             <fieldset :disabled="busy">
               <label
                 ><input v-model="ack" type="checkbox" required />J’ai vérifié et retiré les anciens
-                événements AMX dans l’agenda externe.</label
+                événements Orvia dans l’agenda externe.</label
               >
               <label
                 >Mot de passe actuel<input

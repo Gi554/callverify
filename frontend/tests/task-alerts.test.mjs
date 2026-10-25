@@ -162,7 +162,7 @@ test('a new task raises a banner and a browser notification when the tab is hidd
     assert.match(text(f.root), /Nouvelle tâche · Compte rendu nécessitant un suivi/)
     assert.match(text(f.root), /Dossier Beta/)
     assert.doesNotMatch(text(f.root), /Nouvelle tâche[^·]*· [^·]*Dossier Alpha/)
-    assert.deepEqual(f.shown, [['AMX · Compte rendu nécessitant un suivi', 'Dossier Beta']])
+    assert.deepEqual(f.shown, [['Orvia · Compte rendu nécessitant un suivi', 'Dossier Beta']])
     await f.tick()
     assert.equal(f.shown.length, 1)
   } finally {
@@ -206,7 +206,7 @@ test('Isolation alerts come from reminders without read receipts', async () => {
     state.reminders = [reminder(6, 'Maison Delta'), ...state.reminders]
     await f.tick()
     assert.match(text(f.root), /Nouvelle tâche · Rappel à effectuer/)
-    assert.deepEqual(f.shown, [['AMX · Rappel à effectuer', 'Maison Delta']])
+    assert.deepEqual(f.shown, [['Orvia · Rappel à effectuer', 'Maison Delta']])
     bell.props.onClick()
     await flush()
     assert.match(text(f.root), /Maison Gamma/)

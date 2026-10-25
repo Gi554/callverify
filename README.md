@@ -1,4 +1,4 @@
-# CallVerify
+# Orvia CRM
 
 Plateforme locale de qualification téléphonique canadienne : API Django REST Framework, interface Vue 3/TypeScript, PostgreSQL, Celery et Redis. Le thème crème/olive est commun à la connexion et aux écrans métier.
 
