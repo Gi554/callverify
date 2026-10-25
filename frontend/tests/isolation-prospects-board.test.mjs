@@ -259,3 +259,51 @@ test('administrator opens the weekly lot panel; setter does not get it', async (
     g.app.unmount()
   }
 })
+const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
+const labelled = (f, label) =>
+  all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
+test('setter runs a call session with a countdown between prospects', async () => {
+  const f = fixture('setter')
+  try {
+    await flush()
+    labelled(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    const first = component_(f, 'IsolationProspectActivity')
+    assert.equal(first.props.session, true)
+    assert.equal(component_(f, 'CallAction').props['auto-send'], true)
+    first.props.onClose()
+    await flush()
+    assert.match(text(f.root), /Prochain appel dans 10 s/)
+    labelled(f, 'Appeler maintenant').props.onClick()
+    await flush()
+    assert.ok(component_(f, 'IsolationProspectActivity'))
+    assert.equal(f.requests.filter((r) => r.path === 'work-queue/2/').length > 0, true)
+  } finally {
+    f.app.unmount()
+  }
+})
+test('setter can stop the countdown and the session ends after the last prospect', async () => {
+  const f = fixture('setter')
+  try {
+    await flush()
+    labelled(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    component_(f, 'IsolationProspectActivity').props.onClose()
+    await flush()
+    labelled(f, 'Arrêter la session').props.onClick()
+    await flush()
+    assert.match(text(f.root), /Session arrêtée/)
+    assert.equal(component_(f, 'IsolationProspectActivity'), undefined)
+  } finally {
+    f.app.unmount()
+  }
+})
+test('administrator has no call session', async () => {
+  const f = fixture('administrator')
+  try {
+    await flush()
+    assert.equal(labelled(f, 'Lancer une session d’appels'), undefined)
+  } finally {
+    f.app.unmount()
+  }
+})
