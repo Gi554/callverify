@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Attribution de lots de prospects aux setters (Assurance)
+
+Sur la page Prospects, l’administrateur Assurance ouvre « Attribuer des lots », choisit un setter, un nombre de prospects (1 à 1000) et éventuellement un import d’origine : les prochains prospects non attribués et non traités lui sont donnés. Il voit le nombre de prospects en cours par setter et peut « Reprendre » les prospects non travaillés (ceux qui ne sont pas verrouillés). Chaque opération est rejouable sans doublon et tracée dans l’audit. Changement de comportement : un setter ne voit désormais que les prospects de son lot ; l’administrateur voit tout. Les setters proposés sont ceux qui ont un conseiller associé actif.
+
+Limites : l’équivalent côté Isolation existe déjà (répartition par sélection de 25 prospects maximum) et n’est pas modifié ; l’appel automatique avec compte à rebours est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
+
 ## Renommage visible AMX / CallVerify en Orvia
 
 Les textes visibles passent à « Orvia » : page de connexion, logo et titre de l’onglet, messages de session et de mot de passe, notifications de tâches, libellés des événements d’agenda, expéditeur par défaut des e-mails, application d’authentification (TOTP) et documentation de déploiement. Limites volontaires : les pages Confidentialité et Conditions gardent AMX comme exploitant légal ; les noms techniques (classes CSS, clés de stockage, dépôt, bases, clé de propriété des événements Google « AMXSyncKey ») sont inchangés pour ne pas casser la production ni les événements déjà synchronisés.

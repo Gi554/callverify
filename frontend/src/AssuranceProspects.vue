@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown, Upload } from 'lucide-vue-next';
+import {
+  Search,
+  RefreshCw,
+  Pencil,
+  Phone,
+  Mail,
+  ChevronDown,
+  Upload,
+  Users,
+} from 'lucide-vue-next';
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import SidePanel from './SidePanel.vue';
 import ProspectExport from './ProspectExport.vue';
+import AssuranceLots from './AssuranceLots.vue';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -19,6 +29,8 @@ const listView = ref(false);
 // « Importer des contacts » opens the list view directly on the import screen.
 const importFirst = ref(false);
 const includeProcessed = ref(false);
+// Administrator only: hand out lots of prospects to setters.
+const lotsOpen = ref(false);
 function showBoard() {
   importFirst.value = false;
   if (!listView.value) return;
@@ -173,6 +185,14 @@ onBeforeUnmount(() => {
         <button v-if="admin && !listView" class="primary prospects-import" @click="showImport">
           <Upload :size="16" />Importer des contacts
         </button>
+        <button
+          v-if="admin && !listView"
+          class="secondary prospects-import"
+          :aria-expanded="lotsOpen"
+          @click="lotsOpen = !lotsOpen"
+        >
+          <Users :size="16" />Attribuer des lots
+        </button>
         <ProspectExport
           v-if="!listView"
           :request="request"
@@ -193,6 +213,7 @@ onBeforeUnmount(() => {
       @imported="emit('imported', $event)"
     />
     <template v-else>
+      <AssuranceLots v-if="admin && lotsOpen" :request="request" @changed="load" />
       <div class="prospects-toolbar">
         <label class="processed-toggle"
           ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les

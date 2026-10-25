@@ -9,4 +9,6 @@ def visible_contacts(user):
         qs = qs.annotate(_linked_appointment=Exists(linked)).filter(
             Q(assigned_advisor_id=user.pk) | Q(_linked_appointment=True)
         )
+    if user.role == 'setter':
+        qs = qs.filter(assigned_setter_id=user.pk)
     return qs
