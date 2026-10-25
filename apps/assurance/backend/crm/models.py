@@ -28,6 +28,10 @@ class Contact(models.Model):
     email = models.EmailField(blank=True)
     status = models.CharField(max_length=40, default='to_contact')
     assigned_advisor_id = models.PositiveBigIntegerField(null=True, blank=True)
+    # Lot handed out by an administrator; a setter only works the prospects of their lot.
+    assigned_setter_id = models.PositiveBigIntegerField(null=True, blank=True, db_index=True)
+    assigned_setter_name = models.CharField(max_length=150, blank=True, default='')
+    assigned_at = models.DateTimeField(null=True, blank=True)
     created_by_id = models.PositiveBigIntegerField()
     updated_at = models.DateTimeField(auto_now=True)
     revision = models.PositiveIntegerField(default=0)

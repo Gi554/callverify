@@ -189,6 +189,32 @@ test('administrator opens the import screen directly from the board', async () =
   }
 })
 
+test('administrator opens and closes the lots panel from the board', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    assert.equal(component_(f, 'AssuranceLots'), undefined)
+    button(f, 'Attribuer des lots').props.onClick()
+    await flush()
+    assert.ok(component_(f, 'AssuranceLots'))
+    button(f, 'Attribuer des lots').props.onClick()
+    await flush()
+    assert.equal(component_(f, 'AssuranceLots'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('setter has no lots button', async () => {
+  const f = fixture('setter')
+  try {
+    await flush()
+    assert.equal(button(f, 'Attribuer des lots'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
 test('setter has no import button', async () => {
   const f = fixture('setter')
   try {
