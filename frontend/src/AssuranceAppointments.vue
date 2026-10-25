@@ -651,6 +651,23 @@ onMounted(() =>
                 ><small v-if="row.reschedule_count">{{ row.reschedule_count }} report(s)</small>
               </td>
               <td>
+                <p v-if="row.calendly?.conflict || row.calendly?.needs_review" role="alert">
+                  Mise à jour Calendly à vérifier avec l’administration.
+                </p>
+                <a
+                  v-if="row.calendly?.reschedule_url && row.status === 'scheduled'"
+                  :href="row.calendly.reschedule_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Reporter sur Calendly</a
+                >
+                <a
+                  v-if="row.calendly?.cancel_url && row.status === 'scheduled'"
+                  :href="row.calendly.cancel_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Annuler sur Calendly</a
+                >
                 <button class="secondary" @click="qualificationRow = row">
                   Qualification transmise</button
                 ><button
@@ -667,6 +684,7 @@ onMounted(() =>
                 ><button
                   v-if="
                     canWrite &&
+                    row.calendar !== 'calendly' &&
                     row.status === 'scheduled' &&
                     !['performed', 'absent', 'not_performed'].includes(row.business_status)
                   "

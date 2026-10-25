@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 from packages.calendar_connectors import calendly as provider
 from packages.calendar_connectors.providers import ProviderError
 from packages.calendar_connectors.calendly_bridge import proof
-from .models import Membership, CalendlyConnection, CalendlyReservation
+from .models import Membership, CalendlyConnection, CalendlyReservation, CalendlyWebhook
 from .calendars import seal
 from .test_calendly import OPTIONS, TOKENS, PROFILE, EVENT
 
@@ -40,6 +40,12 @@ class CalendlyDispatchTests(TestCase):
             ),
         )
         self.start = (timezone.now() + timedelta(days=4)).replace(microsecond=0)
+        CalendlyWebhook.objects.create(
+            connection=self.row,
+            owner_uri=TOKENS['owner'],
+            organization='https://api.calendly.com/organizations/org-1',
+            state='active',
+        )
         self.data = {
             'actor': self.actor.pk,
             'role': 'setter',

@@ -1,5 +1,40 @@
 # Suivi des livraisons CRM AMX
 
+## Calendly — notifications signées, annulations, reports et rapprochement
+
+Le conseiller active la synchronisation depuis ses agendas connectés après le consentement et
+le choix de sa page. Orvia crée une souscription propre à son utilisateur, sans gérer une équipe
+Calendly. La clé serveur `CALENDLY_WEBHOOK_SIGNING_KEY` est nécessaire. Sans activation, aucune
+nouvelle réservation n’est envoyée ; le contrôle préalable évite les fausses demandes en attente.
+Un timeout d’activation est rapproché par lecture avant tout nouvel essai de création.
+
+Les notifications `invitee.created`/`invitee.canceled` sont authentifiées sur leurs octets exacts,
+limitées en taille, dédupliquées et mises en file durable sans stocker questions/notes/courriels
+reçus. Le worker `portal-calendly` vérifie l’état canonique chez Calendly, suit les chaînes de
+reports et livre des versions signées au service Assurance. Les doublons et livraisons anciennes
+ne créent pas de rendez-vous supplémentaire et ne remettent pas un ancien créneau. Le snapshot
+de qualification, les affectations et le dossier sont conservés ; les changements externes sont
+attribués au système Calendly dans l’audit, sans les faire passer pour une action du setter.
+
+Une réponse de création perdue est récupérable par l’identifiant opaque du webhook, après contrôle
+du compte, de la page, du destinataire et du créneau. Un rapprochement périodique des références
+connues couvre aussi les notifications manquées. La commande de récupération contrôlée documentée
+dans `docs/CALENDLY.md` permet le cas où réponse et webhook sont tous deux perdus, sans créer de
+rendez-vous externe. Les erreurs sont reprises puis signalées. Les liens de report/annulation
+Calendly sont disponibles sur les rendez-vous pour les rôles autorisés.
+
+Un report externe créant un conflit est reflété et signalé ; les comptes rendus déjà enregistrés
+ne sont jamais écrasés automatiquement : le changement est signalé pour examen. Déconnecter le
+compte arrête le suivi mais conserve les rendez-vous/historiques. Les événements personnels non
+liés à une demande Orvia ne sont pas associés par supposition à un prospect. Les pages d’équipe
+et les formulaires Calendly exigeant des champs additionnels non fournis ne sont pas couverts.
+
+Vérifications : signatures invalides/expirées, réception dupliquée, intention perdue,
+rattachement incorrect refusé, chaîne de reports et annulation tardive, livraison rejouée,
+conflit externe et compte rendu préservé ; reprise Vue après timeout/fermeture de fiche ;
+concurrence PostgreSQL et contrôles CI avant fusion. Les tests fournisseur sont simulés :
+identifiants, consentement, activation et réservation réelle de recette restent à effectuer.
+
 
 
 ## Calendly — réservation depuis la fiche Assurance, heure de Montréal

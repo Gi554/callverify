@@ -2,12 +2,15 @@
 
 import hashlib
 import json
+import hmac
+from django.conf import settings
 from datetime import timedelta
 from uuid import UUID
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from rest_framework.decorators import (
@@ -24,7 +27,21 @@ from packages.calendar_connectors.providers import ProviderError, instant
 from packages.calendar_connectors.calendly_bridge import verify
 from . import calendly
 from .calendars import CalendarThrottle, seal, unseal
-from .models import Membership, CalendlyConnection, CalendlyReservation
+from .models import (
+    Membership,
+    CalendlyConnection,
+    CalendlyReservation,
+    CalendlyInvitee,
+    CalendlyWebhook,
+)
+
+
+def email_digest(identifier, email):
+    return hmac.new(
+        settings.SECRET_KEY.encode(),
+        (str(identifier) + ':' + email.strip().casefold()).encode(),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def actor(data):
@@ -149,6 +166,10 @@ def execute(action, data):
             'name': selected['name'],
             'duration': selected['duration'],
             'timezone': 'America/Toronto',
+            'synchronization_active': len(settings.CALENDLY_WEBHOOK_SIGNING_KEY) >= 16
+            and CalendlyWebhook.objects.filter(
+                connection=row, owner_uri=tokens['owner'], state='active'
+            ).exists(),
         }
     start, end = instant(data.get('starts_at')), instant(data.get('ends_at'))
     if not timezone.now() < start < end <= start + timedelta(days=7):
@@ -193,6 +214,15 @@ def execute(action, data):
     }
     fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
     # Persist dispatch intent BEFORE the provider write. A timeout must never trigger a replay.
+    if (
+        len(settings.CALENDLY_WEBHOOK_SIGNING_KEY) < 16
+        or not CalendlyWebhook.objects.filter(
+            connection=row, owner_uri=tokens['owner'], state='active'
+        ).exists()
+    ):
+        raise ValidationError(
+            'Le conseiller doit activer la synchronisation Calendly avant de réserver.'
+        )
     reservation, created = CalendlyReservation.objects.get_or_create(
         request_id=identifier,
         defaults={
@@ -201,6 +231,9 @@ def execute(action, data):
             'fingerprint': fingerprint,
             'owner_uri': tokens['owner'],
             'event_type': selected['uri'],
+            'expected_start': start,
+            'expected_end': end,
+            'email_digest': email_digest(identifier, email),
         },
     )
     if not created:
@@ -220,21 +253,36 @@ def execute(action, data):
             uri = provider.create_invitee(
                 tokens['access'], selected['uri'], start, name, email, identifier
             )
-            reservation.payload = seal({'invitee': uri})
-            reservation.state = 'uncertain'
-            reservation.save()
+            reference, _ = CalendlyInvitee.objects.get_or_create(
+                uri=uri, defaults={'reservation': reservation}
+            )
+            if reference.reservation_id != reservation.pk:
+                raise ProviderError(code='uncertain')
+            CalendlyReservation.objects.filter(pk=reservation.pk, state='dispatching').update(
+                payload=seal({'invitee': uri}), state='uncertain'
+            )
             canonical = provider.appointment(
                 tokens['access'], uri, tokens['owner'], selected['uri']
             )
             if instant(canonical['starts_at']) != start or instant(canonical['ends_at']) != end:
                 raise ProviderError(code='uncertain')
-            reservation.payload = seal(canonical)
-            reservation.state = 'confirmed'
+            if canonical.get('email') and canonical['email'].casefold() != email.casefold():
+                raise ProviderError(code='uncertain')
+            canonical.pop('email', None)
+            canonical.pop('request_id', None)
+            CalendlyReservation.objects.filter(
+                pk=reservation.pk, state__in=['dispatching', 'uncertain']
+            ).update(payload=seal(canonical), state='confirmed', revision=F('revision') + 1)
+            reservation.refresh_from_db()
+            return result(reservation)
     except ProviderError as error:
         reservation.state = (
             'rejected' if not dispatched or error.code == 'rejected' else 'uncertain'
         )
-    reservation.save()
+    CalendlyReservation.objects.filter(
+        pk=reservation.pk, state__in=['dispatching', 'uncertain']
+    ).update(state=reservation.state)
+    reservation.refresh_from_db()
     return result(reservation)
 
 

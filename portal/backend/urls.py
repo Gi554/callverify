@@ -6,6 +6,7 @@ from .identity import invitations
 from .identity import calendars
 from .identity import calendly
 from .identity.calendly_booking import internal as calendly_internal
+from .identity import calendly_webhooks
 from .identity import calendar_sync
 from .identity.access_history import history as access_history
 from .identity.passwords import change_password
@@ -65,6 +66,8 @@ urlpatterns += [
 urlpatterns += [path('api/portal/calendar/<str:workspace>/detach/', calendar_sync.detach)]
 urlpatterns += [
     path('api/portal/calendly/', calendly.connection),
+    path('api/portal/calendly/webhooks/', calendly_webhooks.configuration),
+    path('api/portal/calendly/webhook/<uuid:hook_id>/', calendly_webhooks.receive),
     path('api/portal/internal/calendly/', calendly_internal),
     path('api/portal/calendly/start/', calendly.start),
     path('api/portal/calendly/callback/', calendly.callback),

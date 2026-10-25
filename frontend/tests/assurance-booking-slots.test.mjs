@@ -30,6 +30,7 @@ function compile(name, stub) {
   code = code
     .replace(/from ['"]vue['"]/g, `from '${vue}'`)
     .replace("'./booking-time'", JSON.stringify(bookingSource))
+    .replace("'./calendly-time'", JSON.stringify(url(source('calendly-time'))))
     .replace("'./appointment-status'", JSON.stringify(url(source('appointment-status'))))
     .replace("'./advisor-quota'", JSON.stringify(url(source('advisor-quota'))))
     .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, component) => stub(component))
@@ -50,6 +51,10 @@ const appointments = await compile('AssuranceAppointments', (name) =>
 )
 const slotsComponent = await compile(
   'AvailabilitySlots',
+  (name) => `const ${name}={render:()=>null}`,
+)
+const calendlyBooking = await compile(
+  'AssuranceCalendlyBooking',
   (name) => `const ${name}={render:()=>null}`,
 )
 const renderer = createRenderer({
@@ -106,6 +111,87 @@ const busy = bookingInterval(`${tomorrow}T10:00`, 'America/Toronto', 60)
 const slotButtons = (root) =>
   all(root).filter((n) => n.tag === 'button' && /^\d{2}:\d{2}$/.test(text(n).trim()))
 const slot = (root, label) => slotButtons(root).find((n) => text(n).trim() === label)
+
+test('Calendly booking survives a timeout and a reopened file without posting a second booking', async () => {
+  const calls = [],
+    booked = []
+  let pendingId = null
+  const providerTime = new Date(
+    bookingInterval(`${tomorrow}T10:00`, 'America/Toronto', 30).starts_at,
+  ).toISOString()
+  const props = {
+    role: 'setter',
+    contactId: 5,
+    contactRevision: 7,
+    leaseToken: 'lease',
+    portal: async () => ({ proof: 'fresh-proof' }),
+    request: async (path, body) => {
+      calls.push({ path, body })
+      if (path.startsWith('assignments/'))
+        return {
+          count: 1,
+          results: [{ id: 1, advisor: { id: 31, name: 'Conseiller' }, setter: { id: 21 } }],
+        }
+      if (path.startsWith('calendly/pending/?')) return { request_id: pendingId }
+      if (path.startsWith('calendly/slots/?'))
+        return {
+          uri: 'https://api.calendly.com/event_types/test',
+          slots: [providerTime],
+          duration: 30,
+        }
+      if (path === 'calendly/book/') {
+        pendingId = body.request_id
+        throw new Error('Confirmation réseau interrompue')
+      }
+      if (path === 'calendly/pending/') return { id: 42, calendar: 'calendly' }
+      throw new Error('Unexpected path')
+    },
+    onBooked: (row) => booked.push(row),
+  }
+  let root = { children: [] },
+    app = renderer.createApp(calendlyBooking, props)
+  app.mount(root)
+  try {
+    await flush()
+    all(root)
+      .find((n) => n.tag === 'select')
+      .props['onUpdate:modelValue']('1')
+    await flush()
+    await all(root)
+      .find((n) => n.tag === 'button' && text(n).includes('Consulter les créneaux'))
+      .props.onClick()
+    await flush()
+    all(root)
+      .filter((n) => n.tag === 'select')[1]
+      .props['onUpdate:modelValue'](providerTime)
+    await flush()
+    await all(root)
+      .find((n) => n.tag === 'form')
+      .props.onSubmit({ preventDefault() {} })
+    await flush()
+    assert.match(text(root), /Vérifier la réservation/)
+    assert.equal(booked.length, 0)
+    const sent = calls.find((c) => c.path === 'calendly/book/').body
+    assert.equal(sent.timezone, 'America/Toronto')
+    assert.equal(sent.contact_revision, 7)
+    assert.equal(Date.parse(sent.starts_at), Date.parse(providerTime))
+    app.unmount()
+    root = { children: [] }
+    app = renderer.createApp(calendlyBooking, props)
+    app.mount(root)
+    await flush()
+    assert.match(text(root), /réservation est déjà en attente/)
+    await all(root)
+      .find((n) => n.tag === 'form')
+      .props.onSubmit({ preventDefault() {} })
+    await flush()
+    assert.equal(calls.filter((c) => c.path === 'calendly/book/').length, 1)
+    assert.equal(calls.find((c) => c.path === 'calendly/pending/').body.request_id, pendingId)
+    assert.equal(booked[0].id, 42)
+  } finally {
+    app.unmount()
+  }
+})
 
 test('booking form asks the API for the chosen assignment and prospect busy times', async () => {
   const root = { children: [] },

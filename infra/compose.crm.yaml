@@ -54,6 +54,7 @@ services:
       MICROSOFT_CALENDAR_TENANT: ${MICROSOFT_CALENDAR_TENANT:-common}
       CALENDLY_CLIENT_ID: ${CALENDLY_CLIENT_ID:-}
       CALENDLY_CLIENT_SECRET: ${CALENDLY_CLIENT_SECRET:-}
+      CALENDLY_WEBHOOK_SIGNING_KEY: ${CALENDLY_WEBHOOK_SIGNING_KEY:-}
       PORTAL_PUBLIC_URL: ${PORTAL_PUBLIC_URL:?Set the HTTPS portal public URL}
       PORTAL_EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
       PORTAL_EMAIL_HOST: ${PORTAL_EMAIL_HOST:-}
@@ -88,6 +89,16 @@ services:
       assurance:
         condition: service_started
       api:
+        condition: service_started
+  portal-calendly:
+    build: .
+    environment: *portal-environment
+    command: python manage.py sync_calendly --settings=portal.backend.settings --loop --interval 30
+    restart: unless-stopped
+    depends_on:
+      portal-db:
+        condition: service_healthy
+      assurance:
         condition: service_started
   assurance-mail-relay:
     build: .

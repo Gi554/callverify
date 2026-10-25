@@ -24,6 +24,7 @@ router.register('assignments', AssignmentViewSet, basename='assurance-assignment
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
 urlpatterns = [path('api/assurance/pipeline/', configuration)]
+urlpatterns += [path('api/assurance/internal/calendly/', calendly.internal)]
 urlpatterns += [path('api/assurance/calendly/pending/', calendly.pending)]
 urlpatterns += [
     path('api/assurance/calendly/slots/', calendly.slots),

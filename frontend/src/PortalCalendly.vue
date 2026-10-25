@@ -19,6 +19,7 @@ const selected = ref('');
 const busy = ref(false);
 const error = ref('');
 const message = ref('');
+const synchronization = ref<any>(null);
 const choice = computed(() =>
   account.value?.event_types.find((entry) => entry.uri === account.value?.selected_event_type),
 );
@@ -28,6 +29,16 @@ function accept(value: Connection) {
 }
 async function load() {
   accept(await props.request('calendly/'));
+  synchronization.value = await props.request('calendly/webhooks/');
+}
+async function activate() {
+  await run(async () => {
+    synchronization.value = await props.request('calendly/webhooks/', {
+      revision: account.value!.revision,
+    });
+    message.value = 'Synchronisation Calendly activée pour vos réservations Orvia.';
+    await load();
+  });
 }
 async function run(action: () => Promise<void>) {
   busy.value = true;
@@ -182,10 +193,42 @@ onMounted(() => run(load));
         </button>
         <small v-if="!account.configured">L’activation Calendly est en attente côté Orvia.</small>
       </div>
+      <div v-if="account.connected && synchronization" class="calendly-sync">
+        <strong>Synchronisation des rendez-vous</strong>
+        <p>
+          {{
+            synchronization.state === 'active'
+              ? 'Active : les réservations Orvia, annulations et reports sont suivis automatiquement.'
+              : 'Activez la synchronisation avant de réserver depuis Orvia.'
+          }}
+        </p>
+        <button
+          type="button"
+          :disabled="busy || !synchronization.configured || !account.booking_in_crm"
+          @click="activate"
+        >
+          {{
+            synchronization.state === 'active'
+              ? 'Vérifier la synchronisation'
+              : 'Activer la synchronisation'
+          }}
+        </button>
+        <p v-if="!synchronization.configured">
+          L’activation de la synchronisation est en attente côté Orvia.
+        </p>
+        <p v-if="synchronization.pending" role="status">
+          {{ synchronization.pending }} notification(s) en cours de traitement.
+        </p>
+        <p v-if="synchronization.needs_review" role="alert">
+          {{ synchronization.needs_review }} mise(s) à jour à vérifier avec l’administration.
+        </p>
+      </div>
       <p class="calendly-note">
         Votre page peut être ouverte dans un nouvel onglet. La réservation depuis une fiche Orvia
         transmet le nom et le courriel du prospect à Calendly ; sa qualification reste dans Orvia.
-        La mise à jour automatique des annulations et reports est en cours d’intégration.
+        La synchronisation active suit les réservations liées à Orvia, leurs annulations et leurs
+        reports. Déconnecter Calendly arrête ce suivi ; les rendez-vous déjà créés restent
+        conservés.
       </p>
     </template>
     <button v-else-if="!busy" type="button" @click="run(load)">Réessayer</button>
