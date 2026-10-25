@@ -4,6 +4,7 @@ from .identity import views
 from .identity import management_api
 from .identity import invitations
 from .identity import calendars
+from .identity import calendly
 from .identity import calendar_sync
 from .identity.access_history import history as access_history
 from .identity.passwords import change_password
@@ -60,6 +61,14 @@ urlpatterns += [
 ]
 
 urlpatterns += [path('api/portal/calendar/<str:workspace>/detach/', calendar_sync.detach)]
+urlpatterns += [
+    path('api/portal/calendly/', calendly.connection),
+    path('api/portal/calendly/start/', calendly.start),
+    path('api/portal/calendly/callback/', calendly.callback),
+    path('api/portal/calendly/refresh/', calendly.refresh),
+    path('api/portal/calendly/selection/', calendly.selection),
+    path('api/portal/calendly/disconnect/', calendly.disconnect),
+]
 
 from .identity.phone_extensions import assignments as phone_assignments
 

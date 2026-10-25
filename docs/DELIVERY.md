@@ -6,6 +6,34 @@ Sur la page Prospects, l’administrateur Assurance ouvre « Attribuer des lots 
 
 Limites : l’équivalent côté Isolation existe déjà (répartition par sélection de 25 prospects maximum) et n’est pas modifié ; l’appel automatique avec compte à rebours est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
 
+## Calendly — connexion personnelle et page préférée du conseiller Assurance
+
+Premier parcours livré : OAuth par conseiller, profil, pages personnelles actives, choix persistant
+d’une page préférée, ouverture chez Calendly, actualisation et déconnexion locale. Accessible dans
+les agendas connectés et Mon compte. Un compte par conseiller, indépendant de l’abonnement central
+et de Google/Microsoft ; aucune place Calendly créée ni souscription déclenchée. Configuration
+serveur `CALENDLY_CLIENT_ID`/`CALENDLY_CLIENT_SECRET`, callback `/crm/oauth/calendly`, scopes de
+lecture seulement. Sans identifiants le bouton est désactivé. Procédure : [CALENDLY.md](CALENDLY.md).
+
+Jetons, profil et pages chiffrés ; OAuth PKCE/session/état à usage unique et révisions ; rotation
+des jetons sérialisée et persistée même si la découverte suivante échoue ; échec ambigu du
+renouvellement traité par reconnexion. Audits sans contenu externe ni secret. Protection des liens
+et endpoints, pagination bornée, seuls les types personnels solo proposés. Déconnexion accessible
+au propriétaire même après retrait du rôle, sans toucher aux comptes des autres ni à Google.
+Politique publique complétée pour le traitement Calendly facultatif.
+
+Vérifications : tests backend de droits, chiffrement, OAuth refusé/expiré/rejoué/autre session,
+retour obsolète après déconnexion, choix hors compte, rotation et perte de rôle ; concurrence
+PostgreSQL incluse dans la CI ; parcours Vue de choix/actualisation et fournisseur non configuré,
+non-régression du parcours agenda existant, typage et build. Aucun compte Calendly réel connecté
+ni réservation effectuée ; recette OAuth réelle en attente des identifiants et du consentement
+du conseiller. Le navigateur local étant désactivé, aucune recette visuelle revendiquée.
+
+**Limites et suite** : ce lot ne réserve pas dans Orvia, ne transmet pas de prospect, ne synchronise
+pas les réservations/annulations/reports, n’ajoute aucun événement ou décompte CRM. Le partage aux
+setters selon leurs associations, la réservation compatible avec le forfait du conseiller et les
+webhooks restent à livrer. Ne pas présenter ce connecteur comme un module de réservation terminé.
+
 ## Renommage visible AMX / CallVerify en Orvia
 
 Les textes visibles passent à « Orvia » : page de connexion, logo et titre de l’onglet, messages de session et de mot de passe, notifications de tâches, libellés des événements d’agenda, expéditeur par défaut des e-mails, application d’authentification (TOTP) et documentation de déploiement. Limites volontaires : les pages Confidentialité et Conditions gardent AMX comme exploitant légal ; les noms techniques (classes CSS, clés de stockage, dépôt, bases, clé de propriété des événements Google « AMXSyncKey ») sont inchangés pour ne pas casser la production ni les événements déjà synchronisés.

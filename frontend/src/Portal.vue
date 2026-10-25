@@ -343,7 +343,7 @@ function openAccess() {
 }
 const title = (value: string) => (value === 'assurance' ? 'Assurance' : 'Isolation');
 onMounted(async () => {
-  const oauth = location.pathname.match(/^\/crm\/oauth\/(google|microsoft)$/);
+  const oauth = location.pathname.match(/^\/crm\/oauth\/(google|microsoft|calendly)$/);
   if (oauth) {
     const query = new URLSearchParams(location.search);
     const body: any = { state: query.get('state') || '' };
@@ -351,10 +351,15 @@ onMounted(async () => {
     else body.code = query.get('code') || '';
     history.replaceState(null, '', '/crm');
     try {
-      await portal('calendar/callback/' + oauth[1] + '/', body);
+      await portal(
+        oauth[1] === 'calendly' ? 'calendly/callback/' : 'calendar/callback/' + oauth[1] + '/',
+        body,
+      );
       passwordOpen.value = true;
       calendarNotice.value =
-        'Agenda connecté. Consultez Mon compte et mes sessions pour vérifier les disponibilités.';
+        oauth[1] === 'calendly'
+          ? 'Calendly connecté. Ouvrez Mon agenda ou Mon compte pour choisir votre page de réservation.'
+          : 'Agenda connecté. Consultez Mon compte et mes sessions pour vérifier les disponibilités.';
     } catch (e: any) {
       calendarNotice.value = e.message;
     }

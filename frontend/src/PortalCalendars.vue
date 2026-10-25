@@ -13,6 +13,7 @@ import {
 import googleLogo from './assets/calendar/google-calendar.png';
 import outlookLogo from './assets/calendar/microsoft-outlook.png';
 import { bookingInterval } from './booking-time';
+import PortalCalendly from './PortalCalendly.vue';
 const providers = [
   {
     id: 'google',
@@ -475,6 +476,7 @@ onMounted(() => run(load));
         </details>
       </section>
     </div>
+    <PortalCalendly v-if="rows.some((row) => row.workspace === 'assurance')" :request="request" />
     <details class="calendar-privacy">
       <summary>
         <ShieldCheck :size="18" /><span>Votre agenda vous appartient</span
