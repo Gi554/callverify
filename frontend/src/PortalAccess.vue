@@ -2,12 +2,14 @@
 import { ref, onMounted, watch } from 'vue';
 import PortalInvitations from './PortalInvitations.vue';
 import PortalPhoneExtensions from './PortalPhoneExtensions.vue';
+import PortalCallRules from './PortalCallRules.vue';
 import PortalAccessHistory from './PortalAccessHistory.vue';
 const activeSection = ref('users');
 const sections = [
   { key: 'users', label: 'Utilisateurs' },
   { key: 'invitations', label: 'Invitations' },
   { key: 'phone', label: 'Postes téléphoniques' },
+  { key: 'rules', label: 'Règles d’appel' },
   { key: 'history', label: 'Journal des accès' },
 ];
 import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight } from 'lucide-vue-next';
@@ -352,6 +354,11 @@ onMounted(load);
       /><PortalPhoneExtensions
         v-else-if="activeSection === 'phone'"
         :key="'phone-' + space"
+        :space="space"
+        :request="request"
+      /><PortalCallRules
+        v-else-if="activeSection === 'rules'"
+        :key="'rules-' + space"
         :space="space"
         :request="request"
       /><PortalInvitations

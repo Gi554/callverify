@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 from packages.access.phone_calls import issue
 from packages.newt.calls import place
 from .phone_calls import eligible
-from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
+from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit, CallRules
 from unittest import skipUnless
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -23,6 +23,7 @@ from django.test import TransactionTestCase
 )
 class PhoneCallsTests(TestCase):
     def setUp(self):
+        CallRules.objects.update_or_create(pk=1, defaults={'enforce_hours': False})
         self.user = get_user_model().objects.create_user('synthetic-setter')
         self.client = APIClient()
         self.client.force_login(self.user)
@@ -79,7 +80,12 @@ class PhoneCallsTests(TestCase):
         self.membership.role = 'administrator'
         self.membership.save()
         self.assertEqual(
-            self.client.get(self.url + 'options/').data, {'enabled': True, 'post_associated': True}
+            self.client.get(self.url + 'options/').data,
+            {
+                'enabled': True,
+                'post_associated': True,
+                'call_window': {'allowed': True, 'message': ''},
+            },
         )
         self.assertEqual(self.post().status_code, 200)
         self.assertEqual(self.post().status_code, 200)

@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Garde-fous d’appel : heures autorisées et liste d’exclusion (Assurance et Isolation)
+
+Le portail refuse désormais, avant toute commande à l’opérateur, un appel placé hors des heures autorisées ou vers un numéro de la liste d’exclusion. Les heures par défaut sont 9 h 30–21 h 30 en semaine et 10 h–18 h le week-end, heure de Montréal ; elles sont réglables, désactivables et le fuseau est modifiable. L’administrateur gère les deux dans Accès → « Règles d’appel » : réglage des heures avec l’état du moment, ajout de numéros en lot (collés, un par ligne ou séparés par des virgules, normalisés comme les numéros composés), recherche et retrait. Le message de refus est affiché au setter (y compris en session d’appels, qui n’envoie rien), le refus est tracé dans l’audit sans enregistrer le numéro, et aucune commande ni ligne d’historique n’est créée.
+
+Comportement à connaître : le contrôle des heures est actif dès le déploiement ; pour un test hors horaires, l’administrateur le désactive dans « Règles d’appel ». Limites : l’heure est celle d’un seul fuseau, pas celle du prospect ; l’exclusion porte sur le numéro composé exact, sans importer de liste officielle ; la liste est partagée par les deux espaces ; revue visuelle reportée à la revue finale.
+
 ## Session d’appels enchaînés avec compte à rebours (Isolation)
 
 Sur la page Prospects Isolation, le setter lance une « session d’appels » : le premier prospect de son tableau (avec un numéro, hors « Non intéressé ») s’ouvre en parcours d’appel et la commande d’appel part d’elle-même, sans confirmation, une fois les contrôles habituels passés (appels activés, poste associé, conformité). Après son échange, le setter clique sur « Terminer · prospect suivant » : un compte à rebours de 10 secondes s’affiche avec « Appeler maintenant » et « Arrêter la session ». À zéro, le prospect suivant est ouvert et appelé ; à la fin de la liste, la session s’arrête avec un message. Même mécanique que la session Assurance.

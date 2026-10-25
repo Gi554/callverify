@@ -145,3 +145,14 @@ urlpatterns += [path('api/portal/<str:workspace>/actor-names/', actor_names)]
 from .identity.client_folders import clients as client_folders
 
 urlpatterns += [path('api/portal/<str:workspace>/client-folders/', client_folders)]
+
+from .identity import call_rules
+
+urlpatterns += [
+    path('api/portal/workspaces/<str:workspace>/call-rules/', call_rules.settings_view),
+    path('api/portal/workspaces/<str:workspace>/call-exclusions/', call_rules.exclusions),
+    path(
+        'api/portal/workspaces/<str:workspace>/call-exclusions/<int:pk>/',
+        call_rules.exclusion_detail,
+    ),
+]
