@@ -5,7 +5,7 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
 }>();
 const emit = defineEmits<{ changed: [] }>();
-type Person = { id: number; name: string };
+type Person = { id: number; name: string; role?: string };
 type Setter = { id: number; name: string; assigned: number };
 type Source = { id: number; filename: string; available: number };
 const available = ref(0),
@@ -33,11 +33,14 @@ async function load() {
     available.value = data.available;
     setters.value = data.setters;
     sources.value = data.imports;
+    // Administrators can take a lot too, to call it themselves.
     const found: Person[] = [];
-    for (let page = 1; page <= 8; page++) {
-      const part = await props.portal(`assurance/participants/?role=setter&page=${page}`);
-      found.push(...part.results);
-      if (!part.next) break;
+    for (const role of ['setter', 'administrator']) {
+      for (let page = 1; page <= 8; page++) {
+        const part = await props.portal(`assurance/participants/?role=${role}&page=${page}`);
+        found.push(...part.results.map((row: any) => ({ id: row.id, name: row.name, role })));
+        if (!part.next) break;
+      }
     }
     people.value = found;
     if (!setterId.value && found.length) setterId.value = String(found[0].id);
@@ -104,7 +107,10 @@ onMounted(load);
     <p v-if="!people.length && !error" class="lots-help">Aucun setter Assurance actif.</p>
     <ul v-if="people.length" class="lots-setters">
       <li v-for="person in people" :key="person.id">
-        <span>{{ person.name }}</span>
+        <span
+          >{{ person.name
+          }}<small v-if="person.role === 'administrator'"> · administrateur</small></span
+        >
         <span class="lots-count">{{ assigned(person.id)?.assigned || 0 }} en cours</span>
         <button
           class="secondary"
@@ -120,7 +126,7 @@ onMounted(load);
         >Setter
         <select v-model="setterId">
           <option v-for="person in people" :key="person.id" :value="String(person.id)">
-            {{ person.name }}
+            {{ person.name }}{{ person.role === 'administrator' ? ' (administrateur)' : '' }}
           </option>
         </select></label
       >

@@ -105,3 +105,11 @@ class IsolationLotTests(TestCase):
             403,
         )
         self.assertEqual(Prospect.objects.filter(assigned_setter_id__isnull=False).count(), 0)
+
+    def test_owner_me_lists_only_the_prospects_given_to_the_caller(self):
+        self.assign(2, setter=91)
+        self.auth(91, 'administrator')
+        self.assertEqual(self.client.get('/api/work-queue/?owner=me').data['count'], 2)
+        self.assertEqual(self.client.get('/api/work-queue/').data['count'], 5)
+        self.auth(21, 'setter')
+        self.assertEqual(self.client.get('/api/work-queue/?owner=me').data['count'], 0)

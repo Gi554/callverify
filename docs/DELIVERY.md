@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## L’administrateur s’attribue un lot et lance sa propre session d’appels (Assurance et Isolation)
+
+Dans « Attribuer des lots » (Assurance) et « Lot de la semaine » (Isolation), l’administrateur apparaît dans la liste des destinataires, marqué « administrateur » côté Assurance : il peut se donner un nombre de prospects, comme à un setter. Le bouton « Lancer une session d’appels » est maintenant proposé à l’administrateur : la session parcourt uniquement les prospects de son propre lot (nouveaux filtres `mine=true` côté Assurance et `owner=me` côté Isolation), avec le même compte à rebours arrêtable ; s’il n’a pas de lot, un message lui indique de s’en attribuer un. L’administrateur continue de voir tous les prospects de l’équipe ; ses appels passent par les mêmes garde-fous (heures, liste d’exclusion) que ceux des setters.
+
+Limites : la preuve du portail pour un lot accepte setter ou administrateur actif de l’espace ; le test d’appel réel reste à faire ; revue visuelle reportée à la revue finale.
+
 ## Retrait de l’onglet Opportunités (Assurance)
 
 L’onglet « Opportunités » de l’administrateur Assurance disparaît : c’était un second tableau des mêmes fiches par statut commercial, déjà présent dans « Prospects » (tableau par statut, avec import, lots et appels). Le menu de l’administrateur devient Accueil, Prospects, Rendez-vous, Tâches ; les réglages du pipeline (étapes) restent dans « Paramètres métier ». Aucune donnée n’est supprimée.

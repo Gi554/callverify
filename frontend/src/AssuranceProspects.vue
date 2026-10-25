@@ -82,12 +82,21 @@ const session = ref(false),
   countdown = ref<number | null>(null),
   sessionNote = ref('');
 const visited = new Set<number>();
+// An administrator calls the prospects of their own lot; a setter's board already is their lot.
+const mine = ref<any[]>([]);
 let timer: ReturnType<typeof setInterval> | null = null;
+async function loadMine() {
+  const rows: any[] = [];
+  for (let page = 1; page <= 8; page++) {
+    const data = await props.request(`contacts/?mine=true&queue=active&page=${page}`);
+    rows.push(...data.results);
+    if (!data.next) break;
+  }
+  mine.value = rows.sort((a, b) => a.id - b.id);
+}
 function nextProspect() {
-  for (const column of columns.value)
-    for (const row of column.rows)
-      if (!visited.has(row.id) && String(row.phone || '').trim()) return row;
-  return null;
+  const pool = admin.value ? mine.value : columns.value.flatMap((column) => column.rows);
+  return pool.find((row) => !visited.has(row.id) && String(row.phone || '').trim()) || null;
 }
 function stopTimer() {
   if (timer) clearInterval(timer);
@@ -109,9 +118,22 @@ async function advance() {
     sessionNote.value = error.value || 'Session interrompue.';
   }
 }
-function startSession() {
+async function startSession() {
   visited.clear();
   sessionNote.value = '';
+  if (admin.value) {
+    try {
+      await loadMine();
+    } catch (e: any) {
+      sessionNote.value = e.message;
+      return;
+    }
+    if (!nextProspect()) {
+      sessionNote.value =
+        'Aucun prospect dans votre lot : attribuez-vous un lot avec « Attribuer des lots ».';
+      return;
+    }
+  }
   session.value = true;
   void advance();
 }
@@ -255,7 +277,7 @@ onBeforeUnmount(() => {
           <Users :size="16" />Attribuer des lots
         </button>
         <button
-          v-if="role === 'setter' && !listView && !session"
+          v-if="['setter', 'administrator'].includes(role) && !listView && !session"
           class="primary prospects-import"
           :disabled="busy || !total"
           @click="startSession"

@@ -105,7 +105,7 @@ async function flush() {
   }
 }
 const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
-function fixture(role = 'setter') {
+function fixture(role = 'setter', ownLot = false) {
   const root = { children: [] },
     requests = [],
     portalCalls = []
@@ -129,6 +129,12 @@ function fixture(role = 'setter') {
         const q = new URLSearchParams(path.split('?')[1]),
           status = q.get('commercial_status'),
           page = Number(q.get('page'))
+        if (q.get('owner') === 'me')
+          return {
+            count: 2,
+            next: null,
+            results: ownLot ? [row(1, 'to_contact'), row(2, 'to_contact')] : [],
+          }
         return status === 'to_contact'
           ? {
               count: 27,
@@ -298,11 +304,29 @@ test('setter can stop the countdown and the session ends after the last prospect
     f.app.unmount()
   }
 })
-test('administrator has no call session', async () => {
+test('administrator without a lot is told to take one before calling', async () => {
   const f = fixture('administrator')
   try {
     await flush()
-    assert.equal(labelled(f, 'Lancer une session d’appels'), undefined)
+    labelled(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    assert.match(text(f.root), /Aucun prospect dans votre lot/)
+  } finally {
+    f.app.unmount()
+  }
+})
+test('administrator calls the prospects of their own lot', async () => {
+  const f = fixture('administrator', true)
+  try {
+    await flush()
+    labelled(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    assert.ok(f.requests.some((r) => r.path.startsWith('work-queue/?owner=me')))
+    const first = component_(f, 'IsolationProspectActivity')
+    assert.equal(first.props.session, true)
+    first.props.onClose()
+    await flush()
+    assert.match(text(f.root), /Prochain appel dans 10 s/)
   } finally {
     f.app.unmount()
   }

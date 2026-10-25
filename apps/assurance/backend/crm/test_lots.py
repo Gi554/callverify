@@ -117,3 +117,12 @@ class LotTests(TestCase):
             list(BusinessAudit.objects.order_by('pk').values_list('action', flat=True)),
             ['lot.assigned', 'lot.released'],
         )
+
+    def test_mine_filter_returns_only_the_prospects_given_to_the_caller(self):
+        self.give(2, setter=1)
+        self.auth(1, 'administrator')
+        mine = self.client.get('/api/assurance/contacts/?mine=true').json()
+        self.assertEqual(mine['count'], 2)
+        self.assertEqual(self.client.get('/api/assurance/contacts/').json()['count'], 5)
+        self.auth(22, 'setter')
+        self.assertEqual(self.client.get('/api/assurance/contacts/?mine=true').json()['count'], 0)

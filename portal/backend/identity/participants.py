@@ -80,7 +80,7 @@ def lot_proof(request):
     target = (
         Membership.objects.filter(
             workspace='assurance',
-            role='setter',
+            role__in=('setter', 'administrator'),
             active=True,
             user__is_active=True,
             user_id=data['setter_id'],
@@ -89,7 +89,7 @@ def lot_proof(request):
         .first()
     )
     if target is None:
-        raise ValidationError('Setter Assurance actif requis')
+        raise ValidationError('Setter ou administrateur Assurance actif requis')
     AccessAudit.objects.create(
         user=request.user, action='lot.setter_attested', workspace='assurance', metadata=data
     )
@@ -109,8 +109,8 @@ def participants(request):
     ).select_related('user')
     if request.method == 'GET':
         role = request.query_params.get('role', '')
-        if role not in ('setter', 'advisor'):
-            raise ValidationError({'role': 'Choisir setter ou advisor'})
+        if role not in ('setter', 'advisor', 'administrator'):
+            raise ValidationError({'role': 'Choisir setter, advisor ou administrator'})
         qs = active.filter(role=role).order_by('user__username', 'pk')
         term = request.query_params.get('search', '').strip()[:150]
         if term:
