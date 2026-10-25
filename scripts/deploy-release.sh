@@ -59,4 +59,6 @@ for path in /api/portal/session/ /api/assurance/contacts/ /api/isolation/work-qu
   [[ "$healthy" == true ]] || { echo "Post-deployment route check failed: $path ($code). Backup: $backup" >&2; exit 1; }
 done
 printf '%s\n' "$sha" > .git/crm-last-successful-deploy
+# Housekeeping never decides the outcome of a verified deployment.
+bash scripts/maintenance.sh || echo "Maintenance skipped (see messages above)." >&2
 echo "Deployment verified: $sha"

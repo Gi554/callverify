@@ -1,11 +1,23 @@
+# Every service restarts by itself (reboot, crash) and keeps bounded logs.
+x-service: &service
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
 services:
   web:
+    <<: *service
     ports: !reset []
   api:
+    <<: *service
     ports: !reset []
     environment:
       TRUST_PROXY: "true"
   caddy:
+    <<: *service
     image: caddy:2-alpine
     environment:
       CALLVERIFY_DOMAIN: ${CALLVERIFY_DOMAIN:?Set CALLVERIFY_DOMAIN}
@@ -19,6 +31,35 @@ services:
     depends_on:
       - web
       - api
+  db:
+    <<: *service
+  redis:
+    <<: *service
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy noeviction
+  worker:
+    <<: *service
+  beat:
+    <<: *service
+  portal-db:
+    <<: *service
+  assurance-db:
+    <<: *service
+  portal:
+    <<: *service
+  portal-mail:
+    <<: *service
+  portal-calendars:
+    <<: *service
+  portal-calendly:
+    <<: *service
+  assurance-mail-relay:
+    <<: *service
+  assurance:
+    <<: *service
+  assurance-reminders:
+    <<: *service
+  portal-call-journal:
+    <<: *service
 volumes:
   caddy_data:
   caddy_config:

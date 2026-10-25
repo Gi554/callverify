@@ -66,7 +66,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_THROTTLE_RATES': {
-        'portal_login': '10/min',
+        # An office of ~20 people shares one address and signs in around the same minute.
+        'portal_login': '30/min',
         'portal_password': '5/min',
         'user': '120/min',
     },

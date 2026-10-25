@@ -77,3 +77,11 @@ Les migrations sont appliquées automatiquement, et les données sont conservée
 | Lire les journaux d’un service | Même commande avec `logs -f portal` (ou `assurance`, `api`, `caddy`). |
 | Le HTTPS ne s’obtient pas | Vérifiez que le DNS pointe bien vers le serveur et que les ports 80 et 443 sont ouverts, puis consultez les journaux de `caddy`. |
 | Les e-mails ne partent pas | Vérifiez la section E-mails de `.env` et les journaux de `portal-mail`. |
+
+## Charge et entretien (environ 20 setters en même temps)
+
+- Le portail, Assurance et Isolation tournent chacun avec 4 processus de 2 tâches ; un processus qui a traité environ 1 000 demandes se relance seul, ce qui rend la mémoire sans intervention.
+- Tous les services redémarrent d’eux-mêmes après un incident ou un redémarrage du serveur, et leurs journaux sont limités à 3 fichiers de 10 Mo.
+- Après chaque déploiement vérifié, `scripts/maintenance.sh` ne garde que les 5 dernières sauvegardes de `.backups` et supprime les images Docker inutilisées depuis plus de 7 jours. Pour le lancer à la main : `./scripts/maintenance.sh` (`KEEP_BACKUPS=10 ./scripts/maintenance.sh` pour en garder davantage).
+- Mesurer la réactivité avec des comptes de test : `LOAD_USERS="compte1:mdp1,compte2:mdp2" python scripts/load_test_setters.py https://VOTRE-DOMAINE --setters 20 --seconds 60 --yes` (lecture seule, aucun appel placé).
+- Surveiller la machine : `docker stats --no-stream` (mémoire et processeur par service) et `df -h` (disque).
