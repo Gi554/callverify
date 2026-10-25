@@ -65,9 +65,7 @@ def interval(provider, remote):
 
 
 def body(provider, key, workspace, source):
-    title = (
-        f'Orvia {"Assurance" if workspace=="assurance" else "Isolation"} — Rendez-vous {source["id"]}'
-    )
+    title = f'Orvia {"Assurance" if workspace=="assurance" else "Isolation"} — Rendez-vous {source["id"]}'
     first = source['starts_at'].astimezone(timezone.utc).isoformat()
     last = source['ends_at'].astimezone(timezone.utc).isoformat()
     if provider == 'google':

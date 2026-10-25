@@ -295,7 +295,9 @@ def disconnect(request, workspace):
         if row:
             CalendarConnection.objects.filter(pk=row.pk).update(revision=F('revision'))
             if row.events.exclude(status__in=['removed', 'abandoned']).exists():
-                raise ValidationError('Retirez les événements Orvia avant de déconnecter cet agenda')
+                raise ValidationError(
+                    'Retirez les événements Orvia avant de déconnecter cet agenda'
+                )
         if not row or not CalendarConnection.objects.filter(
             pk=row.pk, revision=data['revision']
         ).update(
