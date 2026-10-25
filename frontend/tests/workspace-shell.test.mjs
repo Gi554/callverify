@@ -104,7 +104,6 @@ const adminItems = [
   { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
   { id: 'contacts', label: 'Contacts', icon: 'contacts' },
   { id: 'appointments', label: 'Rendez-vous', icon: 'appointments' },
-  { id: 'pipeline', label: 'Opportunités', icon: 'agreements' },
   { id: 'followups', label: 'Tâches de suivi', icon: 'followups' },
   { id: 'statistics', label: 'Statistiques', icon: 'statistics' },
   { id: 'assignments', label: 'Affectations', icon: 'assignments' },
@@ -131,7 +130,7 @@ test('administrator gets the setter frame with team modules and a steering block
   assert.match(html, /setter-shell admin-shell/)
   assert.doesNotMatch(html, /crm-sidebar/)
   const nav = section(html, '<nav>', '</nav>')
-  for (const label of ['Accueil', 'Prospects', 'Rendez-vous', 'Opportunités', 'Tâches'])
+  for (const label of ['Accueil', 'Prospects', 'Rendez-vous', 'Tâches'])
     assert.match(nav, new RegExp(label))
   assert.doesNotMatch(nav, /Statistiques|Affectations|Mandats|Paramètres|Appels/)
   const steering = section(html, 'setter-statistics', '</aside>')

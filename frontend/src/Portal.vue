@@ -13,7 +13,6 @@ import IsolationWorkQueue from './IsolationWorkQueue.vue';
 import IsolationClient from './IsolationClient.vue';
 import IsolationQualification from './IsolationQualification.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
-import AssurancePipeline from './AssurancePipeline.vue';
 import AssuranceProspects from './AssuranceProspects.vue';
 import AssuranceAgreementRegistry from './AssuranceAgreementRegistry.vue';
 import AssuranceAgreementAlerts from './AssuranceAgreementAlerts.vue';
@@ -283,9 +282,6 @@ const navigation = computed(() => {
     },
   ];
   if (workspace.value === 'assurance') {
-    // Opportunities are an administration view: setters work from prospects and tasks.
-    if (role.value !== 'setter')
-      items.push({ id: 'pipeline', label: 'Opportunités', icon: 'agreements' });
     if (role.value !== 'advisor')
       items.push(
         { id: 'followups', label: 'Tâches de suivi', icon: 'followups' },
@@ -429,8 +425,7 @@ const roleLabels: Record<string, string> = {
         activeModule === 'appointments' &&
         !passwordOpen &&
         !managing,
-      'contacts-layout':
-        !!user && ['contacts', 'pipeline'].includes(activeModule) && !passwordOpen && !managing,
+      'contacts-layout': !!user && activeModule === 'contacts' && !passwordOpen && !managing,
     }"
   >
     <PortalLogin
@@ -648,12 +643,6 @@ const roleLabels: Record<string, string> = {
                       :request="assurance"
                       :role="role"
                       @imported="summary.contacts = $event"
-                    />
-                    <AssurancePipeline
-                      v-else-if="assuranceModule === 'pipeline'"
-                      :portal="portal"
-                      :request="assurance"
-                      :role="role"
                     />
                     <AssuranceAgreementRegistry
                       v-else-if="assuranceModule === 'agreements' && role === 'administrator'"

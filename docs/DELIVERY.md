@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Retrait de l’onglet Opportunités (Assurance)
+
+L’onglet « Opportunités » de l’administrateur Assurance disparaît : c’était un second tableau des mêmes fiches par statut commercial, déjà présent dans « Prospects » (tableau par statut, avec import, lots et appels). Le menu de l’administrateur devient Accueil, Prospects, Rendez-vous, Tâches ; les réglages du pipeline (étapes) restent dans « Paramètres métier ». Aucune donnée n’est supprimée.
+
 ## Calendly — notifications signées, annulations, reports et rapprochement
 
 Le conseiller active la synchronisation depuis ses agendas connectés après le consentement et
