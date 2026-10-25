@@ -2,16 +2,19 @@
 import { ref, computed, onMounted } from 'vue';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
+  portal: (path: string, body?: any) => Promise<any>;
 }>();
 const emit = defineEmits<{ changed: [] }>();
+type Person = { id: number; name: string };
 type Setter = { id: number; name: string; assigned: number };
 type Source = { id: number; filename: string; available: number };
 const available = ref(0),
   setters = ref<Setter[]>([]),
+  people = ref<Person[]>([]),
   sources = ref<Source[]>([]),
   setterId = ref(''),
   sourceId = ref(''),
-  count = ref(50),
+  count = ref(100),
   busy = ref(false),
   error = ref(''),
   notice = ref('');
@@ -30,7 +33,14 @@ async function load() {
     available.value = data.available;
     setters.value = data.setters;
     sources.value = data.imports;
-    if (!setterId.value && data.setters.length) setterId.value = String(data.setters[0].id);
+    const found: Person[] = [];
+    for (let page = 1; page <= 8; page++) {
+      const part = await props.portal(`assurance/participants/?role=setter&page=${page}`);
+      found.push(...part.results);
+      if (!part.next) break;
+    }
+    people.value = found;
+    if (!setterId.value && found.length) setterId.value = String(found[0].id);
   } catch (e: any) {
     error.value = e.message || 'Impossible de charger les lots.';
   }
@@ -40,9 +50,12 @@ async function give() {
   busy.value = true;
   error.value = notice.value = '';
   try {
+    const attested = await props.portal('assurance/lot-proof/', {
+      setter_id: Number(setterId.value),
+    });
     const body: any = {
       request_id: requestId,
-      setter_id: Number(setterId.value),
+      proof: attested.proof,
       count: Math.floor(count.value),
     };
     if (sourceId.value) body.import_id = Number(sourceId.value);
@@ -57,7 +70,8 @@ async function give() {
     busy.value = false;
   }
 }
-async function takeBack(setter: Setter) {
+const assigned = (id: number) => setters.value.find((row) => row.id === id);
+async function takeBack(setter: Person) {
   if (busy.value) return;
   if (!confirm('Reprendre les prospects non travaillés de ' + setter.name + ' ?')) return;
   busy.value = true;
@@ -82,32 +96,36 @@ onMounted(load);
   <section class="lots-panel" aria-label="Lots de prospects">
     <h2>Attribuer des prospects aux setters</h2>
     <p class="lots-help">
-      Dès le premier lot attribué, chaque setter ne voit plus que les prospects de son lot.
-      <strong>{{ available }}</strong> prospect(s) non attribué(s) et à traiter.
+      Choisissez un setter et le nombre de prospects à lui donner : les premiers prospects non
+      attribués lui sont confiés. Dès le premier lot attribué, chaque setter ne voit plus que les
+      prospects de son lot. <strong>{{ available }}</strong> prospect(s) non attribué(s) et à
+      traiter.
     </p>
-    <p v-if="!setters.length && !error" class="lots-help">
-      Aucun setter disponible : associez d’abord un setter à un conseiller.
-    </p>
-    <ul v-if="setters.length" class="lots-setters">
-      <li v-for="setter in setters" :key="setter.id">
-        <span>{{ setter.name }}</span>
-        <span class="lots-count">{{ setter.assigned }} en cours</span>
-        <button class="secondary" :disabled="busy || !setter.assigned" @click="takeBack(setter)">
+    <p v-if="!people.length && !error" class="lots-help">Aucun setter Assurance actif.</p>
+    <ul v-if="people.length" class="lots-setters">
+      <li v-for="person in people" :key="person.id">
+        <span>{{ person.name }}</span>
+        <span class="lots-count">{{ assigned(person.id)?.assigned || 0 }} en cours</span>
+        <button
+          class="secondary"
+          :disabled="busy || !assigned(person.id)"
+          @click="takeBack(person)"
+        >
           Reprendre
         </button>
       </li>
     </ul>
-    <form v-if="setters.length" class="lots-form" @submit.prevent="give">
+    <form v-if="people.length" class="lots-form" @submit.prevent="give">
       <label
         >Setter
         <select v-model="setterId">
-          <option v-for="setter in setters" :key="setter.id" :value="String(setter.id)">
-            {{ setter.name }}
+          <option v-for="person in people" :key="person.id" :value="String(person.id)">
+            {{ person.name }}
           </option>
         </select></label
       >
       <label
-        >Nombre de prospects
+        >Nombre de prospects (les premiers)
         <input v-model.number="count" type="number" min="1" max="1000" inputmode="numeric"
       /></label>
       <label

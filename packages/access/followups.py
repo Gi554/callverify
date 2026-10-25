@@ -33,3 +33,32 @@ def verify_owner(token, actor_id, task_id):
     if not isinstance(setter.get('name'), str) or not setter['name'] or len(setter['name']) > 150:
         raise signing.BadSignature('Invalid name')
     return setter
+
+
+LOT_SALT = 'amx.assurance.setter_lot.v1'
+
+
+def issue_lot(actor_id, setter_id, setter_name):
+    return signing.dumps(
+        {
+            'aud': 'assurance',
+            'actor': actor_id,
+            'setter': {'id': setter_id, 'name': setter_name},
+        },
+        key=key_for('assurance'),
+        salt=LOT_SALT,
+    )
+
+
+def verify_lot(token, actor_id):
+    claims = signing.loads(token, key=key_for('assurance'), salt=LOT_SALT, max_age=120)
+    if not isinstance(claims, dict) or claims.get('aud') != 'assurance':
+        raise signing.BadSignature('Wrong audience')
+    if type(claims.get('actor')) is not int or claims['actor'] != actor_id:
+        raise signing.BadSignature('Wrong actor')
+    setter = claims.get('setter')
+    if not isinstance(setter, dict) or type(setter.get('id')) is not int or setter['id'] <= 0:
+        raise signing.BadSignature('Invalid setter')
+    if not isinstance(setter.get('name'), str) or not setter['name'] or len(setter['name']) > 150:
+        raise signing.BadSignature('Invalid name')
+    return setter

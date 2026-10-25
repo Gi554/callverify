@@ -80,3 +80,41 @@ class TaskOwnerProofTests(TestCase):
             ).status_code,
             403,
         )
+
+
+@override_settings(DEBUG=True, PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class AssuranceLotProofTests(TestCase):
+    def setUp(self):
+        self.admin = get_user_model().objects.create_user('admin')
+        self.setter = get_user_model().objects.create_user('setter')
+        Membership.objects.create(user=self.admin, workspace='assurance', role='administrator')
+        self.target = Membership.objects.create(
+            user=self.setter, workspace='assurance', role='setter'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+        self.url = '/api/portal/assurance/lot-proof/'
+
+    def test_proof_names_the_active_setter_and_the_actor(self):
+        from packages.access.followups import verify_lot
+
+        result = self.client.post(self.url, {'setter_id': self.setter.pk}, format='json')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(
+            verify_lot(result.data['proof'], self.admin.pk),
+            {'id': self.setter.pk, 'name': 'setter'},
+        )
+        self.assertTrue(AccessAudit.objects.filter(action='lot.setter_attested').exists())
+
+    def test_inactive_setter_and_non_admin_are_refused(self):
+        self.target.active = False
+        self.target.save()
+        self.assertEqual(
+            self.client.post(self.url, {'setter_id': self.setter.pk}, format='json').status_code,
+            400,
+        )
+        self.client.force_authenticate(self.setter)
+        self.assertEqual(
+            self.client.post(self.url, {'setter_id': self.setter.pk}, format='json').status_code,
+            403,
+        )
