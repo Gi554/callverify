@@ -7,4 +7,4 @@ COPY . .
 RUN useradd --create-home app && mkdir -p private-media && chown -R app:app /app
 USER app
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--threads", "2", "--max-requests", "1000", "--max-requests-jitter", "100", "--timeout", "60"]
