@@ -100,6 +100,25 @@ class CalendarAuthorization(models.Model):
     used = models.BooleanField(default=False)
 
 
+class CalendlyConnection(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    payload = models.TextField(blank=True)
+    connected = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(null=True)
+    checked_at = models.DateTimeField(null=True)
+    revision = models.PositiveIntegerField(default=0)
+
+
+class CalendlyAuthorization(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    state_hash = models.CharField(max_length=64, unique=True)
+    session_hash = models.CharField(max_length=64)
+    verifier = models.TextField()
+    revision = models.PositiveIntegerField()
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+
+
 class CalendarSync(models.Model):
     import uuid
 
