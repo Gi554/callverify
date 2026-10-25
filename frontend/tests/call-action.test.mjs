@@ -58,7 +58,7 @@ const renderer = createRenderer({
   },
 })
 const text = (node) => (node.text || '') + (node.children || []).map(text).join('')
-function fixture(portal) {
+function fixture(portal, extra = {}) {
   const saved = new Map()
   globalThis.sessionStorage = {
     getItem: (k) => saved.get(k) || null,
@@ -76,6 +76,7 @@ function fixture(portal) {
       return { proof: 'synthetic proof' }
     },
     portal,
+    ...extra,
   })
   app.mount(root)
   const all = (node) => [node, ...(node.children || []).flatMap(all)]
@@ -125,6 +126,45 @@ test('explicit confirmation sends once; status inspection is GET-only', async ()
     assert.equal(sends, 1)
     assert.equal(f.intents(), 1)
     assert.equal(f.saved.size, 1)
+  } finally {
+    f.close()
+  }
+})
+test('call session sends once without confirmation when the checks pass', async () => {
+  let sends = 0
+  const f = fixture(
+    async (path, body) => {
+      if (path.endsWith('options/')) return { enabled: true, post_associated: true }
+      if (body) {
+        sends++
+        return { state: 'accepted' }
+      }
+      return { state: 'accepted' }
+    },
+    { autoOpen: true, autoSend: true },
+  )
+  try {
+    for (let i = 0; i < 10; i++) await nextTick()
+    assert.equal(sends, 1)
+    assert.equal(f.intents(), 1)
+    assert.doesNotMatch(text(f.root), /Appeler le .+ ?/)
+  } finally {
+    f.close()
+  }
+})
+test('call session never sends when calls are disabled', async () => {
+  let sends = 0
+  const f = fixture(
+    async (path, body) => {
+      if (body) sends++
+      return { enabled: false, post_associated: true }
+    },
+    { autoOpen: true, autoSend: true },
+  )
+  try {
+    for (let i = 0; i < 10; i++) await nextTick()
+    assert.equal(sends, 0)
+    assert.equal(f.intents(), 0)
   } finally {
     f.close()
   }

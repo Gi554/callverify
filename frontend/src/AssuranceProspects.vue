@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { Search, RefreshCw, Pencil, Phone, Mail, ChevronDown, Upload } from 'lucide-vue-next';
+import {
+  Search,
+  RefreshCw,
+  Pencil,
+  Phone,
+  Mail,
+  ChevronDown,
+  Upload,
+  Users,
+  PhoneForwarded,
+} from 'lucide-vue-next';
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import SidePanel from './SidePanel.vue';
 import ProspectExport from './ProspectExport.vue';
+import AssuranceLots from './AssuranceLots.vue';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -19,6 +30,8 @@ const listView = ref(false);
 // « Importer des contacts » opens the list view directly on the import screen.
 const importFirst = ref(false);
 const includeProcessed = ref(false);
+// Administrator only: hand out lots of prospects to setters.
+const lotsOpen = ref(false);
 function showBoard() {
   importFirst.value = false;
   if (!listView.value) return;
@@ -62,6 +75,64 @@ const visible = computed(() =>
   ),
 );
 const total = computed(() => visible.value.reduce((n, c) => n + c.count, 0));
+// Call session (setters): prospects are called one after the other. Finishing a file starts a
+// countdown that the setter can stop; at zero the next prospect is opened and called.
+const COUNTDOWN = 10;
+const session = ref(false),
+  countdown = ref<number | null>(null),
+  sessionNote = ref('');
+const visited = new Set<number>();
+let timer: ReturnType<typeof setInterval> | null = null;
+function nextProspect() {
+  for (const column of columns.value)
+    for (const row of column.rows)
+      if (!visited.has(row.id) && String(row.phone || '').trim()) return row;
+  return null;
+}
+function stopTimer() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  countdown.value = null;
+}
+async function advance() {
+  stopTimer();
+  const row = nextProspect();
+  if (!row) {
+    session.value = false;
+    sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
+    return;
+  }
+  visited.add(row.id);
+  await open(row, 'call');
+  if (!selected.value) {
+    session.value = false;
+    sessionNote.value = error.value || 'Session interrompue.';
+  }
+}
+function startSession() {
+  visited.clear();
+  sessionNote.value = '';
+  session.value = true;
+  void advance();
+}
+function stopSession() {
+  stopTimer();
+  session.value = false;
+  sessionNote.value = 'Session arrêtée.';
+}
+function startCountdown() {
+  if (!nextProspect()) {
+    session.value = false;
+    sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
+    return;
+  }
+  countdown.value = COUNTDOWN;
+  timer = setInterval(() => {
+    if (countdown.value === null) return;
+    if (countdown.value <= 1) void advance();
+    else countdown.value -= 1;
+  }, 1000);
+}
 let generation = 0,
   disposed = false;
 async function loadColumn(column: Column, version: number, append = false) {
@@ -134,6 +205,7 @@ function closed() {
   selected.value = null;
   panelBusy.value = false;
   void load().then(async () => {
+    if (session.value && !disposed) startCountdown();
     await nextTick();
     if (!selected.value && !disposed)
       document.querySelector<HTMLButtonElement>(`[data-prospect-id="${Number(id)}"]`)?.focus();
@@ -144,6 +216,7 @@ onMounted(async () => {
   if (props.focus) await open({ id: props.focus.id }, props.focus.mode);
 });
 onBeforeUnmount(() => {
+  stopTimer();
   disposed = true;
   generation++;
 });
@@ -173,6 +246,22 @@ onBeforeUnmount(() => {
         <button v-if="admin && !listView" class="primary prospects-import" @click="showImport">
           <Upload :size="16" />Importer des contacts
         </button>
+        <button
+          v-if="admin && !listView"
+          class="secondary prospects-import"
+          :aria-expanded="lotsOpen"
+          @click="lotsOpen = !lotsOpen"
+        >
+          <Users :size="16" />Attribuer des lots
+        </button>
+        <button
+          v-if="role === 'setter' && !listView && !session"
+          class="primary prospects-import"
+          :disabled="busy || !total"
+          @click="startSession"
+        >
+          <PhoneForwarded :size="16" />Lancer une session d’appels
+        </button>
         <ProspectExport
           v-if="!listView"
           :request="request"
@@ -193,6 +282,15 @@ onBeforeUnmount(() => {
       @imported="emit('imported', $event)"
     />
     <template v-else>
+      <div v-if="session && countdown !== null" class="call-session" role="status">
+        <span
+          >Prochain appel dans <strong>{{ countdown }}</strong> s</span
+        >
+        <button class="primary" @click="advance">Appeler maintenant</button>
+        <button class="secondary" @click="stopSession">Arrêter la session</button>
+      </div>
+      <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
+      <AssuranceLots v-if="admin && lotsOpen" :request="request" @changed="load" />
       <div class="prospects-toolbar">
         <label class="processed-toggle"
           ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les
@@ -347,6 +445,7 @@ onBeforeUnmount(() => {
         :request="request"
         :role="role"
         :workflow="workflow"
+        :auto-call="session"
         @busy="panelBusy = $event"
         @summary="selected = { ...selected, ...$event }"
         @close="closed"
@@ -367,6 +466,20 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 20px;
   margin-bottom: 24px;
+}
+.call-session {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #cfe0ff;
+}
+.call-session > span {
+  flex: 1 1 200px;
 }
 .prospects-heading-actions {
   display: flex;

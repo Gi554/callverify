@@ -74,3 +74,38 @@ class IsolationSetterDirectoryTests(TestCase):
     def test_invalid_payload(self):
         self.assertEqual(self.post(prospect_id=0).status_code, 400)
         self.assertEqual(self.post(extra=True).status_code, 400)
+
+
+@override_settings(DEBUG=True, PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
+class IsolationLotProofTests(TestCase):
+    def setUp(self):
+        self.admin = get_user_model().objects.create_user('admin')
+        self.setter = get_user_model().objects.create_user('setter')
+        Membership.objects.create(user=self.admin, workspace='isolation', role='administrator')
+        self.target = Membership.objects.create(
+            user=self.setter, workspace='isolation', role='setter'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+        self.url = '/api/portal/isolation/lot-proof/'
+
+    def test_proof_names_the_active_setter_and_the_actor(self):
+        from packages.access.isolation import verify_lot
+
+        result = self.client.post(self.url, {'setter_id': self.setter.pk}, format='json')
+        self.assertEqual(result.status_code, 200)
+        claims = verify_lot(result.data['proof'], self.admin.pk)
+        self.assertEqual((claims['setter'], claims['name']), (self.setter.pk, 'setter'))
+
+    def test_inactive_setter_other_role_and_non_admin_are_refused(self):
+        self.target.active = False
+        self.target.save()
+        self.assertEqual(
+            self.client.post(self.url, {'setter_id': self.setter.pk}, format='json').status_code,
+            400,
+        )
+        self.client.force_authenticate(self.setter)
+        self.assertEqual(
+            self.client.post(self.url, {'setter_id': self.setter.pk}, format='json').status_code,
+            403,
+        )

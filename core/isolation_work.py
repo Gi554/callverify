@@ -21,6 +21,7 @@ from packages.access.isolation import verify_owner
 from .models import Prospect, AuditEvent
 from .isolation_activity import ActivityMixin, STATUSES
 from .isolation_bulk import BulkAssignmentMixin
+from .isolation_lots import LotMixin
 from .isolation_phone_calls import IsolationPhoneCallMixin
 from .isolation_c2 import C2Mixin
 from django.utils import timezone
@@ -115,6 +116,7 @@ class WorkViewSet(
     C2Mixin,
     IsolationPhoneCallMixin,
     BulkAssignmentMixin,
+    LotMixin,
     ActivityMixin,
     viewsets.GenericViewSet,
 ):

@@ -82,7 +82,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture(role = 'administrator') {
+function fixture(role = 'administrator', second = false) {
   const root = { children: [] },
     requests = [],
     imported = []
@@ -97,7 +97,7 @@ function fixture(role = 'administrator') {
       }
     if (path.startsWith('contacts/?status=new'))
       return {
-        count: 1,
+        count: second ? 2 : 1,
         next: null,
         results: [
           {
@@ -108,6 +108,18 @@ function fixture(role = 'administrator') {
             status: 'new',
             updated_at: '2026-10-20T12:00:00Z',
           },
+          ...(second
+            ? [
+                {
+                  id: 12,
+                  name: 'Dossier Bravo',
+                  phone: '+15145551111',
+                  email: '',
+                  status: 'new',
+                  updated_at: '2026-10-20T12:00:00Z',
+                },
+              ]
+            : []),
         ],
       }
     return { count: 0, next: null, results: [] }
@@ -128,6 +140,9 @@ const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(
 const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
 const callButtons = (f) =>
   all(f.root).filter((n) => String(n.props?.['aria-label'] || '').startsWith('Préparer l’appel'))
+
+// Closing a file restores focus to the prospect card.
+globalThis.document ??= { querySelector: () => null }
 
 test('administrator sees the team board with call preparation', async () => {
   const f = fixture()
@@ -184,6 +199,84 @@ test('administrator opens the import screen directly from the board', async () =
     button(f, 'Tableau').props.onClick()
     await flush()
     assert.ok(button(f, 'Importer des contacts'))
+  } finally {
+    f.close()
+  }
+})
+
+test('administrator opens and closes the lots panel from the board', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    assert.equal(component_(f, 'AssuranceLots'), undefined)
+    button(f, 'Attribuer des lots').props.onClick()
+    await flush()
+    assert.ok(component_(f, 'AssuranceLots'))
+    button(f, 'Attribuer des lots').props.onClick()
+    await flush()
+    assert.equal(component_(f, 'AssuranceLots'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('setter has no lots button', async () => {
+  const f = fixture('setter')
+  try {
+    await flush()
+    assert.equal(button(f, 'Attribuer des lots'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('setter runs a call session with a countdown between prospects', async () => {
+  const f = fixture('setter', true)
+  try {
+    await flush()
+    assert.equal(button(f, 'Lancer une session d’appels') !== undefined, true)
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    const first = component_(f, 'AssuranceContactEditor')
+    assert.equal(first.props.workflow, 'call')
+    assert.equal(first.props['auto-call'], true)
+    first.props.onClose()
+    await flush()
+    assert.match(text(f.root), /Prochain appel dans 10 s/)
+    button(f, 'Appeler maintenant').props.onClick()
+    await flush()
+    assert.ok(component_(f, 'AssuranceContactEditor'))
+    component_(f, 'AssuranceContactEditor').props.onClose()
+    await flush()
+    assert.match(text(f.root), /Session terminée/)
+    assert.equal(button(f, 'Appeler maintenant'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('setter can stop the countdown', async () => {
+  const f = fixture('setter', true)
+  try {
+    await flush()
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    component_(f, 'AssuranceContactEditor').props.onClose()
+    await flush()
+    button(f, 'Arrêter la session').props.onClick()
+    await flush()
+    assert.match(text(f.root), /Session arrêtée/)
+    assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('administrator has no call session', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    assert.equal(button(f, 'Lancer une session d’appels'), undefined)
   } finally {
     f.close()
   }

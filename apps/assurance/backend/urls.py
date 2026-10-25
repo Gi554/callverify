@@ -15,6 +15,7 @@ from .crm.assignments import AssignmentViewSet
 from .crm.appointments import AppointmentViewSet
 from .crm import calendly
 from .crm.views import ContactViewSet, dashboard
+from .crm.lots import lots, release as lots_release
 
 router = DefaultRouter()
 router.register('follow-ups', FollowUpViewSet, basename='assurance-follow-up')
@@ -52,6 +53,8 @@ urlpatterns += [
     path('api/assurance/follow-up-policy/', follow_up_policy),
     path('api/assurance/follow-up-policy/history/', policy_history),
     path('api/assurance/imports/', imports),
+    path('api/assurance/lots/', lots),
+    path('api/assurance/lots/release/', lots_release),
     path('api/assurance/dashboard/', dashboard),
     path('api/assurance/', include(router.urls)),
 ]

@@ -9,4 +9,8 @@ def visible_contacts(user):
         qs = qs.annotate(_linked_appointment=Exists(linked)).filter(
             Q(assigned_advisor_id=user.pk) | Q(_linked_appointment=True)
         )
+    # Until the first lot is handed out the team shares one pool, as before; afterwards each
+    # setter works only the prospects of their own lot.
+    if user.role == 'setter' and Contact.objects.filter(assigned_setter_id__isnull=False).exists():
+        qs = qs.filter(assigned_setter_id=user.pk)
     return qs

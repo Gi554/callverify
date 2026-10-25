@@ -15,6 +15,8 @@ const props = defineProps<{
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
+  // Call session: closing the file moves on to the next prospect.
+  session?: boolean;
 }>();
 const emit = defineEmits<{ saved: []; close: []; book: []; busy: [value: boolean] }>();
 const prospect = ref<any>(null),
@@ -274,7 +276,7 @@ const resultLabels: Record<string, string> = {
     </div>
     <footer class="sheet-footer">
       <button class="secondary" :disabled="busy || callBusy || taskBusy" @click="close">
-        Fermer la fiche
+        {{ session ? 'Terminer · prospect suivant' : 'Fermer la fiche' }}
       </button>
     </footer>
   </section>

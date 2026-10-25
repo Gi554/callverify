@@ -9,6 +9,7 @@ import {
   Pencil,
   Phone,
   Users,
+  PhoneForwarded,
 } from 'lucide-vue-next';
 import CallAction from './CallAction.vue';
 import IsolationProspectActivity from './IsolationProspectActivity.vue';
@@ -17,8 +18,10 @@ import SidePanel from './SidePanel.vue';
 import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
+import IsolationLots from './IsolationLots.vue';
 const includeProcessed = ref(false);
-const adminTools = ref(false),
+const lotsOpen = ref(false),
+  adminTools = ref(false),
   callPending = ref(false),
   workflow = ref<'edit' | 'call'>('edit');
 const statuses = [
@@ -149,6 +152,69 @@ async function load() {
   ]);
   if (version === generation) busy.value = false;
 }
+// Call session (setters): prospects are called one after the other. Finishing a file starts a
+// countdown that the setter can stop; at zero the next prospect is opened and called.
+const COUNTDOWN = 10;
+const session = ref(false),
+  countdown = ref<number | null>(null),
+  sessionNote = ref('');
+const visited = new Set<number>();
+let timer: ReturnType<typeof setInterval> | null = null;
+function nextProspect() {
+  for (const column of columns.value)
+    for (const row of column.rows)
+      if (
+        !visited.has(row.id) &&
+        row.commercial_status !== 'not_interested' &&
+        String(row.phone || row.raw_phone || '').trim()
+      )
+        return row;
+  return null;
+}
+function stopTimer() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  countdown.value = null;
+}
+async function advance() {
+  stopTimer();
+  const row = nextProspect();
+  if (!row) {
+    session.value = false;
+    sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
+    return;
+  }
+  visited.add(row.id);
+  await openActivity(row, 'call');
+  if (!activity.value) {
+    session.value = false;
+    sessionNote.value = error.value || 'Session interrompue.';
+  }
+}
+function startSession() {
+  visited.clear();
+  sessionNote.value = '';
+  session.value = true;
+  void advance();
+}
+function stopSession() {
+  stopTimer();
+  session.value = false;
+  sessionNote.value = 'Session arrêtée.';
+}
+function startCountdown() {
+  if (!nextProspect()) {
+    session.value = false;
+    sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
+    return;
+  }
+  countdown.value = COUNTDOWN;
+  timer = setInterval(() => {
+    if (countdown.value === null) return;
+    if (countdown.value <= 1) void advance();
+    else countdown.value -= 1;
+  }, 1000);
+}
 async function openActivity(row: any, mode: 'edit' | 'call' = 'edit') {
   if (activity.value) return;
   await run(async () => {
@@ -160,7 +226,9 @@ function activityClosed() {
   if (callPending.value) return;
   activity.value = null;
   callPending.value = false;
-  void load();
+  void load().then(() => {
+    if (session.value && !disposed) startCountdown();
+  });
 }
 async function directory(step = 0) {
   peoplePage.value = step ? peoplePage.value + step : 1;
@@ -215,6 +283,7 @@ onMounted(async () => {
   if (props.role === 'administrator') void run(() => directory());
 });
 onBeforeUnmount(() => {
+  stopTimer();
   disposed = true;
   generation++;
 });
@@ -228,7 +297,25 @@ onBeforeUnmount(() => {
         <p>Vos fiches, vos rappels et vos prochaines visites, au même endroit.</p>
       </div>
       <div class="board-actions">
-        <button v-if="role === 'administrator'" class="secondary" @click="adminTools = !adminTools">
+        <button
+          v-if="role === 'setter' && !session"
+          class="primary"
+          :disabled="busy || !total"
+          @click="startSession"
+        >
+          <PhoneForwarded :size="16" />Lancer une session d’appels</button
+        ><button
+          v-if="role === 'administrator'"
+          class="secondary"
+          :aria-expanded="lotsOpen"
+          @click="lotsOpen = !lotsOpen"
+        >
+          <Users :size="16" />Lot de la semaine</button
+        ><button
+          v-if="role === 'administrator'"
+          class="secondary"
+          @click="adminTools = !adminTools"
+        >
           <Users :size="16" />Répartir les prospects</button
         ><ProspectExport
           :request="request"
@@ -294,6 +381,20 @@ onBeforeUnmount(() => {
       </button>
     </div>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
+    <div v-if="session && countdown !== null" class="call-session" role="status">
+      <span
+        >Prochain appel dans <strong>{{ countdown }}</strong> s</span
+      >
+      <button class="primary" @click="advance">Appeler maintenant</button>
+      <button class="secondary" @click="stopSession">Arrêter la session</button>
+    </div>
+    <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
+    <IsolationLots
+      v-if="lotsOpen && role === 'administrator'"
+      :request="request"
+      :portal="portal"
+      @changed="load"
+    />
     <section v-if="adminTools && role === 'administrator'" class="admin-tools">
       <h2>Répartition et affectation</h2>
       <p>
@@ -441,6 +542,7 @@ onBeforeUnmount(() => {
         :resource-id="activity.id"
         :phone="activity.phone || activity.raw_phone"
         :auto-open="workflow === 'call'"
+        :auto-send="session"
         :before-open="
           async () => {
             activity = await request(`work-queue/${activity.id}/`);
@@ -457,6 +559,7 @@ onBeforeUnmount(() => {
         :role="role"
         :portal="portal"
         :request="request"
+        :session="session"
         @busy="activityBusy = $event"
         @close="activityClosed"
         @saved="load"
@@ -588,6 +691,20 @@ onBeforeUnmount(() => {
   </section>
 </template>
 <style scoped>
+.call-session {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #cfe0ff;
+}
+.call-session > span {
+  flex: 1 1 200px;
+}
 .prospects-board {
   padding: 28px;
   background: #f6f7fb;

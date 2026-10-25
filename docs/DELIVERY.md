@@ -1,5 +1,6 @@
 # Suivi des livraisons CRM AMX
 
+
 ## Calendly — réservation depuis la fiche Assurance, heure de Montréal
 
 Le setter ou administrateur choisit Calendly dans la réservation du prospect, puis une attribution
@@ -22,6 +23,31 @@ RPC interne signé, conversion Montréal et non-régression services/Vue. Les co
 la fusion. Tests externes simulés ; aucun rendez-vous réel créé, recette fournisseur en attente.
 La synchronisation créations/annulations/reports et le rapprochement automatique restent le lot
 suivant, demandé dans la même tâche.
+
+## Session d’appels enchaînés avec compte à rebours (Isolation)
+
+Sur la page Prospects Isolation, le setter lance une « session d’appels » : le premier prospect de son tableau (avec un numéro, hors « Non intéressé ») s’ouvre en parcours d’appel et la commande d’appel part d’elle-même, sans confirmation, une fois les contrôles habituels passés (appels activés, poste associé, conformité). Après son échange, le setter clique sur « Terminer · prospect suivant » : un compte à rebours de 10 secondes s’affiche avec « Appeler maintenant » et « Arrêter la session ». À zéro, le prospect suivant est ouvert et appelé ; à la fin de la liste, la session s’arrête avec un message. Même mécanique que la session Assurance.
+
+Limites : le décompte démarre à la fermeture de la fiche, pas à la détection de fin d’appel ; sans décroché automatique NEWT, le setter décroche son poste à chaque appel ; pas de contrôle serveur des plages horaires ni des listes d’exclusion ; un prospect dont l’appel est bloqué est simplement affiché comme tel puis le setter passe au suivant ; test d’appel réel à faire ; revue visuelle reportée à la revue finale.
+
+## Lot de la semaine aux setters (Isolation)
+
+Sur la page Prospects Isolation, l’administrateur ouvre « Lot de la semaine », choisit un setter et un nombre de prospects (1 à 1000) : les prochains prospects non attribués, ni en rendez-vous ni refusés, lui sont donnés. Le panneau indique la semaine en cours, les prospects non attribués, le nombre en cours par setter avec la date de son lot, et « Reprendre » rend à l’équipe les prospects que le setter n’a pas encore travaillés (statut « À contacter »). L’attribution se fait à la main, chaque semaine ; elle est rejouable sans doublon, tracée dans l’audit, et le setter est attesté par le portail. Un setter Isolation ne voyait déjà que ses prospects : rien ne change pour lui.
+
+Limites : la répartition existante par sélection (25 prospects) est conservée ; pas d’attribution automatique chaque semaine ; les prospects dont la conformité d’appel n’est pas validée peuvent faire partie d’un lot (l’appel reste bloqué pour eux) ; la session d’appels enchaînés Isolation est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
+
+## Session d’appels enchaînés avec compte à rebours (Assurance)
+
+Sur la page Prospects, le setter lance une « session d’appels » : le premier prospect de son tableau (avec un numéro) s’ouvre en parcours d’appel et la commande d’appel part d’elle-même, sans étape de confirmation, une fois les contrôles habituels passés (appels activés, poste associé). Le setter qualifie le prospect, réserve éventuellement un rendez-vous, puis clique sur « Terminer · prospect suivant » : un compte à rebours de 10 secondes s’affiche avec « Appeler maintenant » et « Arrêter la session ». À zéro, le prospect suivant est ouvert et appelé ; à la fin de la liste, la session s’arrête avec un message.
+
+Limites : le décompte démarre à la fermeture de la fiche, pas à la détection de fin d’appel (le journal NEWT arrive après coup) ; sans décroché automatique NEWT (option payante non activée), le setter doit décrocher son poste à chaque appel ; aucune plage horaire ni liste d’exclusion n’est encore contrôlée côté serveur ; le test avec de vrais appels reste à faire avec le poste de recette ; revue visuelle reportée à la revue finale.
+
+## Attribution de lots de prospects aux setters (Assurance)
+
+Sur la page Prospects, l’administrateur Assurance ouvre « Attribuer des lots », choisit un setter, un nombre de prospects (1 à 1000) et éventuellement un import d’origine : les prochains prospects non attribués et non traités lui sont donnés. Il voit le nombre de prospects en cours par setter et peut « Reprendre » les prospects non travaillés (ceux qui ne sont pas verrouillés). Chaque opération est rejouable sans doublon et tracée dans l’audit. Changement de comportement : tant qu’aucun lot n’a été attribué, les setters partagent la liste comme avant ; dès le premier lot, chaque setter ne voit que les prospects de son lot, et l’administrateur voit tout. Les setters proposés sont ceux qui ont un conseiller associé actif.
+
+Limites : l’équivalent côté Isolation existe déjà (répartition par sélection de 25 prospects maximum) et n’est pas modifié ; l’appel automatique avec compte à rebours est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
+
 
 ## Calendly — connexion personnelle et page préférée du conseiller Assurance
 

@@ -31,6 +31,8 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   workflow?: 'edit' | 'call';
+  // Call session: the call starts by itself and closing the file moves on to the next prospect.
+  autoCall?: boolean;
 }>();
 const emit = defineEmits<{
   close: [];
@@ -443,6 +445,7 @@ onBeforeUnmount(() => {
         <CallAction
           v-if="canWrite && token"
           :auto-open="workflow === 'call'"
+          :auto-send="autoCall"
           @busy="callBusy = $event"
           workspace="assurance"
           :resource-id="current.id"
@@ -756,7 +759,7 @@ onBeforeUnmount(() => {
                 : 'Préparer le rendez-vous'
           }}<ArrowRight :size="16" /></button
         ><button v-else class="primary" :disabled="blocked" @click="close">
-          Terminer<CheckCircle2 :size="16" />
+          {{ autoCall ? 'Terminer · prospect suivant' : 'Terminer' }}<CheckCircle2 :size="16" />
         </button>
       </div>
     </footer>

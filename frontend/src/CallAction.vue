@@ -7,6 +7,8 @@ const props = defineProps<{
   phone: string;
   disabled?: boolean;
   autoOpen?: boolean;
+  // Call session: send the command as soon as the checks pass, without the confirmation step.
+  autoSend?: boolean;
   beforeOpen?: () => Promise<void>;
   prepare: (id: string) => Promise<{ proof: string }>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -46,6 +48,7 @@ async function open() {
   if (pending.value) return;
   pending.value = true;
   error.value = '';
+  let launch = false;
   try {
     await props.beforeOpen?.();
     await nextTick();
@@ -55,11 +58,13 @@ async function open() {
       throw new Error('Un administrateur doit associer votre poste Phonetico à votre compte.');
     confirmedPhone.value = props.phone;
     confirming.value = true;
+    launch = !!props.autoSend;
   } catch (e: any) {
     error.value = e.message;
   } finally {
     pending.value = false;
   }
+  if (launch) await send();
 }
 async function send() {
   if (pending.value || unresolved.value) return;
