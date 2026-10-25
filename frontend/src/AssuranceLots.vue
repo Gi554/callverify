@@ -82,7 +82,7 @@ onMounted(load);
   <section class="lots-panel" aria-label="Lots de prospects">
     <h2>Attribuer des prospects aux setters</h2>
     <p class="lots-help">
-      Chaque setter ne voit que les prospects de son lot.
+      Dès le premier lot attribué, chaque setter ne voit plus que les prospects de son lot.
       <strong>{{ available }}</strong> prospect(s) non attribué(s) et à traiter.
     </p>
     <p v-if="!setters.length && !error" class="lots-help">

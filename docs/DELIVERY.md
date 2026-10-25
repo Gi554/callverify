@@ -2,7 +2,7 @@
 
 ## Attribution de lots de prospects aux setters (Assurance)
 
-Sur la page Prospects, l’administrateur Assurance ouvre « Attribuer des lots », choisit un setter, un nombre de prospects (1 à 1000) et éventuellement un import d’origine : les prochains prospects non attribués et non traités lui sont donnés. Il voit le nombre de prospects en cours par setter et peut « Reprendre » les prospects non travaillés (ceux qui ne sont pas verrouillés). Chaque opération est rejouable sans doublon et tracée dans l’audit. Changement de comportement : un setter ne voit désormais que les prospects de son lot ; l’administrateur voit tout. Les setters proposés sont ceux qui ont un conseiller associé actif.
+Sur la page Prospects, l’administrateur Assurance ouvre « Attribuer des lots », choisit un setter, un nombre de prospects (1 à 1000) et éventuellement un import d’origine : les prochains prospects non attribués et non traités lui sont donnés. Il voit le nombre de prospects en cours par setter et peut « Reprendre » les prospects non travaillés (ceux qui ne sont pas verrouillés). Chaque opération est rejouable sans doublon et tracée dans l’audit. Changement de comportement : tant qu’aucun lot n’a été attribué, les setters partagent la liste comme avant ; dès le premier lot, chaque setter ne voit que les prospects de son lot, et l’administrateur voit tout. Les setters proposés sont ceux qui ont un conseiller associé actif.
 
 Limites : l’équivalent côté Isolation existe déjà (répartition par sélection de 25 prospects maximum) et n’est pas modifié ; l’appel automatique avec compte à rebours est la fonctionnalité suivante ; revue visuelle reportée à la revue finale.
 

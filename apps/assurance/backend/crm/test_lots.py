@@ -33,9 +33,13 @@ class LotTests(TestCase):
             format='json',
         )
 
-    def test_setter_only_sees_the_lot_given_by_the_administrator(self):
+    def test_setters_share_the_pool_until_the_first_lot_is_given(self):
         self.auth(21, 'setter')
-        self.assertEqual(self.client.get('/api/assurance/contacts/').json()['count'], 0)
+        self.assertEqual(self.client.get('/api/assurance/contacts/').json()['count'], 5)
+        self.auth(22, 'setter')
+        self.assertEqual(self.client.get('/api/assurance/contacts/').json()['count'], 5)
+
+    def test_setter_only_sees_the_lot_given_by_the_administrator(self):
         response = self.give(2)
         self.assertEqual((response.status_code, response.json()['assigned']), (201, 2))
         self.auth(21, 'setter')
