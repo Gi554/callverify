@@ -23,6 +23,7 @@ from .models import (
 )
 
 OPTIONS = {
+    'CALENDLY_WEBHOOK_SIGNING_KEY': 'synthetic-calendly-webhook-key-for-tests',
     'DEBUG': True,
     'CALENDLY_CLIENT_ID': 'test-client',
     'CALENDLY_CLIENT_SECRET': 'test-private-secret',

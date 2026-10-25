@@ -36,9 +36,20 @@ class CalendlyBookingTests(TestCase):
             },
         }
 
+    def ready(self, bridge):
+        bridge.side_effect = (
+            lambda *args: {
+                'synchronization_active': True,
+                'event_type': 'https://api.calendly.com/event_types/personal',
+            }
+            if args[2] == 'configuration'
+            else bridge.return_value
+        )
+
     @patch('apps.assurance.backend.crm.calendly.bridge')
     def test_confirmed_booking_is_linked_idempotent_and_has_qualification(self, bridge):
         bridge.return_value = self.confirmed()
+        self.ready(bridge)
         payload = self.data()
         first = self.client.post('/api/assurance/calendly/book/', payload, format='json')
         self.assertEqual(first.status_code, 201, first.data)
@@ -49,7 +60,7 @@ class CalendlyBookingTests(TestCase):
         second = self.client.post('/api/assurance/calendly/book/', payload, format='json')
         self.assertEqual(second.status_code, 200)
         self.assertEqual(Appointment.objects.count(), 1)
-        bridge.assert_called_once()
+        self.assertEqual(bridge.call_count, 2)
         row = Appointment.objects.get()
         for action, values in [('cancel', {'revision': 0, 'reason': 'x'}), ('reschedule', {})]:
             result = self.client.post(
@@ -60,6 +71,7 @@ class CalendlyBookingTests(TestCase):
     @patch('apps.assurance.backend.crm.calendly.bridge')
     def test_pending_is_not_counted_as_booked_and_blocks_another_request(self, bridge):
         bridge.return_value = {'state': 'uncertain', 'appointment': None}
+        self.ready(bridge)
         payload = self.data()
         first = self.client.post('/api/assurance/calendly/book/', payload, format='json')
         self.assertEqual(first.status_code, 202, first.data)
@@ -71,6 +83,13 @@ class CalendlyBookingTests(TestCase):
         recovered = self.client.post('/api/assurance/calendly/book/', payload, format='json')
         self.assertEqual(recovered.status_code, 201, recovered.data)
         self.assertEqual(Appointment.objects.count(), 1)
+
+    @patch('apps.assurance.backend.crm.calendly.bridge')
+    def test_unconfigured_adviser_does_not_leave_a_false_pending_booking(self, bridge):
+        bridge.return_value = {'synchronization_active': False}
+        result = self.client.post('/api/assurance/calendly/book/', self.data(), format='json')
+        self.assertEqual(result.status_code, 400)
+        self.assertFalse(CalendlyBooking.objects.exists())
 
     @patch('apps.assurance.backend.crm.calendly.bridge')
     def test_lease_assignment_and_montral_offset_are_enforced(self, bridge):

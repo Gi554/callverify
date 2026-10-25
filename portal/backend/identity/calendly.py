@@ -183,6 +183,10 @@ def callback(request):
         require_owner(request.user, 'assurance')
         if row.revision != attempt.revision:
             raise ValidationError('Connexion modifiée. Recommencez depuis Calendly.')
+        if row.calendlyreservation_set.exclude(owner_uri=tokens['owner']).exists():
+            raise ValidationError(
+                'Des réservations restent liées à votre Calendly d’origine. Reconnectez ce même compte.'
+            )
         row.connected = True
         row.expires_at = timezone.now() + timedelta(seconds=seconds)
         row.checked_at = timezone.now()
@@ -282,6 +286,7 @@ def disconnect(request):
         if row.revision != data['revision']:
             raise ValidationError('Connexion modifiée. Rechargez la page.')
         clear(row)
+        row.webhooks.update(state='inactive')
         CalendlyAuthorization.objects.filter(user=request.user, used=False).update(
             used=True, verifier=''
         )

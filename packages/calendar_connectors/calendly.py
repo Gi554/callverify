@@ -253,6 +253,7 @@ def appointment(access, uri, owner, event_type):
         not isinstance(event, dict)
         or event.get('uri') != event_uri
         or event.get('event_type') != event_type
+        or not isinstance(event.get('event_memberships'), list)
         or owner
         not in {
             member.get('user')
@@ -271,4 +272,98 @@ def appointment(access, uri, owner, event_type):
         'status': 'cancelled' if value['status'] == 'canceled' else 'scheduled',
         'new_invitee': value.get('new_invitee'),
         'old_invitee': value.get('old_invitee'),
+        'rescheduled': value.get('rescheduled') is True,
+        'email': value.get('email', ''),
+        'request_id': value['tracking'].get('utm_content')
+        if isinstance(value.get('tracking'), dict)
+        else None,
+        'cancel_url': booking_url(value['cancel_url']) if value.get('cancel_url') else '',
+        'reschedule_url': booking_url(value['reschedule_url'])
+        if value.get('reschedule_url')
+        else '',
     }
+
+
+def find_webhook(access, organization, owner, callback):
+    resource_uri(organization, 'organizations')
+    resource_uri(owner, 'users')
+    params = {'organization': organization, 'user': owner, 'scope': 'user', 'count': 100}
+    for _ in range(3):
+        data = http(
+            'GET',
+            API + '/webhook_subscriptions',
+            headers={'Authorization': 'Bearer ' + access},
+            params=dict(params),
+        )
+        if not isinstance(data.get('collection'), list) or len(data['collection']) > 100:
+            raise ProviderError()
+        for item in data['collection']:
+            if (
+                isinstance(item, dict)
+                and item.get('callback_url') == callback
+                and item.get('user') == owner
+                and item.get('organization') == organization
+                and item.get('scope') == 'user'
+                and item.get('state') == 'active'
+                and isinstance(item.get('events'), list)
+                and {'invitee.created', 'invitee.canceled'} <= set(item.get('events', []))
+            ):
+                return resource_uri(item.get('uri'), 'webhook_subscriptions')
+        page = data.get('pagination', {})
+        if not isinstance(page, dict):
+            raise ProviderError()
+        token = page.get('next_page_token') if isinstance(page, dict) else None
+        if token is None:
+            if isinstance(page, dict) and page.get('next_page'):
+                raise ProviderError()
+            return None
+        if (
+            not isinstance(token, str)
+            or not 1 <= len(token) <= 2048
+            or token == params.get('page_token')
+        ):
+            raise ProviderError()
+        params['page_token'] = token
+    raise ProviderError()
+
+
+def create_webhook(access, organization, owner, callback):
+    resource_uri(organization, 'organizations')
+    resource_uri(owner, 'users')
+    try:
+        with requests.post(
+            API + '/webhook_subscriptions',
+            headers={'Authorization': 'Bearer ' + access},
+            json={
+                'url': callback,
+                'events': ['invitee.created', 'invitee.canceled'],
+                'organization': organization,
+                'user': owner,
+                'scope': 'user',
+            },
+            timeout=15,
+            stream=True,
+            allow_redirects=False,
+        ) as response:
+            if response.status_code in (400, 401, 403, 404, 422):
+                raise ProviderError(code='rejected')
+            if response.status_code != 201:
+                raise ProviderError(code='uncertain')
+            body = response.raw.read(262145, decode_content=True)
+            if len(body) > 262144:
+                raise ProviderError(code='uncertain')
+            import json
+
+            value = json.loads(body).get('resource')
+    except (requests.RequestException, ValueError, AttributeError, TypeError):
+        raise ProviderError(code='uncertain') from None
+    if (
+        not isinstance(value, dict)
+        or value.get('callback_url') != callback
+        or value.get('scope') != 'user'
+        or value.get('user') != owner
+        or value.get('organization') != organization
+        or value.get('state') != 'active'
+    ):
+        raise ProviderError()
+    return resource_uri(value.get('uri'), 'webhook_subscriptions')

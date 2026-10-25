@@ -128,7 +128,64 @@ class CalendlyReservation(models.Model):
     event_type = models.CharField(max_length=300)
     state = models.CharField(max_length=20, default='dispatching')
     payload = models.TextField(blank=True)
+    expected_start = models.DateTimeField(null=True)
+    expected_end = models.DateTimeField(null=True)
+    email_digest = models.CharField(max_length=64, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+    delivered_revision = models.PositiveIntegerField(default=0)
+    lease_until = models.DateTimeField(null=True)
+    claim = models.UUIDField(null=True)
+    checked_at = models.DateTimeField(null=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class CalendlyInvitee(models.Model):
+    uri = models.CharField(max_length=600, unique=True)
+    reservation = models.ForeignKey(
+        CalendlyReservation, on_delete=models.CASCADE, related_name='invitees'
+    )
+
+
+class CalendlyWebhook(models.Model):
+    import uuid
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    connection = models.ForeignKey(
+        CalendlyConnection, on_delete=models.PROTECT, related_name='webhooks'
+    )
+    owner_uri = models.CharField(max_length=300)
+    organization = models.CharField(max_length=300)
+    subscription = models.CharField(max_length=300, blank=True)
+    state = models.CharField(max_length=20, default='pending')
+    create_attempted = models.BooleanField(default=False)
+    checked_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['connection', 'owner_uri'], name='unique_calendly_owner_webhook'
+            )
+        ]
+
+
+class CalendlyWebhookReceipt(models.Model):
+    webhook = models.ForeignKey(CalendlyWebhook, on_delete=models.CASCADE)
+    digest = models.CharField(max_length=64)
+    payload = models.TextField()
+    state = models.CharField(max_length=20, default='pending')
+    attempts = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField()
+    lease_until = models.DateTimeField(null=True)
+    error_code = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['state', 'next_attempt_at'], name='calendly_receipts_due')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['webhook', 'digest'], name='unique_calendly_webhook_receipt'
+            )
+        ]
 
 
 class CalendarSync(models.Model):

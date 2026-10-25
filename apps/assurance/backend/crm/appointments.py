@@ -183,6 +183,13 @@ def output(row, user):
         'qualification_snapshot': row.qualification_snapshot,
     }
     result.update(business_status(row))
+    if row.calendar == 'calendly' and hasattr(row, 'calendly_booking'):
+        metadata = row.calendly_booking.snapshot
+        result['calendly'] = {
+            **metadata.get('management', {}),
+            'needs_review': bool(metadata.get('sync_review')),
+            'conflict': bool(metadata.get('sync_conflict')),
+        }
     if user.role != 'advisor':
         result['assignment_id'] = row.assignment_id
     if user.role == 'administrator':

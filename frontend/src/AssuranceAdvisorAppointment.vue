@@ -204,6 +204,26 @@ onMounted(load);
         <FilePenLine :size="16" />Qualification reçue
       </button>
     </nav>
+    <div v-if="appointment?.calendar === 'calendly'" class="advisor-info">
+      <p v-if="appointment.calendly?.conflict || appointment.calendly?.needs_review" role="alert">
+        Une mise à jour Calendly nécessite une vérification avec l’administration.
+      </p>
+      <a
+        v-if="appointment.calendly?.reschedule_url && appointment.status === 'scheduled'"
+        :href="appointment.calendly.reschedule_url"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Reporter sur Calendly</a
+      >
+      <span> · </span
+      ><a
+        v-if="appointment.calendly?.cancel_url && appointment.status === 'scheduled'"
+        :href="appointment.calendly.cancel_url"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Annuler sur Calendly</a
+      >
+    </div>
     <p v-if="error" role="alert" class="advisor-error">
       {{ error }} <button :disabled="busy" @click="reload">Recharger le dossier</button>
     </p>
