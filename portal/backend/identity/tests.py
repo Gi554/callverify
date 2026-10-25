@@ -211,7 +211,11 @@ class ParticipantTests(TestCase):
             result['results'], [{'id': self.setter.pk, 'name': 'setter-one', 'role': 'setter'}]
         )
         self.assertEqual(self.client.get(self.url + '?role=setter&search=advisor').data['count'], 0)
-        self.assertEqual(self.client.get(self.url + '?role=administrator').status_code, 400)
+        # Administrators are listed so that they can take a lot for themselves; nothing else.
+        admins = self.client.get(self.url + '?role=administrator')
+        self.assertEqual(admins.status_code, 200)
+        self.assertTrue(all(set(row) == {'id', 'name', 'role'} for row in admins.data['results']))
+        self.assertEqual(self.client.get(self.url + '?role=client').status_code, 400)
 
     def test_proof_is_bound_to_actor_pair_and_separate_from_login(self):
         from packages.access.assignments import verify_assignment
