@@ -38,7 +38,7 @@ async function save() {
   <section>
     <h3>Changer mon mot de passe</h3>
     <p>
-      Le changement concerne votre compte du portail AMX, commun à vos espaces autorisés. Utilisez
+      Le changement concerne votre compte du portail Orvia, commun à vos espaces autorisés. Utilisez
       au moins 12 caractères et un mot de passe différent du précédent.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>

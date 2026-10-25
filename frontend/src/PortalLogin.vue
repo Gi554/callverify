@@ -20,7 +20,7 @@ function submit() {
   <div class="login-shell profile-login">
     <header class="login-header">
       <a class="brand" href="/crm"
-        ><span class="brand-mark"><Phone :size="22" stroke-width="2.5" /></span>CallVerify<span
+        ><span class="brand-mark"><Phone :size="22" stroke-width="2.5" /></span>Orvia<span
           class="brand-dot"
           >.</span
         ></a
@@ -202,7 +202,7 @@ function submit() {
       </div>
     </main>
     <footer class="login-footer">
-      <span>© {{ new Date().getFullYear() }} CallVerify</span
+      <span>© {{ new Date().getFullYear() }} Orvia</span
       ><span><ShieldCheck :size="13" />Vos données restent dans votre espace privé.</span>
     </footer>
   </div>

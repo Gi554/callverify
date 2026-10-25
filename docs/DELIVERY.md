@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Renommage visible AMX / CallVerify en Orvia
+
+Les textes visibles passent à « Orvia » : page de connexion, logo et titre de l’onglet, messages de session et de mot de passe, notifications de tâches, libellés des événements d’agenda, expéditeur par défaut des e-mails, application d’authentification (TOTP) et documentation de déploiement. Limites volontaires : les pages Confidentialité et Conditions gardent AMX comme exploitant légal ; les noms techniques (classes CSS, clés de stockage, dépôt, bases, clé de propriété des événements Google « AMXSyncKey ») sont inchangés pour ne pas casser la production ni les événements déjà synchronisés.
+
 
 ## Vitrine Orvia CRM — présentation commerciale Assurance
 

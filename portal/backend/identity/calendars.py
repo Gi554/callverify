@@ -195,7 +195,7 @@ def start(request, workspace):
         row.refresh_from_db()
         if row.events.exclude(status__in=['removed', 'abandoned']).exists():
             raise ValidationError(
-                'Retirez les événements AMX ou confirmez leur nettoyage manuel avant de remplacer cet agenda'
+                'Retirez les événements Orvia ou confirmez leur nettoyage manuel avant de remplacer cet agenda'
             )
         CalendarAuthorization.objects.create(
             user=request.user,
@@ -260,7 +260,7 @@ def callback(request, provider):
         )
         CalendarConnection.objects.filter(pk=owner_connection.pk).update(revision=F('revision'))
         if owner_connection.events.exclude(status__in=['removed', 'abandoned']).exists():
-            raise ValidationError('Retirez les événements AMX avant de remplacer cet agenda')
+            raise ValidationError('Retirez les événements Orvia avant de remplacer cet agenda')
         changed = CalendarConnection.objects.filter(
             user=request.user, workspace=attempt.workspace, revision=attempt.revision
         ).update(
@@ -295,7 +295,9 @@ def disconnect(request, workspace):
         if row:
             CalendarConnection.objects.filter(pk=row.pk).update(revision=F('revision'))
             if row.events.exclude(status__in=['removed', 'abandoned']).exists():
-                raise ValidationError('Retirez les événements AMX avant de déconnecter cet agenda')
+                raise ValidationError(
+                    'Retirez les événements Orvia avant de déconnecter cet agenda'
+                )
         if not row or not CalendarConnection.objects.filter(
             pk=row.pk, revision=data['revision']
         ).update(

@@ -65,9 +65,7 @@ def interval(provider, remote):
 
 
 def body(provider, key, workspace, source):
-    title = (
-        f'AMX {"Assurance" if workspace=="assurance" else "Isolation"} — Rendez-vous {source["id"]}'
-    )
+    title = f'Orvia {"Assurance" if workspace=="assurance" else "Isolation"} — Rendez-vous {source["id"]}'
     first = source['starts_at'].astimezone(timezone.utc).isoformat()
     last = source['ends_at'].astimezone(timezone.utc).isoformat()
     if provider == 'google':
@@ -75,7 +73,7 @@ def body(provider, key, workspace, source):
             'summary': title,
             'visibility': 'private',
             'transparency': 'opaque',
-            'description': 'Consultez AMX pour les informations du dossier.',
+            'description': 'Consultez Orvia pour les informations du dossier.',
             'start': {'dateTime': first, 'timeZone': 'UTC'},
             'end': {'dateTime': last, 'timeZone': 'UTC'},
             'reminders': {'useDefault': False},
@@ -88,7 +86,7 @@ def body(provider, key, workspace, source):
         'isReminderOn': False,
         'body': {
             'contentType': 'text',
-            'content': 'Consultez AMX pour les informations du dossier.',
+            'content': 'Consultez Orvia pour les informations du dossier.',
         },
         'start': {'dateTime': first, 'timeZone': 'UTC'},
         'end': {'dateTime': last, 'timeZone': 'UTC'},

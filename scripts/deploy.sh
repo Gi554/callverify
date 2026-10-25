@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy or update CRM AMX on the server: build, migrate the three databases, check, start.
+# Deploy or update CRM Orvia on the server: build, migrate the three databases, check, start.
 # Usage from the project folder:  ./scripts/deploy.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."

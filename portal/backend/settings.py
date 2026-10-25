@@ -100,7 +100,7 @@ ASSURANCE_INTERNAL_URL = os.getenv(
 )
 if not DEBUG and not PORTAL_MAIL_KEY:
     raise ImproperlyConfigured('PORTAL_MAIL_KEY required')
-DEFAULT_FROM_EMAIL = os.getenv('PORTAL_FROM_EMAIL', 'AMX <amx@localhost>')
+DEFAULT_FROM_EMAIL = os.getenv('PORTAL_FROM_EMAIL', 'Orvia <orvia@localhost>')
 PASSWORD_RESET_TIMEOUT = 1800
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update(portal_recovery='5/hour', portal_reset='10/hour')
 PORTAL_CALENDAR_KEY = os.getenv('PORTAL_CALENDAR_KEY', '')

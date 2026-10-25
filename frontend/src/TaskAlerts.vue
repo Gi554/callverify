@@ -38,7 +38,7 @@ function announce(row: any) {
   banners.value = [...banners.value.slice(-2), row];
   if (permission.value === 'granted' && document.hidden) {
     try {
-      new Notification(`AMX · ${row.label}`, { body: prospect(row), tag: `amx-task-${row.id}` });
+      new Notification(`Orvia · ${row.label}`, { body: prospect(row), tag: `amx-task-${row.id}` });
     } catch {
       /* Browsers may refuse notifications outside a service worker: the banner remains. */
     }
