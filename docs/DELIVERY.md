@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+
+## Vitrine Orvia CRM — présentation commerciale Assurance
+
+La page publique `/presentation/` devient une vitrine centrée sur le cœur métier Assurance : fiches prospects, qualification, résultats d’appels, rappels, rendez-vous, relais setter/conseiller/administrateur et suivi de présence/conclusion. Aucune mention commerciale de l’Isolation. Le rythme et les codes graphiques de la référence Patch sont adaptés dans un HTML/CSS original : bleu électrique quadrillé, grands titres condensés, accents violet/orange, visuels géométriques originaux, parcours numéroté, aperçu explicitement illustratif, agendas, offres, FAQ et contact final. Aucun contenu, témoignage, logo client, chiffre de performance ou police propriétaire de Patch repris.
+
+Les trois formules « Essentiel », « Équipe » et « Sur mesure » sont indicatives, sur devis, avec périmètre et conditions à convenir. Les actions ouvrent un courriel prérempli au contact confirmé ; aucun paiement, abonnement ou réservation automatique. Les fonctionnalités spécifiques ou intégrations sur mesure sont présentées comme à évaluer. Les dépendances de téléphonie et le fonctionnement de Google sont explicités ; Microsoft/Calendly ne sont pas annoncés comme disponibles.
+
+Polices libres Archivo et Barlow Condensed livrées localement avec licences OFL. Feuille de style propre à la présentation ; les deux pages juridiques et la vérification Search Console restent inchangées. Navigation mobile et FAQ natives, skip-link, un h1, sections nommées, focus visible et réduction du mouvement. Le petit script local ferme le menu mobile et ajoute des animations d’apparition ; tout le contenu, la navigation et les contacts restent utilisables sans JavaScript. Aucun traceur, cookie, formulaire de collecte ni chargement tiers ajouté. Cette refonte remplace la description antérieure de la présentation comme une page sans script ; les pages juridiques restent sans script.
+
+Validation : formatage explicite des actifs publics, syntaxe JavaScript, liens/ancres/sections et fichiers référencés, SVG, présence des licences et du HTML dans le build Vite, absence d’Isolation dans la présentation. Le navigateur est désactivé dans les réglages Work : aucune comparaison visuelle au pixel près, recette mobile visuelle ni audit/certification RGAA/WCAG revendiqué. Les styles adaptatifs sont fournis mais leur rendu doit encore être revu visuellement. Les contrôles GitHub et les contenus HTTPS sont vérifiés avant clôture de livraison. Aucun appel, consentement externe, e-mail envoyé ni événement créé.
+
+Suite : revue visuelle de la présentation par l’utilisateur, adaptation des offres et tarifs ; puis reprise du premier consentement Google du conseiller. Cette présentation ne constitue pas une validation juridique, une approbation Google ni un module de vente/facturation.
+
 ## Vérification du domaine pour Google Search Console
 
 Ajout du fichier de vérification Google à la racine publique (/google6195fcacccb8a875.html), servi tel quel par Nginx sans session, afin de prouver la propriété de orvia-crm.com avant la validation de l’écran de consentement OAuth. Le fichier ne contient aucun secret. Limite : la validation elle-même se fait dans Search Console après déploiement.

@@ -12,7 +12,7 @@ Valeurs pour Google Auth Platform → Branding :
 | Conditions d’utilisation | https://orvia-crm.com/conditions/ |
 | Domaine autorisé | orvia-crm.com |
 
-Le logo est facultatif et aucun nouveau logo raster n’est livré dans ce lot. Les trois pages sont de vrais fichiers HTML statiques copiés dans le build, servis par Nginx, sans session ni JavaScript. Elles ne passent pas par la normalisation de l’entrée CRM. La racine et les anciens chemins continuent leur parcours existant ; la page d’accueil déclarée à Google est /presentation/.
+Le logo est facultatif et aucun nouveau logo raster n’est livré dans ce lot. Les trois pages sont de vrais fichiers HTML statiques copiés dans le build, servis par Nginx, sans session. La présentation commerciale utilise un petit script local facultatif pour le menu mobile et les animations ; son contenu et ses liens fonctionnent sans JavaScript. Les pages juridiques restent sans script. Elles ne passent pas par la normalisation de l’entrée CRM. La racine et les anciens chemins continuent leur parcours existant ; la page d’accueil déclarée à Google est /presentation/.
 
 Le client OAuth Web conserve sa redirection exacte : https://orvia-crm.com/crm/oauth/google. Ne pas utiliser la page de présentation comme callback.
 
