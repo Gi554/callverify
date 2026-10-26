@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import PortalLogin from './PortalLogin.vue';
+import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
 import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
@@ -32,7 +33,7 @@ import CallsCenter from './CallsCenter.vue';
 import AssuranceReminders from './AssuranceReminders.vue';
 import AssuranceStatistics from './AssuranceStatistics.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
-import { ShieldCheck, ArrowRight, Home, RefreshCw } from 'lucide-vue-next';
+import { RefreshCw } from 'lucide-vue-next';
 type Membership = { workspace: string; role: string };
 const user = ref<{
   username: string;
@@ -389,13 +390,6 @@ onMounted(async () => {
     ready.value = true;
   }
 });
-const roleLabels: Record<string, string> = {
-  administrator: 'Administrateur',
-  setter: 'Setter',
-  advisor: 'Conseiller',
-  client: 'Client',
-  closer: 'Closer',
-};
 </script>
 <template>
   <div
@@ -437,6 +431,15 @@ const roleLabels: Record<string, string> = {
         recoveryOpen = true;
         error = '';
       "
+    />
+    <PortalWorkspaceChooser
+      v-else-if="ready && user && !workspace && !passwordOpen && !managing"
+      :username="user.username"
+      :spaces="user.workspaces"
+      :busy="busy"
+      :error="error"
+      @enter="enter"
+      @logout="logout"
     />
     <CrmShell
       v-else
@@ -533,33 +536,6 @@ const roleLabels: Record<string, string> = {
             :request="portal"
           />
           <template v-else>
-            <div v-if="!workspace" class="amx-spaces">
-              <button
-                v-for="item in user.workspaces"
-                :key="item.workspace"
-                class="amx-space"
-                @click="enter(item.workspace)"
-              >
-                <span class="amx-space-icon"
-                  ><ShieldCheck v-if="item.workspace === 'assurance'" :size="27" /><Home
-                    v-else
-                    :size="27"
-                /></span>
-                <h2>{{ title(item.workspace) }}</h2>
-                <p>
-                  {{
-                    item.workspace === 'assurance'
-                      ? 'Contacts, conseillers et suivi des rendez-vous.'
-                      : 'Prospects, rappels et suivi des visites.'
-                  }}
-                </p>
-                <span class="amx-role">{{ roleLabels[item.role] || item.role }}</span
-                ><span class="amx-open">Ouvrir mon espace<ArrowRight :size="18" /></span>
-              </button>
-              <p v-if="!user.workspaces.length">
-                Aucun espace actif. Contactez votre administrateur.
-              </p>
-            </div>
             <p v-if="busy" role="status">Chargement de votre espace…</p>
             <template v-if="workspace && summary">
               <IsolationCloserVisits
@@ -826,61 +802,6 @@ const roleLabels: Record<string, string> = {
   font-weight: 700;
   letter-spacing: 1.8px;
 }
-.amx-spaces {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 26px;
-}
-.amx-space {
-  padding: 35px;
-  text-align: left;
-  background: #fffefa;
-  border: 1px solid #e0e2d2;
-  border-radius: 22px;
-  cursor: pointer;
-  color: inherit;
-  box-shadow: 0 8px 24px #43551e05;
-}
-.amx-space:hover {
-  border-color: #8c9c63;
-  box-shadow: 0 10px 30px #43551e10;
-}
-.amx-space h2 {
-  font-size: 27px;
-  margin: 22px 0 12px;
-}
-.amx-space p {
-  color: #767d68;
-  line-height: 1.7;
-  min-height: 50px;
-}
-.amx-space-icon,
-.amx-symbol {
-  display: inline-flex;
-  padding: 15px;
-  background: #edefde;
-  border-radius: 15px;
-  color: #53661c;
-}
-.amx-space:nth-child(2) .amx-space-icon {
-  background: #eeeafa;
-  color: #7965a7;
-}
-.amx-role {
-  display: inline-block;
-  background: #f2f2e8;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-}
-.amx-open {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 30px;
-  color: #53661c;
-  font-weight: 700;
-}
 .amx-login {
   max-width: 420px;
   margin: 40px auto 70px;
@@ -957,9 +878,6 @@ const roleLabels: Record<string, string> = {
   margin-top: 12px;
 }
 @media (max-width: 650px) {
-  .amx-spaces {
-    grid-template-columns: 1fr;
-  }
   .amx-header-note {
     display: none;
   }
@@ -976,9 +894,6 @@ const roleLabels: Record<string, string> = {
   }
   .amx-contact-form {
     grid-template-columns: 1fr;
-  }
-  .amx-space {
-    padding: 25px;
   }
 }
 </style>

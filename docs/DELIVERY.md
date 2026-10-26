@@ -1,5 +1,19 @@
 # Suivi des livraisons CRM AMX
 
+## Sélection d’espace — continuité avec la connexion Orvia
+
+Après la connexion, les comptes disposant de plusieurs espaces accèdent à une page dédiée,
+sans la navigation métier vide. Elle reprend le fond crème, le vert olive et le lilas de la
+connexion : cartes Assurance et Isolation, rôle par espace, compte connecté et déconnexion.
+Seuls les accès transmis par la session sont proposés. Les boutons restent accessibles au
+clavier, le contenu s’adapte au mobile et les mouvements respectent la préférence de réduction
+des animations. Le cas sans accès affiche une explication. L’ouverture automatique d’un seul
+espace et la reprise du dernier espace au rechargement sont conservées.
+
+Validation : typage Vue, lint, formatage, build et contrôles CI avant fusion. La vérification
+visuelle dans un navigateur reste à effectuer ; aucune modification des droits métier.
+Les identifiants des comptes créés à la demande restent hors de Git dans un fichier privé.
+
 ## Dimensionnement pour environ 20 setters et entretien automatique
 
 Serveur visé : 8 vCPU, 24 Go de RAM. Le portail, Assurance et Isolation passent à 4 processus de 2 tâches chacun (au lieu de 2 ou 3 processus d’une tâche), pour qu’un appel qui attend l’opérateur ne bloque pas les autres écrans ; chaque processus se relance après environ 1 000 demandes, ce qui libère la mémoire sans intervention. En production, tous les services redémarrent seuls (incident ou redémarrage du serveur), les journaux Docker sont limités (3 fichiers de 10 Mo) et Redis est plafonné à 1 Go sans éviction. Le script `scripts/maintenance.sh`, lancé après chaque déploiement vérifié, conserve les 5 dernières sauvegardes de `.backups` (elles s’accumulaient sans limite) et retire les images et caches Docker inutilisés depuis 7 jours. La limite de connexions passe de 10 à 30 par minute et par adresse : un bureau de 20 personnes partage une adresse et se connecte à la même heure. Le script `scripts/load_test_setters.py` simule des setters connectés (lecture seule, aucun appel) et affiche médianes, p95 et erreurs ; essayé en local avec 5 setters.
