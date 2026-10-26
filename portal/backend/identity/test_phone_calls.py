@@ -217,6 +217,8 @@ class PhoneCallsTests(TestCase):
 )
 class CallConcurrencyTests(TransactionTestCase):
     def test_concurrent_same_request_is_dispatched_only_once(self):
+        # This tests serialization, independently of the real time in Montreal.
+        CallRules.objects.update_or_create(pk=1, defaults={'enforce_hours': False})
         user = get_user_model().objects.create_user('concurrent-setter')
         Membership.objects.create(user=user, workspace='assurance', role='setter')
         PhoneExtension.objects.create(user=user, extension='501')

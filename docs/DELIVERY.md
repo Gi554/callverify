@@ -12,6 +12,9 @@ espace et la reprise du dernier espace au rechargement sont conservées.
 
 Validation : typage Vue, lint, formatage, build et contrôles CI avant fusion. La vérification
 visuelle dans un navigateur reste à effectuer ; aucune modification des droits métier.
+Le test PostgreSQL de double soumission téléphonique définit explicitement sa configuration
+de recette, pour ne plus dépendre de l’heure réelle à Montréal ; les restrictions de production
+et leurs tests dédiés sont inchangés.
 Les identifiants des comptes créés à la demande restent hors de Git dans un fichier privé.
 
 ## Dimensionnement pour environ 20 setters et entretien automatique
