@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Icône du navigateur : rechargement forcé
+
+L’icône Orvia (`/favicon.svg`) est servie correctement, mais les navigateurs avaient mémorisé son absence. Son adresse porte désormais un numéro de version (`?v=2`) dans le CRM et les trois pages publiques, ce qui oblige chaque navigateur à la recharger. À l’avenir, changer l’icône impose d’incrémenter ce numéro. Limite : l’icône reste la version simple actuelle, en attendant le logo définitif.
+
 ## Typographie plus compacte pour administrateurs et setters
 
 Les deux rôles reçoivent une taille de texte plus discrète en Assurance et Isolation :
