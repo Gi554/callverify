@@ -137,6 +137,7 @@ export function createCallSimulation() {
         fields: copy(fields),
         qualification: copy(qualification),
         revision: contact.revision,
+        contact_revision: contact.revision,
       }
     }
     if (resource === 'custom_fields/')

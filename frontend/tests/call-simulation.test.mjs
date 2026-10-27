@@ -55,9 +55,10 @@ test('editor lease, qualification and coordinate writes stay in the synthetic in
   assert.equal(lease.token, 'simulation-only')
   const original = await demo.request(path + 'qualification/')
   assert.ok(original.fields.length >= 10)
-  await demo.request(path + 'qualification/', {
+  const saved = await demo.request(path + 'qualification/', {
     qualification: { ...original.qualification, age: 42 },
   })
+  assert.equal(saved.contact_revision, 1)
   assert.equal((await demo.request(path + 'qualification/')).qualification.age, 42)
   const changed = await demo.request(
     path,
