@@ -98,7 +98,12 @@ function navigate(id: string) {
   <div
     v-if="username && (role === 'setter' || admin || simple)"
     class="crm-shell crm-connected setter-shell"
-    :class="{ 'admin-shell': admin, 'advisor-shell': advisor, 'simple-shell': simple }"
+    :class="{
+      'admin-shell': admin,
+      'advisor-shell': advisor,
+      'simple-shell': simple,
+      'compact-type': admin || role === 'setter',
+    }"
   >
     <header class="setter-header">
       <button

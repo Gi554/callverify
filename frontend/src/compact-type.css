@@ -1,0 +1,66 @@
+/* Role-specific typography. Keep the layout, icons and click targets at their normal size.
+   Component styles have explicit sizes, so these narrowly scoped overrides are intentional. */
+.crm-shell.compact-type {
+  font-size: 12.5px;
+}
+.crm-shell.compact-type .setter-sidebar button {
+  font-size: 13px;
+}
+.crm-shell.compact-type .setter-search,
+.crm-shell.compact-type .setter-profile-trigger strong,
+.crm-shell.compact-type .setter-profile-menu button {
+  font-size: 12px;
+}
+.crm-shell.compact-type .amx-main h1 {
+  font-size: 25px !important;
+}
+.crm-shell.compact-type .amx-main h2 {
+  font-size: 17px !important;
+}
+.crm-shell.compact-type .amx-main h3 {
+  font-size: 14px !important;
+}
+.crm-shell.compact-type .amx-main :is(td, th) {
+  font-size: 11.5px !important;
+}
+.crm-shell.compact-type .amx-main :is(button, label) {
+  font-size: 11.5px !important;
+}
+.crm-shell.compact-type .amx-main :is(input, select, textarea) {
+  font-size: 12px !important;
+}
+.crm-shell.compact-type .amx-main .amx-heading .subtle,
+.crm-shell.compact-type .amx-main .discovery-copy p,
+.crm-shell.compact-type .amx-main .advisor-list-heading p {
+  font-size: 12px !important;
+}
+.crm-shell.compact-type .amx-main .crm-welcome h2 {
+  font-size: 25px !important;
+}
+.crm-shell.compact-type .amx-main .home-welcome h1 > span {
+  font-size: 21px;
+}
+.crm-shell.compact-type .amx-main .highlight-label {
+  font-size: 13px;
+}
+.crm-shell.compact-type .amx-main .crm-metric strong {
+  font-size: 25px;
+}
+.crm-shell.compact-type .amx-main .home-highlight strong {
+  font-size: min(27px, 17cqi);
+}
+.crm-shell.compact-type .amx-main .home-highlight strong.next-slot {
+  font-size: 15px;
+}
+@media (max-width: 650px) {
+  .crm-shell.compact-type .amx-main h1,
+  .crm-shell.compact-type .amx-main .crm-welcome h2 {
+    font-size: 22px !important;
+  }
+}
+/* A 16px editable field avoids automatic zoom when focused on mobile Safari. */
+@media (hover: none) and (pointer: coarse) {
+  .crm-shell.compact-type .amx-main :is(input, select, textarea) {
+    font-size: 16px !important;
+  }
+}
