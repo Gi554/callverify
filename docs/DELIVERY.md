@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Favicon Orvia sur le portail et les pages publiques
+
+Le symbole Orvia existant est servi à `/favicon.svg` et déclaré dans le portail CRM,
+la présentation, la confidentialité et les conditions. Le même symbole est utilisé dans
+les onglets du navigateur. Validation : SVG et liens contrôlés, build et CI avant fusion.
+Le navigateur peut conserver temporairement son ancienne icône en cache.
+
 ## Sélection d’espace — continuité avec la connexion Orvia
 
 Après la connexion, les comptes disposant de plusieurs espaces accèdent à une page dédiée,
