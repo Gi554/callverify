@@ -9,6 +9,10 @@ le minuteur et la session. La fermeture ne déclenche jamais un appel. Les minut
 à la sortie et avant un nouveau décompte. Vérifications : tests des deux tableaux, typage, lint
 et build ; aucun appel réel effectué.
 
+## Icône du navigateur : rechargement forcé
+
+L’icône Orvia (`/favicon.svg`) est servie correctement, mais les navigateurs avaient mémorisé son absence. Son adresse porte désormais un numéro de version (`?v=2`) dans le CRM et les trois pages publiques, ce qui oblige chaque navigateur à la recharger. À l’avenir, changer l’icône impose d’incrémenter ce numéro. Limite : l’icône reste la version simple actuelle, en attendant le logo définitif.
+
 ## Typographie plus compacte pour administrateurs et setters
 
 Les deux rôles reçoivent une taille de texte plus discrète en Assurance et Isolation :
