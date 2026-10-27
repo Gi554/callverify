@@ -327,7 +327,6 @@ test('setter keeps call commands and has no list switch', async () => {
   }
 })
 
-
 test('dismissing the countdown modal stops the session without opening another prospect', async () => {
   const f = fixture('setter', true)
   try {
@@ -341,5 +340,7 @@ test('dismissing the countdown modal stops the session without opening another p
     assert.match(text(f.root), /Session arrêtée/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
-  } finally { f.close() }
+  } finally {
+    f.close()
+  }
 })

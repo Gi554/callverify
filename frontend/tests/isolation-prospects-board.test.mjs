@@ -332,7 +332,6 @@ test('administrator calls the prospects of their own lot', async () => {
   }
 })
 
-
 test('dismissing the countdown modal stops the session without opening another prospect', async () => {
   const f = fixture('setter')
   try {
@@ -346,5 +345,7 @@ test('dismissing the countdown modal stops the session without opening another p
     assert.match(text(f.root), /Session arrêtée/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'IsolationProspectActivity'), undefined)
-  } finally { f.app.unmount() }
+  } finally {
+    f.app.unmount()
+  }
 })
