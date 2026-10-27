@@ -15,6 +15,7 @@ import CallAction from './CallAction.vue';
 import IsolationProspectActivity from './IsolationProspectActivity.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import SidePanel from './SidePanel.vue';
+import CallCountdownModal from './CallCountdownModal.vue';
 import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
@@ -227,6 +228,7 @@ function stopSession() {
   sessionNote.value = 'Session arrêtée.';
 }
 function startCountdown() {
+  stopTimer();
   if (!nextProspect()) {
     session.value = false;
     sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
@@ -405,13 +407,18 @@ onBeforeUnmount(() => {
       </button>
     </div>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
-    <div v-if="session && countdown !== null" class="call-session" role="status">
-      <span
-        >Prochain appel dans <strong>{{ countdown }}</strong> s</span
+    <CallCountdownModal
+      v-if="session && countdown !== null"
+      :seconds="countdown"
+      :prospect="nextProspect()?.name"
+      @stop="stopSession"
+    >
+      <span class="session-countdown-status" role="status"
+        >Prochain appel dans {{ countdown }} s</span
       >
       <button class="primary" @click="advance">Appeler maintenant</button>
       <button class="secondary" @click="stopSession">Arrêter la session</button>
-    </div>
+    </CallCountdownModal>
     <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
     <IsolationLots
       v-if="lotsOpen && role === 'administrator'"
@@ -1233,5 +1240,15 @@ onBeforeUnmount(() => {
   gap: 8px;
   font-size: 12px;
   color: #536b91;
+}
+</style>
+
+<style scoped>
+.session-countdown-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 </style>

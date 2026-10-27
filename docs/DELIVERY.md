@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Session d’appels — décompte en modale
+
+Le décompte entre deux prospects est affiché dans une modale commune à Assurance et Isolation.
+À zéro, le parcours existant ouvre la prochaine fiche et demande l’appel après ses contrôles.
+« Appeler maintenant » avance immédiatement ; « Arrêter la session », Échap ou le fond arrêtent
+le minuteur et la session. La fermeture ne déclenche jamais un appel. Les minuteurs sont nettoyés
+à la sortie et avant un nouveau décompte. Vérifications : tests des deux tableaux, typage, lint
+et build ; aucun appel réel effectué.
+
 ## Typographie plus compacte pour administrateurs et setters
 
 Les deux rôles reçoivent une taille de texte plus discrète en Assurance et Isolation :

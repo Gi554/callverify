@@ -14,6 +14,7 @@ import {
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import SidePanel from './SidePanel.vue';
+import CallCountdownModal from './CallCountdownModal.vue';
 import ProspectExport from './ProspectExport.vue';
 import AssuranceLots from './AssuranceLots.vue';
 const props = defineProps<{
@@ -143,6 +144,7 @@ function stopSession() {
   sessionNote.value = 'Session arrêtée.';
 }
 function startCountdown() {
+  stopTimer();
   if (!nextProspect()) {
     session.value = false;
     sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
@@ -304,13 +306,18 @@ onBeforeUnmount(() => {
       @imported="emit('imported', $event)"
     />
     <template v-else>
-      <div v-if="session && countdown !== null" class="call-session" role="status">
-        <span
-          >Prochain appel dans <strong>{{ countdown }}</strong> s</span
+      <CallCountdownModal
+        v-if="session && countdown !== null"
+        :seconds="countdown"
+        :prospect="nextProspect()?.name"
+        @stop="stopSession"
+      >
+        <span class="session-countdown-status" role="status"
+          >Prochain appel dans {{ countdown }} s</span
         >
         <button class="primary" @click="advance">Appeler maintenant</button>
         <button class="secondary" @click="stopSession">Arrêter la session</button>
-      </div>
+      </CallCountdownModal>
       <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
       <AssuranceLots v-if="admin && lotsOpen" :request="request" :portal="portal" @changed="load" />
       <div class="prospects-toolbar">
@@ -934,5 +941,15 @@ onBeforeUnmount(() => {
   gap: 8px;
   font-size: 12px;
   color: #536b91;
+}
+</style>
+
+<style scoped>
+.session-countdown-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 </style>
