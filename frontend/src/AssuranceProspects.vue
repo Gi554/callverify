@@ -286,6 +286,7 @@ onBeforeUnmount(() => {
         >
           <PhoneForwarded :size="16" />Lancer une session d’appels
         </button>
+        <a class="secondary" href="/crm?simulation=appel">Simuler un appel</a>
         <ProspectExport
           v-if="!listView"
           :request="request"

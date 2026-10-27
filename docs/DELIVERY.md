@@ -1,5 +1,19 @@
 # Suivi des livraisons CRM AMX
 
+## Simulation interactive de l’interface d’appel Assurance
+
+`/crm?simulation=appel` propose un décompte puis la vraie fiche Assurance et son composant
+d’appel, alimentés exclusivement par un adaptateur en mémoire. Aucun callback métier réel,
+appel HTTP, appel Phonetico, courriel ou écriture calendrier n’est utilisé. Les coordonnées
+sont fictives, le numéro invalide et le mode simulation reste signalé dans la fiche. Le
+résultat accepté simule seulement le décrochage du poste et la composition ; aucun audio
+ni conversation ne sont reproduits. Résultats, notes, rappels, qualification et réservation
+peuvent être essayés en mémoire. Les actions non implémentées sont refusées sans réseau.
+Les tableaux Assurance et Isolation proposent le lien vers cet aperçu Assurance.
+La fermeture/redémarrage supprime les saisies ; le décompte est arrêté à la sortie.
+Vérifications : adaptateur sans réseau, typage, lint, build et CI avant fusion. La recette
+visuelle et le véritable parcours opérateur restent distincts.
+
 ## Session d’appels — décompte en modale
 
 Le décompte entre deux prospects est affiché dans une modale commune à Assurance et Isolation.
