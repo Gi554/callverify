@@ -39,7 +39,7 @@ test('central OAuth, invitation and recovery tokens survive entry normalization'
     assert.equal(crmEntryRedirect(new URL('http://localhost:5174/' + hash)), '/crm' + hash)
   }
 })
-test('the application boot only mounts Portal with no legacy bundle entry', () => {
+test('the default CRM boot mounts Portal without any legacy bundle entry', () => {
   const entry = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   assert.match(entry, /createApp\(Portal\)/)
   assert.doesNotMatch(entry, /App\.vue|Workspace\.vue|isPortal/)
