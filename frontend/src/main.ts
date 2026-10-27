@@ -12,5 +12,9 @@ if (redirect) window.history.replaceState(null, '', redirect)
 document.title = 'Orvia â€” Portail CRM'
 if (import.meta.env.VITE_CRM_DEMO === 'true') document.title = 'Orvia â€” DÃ‰MO FICTIVE'
 const simulation = new URLSearchParams(window.location.search).get('simulation') === 'appel'
-if (simulation) document.title = 'Orvia — Simulation d’appel'
-createApp(simulation ? CallSimulation : Portal).mount('#app')
+if (simulation) {
+  document.title = 'Orvia — Simulation d’appel'
+  createApp(CallSimulation).mount('#app')
+} else {
+  createApp(Portal).mount('#app')
+}
