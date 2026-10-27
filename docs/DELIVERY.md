@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Typographie plus compacte pour administrateurs et setters
+
+Les deux rôles reçoivent une taille de texte plus discrète en Assurance et Isolation :
+menus à 13 px, titres de page à 25 px (22 px sur petit écran), sous-titres à 17 px,
+tableaux/libellés/actions à 11,5 px et champs à 12 px sur ordinateur. Les indicateurs
+volumineux sont réduits sans supprimer leur adaptation à la largeur des cartes. Les champs
+tactiles restent à 16 px pour éviter le zoom de saisie sur mobile. Les surfaces de clic et
+les icônes restent inchangées. Conseillers, closers, client, connexion et présentation ne
+reçoivent pas cette classe de rôle. Vérifications : typage, lint, formatage, tests de
+navigation et build ; validation visuelle par le client restant à effectuer.
+
 ## Favicon Orvia sur le portail et les pages publiques
 
 Le symbole Orvia existant est servi à `/favicon.svg` et déclaré dans le portail CRM,

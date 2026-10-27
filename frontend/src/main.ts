@@ -5,6 +5,7 @@ import './style.css'
 import './login.css'
 import './workspace.css'
 import './crm-theme.css'
+import './compact-type.css'
 const redirect = crmEntryRedirect(new URL(window.location.href))
 if (redirect) window.history.replaceState(null, '', redirect)
 document.title = 'Orvia — Portail CRM'
