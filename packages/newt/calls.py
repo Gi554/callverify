@@ -1,4 +1,7 @@
-"""Single explicit 245 command. No retries, auto-answer, audio or outcome inference."""
+"""Single explicit 245 command. No retries, audio or outcome inference.
+
+The caller's softphone only answers by itself when auto-answer is explicitly enabled (_a=Y).
+"""
 
 import csv
 import io
@@ -9,7 +12,7 @@ import requests
 from .directory import URL
 
 
-def place(username, password, extension, destination):
+def place(username, password, extension, destination, auto_answer=False):
     if (
         not username
         or not password
@@ -18,17 +21,20 @@ def place(username, password, extension, destination):
     ):
         return 'unknown'
     correlation = secrets.token_hex(5)
+    params = {
+        '_f': '245',
+        '_x': extension,
+        '_d': destination,
+        '_o': '30',
+        '_t': correlation,
+        '_v': 'C',
+    }
+    if auto_answer:
+        params['_a'] = 'Y'
     try:
         with requests.get(
             URL,
-            params={
-                '_f': '245',
-                '_x': extension,
-                '_d': destination,
-                '_o': '30',
-                '_t': correlation,
-                '_v': 'C',
-            },
+            params=params,
             auth=(username, password),
             timeout=(5, 40),
             allow_redirects=False,

@@ -197,7 +197,11 @@ def calls(request, workspace='assurance'):
             state = 'blocked'
         else:
             state = place(
-                settings.NEWT_USERNAME, settings.NEWT_PASSWORD, extension, claims['destination']
+                settings.NEWT_USERNAME,
+                settings.NEWT_PASSWORD,
+                extension,
+                claims['destination'],
+                auto_answer=settings.NEWT_AUTO_ANSWER,
             )
     except Exception:
         state = 'unknown'

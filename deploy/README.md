@@ -85,3 +85,7 @@ Les migrations sont appliquées automatiquement, et les données sont conservée
 - Après chaque déploiement vérifié, `scripts/maintenance.sh` ne garde que les 5 dernières sauvegardes de `.backups` et supprime les images Docker inutilisées depuis plus de 7 jours. Pour le lancer à la main : `./scripts/maintenance.sh` (`KEEP_BACKUPS=10 ./scripts/maintenance.sh` pour en garder davantage).
 - Mesurer la réactivité avec des comptes de test : `LOAD_USERS="compte1:mdp1,compte2:mdp2" python scripts/load_test_setters.py https://VOTRE-DOMAINE --setters 20 --seconds 60 --yes` (lecture seule, aucun appel placé).
 - Surveiller la machine : `docker stats --no-stream` (mémoire et processeur par service) et `df -h` (disque).
+
+## Décroché automatique des postes (option NEWT)
+
+Quand NEWT a activé l'option pour votre compte, chaque setter redémarre son logiciel de téléphone (ordinateur ; le mobile la prend déjà en compte). Mettez ensuite `NEWT_AUTO_ANSWER=true` dans le `.env` du serveur et relancez le déploiement : le poste décroche seul quand le CRM lance l'appel, et le numéro du prospect est composé tout de suite. Laissez `false` tant que les logiciels n'ont pas été redémarrés, sinon l'appel sonne comme avant.

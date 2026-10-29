@@ -48,7 +48,9 @@ class IsolationCallsTests(TestCase):
         self.checker.assert_called_once_with(
             self.user, verify(self.proof, self.user.pk, 'isolation'), self.proof, 'isolation'
         )
-        self.provider.assert_called_once_with('test-user', 'test-secret', '501', '14165550123')
+        self.provider.assert_called_once_with(
+            'test-user', 'test-secret', '501', '14165550123', auto_answer=False
+        )
         self.assertEqual(self.post().data['state'], 'accepted')
         self.assertEqual(self.provider.call_count, 1)
         self.assertEqual(self.client.get(self.url + str(self.key) + '/').status_code, 200)
@@ -74,7 +76,9 @@ class IsolationCallsTests(TestCase):
         self.membership.role = 'administrator'
         self.membership.save()
         self.assertEqual(self.post().status_code, 200)
-        self.provider.assert_called_once_with('test-user', 'test-secret', '501', '14165550123')
+        self.provider.assert_called_once_with(
+            'test-user', 'test-secret', '501', '14165550123', auto_answer=False
+        )
         self.assertEqual(self.post().data['state'], 'accepted')
         self.assertEqual(self.provider.call_count, 1)
 
