@@ -50,7 +50,7 @@ class PhoneCallsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['state'], 'accepted')
         self.provider.assert_called_once_with(
-            'synthetic-user', 'synthetic-secret', '501', '15145550101'
+            'synthetic-user', 'synthetic-secret', '501', '15145550101', auto_answer=False
         )
         self.assertEqual(self.post().data['state'], 'accepted')
         self.assertEqual(self.provider.call_count, 1)
@@ -90,7 +90,7 @@ class PhoneCallsTests(TestCase):
         self.assertEqual(self.post().status_code, 200)
         self.assertEqual(self.post().status_code, 200)
         self.provider.assert_called_once_with(
-            'synthetic-user', 'synthetic-secret', '501', '15145550101'
+            'synthetic-user', 'synthetic-secret', '501', '15145550101', auto_answer=False
         )
         self.assertEqual(PhoneCallAttempt.objects.get().user, self.user)
         self.membership.active = False
@@ -114,7 +114,7 @@ class PhoneCallsTests(TestCase):
         self.assertNotIn('private', str(self.post().data))
 
     def test_reservation_is_committed_before_provider_and_inflight_replay(self):
-        def provider(*args):
+        def provider(*args, **kwargs):
             self.assertEqual(PhoneCallAttempt.objects.get().state, 'dispatching')
             self.assertEqual(self.post().data['state'], 'dispatching')
             return 'accepted'
@@ -273,6 +273,17 @@ class ProviderTests(TestCase):
             self.assertEqual(params['_f'], '245')
             self.assertNotIn('_a', params)
             self.assertFalse(get.call_args.kwargs['allow_redirects'])
+
+    def test_auto_answer_is_sent_only_when_explicitly_enabled(self):
+        with (
+            patch('packages.newt.calls.secrets.token_hex', return_value='0123456789'),
+            patch(
+                'packages.newt.calls.requests.get',
+                return_value=self.response(b'Success,501,15145550101,0123456789,,,'),
+            ) as get,
+        ):
+            self.assertEqual(place('u', 'p', '501', '15145550101', auto_answer=True), 'accepted')
+            self.assertEqual(get.call_args.kwargs['params']['_a'], 'Y')
 
     def test_invalid_response_is_unknown_not_success_and_no_retry(self):
         for body in (

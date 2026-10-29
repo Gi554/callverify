@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Décroché automatique du poste (option NEWT, désactivée par défaut)
+
+NEWT (Phonetico) a confirmé par e-mail que le décroché automatique fonctionne dans le logiciel de bureau, après redémarrage du logiciel, et dans l’application mobile. Le CRM sait désormais envoyer le paramètre `_a=Y` avec la commande d’appel : le poste du setter décroche tout seul et le prospect est composé immédiatement, sans geste du setter, y compris dans une session d’appels enchaînés. Le réglage `NEWT_AUTO_ANSWER` (défaut `false`) s’active dans le `.env` du serveur, puis un redéploiement ; il vaut pour Assurance et Isolation. Les garde-fous (heures, liste d’exclusion, 60 secondes entre deux commandes) s’appliquent avant l’envoi.
+
+Limites : non essayé avec un vrai appel ; le format exact de la réponse de NEWT avec `_a=Y` n’est pas confirmé (toute réponse inattendue reste classée « indéterminé », sans relance) ; un setter qui s’éloigne de son poste le laisse décrocher seul : à expliquer aux équipes.
+
 ## Simulation interactive de l’interface d’appel Assurance
 
 `/crm?simulation=appel` propose un décompte puis la vraie fiche Assurance et son composant
