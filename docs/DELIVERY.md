@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Réservations externes exclues de la publication calendrier
+
+Les occurrences Assurance enregistrées via un lien externe, comme celles issues de Calendly,
+ne sont jamais publiées une seconde fois par le connecteur Google/Microsoft d’Orvia. Le
+fournisseur de réservation reste propriétaire de son événement ; seule la fiche de suivi
+est conservée dans Orvia. Vérification : passage dans le vrai moteur de synchronisation,
+sans appel de publication ni suppression d’un événement du fournisseur externe.
+
 ## Transmission combinée Assurance après réservation externe
 
 La fiche guidée setter réunit « Qualification et rendez-vous » : qualification Assurance,

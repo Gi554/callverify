@@ -87,8 +87,8 @@ def fetch_source(user, workspace, source_id=None, page=1):
 
 def source(user, workspace, pk):
     row = fetch_source(user, workspace, pk)
-    if workspace == 'assurance' and row.get('calendar') == 'calendly':
-        # Calendly already publishes in its connected calendar: never duplicate that event.
+    if workspace == 'assurance' and row.get('calendar') in ('calendly', 'external_link'):
+        # The external booking tool already owns this event: never publish a second copy.
         row['status'] = 'cancelled'
     owner = row.get('advisor' if workspace == 'assurance' else 'client')
     if not isinstance(owner, dict) or owner.get('id') != user.pk or row.get('id') != pk:
