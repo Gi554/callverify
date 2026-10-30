@@ -77,6 +77,12 @@ class AdvisorSchedule(models.Model):
 
 
 class Appointment(models.Model):
+    meeting_type = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=[('video', 'Vidéoconférence'), ('phone', 'Appel téléphonique')],
+    )
+    external_booking_url = models.URLField(max_length=2048, blank=True)
     calendar = models.CharField(max_length=20, default='internal')
     rescheduled_at = models.DateTimeField(null=True, blank=True)
     reschedule_count = models.PositiveIntegerField(default=0)
@@ -115,6 +121,18 @@ class Appointment(models.Model):
             models.Index(fields=['advisor_id', 'status', 'starts_at']),
             models.Index(fields=['setter_id', 'starts_at']),
         ]
+
+
+class AppointmentNotification(models.Model):
+    appointment = models.ForeignKey(
+        Appointment, on_delete=models.PROTECT, related_name='notifications'
+    )
+    recipient_id = models.PositiveBigIntegerField(db_index=True)
+    role = models.CharField(max_length=20)
+    kind = models.CharField(max_length=30)
+    event_key = models.CharField(max_length=150, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True)
 
 
 class CalendlyBooking(models.Model):

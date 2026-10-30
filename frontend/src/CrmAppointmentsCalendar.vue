@@ -11,6 +11,7 @@ import {
   Search,
 } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
+import AssuranceAppointmentNotifications from './AssuranceAppointmentNotifications.vue';
 import { loadQuotas, type AdvisorQuota } from './advisor-quota';
 import ProspectExport from './ProspectExport.vue';
 import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status';
@@ -232,6 +233,16 @@ function open(row: any) {
   selectedDay.value = '';
   selected.value = row;
 }
+async function openNotification(id: number) {
+  if (detailBusy.value || (advisorDetail.value && !advisorDetail.value.close())) return;
+  try {
+    const row = await props.request(`appointments/${id}/`);
+    month.value = dayKey(new Date(row.starts_at), zone.value).slice(0, 7);
+    open(row);
+  } catch (e: any) {
+    error.value = e.message;
+  }
+}
 function closeDetail() {
   if (detailBusy.value) return;
   if (advisorDetail.value && !advisorDetail.value.close()) return;
@@ -277,6 +288,11 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section class="appointment-calendar">
+    <AssuranceAppointmentNotifications
+      v-if="assurance && role === 'advisor'"
+      :request="request"
+      @open="openNotification"
+    />
     <header class="calendar-heading">
       <div>
         <span class="calendar-eyebrow"
@@ -522,6 +538,7 @@ onBeforeUnmount(() => {
         ><small>Cliquer sur un créneau pour consulter et gérer le rendez-vous.</small>
       </footer>
     </div>
+
     <SidePanel
       :open="!!selected"
       :title="selected ? person(selected) : 'Rendez-vous'"

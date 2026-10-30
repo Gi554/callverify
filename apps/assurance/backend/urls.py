@@ -15,10 +15,16 @@ from .crm.assignments import AssignmentViewSet
 from .crm.appointments import AppointmentViewSet
 from .crm import calendly
 from .crm.booking_links import own as own_booking_link
+from .crm.appointment_notifications import AppointmentNotificationViewSet
 from .crm.views import ContactViewSet, dashboard
 from .crm.lots import lots, release as lots_release
 
 router = DefaultRouter()
+router.register(
+    'appointment-notifications',
+    AppointmentNotificationViewSet,
+    basename='assurance-appointment-notification',
+)
 router.register('follow-ups', FollowUpViewSet, basename='assurance-follow-up')
 router.register('appointments', AppointmentViewSet, basename='assurance-appointment')
 router.register('assignments', AssignmentViewSet, basename='assurance-assignment')

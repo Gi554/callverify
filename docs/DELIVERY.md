@@ -1,5 +1,36 @@
 # Suivi des livraisons CRM AMX
 
+## Transmission combinée Assurance après réservation externe
+
+La fiche guidée setter réunit « Qualification et rendez-vous » : qualification Assurance,
+seul champ « Notes utiles pour le conseiller », conseiller associé, ouverture de son lien
+dans un nouvel onglet, type vidéo/téléphone, date/heure America/Toronto et confirmation que
+la réservation externe est faite. L’unique attribution est présélectionnée ; recherche et
+pagination permettent de choisir parmi plusieurs conseillers. « Envoyer le rendez-vous »
+enregistre qualification, occurrence, résultat d’appel « Rendez-vous pris » et notification
+dans une transaction idempotente. Aucun appel API de réservation/contrôle de disponibilités
+externe n’est exécuté par cette transmission ; les conflits déjà connus d’Orvia sont refusés.
+
+Le conseiller voit une notification dans son agenda Orvia, avec accès direct au rendez-vous.
+Le type de rencontre et la copie de qualification y sont conservés. La lecture d’une
+notification ne renseigne aucun résultat de rencontre. Chaque transmission/reprogrammation
+crée une nouvelle occurrence liée au même prospect ; l’historique reste consultable dans
+le formulaire. Les anciennes notes complémentaires restent stockées, mais ne sont pas
+copiées dans une nouvelle transmission externe. La fiche guidée masque les anciens blocs
+statut commercial, notes internes et documents et expose l’historique aussi aux setters.
+
+Vérifications : atomicité et rollback, répétition idempotente, révision/verrou et affectations,
+validations du lien/type/heure/confirmation, confidentialité des notifications, conservation
+des occurrences ; concurrence PostgreSQL dans la CI. Tests frontend de présélection, envoi
+combiné, fuseau Québec, choix multiple et reprise après réponse interrompue ; régressions
+qualification, rappels et agenda. Contrôle typage/lint et contrat API mis à jour.
+
+Limites : notification de nouveau rendez-vous **dans Orvia**, pas encore d’e-mail d’annonce ;
+le fournisseur externe n’est pas synchronisé. Les anciens composants/API de réservation et
+de reprogrammation existent encore pour compatibilité et doivent être retirés des autres
+entrées d’interface dans la simplification suivante. La nouvelle relance J+1 18 h, le retour
+conseiller simplifié et la rémunération ne sont pas livrés par ce lot.
+
 ## Liens externes de réservation des conseillers Assurance
 
 Chaque conseiller peut enregistrer son lien public HTTPS depuis « Mon agenda et disponibilités ».
@@ -19,8 +50,8 @@ parcours complet de transmission manuelle ni une synchronisation du fournisseur.
 
 - Remplacer la réservation et la sélection de disponibilités internes par l’ouverture du lien
   externe et la transmission manuelle date/heure/type ; conserver l’agenda de consultation.
-- Combiner qualification et rendez-vous, enregistrer les deux dans une transaction et notifier
-  le conseiller ; présélectionner l’unique conseiller affecté, conserver les occurrences passées.
+- Étendre le parcours guidé combiné aux anciennes entrées de dossier et retirer leurs derniers
+  outils internes de réservation ; la transmission atomique guidée et sa notification sont livrées ci-dessus.
 - Simplifier la fiche setter en quatre rubriques, adapter les résultats d’appel (dont « Autre
   résultat »), masquer les sections et notes demandées sans effacer les données historiques.
 - Simplifier l’espace conseiller autour de ses prospects et rendez-vous ; présence Oui/Non,
