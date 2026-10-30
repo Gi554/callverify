@@ -2,7 +2,8 @@
 
 from django.core import signing
 from django.db import transaction, IntegrityError
-from django.db.models import Q
+from django.db.models import Q, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
@@ -10,7 +11,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from packages.access.assignments import verify_assignment
-from .models import AdvisorAssignment, BusinessAudit
+from .models import AdvisorAssignment, AdvisorSchedule, BusinessAudit
 from .leases import Conflict
 
 
@@ -51,6 +52,7 @@ def output(row, is_admin):
     result = {
         'id': row.pk,
         'advisor': {'id': row.advisor_id, 'name': row.advisor_name},
+        'booking_url': getattr(row, 'booking_url', ''),
         'active': row.active,
     }
     if is_admin:
@@ -86,7 +88,16 @@ class AssignmentViewSet(viewsets.GenericViewSet):
         user = self.request.user
         if user.role == 'advisor':
             raise PermissionDenied('Accès non autorisé')
-        qs = AdvisorAssignment.objects.order_by('setter_name', 'advisor_name', 'pk')
+        qs = AdvisorAssignment.objects.annotate(
+            booking_url=Coalesce(
+                Subquery(
+                    AdvisorSchedule.objects.filter(pk=OuterRef('advisor_id')).values('booking_url')[
+                        :1
+                    ]
+                ),
+                Value(''),
+            )
+        ).order_by('setter_name', 'advisor_name', 'pk')
         if user.role == 'setter':
             return qs.filter(setter_id=user.pk, active=True)
         admin(user)
@@ -108,6 +119,12 @@ class AssignmentViewSet(viewsets.GenericViewSet):
 
     def retrieve(self, request, pk=None):
         return Response(output(self.get_object(), request.user.role == 'administrator'))
+
+    @action(detail=True, methods=['get', 'post'], url_path='booking-link')
+    def booking_link(self, request, pk=None):
+        from .booking_links import manage
+
+        return manage(request, self.get_object().advisor_id)
 
     def create(self, request):
         admin(request.user)

@@ -67,6 +67,8 @@ class BusinessAudit(models.Model):
 
 
 class AdvisorSchedule(models.Model):
+    booking_url = models.URLField(max_length=2048, blank=True)
+    booking_revision = models.PositiveIntegerField(default=0)
     # Serializes slot changes for the same advisor across all of their setters.
     advisor_id = models.PositiveBigIntegerField(primary_key=True)
     version = models.PositiveIntegerField(default=0)

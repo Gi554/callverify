@@ -1,5 +1,38 @@
 # Suivi des livraisons CRM AMX
 
+## Liens externes de réservation des conseillers Assurance
+
+Chaque conseiller peut enregistrer son lien public HTTPS depuis « Mon agenda et disponibilités ».
+L’administrateur peut le modifier depuis « Associations → Lien de réservation » ; il est commun
+aux associations du même conseiller. Le setter voit uniquement les liens de ses associations
+actives et peut les ouvrir dans un nouvel onglet depuis « Mes conseillers ». Les changements
+sont versionnés, les conflits refusés et l’action auditée sans copier la requête du fournisseur
+dans l’audit. Aucun appel au fournisseur ni connexion Microsoft/Calendly n’est nécessaire pour
+enregistrer ou ouvrir ce lien.
+
+Vérifications : droits par rôle, isolation entre conseillers/setters, associations suspendues,
+URL HTTPS sans identifiants, suppression du lien, conflits de version et concurrence PostgreSQL
+dans la CI. Limite : cette livraison gère les liens ; elle ne constitue pas encore le nouveau
+parcours complet de transmission manuelle ni une synchronisation du fournisseur.
+
+### Demande Assurance du 30 octobre — suite à livrer
+
+- Remplacer la réservation et la sélection de disponibilités internes par l’ouverture du lien
+  externe et la transmission manuelle date/heure/type ; conserver l’agenda de consultation.
+- Combiner qualification et rendez-vous, enregistrer les deux dans une transaction et notifier
+  le conseiller ; présélectionner l’unique conseiller affecté, conserver les occurrences passées.
+- Simplifier la fiche setter en quatre rubriques, adapter les résultats d’appel (dont « Autre
+  résultat »), masquer les sections et notes demandées sans effacer les données historiques.
+- Simplifier l’espace conseiller autour de ses prospects et rendez-vous ; présence Oui/Non,
+  « Rendez-vous validé » / « Non honoré », notification setter et rappel d’absence sous 24 h.
+- Remplacer le rappel à une heure par le lendemain à **18 h America/Toronto**, configurable
+  par l’administrateur ; inclure nom, date/heure et lien. SMS conditionné à un service intégré.
+- Statistiques hebdomadaires appels, rendez-vous pris/transmis/à venir/validés/non honorés et
+  calcul indicatif de rémunération sur les rendez-vous validés, avec **tarif par setter**.
+
+Ces points correspondent à la nouvelle demande ; les anciens paragraphes décrivent les
+livraisons précédentes et ne signifient pas que cette refonte est déjà entièrement réalisée.
+
 ## Relance douce du conseiller après un rendez-vous Assurance
 
 Un compte rendu manquant déclenche une seule relance au conseiller assigné, une heure après

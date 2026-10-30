@@ -525,7 +525,14 @@ class AssignmentTests(TestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(
             response.data['results'],
-            [{'id': first['id'], 'advisor': {'id': 31, 'name': 'Advisor 31'}, 'active': True}],
+            [
+                {
+                    'id': first['id'],
+                    'advisor': {'id': 31, 'name': 'Advisor 31'},
+                    'active': True,
+                    'booking_url': '',
+                }
+            ],
         )
         self.assertEqual(self.client.get(self.url + str(suspended['id']) + '/').status_code, 404)
         self.assertEqual(
