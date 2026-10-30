@@ -132,6 +132,10 @@ test('authenticated adviser reminder overrides the remembered workspace and open
   const f = await fixture({ loggedIn: true })
   try {
     const calendar = find(f, 'CrmAppointmentsCalendar')
+    assert.deepEqual(
+      find(f, 'CrmShell').props.items.map((item) => item.id),
+      ['appointments', 'contacts'],
+    )
     assert.equal(calendar.props.workspace, 'assurance')
     assert.equal(calendar.props['appointment-id'], 42)
     assert.equal(f.address.search, '')

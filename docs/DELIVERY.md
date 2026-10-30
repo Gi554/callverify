@@ -1,5 +1,32 @@
 # Suivi des livraisons CRM AMX
 
+## Fiche, résultats d’appel et navigation Assurance simplifiés
+
+Toutes les ouvertures de fiche setter/administrateur utilisent les quatre rubriques guidées :
+coordonnées, appels et rappels, qualification et rendez-vous, historique. Les résultats proposés
+sont « Rendez-vous pris », « Répondeur », « Numéro non attribué », « Appel coupé », « Pas
+intéressé », « A demandé à être rappelé » et « Autre résultat ». L’ancien résultat « Injoignable »
+reste lisible dans l’historique et accepté pour compatibilité API, sans être proposé en saisie.
+Répondeur/numéro non attribué/appel coupé enregistrent le résultat avant la fermeture de fiche
+et l’avancement de la session d’appels ; aucun formulaire de qualification n’est ouvert.
+Le choix rendez-vous ouvre le formulaire combiné. Les tâches de rappel peuvent être créées
+avec date et heure sans note obligatoire.
+
+Les anciens formulaires Assurance de réservation, disponibilités et reprogrammation internes
+sont retirés de l’interface. L’agenda reste consultatif ; « Nouveau rendez-vous » renvoie à la
+fiche prospect. Une reprogrammation passe par le fournisseur puis une nouvelle transmission.
+L’annulation du suivi dans Orvia reste disponible avec motif et indication de l’action à faire
+aussi dans le fournisseur. Les API internes antérieures restent protégées pour compatibilité.
+
+Le conseiller dispose de deux rubriques principales : « Mes rendez-vous » et « Mes prospects ».
+Son lien se règle dans le volet repliable « Mon lien de réservation » de ses rendez-vous.
+Les données et connexions existantes ne sont pas effacées.
+
+Vérifications : tests des sept choix et de l’avancement après sauvegarde, rappel sans note,
+absence de chargement des disponibilités internes, navigation conseiller, conservation du
+parcours de transmission et de l’agenda ; typage et lint. Le retour Oui/Non du conseiller,
+la relance J+1 18 h et les rémunérations restent à livrer séparément.
+
 ## Réservations externes exclues de la publication calendrier
 
 Les occurrences Assurance enregistrées via un lien externe, comme celles issues de Calendly,
@@ -56,18 +83,12 @@ parcours complet de transmission manuelle ni une synchronisation du fournisseur.
 
 ### Demande Assurance du 30 octobre — suite à livrer
 
-- Remplacer la réservation et la sélection de disponibilités internes par l’ouverture du lien
-  externe et la transmission manuelle date/heure/type ; conserver l’agenda de consultation.
-- Étendre le parcours guidé combiné aux anciennes entrées de dossier et retirer leurs derniers
-  outils internes de réservation ; la transmission atomique guidée et sa notification sont livrées ci-dessus.
-- Simplifier la fiche setter en quatre rubriques, adapter les résultats d’appel (dont « Autre
-  résultat »), masquer les sections et notes demandées sans effacer les données historiques.
-- Simplifier l’espace conseiller autour de ses prospects et rendez-vous ; présence Oui/Non,
-  « Rendez-vous validé » / « Non honoré », notification setter et rappel d’absence sous 24 h.
+- Retour conseiller Oui/Non, « Rendez-vous validé » / « Non honoré », notification setter et
+  rappel d’absence sous 24 h ; conserver le dossier complet et son historique.
 - Remplacer le rappel à une heure par le lendemain à **18 h America/Toronto**, configurable
   par l’administrateur ; inclure nom, date/heure et lien. SMS conditionné à un service intégré.
 - Statistiques hebdomadaires appels, rendez-vous pris/transmis/à venir/validés/non honorés et
-  calcul indicatif de rémunération sur les rendez-vous validés, avec **tarif par setter**.
+  calcul de rémunération sur les rendez-vous validés, avec **tarif par setter en CAD** (devise confirmée par l’utilisateur).
 
 Ces points correspondent à la nouvelle demande ; les anciens paragraphes décrivent les
 livraisons précédentes et ne signifient pas que cette refonte est déjà entièrement réalisée.

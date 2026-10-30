@@ -21,7 +21,6 @@ import AssuranceAssignments from './AssuranceAssignments.vue';
 import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue';
 import AssuranceAppointments from './AssuranceAppointments.vue';
 import AssuranceAdvisorProspects from './AssuranceAdvisorProspects.vue';
-import AssuranceAdvisorAgenda from './AssuranceAdvisorAgenda.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import IsolationTasksBoard from './IsolationTasksBoard.vue';
 import IsolationCloserVisits from './IsolationCloserVisits.vue';
@@ -282,7 +281,6 @@ const navigation = computed(() => {
     return [
       { id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' },
       { id: 'contacts', label: 'Mes prospects', icon: 'contacts' },
-      { id: 'agenda-settings', label: 'Mon agenda et disponibilités', icon: 'appointments' },
     ];
   if (role.value === 'closer')
     return [
@@ -614,13 +612,8 @@ onMounted(async () => {
                     @open-prospect="openProspect"
                   />
                   <template v-else-if="workspace === 'assurance'">
-                    <AssuranceAdvisorAgenda
-                      v-if="assuranceModule === 'agenda-settings' && role === 'advisor'"
-                      :portal="portal"
-                      :request="assurance"
-                    />
                     <AssuranceProspects
-                      v-else-if="
+                      v-if="
                         assuranceModule === 'contacts' && ['setter', 'administrator'].includes(role)
                       "
                       :key="prospectFocus ? 'focus-' + prospectFocus.id : 'board'"

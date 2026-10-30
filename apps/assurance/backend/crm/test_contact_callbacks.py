@@ -69,6 +69,7 @@ class ContactCallbackTests(TestCase):
             'disconnected',
             'not_interested',
             'unreachable',
+            'other',
         ]:
             response = self.client.post(
                 self.base + 'call-outcomes/',
@@ -80,6 +81,13 @@ class ContactCallbackTests(TestCase):
         self.contact.refresh_from_db()
         self.assertEqual(self.contact.status, 'to_contact')
         self.assertEqual(FollowUpTask.objects.count(), 0)
+
+    def test_manual_callback_note_is_optional(self):
+        response = self.client.post(
+            self.base + 'follow-ups/', self.payload(due_at=self.due), format='json'
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(FollowUpTask.objects.get().reason, '')
 
     def test_manual_task_can_be_edited_closed_and_seen_in_contact_history(self):
         body = self.payload(reason='Rappeler le contact', due_at=self.due, priority='high')

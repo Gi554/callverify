@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section
-    v-if="workflow"
+    v-if="workflow || canWrite"
     class="guided-editor"
     aria-label="Fiche prospect"
     @pointerdown="activity"
@@ -405,7 +405,7 @@ onBeforeUnmount(() => {
         :disabled="blocked"
         @click="changeFlow('exchange')"
       >
-        <Phone :size="17" />Appel et rappels
+        <Phone :size="17" />Appels et rappels
       </button>
       <button
         :aria-current="flowTab === 'booking' ? 'page' : undefined"
@@ -536,6 +536,7 @@ onBeforeUnmount(() => {
           @qualify="changeFlow('booking')"
           @review="flowTab = 'exchange'"
           @saved="emit('changed')"
+          @advance="close"
         />
       </div>
       <div v-show="flowTab === 'contact'" class="drawer-view">

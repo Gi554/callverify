@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
 import AssuranceAppointmentNotifications from './AssuranceAppointmentNotifications.vue';
+import AdvisorBookingLink from './AdvisorBookingLink.vue';
 import { loadQuotas, type AdvisorQuota } from './advisor-quota';
 import ProspectExport from './ProspectExport.vue';
 import { appointmentStatus, appointmentStatusLabels, appointmentTone } from './appointment-status';
@@ -288,6 +289,10 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section class="appointment-calendar">
+    <details v-if="assurance && role === 'advisor'">
+      <summary>Mon lien de réservation</summary>
+      <AdvisorBookingLink :request="request" />
+    </details>
     <AssuranceAppointmentNotifications
       v-if="assurance && role === 'advisor'"
       :request="request"
@@ -339,7 +344,11 @@ onBeforeUnmount(() => {
         path="contacts/export/"
         label="Mes prospects"
       />
-      <button v-if="canBook && !listView" class="calendar-new" @click="creating = true">
+      <button
+        v-if="canBook && !listView"
+        class="calendar-new"
+        @click="assurance ? emit('navigate', 'contacts') : (creating = true)"
+      >
         <Plus :size="16" />Réserver un {{ assurance ? 'rendez-vous' : 'créneau' }}
       </button>
     </header>

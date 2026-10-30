@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { bookingInterval } from './booking-time';
 import { Phone, Plus, CheckCircle2 } from 'lucide-vue-next';
 const props = defineProps<{
@@ -16,6 +16,7 @@ const emit = defineEmits<{
   saved: [];
   qualify: [];
   review: [];
+  advance: [];
 }>();
 const result = ref(''),
   note = ref(''),
@@ -37,12 +38,16 @@ const result = ref(''),
 const labels: Record<string, string> = {
   appointment_booked: 'Rendez-vous pris',
   voicemail: 'Répondeur',
-  invalid_number: 'Numéro invalide',
+  invalid_number: 'Numéro non attribué',
   disconnected: 'Appel coupé',
   not_interested: 'Pas intéressé',
   callback: 'A demandé à être rappelé',
   unreachable: 'Injoignable',
+  other: 'Autre résultat',
 };
+const resultChoices = Object.fromEntries(
+  Object.entries(labels).filter(([key]) => key !== 'unreachable'),
+);
 let outcomeId = crypto.randomUUID(),
   taskId = crypto.randomUUID();
 const dirty = computed(
@@ -58,6 +63,10 @@ function changed() {
   outcomeId = crypto.randomUUID();
   message.value = '';
   pendingAppointment.value = null;
+  if (result.value !== 'callback') {
+    note.value = '';
+    due.value = '';
+  }
   if (result.value === 'appointment_booked') emit('qualify');
 }
 function outcomeEdited() {
@@ -97,6 +106,8 @@ async function run(action: () => Promise<void>) {
   }
 }
 async function record(appointmentId?: number) {
+  const quick = ['voicemail', 'invalid_number', 'disconnected'].includes(result.value);
+  let saved = false;
   await run(async () => {
     await props.prepare();
     const body: any = {
@@ -120,8 +131,13 @@ async function record(appointmentId?: number) {
     taskPage.value = 1;
     message.value = 'Résultat enregistré dans l’historique du contact.';
     emit('saved');
+    saved = true;
     await load();
   });
+  if (saved && quick) {
+    await nextTick();
+    emit('advance');
+  }
 }
 async function booked(row: any) {
   if (row.call_outcome_recorded) {
@@ -170,7 +186,7 @@ onMounted(refresh);
     <header>
       <span class="outcome-symbol"><Phone :size="19" /></span>
       <div>
-        <h3>Résultat de l’échange</h3>
+        <h3>Résultat de l’appel</h3>
         <p>Ce que vous avez constaté pendant votre appel.</p>
       </div>
     </header>
@@ -183,10 +199,12 @@ onMounted(refresh);
         <label
           >Résultat de l’appel<select v-model="result" required @change="changed">
             <option value="">Choisir le résultat</option>
-            <option v-for="(label, key) in labels" :key="key" :value="key">{{ label }}</option>
+            <option v-for="(label, key) in resultChoices" :key="key" :value="key">
+              {{ label }}
+            </option>
           </select></label
-        ><label
-          >Note complémentaire<textarea
+        ><label v-if="result === 'callback'"
+          >Note du rappel (facultative)<textarea
             v-model="note"
             maxlength="3000"
             placeholder="Quelques mots pour garder le contexte…"
@@ -200,8 +218,8 @@ onMounted(refresh);
             @input="outcomeEdited"
         /></label>
         <p v-if="result === 'appointment_booked'" class="outcome-hint">
-          Complétez la qualification, puis réservez dans l’onglet Rendez-vous. Le résultat sera
-          enregistré après la réservation.
+          Réservez via le lien du conseiller puis complétez « Qualification et rendez-vous ». Le
+          résultat sera enregistré avec la transmission.
         </p>
         <button
           v-if="result !== 'appointment_booked' || pendingAppointment"
@@ -209,7 +227,11 @@ onMounted(refresh);
           :disabled="!result"
         >
           {{
-            result === 'callback' ? 'Enregistrer et créer le rappel' : 'Enregistrer le résultat'
+            result === 'callback'
+              ? 'Enregistrer et créer le rappel'
+              : ['voicemail', 'invalid_number', 'disconnected'].includes(result)
+                ? 'Enregistrer et passer au suivant'
+                : 'Enregistrer le résultat'
           }}</button
         ><button v-else type="button" class="secondary" @click="emit('qualify')">
           Compléter la qualification
@@ -229,9 +251,8 @@ onMounted(refresh);
         <label
           >Date et heure · Montréal<input v-model="taskDue" type="datetime-local" required /></label
         ><label
-          >Note du rappel<textarea
+          >Note du rappel (facultative)<textarea
             v-model="taskNote"
-            required
             maxlength="3000"
             placeholder="Que faudra-t-il faire ?"
           ></textarea></label

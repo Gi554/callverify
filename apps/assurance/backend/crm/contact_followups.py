@@ -36,7 +36,7 @@ class Strict(serializers.Serializer):
 
 class TaskFields(Strict):
     due_at = serializers.DateTimeField()
-    reason = serializers.CharField(max_length=3000)
+    reason = serializers.CharField(max_length=3000, allow_blank=True, default='')
     priority = serializers.ChoiceField(
         choices=['low', 'normal', 'high', 'urgent'], default='normal'
     )
