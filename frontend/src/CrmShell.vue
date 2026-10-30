@@ -223,10 +223,10 @@ function navigate(id: string) {
           :aria-current="active === item.id && !accountOpen && !accessOpen ? 'page' : undefined"
           @click="navigate(item.id)"
         >
-          <Home v-if="item.id === 'overview' && !simple" :size="26" /><component
+          <Home v-if="item.id === 'overview' && !simple" :size="19" /><component
             v-else
             :is="icons[item.icon] || ContactRound"
-            :size="26"
+            :size="19"
           /><span>{{ setterLabel(item) }}</span>
         </button>
       </nav>
@@ -239,7 +239,7 @@ function navigate(id: string) {
           :aria-current="active === item.id && !accountOpen && !accessOpen ? 'page' : undefined"
           @click="navigate(item.id)"
         >
-          <component :is="icons[item.icon] || BarChart3" :size="26" /><span>{{
+          <component :is="icons[item.icon] || BarChart3" :size="19" /><span>{{
             setterLabel(item)
           }}</span></button
         ><button
@@ -251,7 +251,7 @@ function navigate(id: string) {
             mobile = false;
           "
         >
-          <Users :size="26" /><span>Utilisateurs et accès</span>
+          <Users :size="19" /><span>Utilisateurs et accès</span>
         </button>
       </div>
     </aside>
@@ -909,7 +909,7 @@ function navigate(id: string) {
 <style scoped>
 .setter-shell.crm-connected {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: 216px minmax(0, 1fr);
   grid-template-rows: 78px 1fr;
   border: 0;
   background: #fff;
@@ -930,28 +930,28 @@ function navigate(id: string) {
 .setter-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
-  width: 200px;
+  gap: 8px;
+  width: 192px;
   flex-shrink: 0;
   color: #fff;
   text-decoration: none;
   background: #112330;
 }
 .setter-brand svg {
-  width: 43px;
-  height: 43px;
+  width: 34px;
+  height: 34px;
 }
 .setter-brand strong {
-  font-size: 31px;
+  font-size: 25px;
   letter-spacing: 1px;
   line-height: 1;
 }
 .setter-brand small {
   display: block;
   color: #b6c6d8;
-  letter-spacing: 5px;
-  font-size: 10px;
-  margin-top: 4px;
+  letter-spacing: 4px;
+  font-size: 9px;
+  margin-top: 3px;
 }
 .setter-search {
   display: flex;
@@ -1082,7 +1082,7 @@ function navigate(id: string) {
   grid-row: 2;
   background: #112330;
   color: white;
-  padding: 15px 13px;
+  padding: 10px 8px;
   position: sticky;
   top: 78px;
   height: calc(100dvh - 78px);
@@ -1092,20 +1092,20 @@ function navigate(id: string) {
 .setter-sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 2px;
 }
 .setter-sidebar button {
   display: flex;
   align-items: center;
-  gap: 19px;
-  min-height: 58px;
+  gap: 11px;
+  min-height: 38px;
   width: 100%;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   background: none;
   color: #f2f5f8;
-  padding: 14px;
-  font-size: 15px;
+  padding: 8px 10px;
+  font-size: 13.5px;
   text-align: left;
   cursor: pointer;
 }
@@ -1147,12 +1147,12 @@ function navigate(id: string) {
 }
 .setter-statistics {
   border-top: 1px solid #43515f;
-  margin: 24px 12px 0;
-  padding-top: 22px;
+  margin: 10px 6px 0;
+  padding-top: 10px;
 }
 .setter-statistics button {
   padding-left: 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 .setter-group-label {
   margin: 0 0 6px;
@@ -1163,8 +1163,8 @@ function navigate(id: string) {
   text-transform: uppercase;
 }
 .admin-shell .setter-statistics button {
-  min-height: 48px;
-  padding-left: 14px;
+  min-height: 34px;
+  padding-left: 10px;
 }
 .setter-stage {
   grid-column: 2;
