@@ -114,7 +114,7 @@ function fixture({ role = 'setter', workspace = 'assurance', options, contacts =
     request: async (path, body) => {
       requests.push(path)
       if (body) bodies.push(body)
-      if (path === 'contacts/quick-call/') return { id: 77, created: true }
+      if (path.endsWith('/quick-call/')) return { id: 77, created: true }
       return { results: contacts }
     },
     portal: async (path) => {
@@ -178,11 +178,16 @@ test('Assurance dials a typed number directly through its file', async () => {
   }
 })
 
-test('Isolation has no direct dial button and a name is never dialed', async () => {
+test('Isolation dials a typed number through the work queue and a name is never dialed', async () => {
   const f = fixture({ workspace: 'isolation', options: { enabled: true, post_associated: true } })
   try {
     await flush()
-    assert.equal(button(f, /Appeler ce numéro/), undefined)
+    for (const key of '4165550123') button(f, new RegExp(`^${key}$`)).props.onClick()
+    await flush()
+    button(f, /Appeler ce numéro/).props.onClick()
+    await flush()
+    assert.deepEqual(f.requests, ['work-queue/quick-call/'])
+    assert.deepEqual(f.opened, [{ id: 77, mode: 'call' }])
   } finally {
     f.close()
   }

@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Composeur : appel d’un numéro saisi aussi en Isolation
+
+Le composeur d’Isolation fonctionne désormais comme celui d’Assurance : « Appeler ce numéro » retrouve le prospect qui porte ce numéro ou en crée un dans une campagne technique « Appels directs », confié à la personne qui compose, puis ouvre le parcours d’appel habituel. Le prospect créé à la main est marqué appelable (« Appel libre : numéro composé par l’utilisateur ») : c’est un choix assumé, car sinon aucun numéro tapé ne pourrait partir. Refus avec message : numéro de la liste d’exclusion, prospect d’un autre setter, prospect existant en attente d’autorisation d’appel d’un administrateur, numéro non nord-américain. Le champ de saisie a la même présentation dans les deux espaces ; « Trouver la fiche » reste disponible.
+
+Limites : aucun contrôle de consentement ni de vérification de ligne pour un appel libre, seulement les règles d’appel (heures, liste d’exclusion) ; non essayé dans un navigateur ; revue visuelle reportée à la revue finale.
+
 ## Composeur : appeler un numéro saisi (Assurance)
 
 Dans « Appels → Composer », le setter ou l’administrateur Assurance compose un numéro au clavier (ou le tape) et clique sur « Appeler ce numéro » au lieu de chercher une fiche. Le CRM retrouve la fiche qui porte ce numéro, quel que soit son format, ou en crée une vide (créée par la personne, tracée dans l’audit), puis ouvre le parcours d’appel habituel : prise en charge de la fiche, confirmation ou décroché automatique, heures autorisées, liste d’exclusion, qualification et historique restent rattachés à un dossier. Si le numéro appartient à la fiche d’un autre setter, l’appel est refusé avec un message ; une fiche créée à la main reste visible de son auteur même quand les lots sont actifs. « Trouver la fiche » reste disponible pour chercher par nom.
