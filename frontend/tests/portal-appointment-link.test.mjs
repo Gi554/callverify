@@ -67,7 +67,6 @@ const renderer = createRenderer({
   },
 })
 const all = (n) => [n, ...(n.children || []).flatMap(all)]
-const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
 async function flush() {
   for (let i = 0; i < 5; i++) {
     await nextTick()
