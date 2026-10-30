@@ -331,8 +331,7 @@ onBeforeUnmount(() => {
         >
           <PhoneForwarded :size="16" />Lancer une session d’appels
         </button>
-        <a class="secondary" href="/crm?simulation=appel">Simuler un appel</a
-        ><button
+        <button
           v-if="role === 'administrator'"
           class="secondary"
           :aria-expanded="lotsOpen"
