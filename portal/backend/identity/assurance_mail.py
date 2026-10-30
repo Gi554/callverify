@@ -98,11 +98,20 @@ def sync(stream='incidents'):
         created = parse_datetime(event.get('created_at', ''))
         if created is None or timezone.is_naive(created):
             raise ValueError('Invalid event date')
-        prepared.append((event_id, user_id, created, role))
+        appointment = None
+        if stream == 'reminders' and event.get('kind') == 'report_missing':
+            appointment = event.get('appointment_id')
+            if (
+                role != 'advisor'
+                or type(appointment) is not int
+                or not 0 < appointment <= 9223372036854775807
+            ):
+                raise ValueError('Invalid appointment reminder')
+        prepared.append((event_id, user_id, created, role, appointment))
         previous = event_id
     counts = {'queued': 0, 'already_queued': 0, 'skipped': 0}
     expanded = []
-    for event_id, user_id, created, role in prepared:
+    for event_id, user_id, created, role, appointment in prepared:
         recipients = (
             Membership.objects.filter(
                 workspace='assurance', role='administrator', active=True, user__is_active=True
@@ -112,12 +121,15 @@ def sync(stream='incidents'):
             if stream == 'escalations'
             else [user_id]
         )
-        expanded.extend((event_id, recipient, created, role) for recipient in recipients)
-    for event_id, user_id, created, role in expanded:
+        expanded.extend(
+            (event_id, recipient, created, role, appointment) for recipient in recipients
+        )
+    for event_id, user_id, created, role, appointment in expanded:
         with transaction.atomic():
             user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
             if (
                 not user
+                or user.email.lower().endswith('.invalid')
                 or not Membership.objects.filter(
                     user=user, workspace='assurance', role=role, active=True
                 ).exists()
@@ -155,18 +167,33 @@ def sync(stream='incidents'):
                 'escalations': 'Une situation attend votre supervision',
             }[stream]
             notice = 'La lecture de cet e-mail ne clôture aucune tâche et ne renseigne aucun compte rendu. Retrouvez les détails uniquement après connexion à votre espace autorisé.'
+            url = f'{public_url()}/crm'
+            action = 'Consulter mon espace'
+            if appointment:
+                title = 'Un petit retour sur votre rendez-vous ?'
+                intro = (
+                    'Votre rendez-vous est terminé et son résultat reste à renseigner. '
+                    'Quand vous avez un instant, indiquez si votre contact était présent, '
+                    'si une vente ou un contrat a été conclu, et ajoutez vos notes utiles.'
+                )
+                action = 'Renseigner le rendez-vous'
+                url += f'?workspace=assurance&appointment={appointment}'
+                notice = (
+                    'Une seule relance est prévue pour ce rendez-vous. '
+                    'Si vous venez de renseigner le résultat, vous pouvez ignorer cet e-mail. '
+                    'Le lien ouvre votre espace sécurisé ; aucune réponse n’est enregistrée automatiquement.'
+                )
             relay.mail = enqueue(
                 user=user,
                 workspace='assurance',
                 subject=f'Orvia CRM · Assurance — {title}',
-                body=f'Bonjour,\n\n{intro}\nConnectez-vous au CRM pour consulter vos notifications, rendez-vous et tâches.\n\n{public_url()}/crm\n\n{notice}\n\nOrvia CRM',
+                body=f'Bonjour,\n\n{intro}\n\n{action} : {url}\n\n{notice}\n\nOrvia CRM',
                 html=layout(
                     title=title,
-                    intro=intro
-                    + ' Connectez-vous pour consulter vos notifications, rendez-vous et tâches.',
-                    action='Consulter mon espace',
+                    intro=intro,
+                    action=action,
                     name=user.get_username(),
-                    url=f'{public_url()}/crm',
+                    url=url,
                     notice=notice,
                     details=(('Espace', 'Assurance'),),
                 ),

@@ -117,16 +117,12 @@ onUnmounted(() => {
           min="0"
           max="720"
           required
-          :disabled="busy" /></label
-      ><label
-        >Intervalle des comptes rendus (heures)<input
-          v-model.number="rules.report_interval_hours"
-          type="number"
-          min="1"
-          max="720"
-          required
           :disabled="busy"
       /></label>
+      <p>
+        Une seule relance par rendez-vous sans compte rendu, une heure après sa fin par défaut. Les
+        rendez-vous annulés ou déjà renseignés ne sont pas relancés.
+      </p>
       <h4>Escalades administrateur</h4>
       <p>
         Désactivées initialement. Les seuils s’ajoutent à l’échéance de la tâche ou au délai initial

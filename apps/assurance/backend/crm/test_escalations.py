@@ -81,7 +81,7 @@ class EscalationTests(TestCase):
         self.rules()
         now = timezone.now()
         Appointment.objects.update(
-            starts_at=now - timedelta(hours=27), ends_at=now - timedelta(hours=26)
+            starts_at=now - timedelta(hours=4), ends_at=now - timedelta(hours=3)
         )
         generate()
         self.assertEqual(active().filter(kind='report_escalation').count(), 0)

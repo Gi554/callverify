@@ -1,5 +1,36 @@
 # Suivi des livraisons CRM AMX
 
+## Relance douce du conseiller après un rendez-vous Assurance
+
+Un compte rendu manquant déclenche une seule relance au conseiller assigné, une heure après
+la **fin** du rendez-vous par défaut. L’e-mail invite à indiquer présence/absence, vente ou
+contrat conclu et notes ; son bouton ouvre directement le panneau du rendez-vous, même
+dans un mois passé et après une connexion avec plusieurs espaces autorisés.
+L’ouverture du lien ne modifie aucune donnée et les permissions habituelles s’appliquent.
+
+Les workers existants génèrent le rappel, le transmettent au portail puis l’envoient via
+la file SMTP. L’éligibilité est revérifiée avant l’envoi : compte rendu déjà saisi,
+annulation, report du créneau ou changement de conseiller rendent l’ancien rappel caduc.
+L’identité persistante empêche une nouvelle relance du même créneau au même conseiller,
+y compris après changement de politique ; une reprogrammation constitue un nouveau créneau.
+Les adresses de démonstration en `.invalid` sont exclues du relais.
+
+L’activation de la migration démarre aux rendez-vous se terminant après son passage pour
+les politiques existantes, sans relancer le stock historique. Les tâches et escalades
+administrateur conservent leurs règles ; les escalades ne sont pas activées par cette livraison.
+L’administration peut suspendre les relances et ajuster le délai initial. Le champ API
+historique `report_interval_hours` reste accepté pour compatibilité, sans répétition des
+relances conseiller.
+
+Vérifications : échéance exacte à une heure, absence de doublons, expiration, politique,
+flux signé, rôle/adresse destinataire, arrêt avant SMTP, lien et maintien après connexion,
+agenda passé et accès refusé ; concurrence des workers dans la CI PostgreSQL.
+Commandes opérateur : `generate_assurance_reminders` (service Assurance),
+`relay_assurance_mail --stream reminders` et `dispatch_portal_mail` (portail), avec les
+settings de chaque service. Limites : traitement à la cadence des workers, puis délai du
+fournisseur mail ; rattrapage limité à sept jours après l’échéance et aucune absence déduite
+automatiquement. Le test SMTP utilise une boîte mémoire, sans envoi réel à un conseiller.
+
 ## Bloc logo aligné sur la barre latérale
 
 Le bloc sombre du logo dépassait la barre latérale resserrée : il gardait l’ancienne largeur de 248 px alors que la colonne est passée à 216 px. Il fait maintenant exactement 216 px et son logo est plus petit (icône 28 px, « Orvia » 21 px). L’en-tête passe de 78 à 64 px de haut (barre latérale et zone de travail suivent), et le tiroir mobile fait aussi 216 px.

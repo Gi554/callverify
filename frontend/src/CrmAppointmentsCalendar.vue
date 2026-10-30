@@ -31,6 +31,7 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
   username?: string;
+  appointmentId?: number | null;
 }>();
 const emit = defineEmits<{ navigate: [value: string]; changed: [] }>();
 const zone = ref('America/Toronto'),
@@ -239,6 +240,24 @@ function closeDetail() {
   void loadOwnQuota();
 }
 watch([month, zone, status, member], load, { immediate: true });
+// An e-mail opens this exact meeting, including a past month. The API scopes access.
+let focusVersion = 0;
+watch(
+  () => props.appointmentId,
+  async (id) => {
+    const version = ++focusVersion;
+    if (!id || !assurance.value || props.role !== 'advisor') return;
+    try {
+      const row = await props.request(`appointments/${id}/`);
+      if (version !== focusVersion) return;
+      month.value = dayKey(new Date(row.starts_at), zone.value).slice(0, 7);
+      open(row);
+    } catch (e: any) {
+      if (version === focusVersion) error.value = e.message;
+    }
+  },
+  { immediate: true },
+);
 // The advisor's countdown: prospects still owed to their client out of the quota.
 const ownQuota = ref<AdvisorQuota | null>(null);
 async function loadOwnQuota() {

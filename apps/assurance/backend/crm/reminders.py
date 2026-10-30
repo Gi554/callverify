@@ -55,7 +55,7 @@ def active():
             task__setter_id=F('recipient_id'),
         )
     if rules.reports_enabled:
-        conditions |= Q(
+        reports = Q(
             kind='report_missing',
             appointment__status='scheduled',
             appointment__report__isnull=True,
@@ -63,6 +63,9 @@ def active():
             appointment__ends_at__lte=now - timedelta(hours=rules.report_grace_hours),
             appointment__advisor_id=F('recipient_id'),
         )
+        if rules.report_reminders_from:
+            reports &= Q(appointment__ends_at__gte=rules.report_reminders_from)
+        conditions |= reports
     if rules.escalations_enabled and rules.tasks_enabled:
         conditions |= Q(
             kind='task_escalation',
@@ -162,9 +165,21 @@ def generate():
                 if start > now:
                     continue
                 period = int((now - start).total_seconds() // (interval * 3600))
-                key = hashlib.sha256(
-                    f'{kind}:{pk}:{recipient}:{anchor.isoformat()}:{rules.revision}:{period}'.encode()
-                ).hexdigest()
+                if kind == 'report_missing':
+                    # One gentle nudge per meeting/recipient, even across policy revisions.
+                    # Do not mail a backlog on activation or after a prolonged outage.
+                    if rules.report_reminders_from and anchor < rules.report_reminders_from:
+                        continue
+                    valid_until = start + timedelta(days=7)
+                    if valid_until <= now:
+                        continue
+                    identity = f'{kind}:{pk}:{recipient}:{anchor.isoformat()}:once'
+                else:
+                    valid_until = start + timedelta(hours=interval * (period + 1))
+                    identity = (
+                        f'{kind}:{pk}:{recipient}:{anchor.isoformat()}:{rules.revision}:{period}'
+                    )
+                key = hashlib.sha256(identity.encode()).hexdigest()
                 event, created = ReminderEvent.objects.get_or_create(
                     event_key=key,
                     defaults={
@@ -175,7 +190,7 @@ def generate():
                         'recipient_role': role,
                         'anchor_at': anchor,
                         'policy_revision': rules.revision,
-                        'valid_until': start + timedelta(hours=interval * (period + 1)),
+                        'valid_until': valid_until,
                     },
                 )
                 counts['created' if created else 'existing'] += 1
