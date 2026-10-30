@@ -11,7 +11,8 @@ from django.core import signing
 from django.utils import timezone
 from .leases import held
 from .agreements import lock_contact
-from .models import BusinessAudit
+from .models import BusinessAudit, Contact
+from .visibility import visible_contacts
 from packages.access.history_actions import HistoryMixin
 
 
@@ -38,8 +39,55 @@ def dial_number(raw):
     return digits
 
 
+class QuickCall(serializers.Serializer):
+    phone = serializers.CharField(max_length=40)
+
+    def validate(self, data):
+        if set(self.initial_data) - set(self.fields):
+            raise ValidationError('Seul le numéro est accepté.')
+        return data
+
+
+def same_number(contact, digits):
+    try:
+        return dial_number(contact.phone) == digits
+    except ValidationError:
+        return False
+
+
 class PhoneCallMixin(HistoryMixin):
     history_workspace = 'assurance'
+
+    @action(detail=False, methods=['post'], url_path='quick-call')
+    def quick_call(self, request):
+        """Dial pad: the file holding this number, or a new one, so the call stays on a file."""
+        if request.user.role not in ('setter', 'administrator'):
+            raise PermissionDenied('Seul un setter ou administrateur peut composer un numéro.')
+        serializer = QuickCall(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        raw = serializer.validated_data['phone'].strip()
+        digits = dial_number(raw)
+        national = digits[1:]
+        with transaction.atomic():
+            candidates = Contact.objects.filter(phone__contains=national[-4:])
+            known = [row for row in candidates if same_number(row, digits)]
+            mine = [
+                row for row in known if visible_contacts(request.user).filter(pk=row.pk).exists()
+            ]
+            if mine:
+                return Response({'id': mine[0].pk, 'created': False})
+            if known:
+                raise PermissionDenied(
+                    'Ce numéro correspond à une fiche confiée à un autre setter.'
+                )
+            contact = Contact.objects.create(name='', phone=raw, created_by_id=request.user.pk)
+            BusinessAudit.objects.create(
+                actor_id=request.user.pk,
+                object_id=contact.pk,
+                action='contact.quick_call_created',
+                metadata={},
+            )
+        return Response({'id': contact.pk, 'created': True}, status=201)
 
     @action(detail=True, methods=['post'], url_path='call-intent')
     def call_intent(self, request, pk=None):

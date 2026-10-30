@@ -124,3 +124,61 @@ class CallIntentTests(TestCase):
         )
         self.contact.refresh_from_db()
         self.assertEqual(self.contact.created_by_id, 21)
+
+
+@override_settings(DEBUG=True)
+class QuickCallTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = '/api/assurance/contacts/quick-call/'
+
+    def auth(self, pk, role):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + ticket(pk, 'assurance', role))
+
+    def dial(self, phone):
+        return self.client.post(self.url, {'phone': phone}, format='json')
+
+    def test_unknown_number_creates_a_file_and_is_audited(self):
+        self.auth(21, 'setter')
+        response = self.dial('514 555 0101')
+        self.assertEqual((response.status_code, response.data['created']), (201, True))
+        contact = Contact.objects.get(pk=response.data['id'])
+        self.assertEqual(
+            (contact.phone, contact.created_by_id, contact.name), ('514 555 0101', 21, '')
+        )
+        self.assertTrue(BusinessAudit.objects.filter(action='contact.quick_call_created').exists())
+
+    def test_known_number_in_another_format_reuses_the_file(self):
+        known = Contact.objects.create(name='Alice', phone='+1 (514) 555-0101', created_by_id=1)
+        self.auth(21, 'setter')
+        response = self.dial('5145550101')
+        self.assertEqual(
+            (response.status_code, response.data), (200, {'id': known.pk, 'created': False})
+        )
+        self.assertEqual(Contact.objects.count(), 1)
+
+    def test_number_of_another_setters_lot_is_refused_but_own_creation_stays_visible(self):
+        Contact.objects.create(
+            name='Bob', phone='514-555-0102', created_by_id=1, assigned_setter_id=22
+        )
+        self.auth(21, 'setter')
+        self.assertEqual(self.dial('514 555 0102').status_code, 403)
+        created = self.dial('514 555 0103').data['id']
+        listing = self.client.get('/api/assurance/contacts/').json()
+        self.assertEqual([row['id'] for row in listing['results']], [created])
+
+    def test_invalid_number_and_other_roles_are_refused(self):
+        self.auth(21, 'setter')
+        self.assertEqual(self.dial('555-0101').status_code, 400)
+        self.assertEqual(self.dial('abc').status_code, 400)
+        self.assertEqual(
+            self.client.post(self.url, {'phone': '5145550101', 'x': 1}, format='json').status_code,
+            400,
+        )
+        self.auth(31, 'advisor')
+        self.assertEqual(self.dial('5145550101').status_code, 403)
+        self.assertEqual(Contact.objects.count(), 0)
+
+    def test_administrator_can_dial_a_number_too(self):
+        self.auth(1, 'administrator')
+        self.assertEqual(self.dial('819 555 0104').status_code, 201)

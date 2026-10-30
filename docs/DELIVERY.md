@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Composeur : appeler un numéro saisi (Assurance)
+
+Dans « Appels → Composer », le setter ou l’administrateur Assurance compose un numéro au clavier (ou le tape) et clique sur « Appeler ce numéro » au lieu de chercher une fiche. Le CRM retrouve la fiche qui porte ce numéro, quel que soit son format, ou en crée une vide (créée par la personne, tracée dans l’audit), puis ouvre le parcours d’appel habituel : prise en charge de la fiche, confirmation ou décroché automatique, heures autorisées, liste d’exclusion, qualification et historique restent rattachés à un dossier. Si le numéro appartient à la fiche d’un autre setter, l’appel est refusé avec un message ; une fiche créée à la main reste visible de son auteur même quand les lots sont actifs. « Trouver la fiche » reste disponible pour chercher par nom.
+
+Limites : Isolation inchangé (un appel Isolation exige une fiche dont la conformité est validée, donc pas d’appel libre) ; l’appel libre ne vérifie pas de consentement : seules les règles d’appel s’appliquent ; non essayé dans un navigateur ; revue visuelle reportée à la revue finale.
+
 ## Décroché automatique du poste (option NEWT, désactivée par défaut)
 
 NEWT (Phonetico) a confirmé par e-mail que le décroché automatique fonctionne dans le logiciel de bureau, après redémarrage du logiciel, et dans l’application mobile. Le CRM sait désormais envoyer le paramètre `_a=Y` avec la commande d’appel : le poste du setter décroche tout seul et le prospect est composé immédiatement, sans geste du setter, y compris dans une session d’appels enchaînés. Le réglage `NEWT_AUTO_ANSWER` (défaut `false`) s’active dans le `.env` du serveur, puis un redéploiement ; il vaut pour Assurance et Isolation. Les garde-fous (heures, liste d’exclusion, 60 secondes entre deux commandes) s’appliquent avant l’envoi.

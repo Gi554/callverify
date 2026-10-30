@@ -105,13 +105,16 @@ const call = (id, label, state, username = 'setter.demo01') => ({
 function fixture({ role = 'setter', workspace = 'assurance', options, contacts = [], calls = [] }) {
   const root = { children: [] },
     requests = [],
+    bodies = [],
     portals = [],
     opened = []
   const app = renderer.createApp(component, {
     workspace,
     role,
-    request: async (path) => {
+    request: async (path, body) => {
       requests.push(path)
+      if (body) bodies.push(body)
+      if (path === 'contacts/quick-call/') return { id: 77, created: true }
       return { results: contacts }
     },
     portal: async (path) => {
@@ -125,7 +128,7 @@ function fixture({ role = 'setter', workspace = 'assurance', options, contacts =
     onOpenProspect: (value) => opened.push(value),
   })
   app.mount(root)
-  return { root, requests, portals, opened, close: () => app.unmount() }
+  return { root, requests, bodies, portals, opened, close: () => app.unmount() }
 }
 const button = (f, match) =>
   all(f.root).find((n) => n.tag === 'button' && match.test(text(n).trim()))
@@ -148,13 +151,49 @@ test('the dialer finds the prospect card and launches the call from it', async (
     button(f, /Trouver la fiche/).props.onClick()
     await flush()
     assert.deepEqual(f.requests, ['contacts/?search=514'])
-    const calls = all(f.root).filter((n) => n.tag === 'button' && /Appeler/.test(text(n)))
+    const calls = all(f.root).filter((n) => n.tag === 'button' && /^Appeler$/.test(text(n).trim()))
     assert.equal(calls.length, 2)
     assert.equal(calls[1].props.disabled, true)
     calls[0].props.onClick()
     assert.deepEqual(f.opened, [{ id: 4, mode: 'call' }])
   } finally {
     f.close()
+  }
+})
+
+test('Assurance dials a typed number directly through its file', async () => {
+  const f = fixture({ options: { enabled: true, post_associated: true } })
+  try {
+    await flush()
+    assert.equal(button(f, /Appeler ce numéro/).props.disabled, true)
+    for (const key of '5145550101') button(f, new RegExp(`^${key}$`)).props.onClick()
+    await flush()
+    button(f, /Appeler ce numéro/).props.onClick()
+    await flush()
+    assert.deepEqual(f.requests, ['contacts/quick-call/'])
+    assert.deepEqual(f.bodies, [{ phone: '5145550101' }])
+    assert.deepEqual(f.opened, [{ id: 77, mode: 'call' }])
+  } finally {
+    f.close()
+  }
+})
+
+test('Isolation has no direct dial button and a name is never dialed', async () => {
+  const f = fixture({ workspace: 'isolation', options: { enabled: true, post_associated: true } })
+  try {
+    await flush()
+    assert.equal(button(f, /Appeler ce numéro/), undefined)
+  } finally {
+    f.close()
+  }
+  const g = fixture({ options: { enabled: true, post_associated: true } })
+  try {
+    await flush()
+    const input = all(g.root).find((n) => n.tag === 'input')
+    input.props.onInput?.({ target: { value: 'Alice' } })
+    assert.equal(button(g, /Appeler ce numéro/).props.disabled, true)
+  } finally {
+    g.close()
   }
 })
 
@@ -280,7 +319,7 @@ test('administrator opens the composer and prepares a call without posting a com
     await flush()
     button(f, /Trouver la fiche/).props.onClick()
     await flush()
-    button(f, /Appeler/).props.onClick()
+    button(f, /^Appeler$/).props.onClick()
     assert.deepEqual(f.opened, [{ id: 4, mode: 'call' }])
     assert.ok(f.portals.every((path) => !path.endsWith('/calls/')))
   } finally {
