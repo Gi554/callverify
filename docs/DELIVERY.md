@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Barre latérale resserrée
+
+La barre latérale du CRM (setters, administrateurs) est plus compacte : colonne de 216 px au lieu de 248 px, entrées de 38 px au lieu de 58 px avec 2 px d’écart au lieu de 9 px, icônes de 19 px au lieu de 26 px, texte de 13,5 px, groupe « Pilotage » resserré (entrées de 34 px), logo du haut légèrement réduit. Toutes les entrées d’un administrateur tiennent ainsi sans défilement sur un écran courant. Aucun changement de contenu ni d’ordre des entrées.
+
+Limites : réglage purement visuel, non vérifié à l’écran par moi (pas de compte de test utilisable dans le navigateur) ; la revue esthétique reste à la revue finale.
+
 ## Retrait de la simulation publique pour les essais téléphoniques réels
 
 Le portail monte exclusivement le CRM authentifié. Les liens « Simuler un appel », la page
