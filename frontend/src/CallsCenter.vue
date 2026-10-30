@@ -27,12 +27,9 @@ const query = ref(''),
   matches = ref<any[] | null>(null),
   searching = ref(false),
   error = ref('');
-// Assurance: a typed number is dialed directly; the CRM finds or creates the file behind it.
+// A typed number is dialed directly; the CRM finds or creates the file behind it.
 const canDial = computed(
-  () =>
-    props.workspace === 'assurance' &&
-    /^\+?[0-9 ().-]+$/.test(query.value.trim()) &&
-    query.value.replace(/\D/g, '').length >= 10,
+  () => /^\+?[0-9 ().-]+$/.test(query.value.trim()) && query.value.replace(/\D/g, '').length >= 10,
 );
 const dialing = ref(false);
 const history = ref<any[]>([]),
@@ -120,7 +117,8 @@ async function dial() {
   dialing.value = true;
   error.value = '';
   try {
-    const result = await props.request('contacts/quick-call/', { phone: query.value.trim() });
+    const path = props.workspace === 'assurance' ? 'contacts' : 'work-queue';
+    const result = await props.request(`${path}/quick-call/`, { phone: query.value.trim() });
     emit('openProspect', { id: result.id, mode: 'call' });
   } catch (e: any) {
     error.value = e.message;
@@ -257,16 +255,8 @@ onMounted(() => {
         <header class="dialer-heading">
           <span class="dialer-symbol"><Phone :size="23" /></span>
           <div>
-            <h2>
-              {{ workspace === 'assurance' ? 'Quel numéro appeler ?' : 'À qui pensez-vous ?' }}
-            </h2>
-            <p>
-              {{
-                workspace === 'assurance'
-                  ? 'Composez un numéro, ou retrouvez un prospect par son nom.'
-                  : 'Retrouvez un prospect par nom ou numéro.'
-              }}
-            </p>
+            <h2>Quel numéro appeler ?</h2>
+            <p>Composez un numéro, ou retrouvez un prospect par son nom.</p>
           </div>
         </header>
         <form class="dialer-input" @submit.prevent="submit">
@@ -292,27 +282,19 @@ onMounted(() => {
             {{ key }}
           </button>
         </div>
-        <button
-          v-if="workspace === 'assurance'"
-          class="primary dialer-search"
-          :disabled="dialing || !canDial"
-          @click="dial"
-        >
+        <button class="primary dialer-search" :disabled="dialing || !canDial" @click="dial">
           <Phone :size="16" />{{ dialing ? 'Ouverture…' : 'Appeler ce numéro' }}
         </button>
         <button
-          :class="workspace === 'assurance' ? 'secondary dialer-search' : 'primary dialer-search'"
+          class="secondary dialer-search"
           :disabled="searching || !query.trim()"
           @click="search"
         >
           <Search :size="16" />{{ searching ? 'Recherche…' : 'Trouver la fiche' }}
         </button>
         <p class="dialer-hint">
-          {{
-            workspace === 'assurance'
-              ? 'Le CRM retrouve la fiche de ce numéro, ou en crée une, puis prépare l’appel : contrôles, qualification et historique restent rattachés à un dossier.'
-              : 'L’appel se lance toujours depuis la fiche du prospect : contrôles, qualification et historique restent rattachés au bon dossier.'
-          }}
+          Le CRM retrouve la fiche de ce numéro, ou en crée une, puis prépare l’appel : contrôles,
+          qualification et historique restent rattachés à un dossier.
         </p>
       </div>
       <aside class="contact-results" aria-live="polite" :aria-busy="searching">
