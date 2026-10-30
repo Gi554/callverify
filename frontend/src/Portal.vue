@@ -34,6 +34,9 @@ import AssuranceReminders from './AssuranceReminders.vue';
 import AssuranceStatistics from './AssuranceStatistics.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
 import { RefreshCw } from 'lucide-vue-next';
+import { appointmentLink } from './appointment-link';
+const pendingAppointment = ref(appointmentLink(new URL(location.href)));
+const appointmentFocus = ref<number | null>(null);
 type Membership = { workspace: string; role: string };
 const user = ref<{
   username: string;
@@ -159,6 +162,15 @@ async function enter(value: string) {
   summary.value = null;
   // Advisors start in their agenda, with their own prospects and availability settings.
   assuranceModule.value = role.value === 'advisor' ? 'appointments' : 'overview';
+  appointmentFocus.value = null;
+  if (value === 'assurance' && pendingAppointment.value && role.value === 'advisor') {
+    appointmentFocus.value = pendingAppointment.value;
+    pendingAppointment.value = null;
+    const url = new URL(location.href);
+    url.searchParams.delete('appointment');
+    url.searchParams.delete('workspace');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
   isolationModule.value = 'overview';
   managing.value = false;
   passwordOpen.value = false;
@@ -194,7 +206,15 @@ async function login(credentials: { username: string; password: string }) {
     csrf = '';
     user.value = authenticated;
     // A single authorised space opens directly; several are listed in « Mes espaces ».
-    if (authenticated.workspaces.length === 1) await enter(authenticated.workspaces[0].workspace);
+    if (
+      pendingAppointment.value &&
+      authenticated.workspaces.some(
+        (m: Membership) => m.workspace === 'assurance' && m.role === 'advisor',
+      )
+    )
+      await enter('assurance');
+    else if (authenticated.workspaces.length === 1)
+      await enter(authenticated.workspaces[0].workspace);
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -381,9 +401,12 @@ onMounted(async () => {
   try {
     user.value = await portal('session/');
     const allowed = user.value?.workspaces.map((item) => item.workspace) || [];
-    const target = [rememberedWorkspace(), user.value?.landing || '', allowed[0] || ''].find(
-      (value) => value && allowed.includes(value),
-    );
+    const target = [
+      pendingAppointment.value ? 'assurance' : '',
+      rememberedWorkspace(),
+      user.value?.landing || '',
+      allowed[0] || '',
+    ].find((value) => value && allowed.includes(value));
     if (target) await enter(target);
   } catch {
   } finally {
@@ -666,6 +689,7 @@ onMounted(async () => {
                     <CrmAppointmentsCalendar
                       v-else-if="['setter', 'administrator', 'advisor'].includes(role)"
                       workspace="assurance"
+                      :appointment-id="appointmentFocus"
                       :request="assurance"
                       :portal="portal"
                       :role="role"

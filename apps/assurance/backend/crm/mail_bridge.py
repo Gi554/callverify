@@ -88,7 +88,9 @@ def reminder_events(request):
         .exclude(recipient_role='administrator')
         .filter(pk__gt=after)
         .order_by('pk')
-        .values('id', 'created_at', 'recipient_id', 'recipient_role')[:100]
+        .values('id', 'created_at', 'recipient_id', 'recipient_role', 'kind', 'appointment_id')[
+            :100
+        ]
     )
     response = Response(
         {
@@ -98,6 +100,8 @@ def reminder_events(request):
                     'created_at': row['created_at'],
                     'recipient_id': row['recipient_id'],
                     'role': row['recipient_role'],
+                    'kind': row['kind'],
+                    'appointment_id': row['appointment_id'],
                 }
                 for row in rows
             ]

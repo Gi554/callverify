@@ -228,6 +228,56 @@ class AssuranceMailTests(TestCase):
             self.assertEqual(dispatch()['expired'], 1)
         self.assertEqual(len(mail.outbox), 0)
 
+    def report_feed(self, appointment=42):
+        self.grant.role = 'advisor'
+        self.grant.save()
+        return {
+            'events': [
+                {
+                    'id': 1,
+                    'recipient_id': self.user.pk,
+                    'role': 'advisor',
+                    'created_at': timezone.now().isoformat(),
+                    'kind': 'report_missing',
+                    'appointment_id': appointment,
+                }
+            ]
+        }
+
+    def test_report_email_opens_exact_appointment_and_is_sent_once(self):
+        events = self.report_feed()
+        with patch('portal.backend.identity.assurance_mail.fetch', return_value=events):
+            self.assertEqual(sync('reminders')['queued'], 1)
+            self.assertEqual(sync('reminders')['already_queued'], 1)
+        with patch('portal.backend.identity.assurance_mail.eligible', return_value=True):
+            self.assertEqual(dispatch()['sent'], 1)
+            self.assertEqual(dispatch()['sent'], 0)
+        self.assertEqual(mail.outbox[0].to, [self.user.email])
+        self.assertIn('/crm?workspace=assurance&appointment=42', mail.outbox[0].body)
+        self.assertIn('Une seule relance', mail.outbox[0].body)
+        self.assertIn('présent', mail.outbox[0].body)
+        self.assertIn('Renseigner le rendez-vous', mail.outbox[0].alternatives[0][0])
+
+    def test_report_email_rechecks_eligibility_before_delivery(self):
+        with patch('portal.backend.identity.assurance_mail.fetch', return_value=self.report_feed()):
+            sync('reminders')
+        with patch('portal.backend.identity.assurance_mail.eligible', return_value=False):
+            self.assertEqual(dispatch()['expired'], 1)
+        self.assertEqual(mail.outbox, [])
+
+    def test_report_feed_rejects_invalid_targets_and_skips_fake_mailboxes(self):
+        for value in ('42&redirect=evil', True, 0, None):
+            with patch(
+                'portal.backend.identity.assurance_mail.fetch', return_value=self.report_feed(value)
+            ):
+                with self.assertRaises(ValueError):
+                    sync('reminders')
+        self.user.email = 'demo@example.invalid'
+        self.user.save()
+        with patch('portal.backend.identity.assurance_mail.fetch', return_value=self.report_feed()):
+            self.assertEqual(sync('reminders')['skipped'], 1)
+        self.assertFalse(PortalMail.objects.exists())
+
     def test_reminder_stream_http_operation_is_separate(self):
         from .assurance_mail import eligible
 

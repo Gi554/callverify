@@ -136,16 +136,27 @@ const isolationRows = [
     closer: null,
   },
 ]
-function fixture({ workspace = 'assurance', role = 'administrator', quota = null } = {}) {
+function fixture({
+  workspace = 'assurance',
+  role = 'administrator',
+  quota = null,
+  appointmentId = null,
+  denied = false,
+} = {}) {
   const root = { children: [] },
     requests = []
   const rows = workspace === 'assurance' ? assuranceRows : isolationRows
   const app = renderer.createApp(component, {
     workspace,
     role,
+    appointmentId,
     username: 'chloe.conseil',
     request: async (path) => {
       requests.push(path)
+      if (/^appointments\/\d+\/$/.test(path)) {
+        if (denied) throw new Error('Rendez-vous inaccessible')
+        return { ...assuranceRows[0], id: appointmentId, starts_at: '2025-02-12T15:00:00Z' }
+      }
       if (path === 'advisor-usage/')
         return { results: [{ advisor_id: 7, booked: 99, attended: 38 }] }
       // Mirrors the API: participant parameters narrow the returned rows.
@@ -282,6 +293,44 @@ test('advisor uses the calendar and its own appointment panel without booking to
       all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAdvisorAppointment'),
     )
     assert.ok(!all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAppointments'))
+  } finally {
+    f.close()
+  }
+})
+
+test('email link opens the exact past meeting; other roles never use this entry', async () => {
+  const f = fixture({ role: 'advisor', appointmentId: 42 })
+  try {
+    await flush()
+    assert.ok(f.requests.includes('appointments/42/'))
+    assert.ok(
+      f.requests.some((path) =>
+        new URLSearchParams(path.split('?')[1]).get('starts_before')?.startsWith('2025-03'),
+      ),
+    )
+    assert.ok(
+      all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAdvisorAppointment'),
+    )
+  } finally {
+    f.close()
+  }
+  const setter = fixture({ role: 'setter', appointmentId: 42 })
+  try {
+    await flush()
+    assert.ok(!setter.requests.includes('appointments/42/'))
+  } finally {
+    setter.close()
+  }
+})
+
+test('an inaccessible meeting cannot open a report panel through an email link', async () => {
+  const f = fixture({ role: 'advisor', appointmentId: 42, denied: true })
+  try {
+    await flush()
+    assert.match(text(f.root), /Rendez-vous inaccessible/)
+    assert.ok(
+      !all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceAdvisorAppointment'),
+    )
   } finally {
     f.close()
   }

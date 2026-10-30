@@ -71,6 +71,10 @@ class ReminderTests(TestCase):
         self.assertEqual(ReminderEvent.objects.count(), 2)
 
     def test_report_grace_and_missing_is_not_negative(self):
+        Appointment.objects.filter(pk=self.appointment.pk).update(
+            starts_at=timezone.now() - timedelta(minutes=45),
+            ends_at=timezone.now() - timedelta(minutes=15),
+        )
         self.assertEqual(generate()['created'], 0)
         self.missing()
         self.assertEqual(generate()['created'], 1)
@@ -183,7 +187,11 @@ class ReminderTests(TestCase):
             HTTP_AUTHORIZATION='Bearer ' + bridge_ticket('reminder_events', after=0)
         )
         data = self.client.get(url).data['events'][0]
-        self.assertEqual(set(data), {'id', 'created_at', 'recipient_id', 'role'})
+        self.assertEqual(
+            set(data), {'id', 'created_at', 'recipient_id', 'role', 'kind', 'appointment_id'}
+        )
+        self.assertEqual(data['kind'], 'report_missing')
+        self.assertEqual(data['appointment_id'], self.appointment.pk)
         self.assertEqual(data['role'], 'advisor')
         self.assertNotIn('SECRET', str(data))
         self.client.credentials(
@@ -205,10 +213,62 @@ class ReminderTests(TestCase):
                 generate()
         self.assertFalse(ReminderEvent.objects.exists())
 
+    def test_report_nudge_one_hour_after_end_only_once(self):
+        now = timezone.now()
+        Appointment.objects.filter(pk=self.appointment.pk).update(
+            starts_at=now - timedelta(hours=2), ends_at=now - timedelta(minutes=59)
+        )
+        with patch('django.utils.timezone.now', return_value=now):
+            self.assertEqual(generate()['created'], 0)
+        with patch('django.utils.timezone.now', return_value=now + timedelta(minutes=1)):
+            self.assertEqual(generate()['created'], 1)
+        with patch('django.utils.timezone.now', return_value=now + timedelta(days=2)):
+            self.assertEqual(generate()['created'], 0)
+            self.assertEqual(generate()['existing'], 1)
+        self.assertEqual(ReminderEvent.objects.count(), 1)
+        self.assertFalse(AppointmentReport.objects.exists())
+
+    def test_no_retrospective_or_expired_report_nudge(self):
+        self.missing()
+        ReminderPolicy.objects.create(pk=1, report_reminders_from=timezone.now())
+        self.assertEqual(generate()['created'], 0)
+        ReminderPolicy.objects.update(report_reminders_from=None)
+        Appointment.objects.update(
+            starts_at=timezone.now() - timedelta(days=10, hours=1),
+            ends_at=timezone.now() - timedelta(days=10),
+        )
+        self.assertEqual(generate()['created'], 0)
+
+    def test_report_nudge_does_not_repeat_after_policy_change(self):
+        self.missing()
+        generate()
+        ReminderPolicy.objects.update(revision=1)
+        self.assertEqual(generate()['created'], 0)
+        self.assertEqual(ReminderEvent.objects.count(), 1)
+
 
 @skipUnless(connection.vendor == 'postgresql', 'Concurrent scheduling requires PostgreSQL')
 @override_settings(DEBUG=True)
 class ReminderConcurrencyTests(TransactionTestCase):
+    def test_two_workers_create_one_advisor_nudge(self):
+        fixture()
+        Appointment.objects.update(
+            starts_at=timezone.now() - timedelta(hours=3),
+            ends_at=timezone.now() - timedelta(hours=2),
+        )
+
+        def attempt(_):
+            close_old_connections()
+            try:
+                return generate()
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(attempt, range(2)))
+        self.assertEqual(sum(row['created'] for row in results), 1)
+        self.assertEqual(ReminderEvent.objects.get().kind, 'report_missing')
+
     def test_two_workers_create_one_current_period_reminder(self):
         source = fixture()
         source.report()
