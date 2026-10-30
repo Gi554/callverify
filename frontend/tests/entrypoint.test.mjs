@@ -42,5 +42,23 @@ test('central OAuth, invitation and recovery tokens survive entry normalization'
 test('the default CRM boot mounts Portal without any legacy bundle entry', () => {
   const entry = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
   assert.match(entry, /createApp\(Portal\)/)
-  assert.doesNotMatch(entry, /App\.vue|Workspace\.vue|isPortal/)
+  assert.doesNotMatch(entry, /App\.vue|Workspace\.vue|isPortal|CallSimulation|simulation/)
+})
+
+test('former simulation links open the authenticated CRM and preserve other parameters', () => {
+  assert.equal(crmEntryRedirect(new URL('https://orvia-crm.com/crm?simulation=appel')), '/crm')
+  assert.equal(
+    crmEntryRedirect(
+      new URL('https://orvia-crm.com/crm?simulation=appel&view=calls#invite=id:token'),
+    ),
+    '/crm?view=calls#invite=id:token',
+  )
+  assert.equal(
+    crmEntryRedirect(
+      new URL(
+        'https://orvia-crm.com/crm/oauth/microsoft?code=opaque&simulation=appel&state=opaque',
+      ),
+    ),
+    '/crm/oauth/microsoft?code=opaque&state=opaque',
+  )
 })

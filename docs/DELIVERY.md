@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Retrait de la simulation publique pour les essais téléphoniques réels
+
+Le portail monte exclusivement le CRM authentifié. Les liens « Simuler un appel », la page
+d’aperçu et son adaptateur en mémoire sont retirés. Un ancien lien `?simulation=appel` est
+nettoyé en conservant les autres paramètres et fragments, puis affiche le CRM normal.
+La modale de décompte des sessions réelles reste disponible avec ses contrôles et son arrêt.
+Vérifications : normalisation des liens, tableaux Assurance/Isolation, navigation, typage,
+lint et build ; CI avant fusion. Aucun appel réel déclenché pendant cette livraison.
+Les associations téléphoniques et secrets de déploiement sont gérés hors Git.
+
 ## Composeur : appel d’un numéro saisi aussi en Isolation
 
 Le composeur d’Isolation fonctionne désormais comme celui d’Assurance : « Appeler ce numéro » retrouve le prospect qui porte ce numéro ou en crée un dans une campagne technique « Appels directs », confié à la personne qui compose, puis ouvre le parcours d’appel habituel. Le prospect créé à la main est marqué appelable (« Appel libre : numéro composé par l’utilisateur ») : c’est un choix assumé, car sinon aucun numéro tapé ne pourrait partir. Refus avec message : numéro de la liste d’exclusion, prospect d’un autre setter, prospect existant en attente d’autorisation d’appel d’un administrateur, numéro non nord-américain. Le champ de saisie a la même présentation dans les deux espaces ; « Trouver la fiche » reste disponible.
