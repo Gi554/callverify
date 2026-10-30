@@ -470,7 +470,7 @@
 .setter-home .crm-connected .crm-stage .amx-main {
   background: radial-gradient(ellipse at 0 0, #e8f1f6 0, transparent 50%),
     linear-gradient(125deg, #f0eef8, #f6efed 58%, #eeeafa);
-  min-height: calc(100dvh - 78px);
+  min-height: calc(100dvh - 64px);
   padding: 30px;
 }
 .setter-home .crm-connected .crm-stage .amx-main > .amx-heading {

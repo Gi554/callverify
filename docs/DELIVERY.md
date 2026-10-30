@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Bloc logo aligné sur la barre latérale
+
+Le bloc sombre du logo dépassait la barre latérale resserrée : il gardait l’ancienne largeur de 248 px alors que la colonne est passée à 216 px. Il fait maintenant exactement 216 px et son logo est plus petit (icône 28 px, « Orvia » 21 px). L’en-tête passe de 78 à 64 px de haut (barre latérale et zone de travail suivent), et le tiroir mobile fait aussi 216 px.
+
+Limites : réglage visuel non vérifié à l’écran par moi ; revue esthétique à la revue finale.
+
 ## Barre latérale resserrée
 
 La barre latérale du CRM (setters, administrateurs) est plus compacte : colonne de 216 px au lieu de 248 px, entrées de 38 px au lieu de 58 px avec 2 px d’écart au lieu de 9 px, icônes de 19 px au lieu de 26 px, texte de 13,5 px, groupe « Pilotage » resserré (entrées de 34 px), logo du haut légèrement réduit. Toutes les entrées d’un administrateur tiennent ainsi sans défilement sur un écran courant. Aucun changement de contenu ni d’ordre des entrées.

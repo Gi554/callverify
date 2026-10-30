@@ -910,7 +910,7 @@ function navigate(id: string) {
 .setter-shell.crm-connected {
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
-  grid-template-rows: 78px 1fr;
+  grid-template-rows: 64px 1fr;
   border: 0;
   background: #fff;
   min-height: 100dvh;
@@ -930,7 +930,7 @@ function navigate(id: string) {
 .setter-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   width: 192px;
   flex-shrink: 0;
   color: #fff;
@@ -938,11 +938,11 @@ function navigate(id: string) {
   background: #112330;
 }
 .setter-brand svg {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
 }
 .setter-brand strong {
-  font-size: 25px;
+  font-size: 21px;
   letter-spacing: 1px;
   line-height: 1;
 }
@@ -950,8 +950,8 @@ function navigate(id: string) {
   display: block;
   color: #b6c6d8;
   letter-spacing: 4px;
-  font-size: 9px;
-  margin-top: 3px;
+  font-size: 8px;
+  margin-top: 2px;
 }
 .setter-search {
   display: flex;
@@ -1084,8 +1084,8 @@ function navigate(id: string) {
   color: white;
   padding: 10px 8px;
   position: sticky;
-  top: 78px;
-  height: calc(100dvh - 78px);
+  top: 64px;
+  height: calc(100dvh - 64px);
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -1259,7 +1259,7 @@ function navigate(id: string) {
     position: fixed;
     top: 68px;
     left: 0;
-    width: 248px;
+    width: 216px;
     height: calc(100dvh - 68px);
     transform: translateX(-100%);
     visibility: hidden;
@@ -1288,11 +1288,12 @@ function navigate(id: string) {
     border-bottom: 0;
     box-shadow: 0 1px 0 #e4eaf1;
   }
+  /* Same width as the sidebar column (216px) so the logo block never overflows it. */
   .setter-header .setter-brand {
     box-sizing: border-box;
-    width: 248px;
+    width: 216px;
     height: 100%;
-    padding: 0 24px;
+    padding: 0 18px;
   }
 }
 @media (max-width: 760px) {
