@@ -225,11 +225,12 @@ class ContactCallOutcome(models.Model):
         choices=[
             ('appointment_booked', 'Rendez-vous pris'),
             ('voicemail', 'Répondeur'),
-            ('invalid_number', 'Numéro invalide'),
+            ('invalid_number', 'Numéro non attribué'),
             ('disconnected', 'Appel coupé'),
             ('not_interested', 'Pas intéressé'),
             ('callback', 'A demandé à être rappelé'),
             ('unreachable', 'Injoignable'),
+            ('other', 'Autre résultat'),
         ],
     )
     note = models.TextField(blank=True)

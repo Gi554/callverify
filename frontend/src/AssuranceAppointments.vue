@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue';
-import { bookingInterval } from './booking-time';
+import { ref, onMounted, computed, watch } from 'vue';
 import { appointmentStatus, appointmentStatusLabels } from './appointment-status';
 import AssuranceQualificationSnapshot from './AssuranceQualificationSnapshot.vue';
-import AvailabilitySlots from './AvailabilitySlots.vue';
-import AssuranceCalendlyBooking from './AssuranceCalendlyBooking.vue';
-import { loadQuotas, quotaText, type AdvisorQuota } from './advisor-quota';
 const props = defineProps<{
   role: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -20,7 +16,6 @@ const props = defineProps<{
   historyOnly?: boolean;
 }>();
 const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; booked: [row: any] }>();
-const bookingMode = ref('internal');
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -30,13 +25,6 @@ const rows = ref<any[]>([]),
   error = ref(''),
   message = ref('');
 watch(busy, (value) => emit('busy', value), { flush: 'sync' });
-// Prospect countdown of each advisor, shown while choosing who receives the appointment.
-const quotas = ref(new Map<number, AdvisorQuota>());
-const choices = ref<any[]>([]),
-  choicePage = ref(1),
-  choiceCount = ref(0),
-  choiceSearch = ref(''),
-  assignment = ref('');
 const incidents = ref<any[]>([]),
   incidentPage = ref(1),
   incidentCount = ref(0),
@@ -60,59 +48,7 @@ const qualificationRow = ref<any>(null);
 const canWrite = computed(
   () => !props.historyOnly && ['setter', 'administrator'].includes(props.role),
 );
-function zonedISO(value: string | Date, zone: string) {
-  const date = new Date(value);
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: zone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  });
-  const parts = Object.fromEntries(
-    formatter.formatToParts(date).map((part) => [part.type, part.value]),
-  );
-  const offset = Math.round(
-    (Date.UTC(
-      +parts.year,
-      +parts.month - 1,
-      +parts.day,
-      +parts.hour,
-      +parts.minute,
-      +parts.second,
-    ) -
-      date.getTime()) /
-      60000,
-  );
-  const sign = offset >= 0 ? '+' : '-';
-  const minutes = Math.abs(offset);
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-}
-const zone = ref('America/Toronto'),
-  start = ref(zonedISO(new Date(Date.now() + 3600000), 'America/Toronto')),
-  end = ref(zonedISO(new Date(Date.now() + 5400000), 'America/Toronto'));
-const localEnd = ref('');
-const localStart = ref(props.compact ? '' : start.value.slice(0, 16)),
-  duration = ref(30),
-  historyVisible = ref(false);
-let requestId = crypto.randomUUID();
-const workingHoursEnabled = ref(false);
-let availabilityVersion = 0;
-function loadBusy(start: string, end: string) {
-  const version = ++availabilityVersion;
-  const query = new URLSearchParams({ assignment_id: assignment.value, start, end });
-  if (props.contactId) query.set('contact_id', String(props.contactId));
-  return props.request(`appointments/availability/?${query}`).then((data: any) => {
-    if (version === availabilityVersion) workingHoursEnabled.value = !!data.working_hours_enabled;
-    return data.busy;
-  });
-}
-function resetId() {
-  requestId = crypto.randomUUID();
-}
+const historyVisible = ref(true);
 function showDate(value: string, rowZone: string) {
   return new Intl.DateTimeFormat('fr-FR', {
     timeZone: rowZone,
@@ -146,87 +82,9 @@ async function load() {
   rows.value = result.results;
   count.value = result.count;
 }
-async function loadChoices() {
-  const result = await props.request(
-    `assignments/?active=true&page=${choicePage.value}&search=${encodeURIComponent(choiceSearch.value)}`,
-  );
-  choices.value = result.results;
-  choiceCount.value = result.count;
-  assignment.value = '';
-  try {
-    quotas.value = await loadQuotas(props.portal, props.request);
-  } catch {
-    quotas.value = new Map();
-  }
-}
-const chosenQuota = computed(() => {
-  const row = choices.value.find((item) => item.id === Number(assignment.value));
-  return row ? quotas.value.get(row.advisor.id) : undefined;
-});
-async function bookingProof(row: any) {
-  return (
-    await props.portal('assurance/booking-proof/', {
-      advisor_id: row.advisor.id,
-      ...(props.role === 'administrator' ? { setter_id: row.setter.id } : {}),
-    })
-  ).proof;
-}
-async function book() {
-  await run(async () => {
-    const selected = choices.value.find((row) => row.id === Number(assignment.value));
-    if (!selected) throw new Error('Choisissez une attribution active.');
-    const interval = props.compact
-      ? bookingInterval(localStart.value, zone.value, duration.value)
-      : { starts_at: start.value, ends_at: end.value, timezone: zone.value };
-    await props.beforeBook?.();
-    await nextTick();
-    const proof = await bookingProof(selected);
-    const bookedRow = await props.request('appointments/', {
-      contact_id: props.contactId,
-      ...(props.contactRevision !== undefined ? { contact_revision: props.contactRevision } : {}),
-      assignment_id: selected.id,
-      ...interval,
-      request_id: requestId,
-      token: props.leaseToken,
-      proof,
-    });
-    emit('booked', bookedRow);
-    requestId = crypto.randomUUID();
-    page.value = 1;
-    await load();
-    message.value =
-      'Rendez-vous réservé dans l’agenda du conseiller. La synchronisation Google ou Microsoft dépend des connexions configurées.';
-  });
-}
 function edit(row: any) {
   editing.value = row;
-  zone.value = row.timezone;
-  start.value = zonedISO(row.starts_at, row.timezone);
-  end.value = zonedISO(row.ends_at, row.timezone);
-  localStart.value = start.value.slice(0, 16);
-  localEnd.value = end.value.slice(0, 16);
   reason.value = '';
-}
-async function reschedule() {
-  await run(async () => {
-    const row = editing.value;
-    const proof = await bookingProof(row);
-    await props.request(`appointments/${row.id}/reschedule/`, {
-      revision: row.revision,
-      starts_at: props.appointmentId
-        ? bookingInterval(localStart.value, zone.value, 30).starts_at
-        : start.value,
-      ends_at: props.appointmentId
-        ? bookingInterval(localEnd.value, zone.value, 30).starts_at
-        : end.value,
-      timezone: zone.value,
-      reason: reason.value,
-      proof,
-    });
-    editing.value = null;
-    await load();
-    message.value = 'Rendez-vous reprogrammé. Ancien créneau conservé dans l’historique.';
-  });
 }
 async function cancel() {
   await run(async () => {
@@ -297,7 +155,6 @@ async function loadHistory() {
 onMounted(() =>
   run(async () => {
     await load();
-    if (canWrite.value && props.contactId) await loadChoices();
   }),
 );
 </script>
@@ -317,200 +174,11 @@ onMounted(() =>
       la rencontre.
     </p>
     <p v-else-if="!appointmentId && !historyOnly" class="subtle">
-      Choisissez un conseiller et un créneau. Les disponibilités sont contrôlées lors de la
-      confirmation.
+      Pour transmettre une nouvelle rencontre, utilisez « Qualification et rendez-vous » dans la
+      fiche du prospect après sa réservation externe.
     </p>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-if="message" role="status" class="booking-feedback">{{ message }}</p>
-    <div v-if="compact && !busy && !error && !choiceCount" class="booking-unavailable">
-      <strong>Aucun conseiller attribué</strong>
-      <p>
-        Aucun conseiller ne vous est encore attribué. L’administration doit vous en attribuer un
-        pour réserver un créneau.
-      </p>
-      <button class="secondary" :disabled="busy" @click="run(loadChoices)">
-        Actualiser les conseillers
-      </button>
-    </div>
-    <button
-      v-if="compact && error"
-      class="secondary"
-      :disabled="busy"
-      @click="
-        run(async () => {
-          await load();
-          await loadChoices();
-        })
-      "
-    >
-      Réessayer
-    </button>
-    <div v-if="canWrite && contactId && leaseToken && !editing" class="appointment-actions">
-      <button
-        type="button"
-        class="secondary"
-        :disabled="busy"
-        :aria-pressed="bookingMode === 'internal'"
-        @click="bookingMode = 'internal'"
-      >
-        Agenda Orvia
-      </button>
-      <button
-        type="button"
-        class="secondary"
-        :disabled="busy"
-        :aria-pressed="bookingMode === 'calendly'"
-        @click="bookingMode = 'calendly'"
-      >
-        Calendly
-      </button>
-    </div>
-    <AssuranceCalendlyBooking
-      v-if="canWrite && contactId && leaseToken && !editing && bookingMode === 'calendly'"
-      :role="role"
-      :contact-id="contactId"
-      :contact-revision="contactRevision"
-      :lease-token="leaseToken"
-      :blocked="blocked"
-      :before-book="beforeBook"
-      :request="request"
-      :portal="portal"
-      @busy="busy = $event"
-      @booked="
-        emit('booked', $event);
-        run(load);
-      "
-    />
-    <template v-if="canWrite && contactId && !editing && bookingMode === 'internal'"
-      ><p v-if="!leaseToken">Prenez en charge la fiche pour réserver un rendez-vous.</p>
-      <form v-else-if="!compact || choiceCount > 0" @submit.prevent="book" @input="resetId">
-        <template v-if="!compact"
-          ><label
-            >Rechercher une attribution<input
-              v-model="choiceSearch"
-              @keydown.enter.prevent="
-                run(async () => {
-                  choicePage = 1;
-                  await loadChoices();
-                })
-              " /></label
-          ><button
-            class="secondary"
-            type="button"
-            :disabled="busy"
-            @click="
-              run(async () => {
-                choicePage = 1;
-                await loadChoices();
-              })
-            "
-          >
-            Rechercher les conseillers attribués
-          </button></template
-        ><label
-          >Conseiller<select v-model="assignment" required :disabled="busy">
-            <option value="">Choisir un conseiller</option>
-            <option v-for="row in choices" :key="row.id" :value="String(row.id)">
-              {{ role === 'administrator' ? row.setter.name + ' → ' : '' }}{{ row.advisor.name
-              }}{{
-                quotaText(quotas.get(row.advisor.id))
-                  ? ' · ' + quotaText(quotas.get(row.advisor.id))
-                  : ''
-              }}
-            </option>
-          </select></label
-        >
-        <p
-          v-if="chosenQuota && chosenQuota.quota != null && !chosenQuota.remaining"
-          class="no-advisor"
-          role="status"
-        >
-          Le nombre de prospects à fournir à ce conseiller ({{ chosenQuota.quota }}) est déjà
-          atteint.
-        </p>
-        <p v-if="compact && !busy && !choiceCount" class="no-advisor">
-          Aucun conseiller ne vous est attribué dans cet espace. Un administrateur doit vous en
-          attribuer un pour réserver.
-        </p>
-        <div class="appointment-actions" v-if="!compact || choiceCount > 25">
-          <button
-            type="button"
-            class="secondary"
-            :disabled="busy || choicePage === 1"
-            @click="
-              run(async () => {
-                choicePage--;
-                await loadChoices();
-              })
-            "
-          >
-            Précédent</button
-          ><span>{{ choiceCount }} attribution(s) · page {{ choicePage }}</span
-          ><button
-            type="button"
-            class="secondary"
-            :disabled="busy || choicePage * 25 >= choiceCount"
-            @click="
-              run(async () => {
-                choicePage++;
-                await loadChoices();
-              })
-            "
-          >
-            Suivant
-          </button>
-        </div>
-        <AvailabilitySlots
-          :full-day="workingHoursEnabled"
-          v-if="compact && assignment"
-          v-model="localStart"
-          :zone="zone"
-          :duration="duration"
-          :disabled="busy || blocked"
-          :load="loadBusy"
-          :load-key="`${assignment}:${contactId}`"
-          label="Disponibilités du conseiller"
-          note="L’agenda Google ou Microsoft du conseiller est vérifié à la confirmation."
-        />
-        <fieldset v-if="compact" class="friendly-slot" :disabled="busy || blocked">
-          <label>Date et heure<input v-model="localStart" type="datetime-local" required /></label
-          ><label
-            >Durée<select v-model.number="duration">
-              <option :value="15">15 minutes</option>
-              <option :value="30">30 minutes</option>
-              <option :value="45">45 minutes</option>
-              <option :value="60">1 heure</option>
-              <option :value="90">1 h 30</option>
-              <option :value="120">2 heures</option>
-            </select></label
-          ><label
-            >Heure du rendez-vous<select v-model="zone">
-              <option value="America/Toronto">Toronto / Montréal</option>
-              <option value="America/Vancouver">Vancouver</option>
-              <option value="America/Edmonton">Edmonton</option>
-              <option value="America/Winnipeg">Winnipeg</option>
-              <option value="America/Halifax">Halifax</option>
-              <option value="America/St_Johns">Saint-Jean</option>
-            </select></label
-          >
-        </fieldset>
-        <template v-else
-          ><label
-            >Début avec décalage horaire<input
-              v-model="start"
-              placeholder="2026-10-21T10:00:00-04:00"
-              required /></label
-          ><label>Fin avec décalage horaire<input v-model="end" required /></label
-          ><label>Fuseau IANA<input v-model="zone" placeholder="America/Toronto" required /></label
-          ><small
-            >Format ISO 8601 : date, heure et décalage correspondant au fuseau. Exemple :
-            2026-10-21T10:00:00-04:00 à Toronto.</small
-          ></template
-        ><button class="primary" :disabled="busy || blocked || !assignment">
-          Réserver le rendez-vous
-        </button>
-      </form></template
-    >
     <button
       v-if="compact && count > 0"
       type="button"
@@ -757,60 +425,27 @@ onMounted(() =>
     </section>
     <section v-if="editing && canWrite">
       <h4>Gérer le rendez-vous {{ editing.id }}</h4>
-      <form @submit.prevent="reschedule">
-        <template v-if="appointmentId"
-          ><label>Nouveau début<input v-model="localStart" type="datetime-local" required /></label
-          ><label>Nouvelle fin<input v-model="localEnd" type="datetime-local" required /></label
-          ><label
-            >Heures du rendez-vous<select v-model="zone">
-              <option
-                v-if="
-                  ![
-                    'UTC',
-                    'America/Toronto',
-                    'America/Vancouver',
-                    'America/Edmonton',
-                    'America/Winnipeg',
-                    'America/Halifax',
-                    'America/St_Johns',
-                  ].includes(zone)
-                "
-                :value="zone"
-              >
-                {{ zone }}
-              </option>
-              <option value="America/Toronto">Toronto / Montréal</option>
-              <option value="America/Vancouver">Vancouver</option>
-              <option value="America/Edmonton">Edmonton</option>
-              <option value="America/Winnipeg">Winnipeg</option>
-              <option value="America/Halifax">Halifax</option>
-              <option value="America/St_Johns">Saint-Jean</option>
-              <option value="UTC">UTC</option>
-            </select></label
-          ></template
-        ><template v-else
-          ><label>Nouveau début (ISO 8601)<input v-model="start" required /></label
-          ><label>Nouvelle fin (ISO 8601)<input v-model="end" required /></label
-          ><label>Fuseau IANA<input v-model="zone" required /></label></template
-        ><label
-          >Motif interne obligatoire (réservé à l’administration)<input
+      <form @submit.prevent="cancel">
+        <p>
+          Pour une nouvelle rencontre, réservez dans l’outil externe puis transmettez une nouvelle
+          occurrence depuis la fiche prospect.
+        </p>
+        <p v-if="editing.calendar === 'external_link'">
+          Annulez également la réservation dans l’outil externe du conseiller : cette action met à
+          jour le suivi dans Orvia.
+        </p>
+        <label
+          >Motif de l’annulation<textarea
             v-model="reason"
             required
             maxlength="1000"
-        /></label>
-        <div class="appointment-actions">
-          <button class="primary" :disabled="busy">Reprogrammer</button
-          ><button
-            class="secondary"
-            type="button"
-            :disabled="busy || !reason.trim()"
-            @click="cancel"
-          >
-            Annuler le rendez-vous</button
-          ><button class="secondary" type="button" :disabled="busy" @click="editing = null">
-            Fermer
-          </button>
-        </div>
+            :disabled="busy"
+          ></textarea>
+        </label>
+        <button class="primary" :disabled="busy || !reason.trim()">Confirmer l’annulation</button>
+        <button class="secondary" type="button" :disabled="busy" @click="editing = null">
+          Conserver le rendez-vous
+        </button>
       </form>
     </section>
     <section v-if="reportRow && role === 'advisor'">

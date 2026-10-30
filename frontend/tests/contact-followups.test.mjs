@@ -103,6 +103,7 @@ function fixture() {
         },
         onQualify: () => events.push('qualify'),
         onSaved: () => events.push('saved'),
+        onAdvance: () => events.push('advance'),
       }),
   })
   app.mount(root)
@@ -158,5 +159,32 @@ test('appointment result opens qualification and waits for a successful booking'
     assert.equal(f.writes[0].body.appointment_id, 42)
   } finally {
     f.app.unmount()
+  }
+})
+
+test('non qualifying outcomes save before advancing and keep the seven requested choices', async () => {
+  for (const result of ['voicemail', 'invalid_number', 'disconnected']) {
+    const f = fixture()
+    try {
+      await flush()
+      const select = all(f.root).find((n) => n.tag === 'select')
+      const options = all(select)
+        .filter((n) => n.tag === 'option')
+        .map((n) => n.props.value)
+      assert.ok(options.includes('other'))
+      assert.ok(!options.includes('unreachable'))
+      set(select, result)
+      select.props.onChange(event)
+      await flush()
+      await all(f.root)
+        .find((n) => n.tag === 'form')
+        .props.onSubmit(event)
+      await flush()
+      assert.equal(f.writes[0].body.result, result)
+      assert.ok(f.events.includes('advance'))
+      assert.ok(!f.events.includes('qualify'))
+    } finally {
+      f.app.unmount()
+    }
   }
 })

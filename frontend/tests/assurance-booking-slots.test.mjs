@@ -193,49 +193,29 @@ test('Calendly booking survives a timeout and a reopened file without posting a 
   }
 })
 
-test('booking form asks the API for the chosen assignment and prospect busy times', async () => {
+test('retired Assurance booking form never loads internal slots or offers a reservation', async () => {
   const root = { children: [] },
     requests = []
-  const request = async (path) => {
-    requests.push(path)
-    if (path.startsWith('assignments/'))
-      return {
-        count: 1,
-        next: null,
-        results: [{ id: 5, setter: { name: 'S' }, advisor: { name: 'C' } }],
-      }
-    if (path.startsWith('appointments/availability/'))
-      return { busy: [busy], working_hours_enabled: true }
-    return { count: 0, next: null, results: [] }
-  }
   const app = renderer.createApp(appointments, {
     role: 'setter',
     compact: true,
     contactId: 42,
-    contactRevision: 3,
     leaseToken: 'lease',
-    request,
+    request: async (path) => {
+      requests.push(path)
+      return { results: [], count: 0, next: null }
+    },
     portal: async () => ({}),
   })
+  globalThis.slotProps = null
   app.mount(root)
   try {
     await flush()
     assert.equal(globalThis.slotProps, null)
-    all(root)
-      .find((n) => n.tag === 'select')
-      .props['onUpdate:modelValue']('5')
-    await flush()
-    assert.equal(globalThis.slotProps.loadKey, '5:42')
-    assert.deepEqual(
-      await globalThis.slotProps.load('2026-11-02T00:00:00-05:00', '2026-11-03T00:00:00-05:00'),
-      [busy],
+    assert.ok(
+      !requests.some((path) => path.includes('availability') || path.startsWith('assignments/')),
     )
-    const query = new URLSearchParams(requests.at(-1).split('?')[1])
-    assert.equal(query.get('assignment_id'), '5')
-    assert.equal(query.get('contact_id'), '42')
-    assert.equal(query.get('start'), '2026-11-02T00:00:00-05:00')
-    await flush()
-    assert.equal(globalThis.slotProps.fullDay, true)
+    assert.doesNotMatch(text(root), /Réserver le rendez-vous|Agenda Orvia/)
   } finally {
     app.unmount()
   }
