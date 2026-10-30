@@ -190,6 +190,11 @@ onMounted(load);
       <div>
         <strong>{{ stamp(appointment.starts_at) }}</strong>
         <small>{{ appointment.timezone }} · {{ appointment.advisor.name }}</small>
+        <small v-if="appointment.meeting_type">{{
+          appointment.meeting_type === 'video'
+            ? 'Rendez-vous par vidéoconférence'
+            : 'Rendez-vous par appel téléphonique'
+        }}</small>
         <span><Phone :size="13" /> {{ appointment.contact.phone }}</span>
       </div>
     </div>

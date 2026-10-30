@@ -7,7 +7,6 @@ import AssuranceQualification from './AssuranceQualification.vue';
 import {
   UserRound,
   History,
-  ClipboardList,
   CalendarDays,
   Phone,
   ArrowRight,
@@ -15,10 +14,9 @@ import {
   CheckCircle2,
   LoaderCircle,
   StickyNote,
-  Paperclip,
-  ChevronDown,
 } from 'lucide-vue-next';
 import AssuranceAppointments from './AssuranceAppointments.vue';
+import AssuranceTransmission from './AssuranceTransmission.vue';
 import AssuranceAgreements from './AssuranceAgreements.vue';
 import AssuranceContactInteractions from './AssuranceContactInteractions.vue';
 import AssuranceContactNotes from './AssuranceContactNotes.vue';
@@ -105,6 +103,7 @@ const flowTab = ref(props.workflow === 'call' ? 'exchange' : 'contact'),
 const qualification = ref<InstanceType<typeof AssuranceQualification> | null>(null),
   qualificationBusy = ref(false),
   qualificationDirty = ref(false);
+const transmissionDirty = ref(false);
 const followupBusy = ref(false),
   followupDirty = ref(false),
   followups = ref<InstanceType<typeof AssuranceContactFollowups> | null>(null);
@@ -130,6 +129,7 @@ const pendingDrafts = computed(
   () =>
     (!token.value && dirty.value) ||
     qualificationDirty.value ||
+    transmissionDirty.value ||
     followupDirty.value ||
     fieldsDirty.value ||
     noteDirty.value ||
@@ -271,6 +271,16 @@ async function prepareBooking() {
   await qualification.value.ensureSaved();
   await nextTick();
 }
+function qualificationPayload() {
+  if (!qualification.value) throw new Error('Chargez la qualification avant de transmettre.');
+  return qualification.value.payload();
+}
+async function transmitted(row: any) {
+  current.value.revision = row.contact_revision;
+  qualification.value?.markSaved();
+  await followups.value?.booked(row);
+  emit('changed');
+}
 async function callIntent(id: string) {
   if (saveTimer) clearTimeout(saveTimer);
   if (!(await persist()) || !token.value || dirty.value)
@@ -398,21 +408,13 @@ onBeforeUnmount(() => {
         <Phone :size="17" />Appel et rappels
       </button>
       <button
-        :aria-current="flowTab === 'qualification' ? 'page' : undefined"
-        :disabled="blocked"
-        @click="changeFlow('qualification')"
-      >
-        <ClipboardList :size="17" />Qualification
-      </button>
-      <button
         :aria-current="flowTab === 'booking' ? 'page' : undefined"
         :disabled="blocked"
         @click="changeFlow('booking')"
       >
-        <CalendarDays :size="17" />Rendez-vous
+        <CalendarDays :size="17" />Qualification et rendez-vous
       </button>
       <button
-        v-if="role === 'administrator'"
         :aria-current="flowTab === 'history' ? 'page' : undefined"
         :disabled="blocked"
         @click="changeFlow('history')"
@@ -456,13 +458,13 @@ onBeforeUnmount(() => {
           :disabled="!token || busy || saving || bookingBusy"
         />
       </div>
-      <div v-if="flowTab === 'history' && role === 'administrator'" class="drawer-view">
+      <div v-if="flowTab === 'history'" class="drawer-view">
         <AssuranceContactInteractions
           :contact-id="current.id"
           :request="request"
           :portal="portal"
         />
-        <section class="sheet-section">
+        <section v-if="role === 'administrator'" class="sheet-section">
           <h3>Modifications de la fiche</h3>
           <button
             class="secondary"
@@ -531,7 +533,7 @@ onBeforeUnmount(() => {
           :prepare="prepareCall"
           @busy="followupBusy = $event"
           @dirty="followupDirty = $event"
-          @qualify="changeFlow('qualification')"
+          @qualify="changeFlow('booking')"
           @review="flowTab = 'exchange'"
           @saved="emit('changed')"
         />
@@ -573,8 +575,9 @@ onBeforeUnmount(() => {
           <p>Les coordonnées s’enregistrent automatiquement pendant votre saisie.</p>
         </div>
       </div>
-      <div v-show="flowTab === 'qualification'" class="drawer-view">
+      <div v-show="flowTab === 'booking'" class="drawer-view">
         <AssuranceQualification
+          combined
           ref="qualification"
           :contact-id="current.id"
           :role="role"
@@ -590,103 +593,19 @@ onBeforeUnmount(() => {
             emit('changed');
           "
         />
-        <AssuranceCustomValues
-          compact
+        <AssuranceTransmission
           :contact-id="current.id"
-          :lease-token="token"
-          :blocked="busy || saving || bookingBusy"
-          :request="request"
-          @dirty="fieldsDirty = $event"
-          @busy="fieldsBusy = $event"
-          @saved="
-            current.revision = $event;
-            emit('changed');
-          "
-        />
-        <section class="drawer-status-card">
-          <div class="drawer-section-heading">
-            <span class="section-icon lavender"><ClipboardList :size="19" /></span>
-            <div>
-              <h3>Où en est ce prospect ?</h3>
-              <p>Choisissez la suite à donner à votre échange.</p>
-            </div>
-          </div>
-          <form v-if="pipeline" @submit.prevent="changeStatus">
-            <label
-              >Statut du prospect<select v-model="nextStatus" :disabled="!token || blocked">
-                <option
-                  v-for="stage in pipeline.stages.filter((s: any) => s.active)"
-                  :key="stage.key"
-                  :value="stage.key"
-                >
-                  {{ stage.label }}
-                </option>
-              </select></label
-            ><label v-if="nextStatus !== current.status"
-              >Précisions sur le changement<textarea
-                v-model="statusReason"
-                maxlength="1000"
-                required
-                :disabled="!token || blocked"
-                placeholder="Résumez la situation en quelques mots…"
-              ></textarea></label
-            ><button class="primary" :disabled="!token || blocked || nextStatus === current.status">
-              Enregistrer le statut
-            </button>
-            <p
-              v-if="message === 'Statut commercial enregistré.'"
-              role="status"
-              class="drawer-status-saved"
-            >
-              Statut du prospect enregistré.
-            </p>
-          </form>
-          <button v-else class="secondary" :disabled="blocked" @click="loadPipeline">
-            Recharger les statuts
-          </button>
-        </section>
-        <details class="drawer-extra" open>
-          <summary><StickyNote :size="17" />Notes de l’échange<ChevronDown :size="16" /></summary>
-          <div>
-            <AssuranceContactNotes
-              compact
-              :contact-id="current.id"
-              :lease-token="token"
-              :role="role"
-              :request="request"
-              @dirty="noteDirty = $event"
-              @busy="noteBusy = $event"
-            />
-          </div>
-        </details>
-        <details class="drawer-extra">
-          <summary><Paperclip :size="17" />Documents<ChevronDown :size="16" /></summary>
-          <div>
-            <AssuranceContactDocuments
-              compact
-              :contact-id="current.id"
-              :lease-token="token"
-              :role="role"
-              :request="request"
-              @dirty="documentDirty = $event"
-              @busy="documentBusy = $event"
-            />
-          </div>
-        </details>
-      </div>
-      <div v-show="flowTab === 'booking'" class="drawer-view">
-        <AssuranceAppointments
-          compact
-          @booked="followups?.booked($event)"
-          @busy="bookingBusy = $event"
-          :before-book="prepareBooking"
           :contact-revision="current.revision"
-          :blocked="busy || saving || callBusy"
-          :contact-id="current.id"
           :lease-token="token"
           :role="role"
           :request="request"
           :portal="portal"
+          :blocked="busy || saving || callBusy || qualificationBusy"
+          :prepare="prepareBooking"
+          :qualification="qualificationPayload"
+          @busy="bookingBusy = $event"
+          @dirty="transmissionDirty = $event"
+          @booked="transmitted"
         />
       </div>
     </div>
@@ -725,15 +644,7 @@ onBeforeUnmount(() => {
           v-if="flowTab !== 'contact'"
           class="secondary"
           :disabled="blocked"
-          @click="
-            changeFlow(
-              flowTab === 'booking'
-                ? 'qualification'
-                : flowTab === 'qualification'
-                  ? 'exchange'
-                  : 'contact',
-            )
-          "
+          @click="changeFlow(flowTab === 'booking' ? 'exchange' : 'contact')"
         >
           <ArrowLeft :size="15" />Retour</button
         ><button v-else class="secondary" :disabled="blocked" @click="close">Fermer</button
@@ -741,21 +652,13 @@ onBeforeUnmount(() => {
           v-if="flowTab !== 'booking'"
           class="primary"
           :disabled="blocked"
-          @click="
-            changeFlow(
-              flowTab === 'contact'
-                ? 'exchange'
-                : flowTab === 'exchange'
-                  ? 'qualification'
-                  : 'booking',
-            )
-          "
+          @click="changeFlow(flowTab === 'contact' ? 'exchange' : 'booking')"
         >
           {{
             flowTab === 'contact'
               ? 'Résultat et rappel'
               : flowTab === 'exchange'
-                ? 'Qualifier le prospect'
+                ? 'Qualification et rendez-vous'
                 : 'Préparer le rendez-vous'
           }}<ArrowRight :size="16" /></button
         ><button v-else class="primary" :disabled="blocked" @click="close">

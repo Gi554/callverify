@@ -930,6 +930,8 @@ class AppointmentTests(TestCase):
                 'status',
                 'revision',
                 'calendar',
+                'meeting_type',
+                'external_booking_url',
                 'qualification_snapshot',
                 'business_status',
                 'business_status_label',

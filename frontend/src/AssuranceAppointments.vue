@@ -17,6 +17,7 @@ const props = defineProps<{
   compact?: boolean;
   beforeBook?: () => Promise<void>;
   blocked?: boolean;
+  historyOnly?: boolean;
 }>();
 const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; booked: [row: any] }>();
 const bookingMode = ref('internal');
@@ -56,7 +57,9 @@ const editing = ref<any>(null),
   historyPage = ref(1),
   historyCount = ref(0);
 const qualificationRow = ref<any>(null);
-const canWrite = computed(() => ['setter', 'administrator'].includes(props.role));
+const canWrite = computed(
+  () => !props.historyOnly && ['setter', 'administrator'].includes(props.role),
+);
 function zonedISO(value: string | Date, zone: string) {
   const date = new Date(value);
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -313,7 +316,7 @@ onMounted(() =>
       Vos rendez-vous. Consultez la qualification transmise, puis renseignez le compte rendu après
       la rencontre.
     </p>
-    <p v-else-if="!appointmentId" class="subtle">
+    <p v-else-if="!appointmentId && !historyOnly" class="subtle">
       Choisissez un conseiller et un créneau. Les disponibilités sont contrôlées lors de la
       confirmation.
     </p>

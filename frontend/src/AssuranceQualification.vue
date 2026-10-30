@@ -9,6 +9,7 @@ const props = defineProps<{
   contactRevision?: number;
   blocked?: boolean;
   prepare?: () => Promise<void>;
+  combined?: boolean;
 }>();
 const emit = defineEmits<{
   saved: [revision: number];
@@ -54,7 +55,9 @@ async function load() {
   try {
     const data = await props.request(`contacts/${props.contactId}/qualification/`);
     if (current !== version || disposed) return;
-    fields.value = data.fields;
+    fields.value = props.combined
+      ? data.fields.filter((field: any) => field.key !== 'additional_notes')
+      : data.fields;
     snapshot.value = data.snapshot || null;
     appointmentId.value = data.appointment_id || null;
     draft.value = defaults(
@@ -71,6 +74,7 @@ async function load() {
   }
 }
 async function ensureSaved() {
+  if (props.combined) return;
   if (pendingSave) return pendingSave;
   if (readonly.value) return;
   if (!loaded.value) throw new Error('Chargez la qualification Assurance avant de réserver.');
@@ -157,7 +161,17 @@ onBeforeUnmount(() => {
   disposed = true;
   version++;
 });
-defineExpose({ ensureSaved });
+function payload() {
+  if (!loaded.value || mustReload.value)
+    throw new Error('Rechargez la qualification avant de transmettre.');
+  const values = JSON.parse(JSON.stringify(draft.value));
+  if (values.age === '') values.age = null;
+  return values;
+}
+function markSaved() {
+  base.value = JSON.stringify(draft.value);
+}
+defineExpose({ ensureSaved, payload, markSaved });
 const contactLabels: Record<string, string> = {
   name: 'Nom et prénom',
   phone: 'Téléphone',
@@ -185,7 +199,9 @@ const contactLabels: Record<string, string> = {
         {{
           readonly
             ? 'Copie conservée lors de la réservation. Les modifications internes ultérieures ne changent pas cette transmission.'
-            : 'Ces informations, y compris les notes ci-dessous, seront transmises au conseiller assigné lors de la réservation. Les notes internes de l’échange restent séparées.'
+            : combined
+              ? 'La qualification et les notes utiles seront enregistrées avec le bouton « Envoyer le rendez-vous » et transmises au conseiller choisi.'
+              : 'Ces informations, y compris les notes ci-dessous, seront transmises au conseiller assigné lors de la réservation. Les notes internes de l’échange restent séparées.'
         }}
       </p>
     </div>
@@ -280,7 +296,7 @@ const contactLabels: Record<string, string> = {
                   : 'Informations complémentaires utiles à la rencontre…'
               "
             ></textarea></label></template
-        ><button class="primary" :disabled="!dirty">
+        ><button v-if="!combined" class="primary" :disabled="!dirty">
           <Save :size="16" />Enregistrer la qualification
         </button>
       </fieldset>

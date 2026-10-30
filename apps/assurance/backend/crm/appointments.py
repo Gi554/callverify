@@ -24,11 +24,13 @@ from .models import (
     Contact,
     BusinessAudit,
     CalendlyBooking,
+    ContactCallOutcome,
+    AppointmentNotification,
 )
 from .leases import Conflict, writer, held, LEASE_SECONDS
 from .calendar_checks import check as external_check
 from .appointment_status import output as business_status, filter_status
-from .qualification import snapshot as qualification_snapshot
+from .qualification import snapshot as qualification_snapshot, Qualification
 from .reports import ReportMixin
 from .advisor_workspace import AdvisorWorkspaceMixin
 from .advisor_availability import ensure_open, configuration as working_hours, closed_periods
@@ -73,6 +75,25 @@ class RescheduleInput(IntervalInput):
     revision = serializers.IntegerField(min_value=0)
     proof = serializers.CharField(max_length=8192, write_only=True)
     reason = serializers.CharField(max_length=1000)
+
+
+class TransmissionInput(BookingInput):
+    contact_revision = serializers.IntegerField(min_value=0)
+    qualification = Qualification()
+    meeting_type = serializers.ChoiceField(choices=['video', 'phone'])
+    external_confirmed = serializers.BooleanField()
+
+    def validate(self, data):
+        data = super().validate(data)
+        if not data['external_confirmed']:
+            raise ValidationError(
+                'Réservez et confirmez d’abord le rendez-vous dans l’outil externe.'
+            )
+        if data['timezone'] != 'America/Toronto':
+            raise ValidationError('Utilisez le fuseau du Québec : America/Toronto.')
+        if data['ends_at'] - data['starts_at'] > timedelta(hours=8):
+            raise ValidationError('La rencontre est limitée à huit heures.')
+        return data
 
 
 class CancelInput(serializers.Serializer):
@@ -180,9 +201,14 @@ def output(row, user):
         'status': row.status,
         'revision': row.revision,
         'calendar': row.calendar,
+        'meeting_type': row.meeting_type,
+        'external_booking_url': row.external_booking_url,
         'qualification_snapshot': row.qualification_snapshot,
     }
     result.update(business_status(row))
+    if row.calendar == 'external_link' and user.role in ('setter', 'administrator'):
+        result['contact_revision'] = row.qualification_snapshot.get('contact_revision')
+        result['call_outcome_recorded'] = True
     if row.calendar == 'calendly' and hasattr(row, 'calendly_booking'):
         metadata = row.calendly_booking.snapshot
         result['calendly'] = {
@@ -255,7 +281,8 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
 
     def create(self, request):
         writer(request)
-        serializer = BookingInput(data=request.data)
+        external_booking = self.action == 'transmit'
+        serializer = (TransmissionInput if external_booking else BookingInput)(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         canonical = {
@@ -303,31 +330,88 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                     )
                 active_assignment(assignment.pk)
                 calendar_lock(assignment.advisor_id)
-                ensure_open(assignment.advisor_id, data['starts_at'], data['ends_at'])
+                if not external_booking:
+                    ensure_open(assignment.advisor_id, data['starts_at'], data['ends_at'])
                 if data['starts_at'] <= timezone.now():
                     raise ValidationError('Le rendez-vous doit commencer dans le futur')
                 prevent_overlap(
                     contact.pk, assignment.advisor_id, data['starts_at'], data['ends_at']
                 )
-                external = external_check(
-                    request.user, assignment.advisor_id, data['starts_at'], data['ends_at']
+                external = (
+                    {'result': 'reserved_by_setter_in_external_tool'}
+                    if external_booking
+                    else external_check(
+                        request.user, assignment.advisor_id, data['starts_at'], data['ends_at']
+                    )
                 )
+                extras = {}
+                if external_booking:
+                    schedule = AdvisorSchedule.objects.get(pk=assignment.advisor_id)
+                    if not schedule.booking_url:
+                        raise ValidationError('Le conseiller doit fournir son lien de réservation.')
+                    values = dict(data['qualification'])
+                    if 'additional_notes' not in request.data.get('qualification', {}):
+                        values['additional_notes'] = contact.assurance_qualification.get(
+                            'additional_notes', ''
+                        )
+                    before = contact.assurance_qualification
+                    contact.assurance_qualification = values
+                    contact.revision += 1
+                    contact.save(
+                        update_fields=['assurance_qualification', 'revision', 'updated_at']
+                    )
+                    BusinessAudit.objects.create(
+                        actor_id=request.user.pk,
+                        object_id=contact.pk,
+                        action='contact.assurance_qualification_updated',
+                        metadata={'before': before, 'after': values, 'revision': contact.revision},
+                    )
+                    extras = {
+                        'calendar': 'external_link',
+                        'meeting_type': data['meeting_type'],
+                        'external_booking_url': schedule.booking_url,
+                    }
                 if data['starts_at'] <= timezone.now():
                     raise ValidationError('Le rendez-vous doit commencer dans le futur')
+                shared_qualification = qualification_snapshot(contact)
+                if external_booking:
+                    shared_qualification['fields'] = [
+                        field
+                        for field in shared_qualification['fields']
+                        if field['key'] != 'additional_notes'
+                    ]
+                    shared_qualification['qualification'].pop('additional_notes', None)
                 row = Appointment.objects.create(
                     request_id=data['request_id'],
                     fingerprint=fingerprint,
                     contact=contact,
                     assignment=assignment,
-                    qualification_snapshot=qualification_snapshot(contact),
+                    qualification_snapshot=shared_qualification,
                     setter_id=assignment.setter_id,
                     setter_name=claims['setter']['name'],
                     advisor_id=assignment.advisor_id,
                     advisor_name=claims['advisor']['name'],
                     booked_by_id=request.user.pk,
+                    **extras,
                     **{key: data[key] for key in ('starts_at', 'ends_at', 'timezone')},
                 )
                 audit(request.user, row, 'appointment.booked', external=external)
+                if external_booking:
+                    ContactCallOutcome.objects.create(
+                        contact=contact,
+                        setter_id=request.user.pk,
+                        request_id=data['request_id'],
+                        fingerprint=fingerprint,
+                        result='appointment_booked',
+                        appointment=row,
+                    )
+                    AppointmentNotification.objects.create(
+                        appointment=row,
+                        recipient_id=row.advisor_id,
+                        role='advisor',
+                        kind='appointment_transmitted',
+                        event_key=f'transmitted:{row.pk}:{row.advisor_id}',
+                    )
         except IntegrityError:
             existing = (
                 Appointment.objects.select_related('contact')
@@ -338,6 +422,10 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                 return replay(existing)
             raise
         return Response(output(row, request.user), status=201)
+
+    @action(detail=False, methods=['post'])
+    def transmit(self, request):
+        return self.create(request)
 
     @action(detail=True, methods=['post'])
     def reschedule(self, request, pk=None):

@@ -124,6 +124,15 @@ async function record(appointmentId?: number) {
   });
 }
 async function booked(row: any) {
+  if (row.call_outcome_recorded) {
+    result.value = '';
+    note.value = '';
+    due.value = '';
+    pendingAppointment.value = null;
+    outcomeId = crypto.randomUUID();
+    await refresh();
+    return;
+  }
   if (result.value !== 'appointment_booked') return;
   pendingAppointment.value = row.id;
   await record(row.id);
