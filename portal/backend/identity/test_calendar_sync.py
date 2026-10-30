@@ -69,6 +69,7 @@ class SyncTests(TestCase):
         state, publish, _ = self.run_sync(self.remote())
         self.assertEqual(state, 'synced')
         publish.assert_not_called()
+
         remote = self.remote()
         self.source['starts_at'] += timedelta(hours=2)
         self.source['ends_at'] += timedelta(hours=2)
@@ -82,6 +83,21 @@ class SyncTests(TestCase):
         self.assertEqual(state, 'removed')
         remove.assert_called_once()
         publish.assert_not_called()
+
+    def test_external_bookings_are_never_published_in_a_connected_calendar(self):
+        for calendar in ('external_link', 'calendly'):
+            raw = {**self.source, 'advisor': {'id': self.user.pk}, 'calendar': calendar}
+            for key in ('starts_at', 'ends_at'):
+                raw[key] = raw[key].isoformat()
+            with (
+                patch.object(sync, 'fetch_source', return_value=raw),
+                patch.object(events, 'find', return_value=None),
+                patch.object(events, 'publish') as publish,
+                patch.object(events, 'remove') as remove,
+            ):
+                self.assertEqual(sync.sync_one(self.row, 41), 'skipped')
+            publish.assert_not_called()
+            remove.assert_not_called()
 
     def test_ambiguous_creation_is_not_reposted_and_recovery_uses_durable_key(self):
         self.assertEqual(self.run_sync(error=providers.ProviderError())[0], 'error')
