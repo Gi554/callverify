@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AdvisorBookingLink from './AdvisorBookingLink.vue';
 import { ref, reactive, onMounted } from 'vue';
 import {
   Plus,
@@ -50,6 +51,7 @@ const directory = reactive<
   advisor: { rows: [], page: 1, count: 0, search: '', selected: '' },
 });
 const creating = ref(false);
+const linkAssignment = ref<any>(null);
 const history = ref<any[]>([]),
   historyPage = ref(1),
   historyCount = ref(0),
@@ -262,6 +264,16 @@ onMounted(() =>
     </template>
     <p v-if="error" role="alert" class="assignments-error">{{ error }}</p>
     <p v-if="message" role="status" class="assignments-message">{{ message }}</p>
+    <div v-if="role === 'administrator' && linkAssignment">
+      <h3>{{ linkAssignment.advisor.name }}</h3>
+      <AdvisorBookingLink
+        :key="linkAssignment.id"
+        :assignment-id="linkAssignment.id"
+        :request="request"
+        @changed="run(load)"
+      />
+      <button class="secondary" @click="linkAssignment = null">Fermer le réglage du lien</button>
+    </div>
     <template v-if="role === 'administrator'">
       <header class="assignments-toolbar">
         <form class="assignments-search" @submit.prevent="filter()">
@@ -342,6 +354,13 @@ onMounted(() =>
           </div>
         </div>
         <footer>
+          <a
+            v-if="row.active && row.booking_url"
+            :href="row.booking_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Ouvrir la réservation</a
+          >
           <span class="advisor-booking-hint"
             ><CalendarCheck :size="16" />Depuis une fiche prospect</span
           ><button
@@ -414,6 +433,9 @@ onMounted(() =>
               }}</span>
             </td>
             <td v-if="role === 'administrator'" class="row-actions">
+              <button class="secondary" :disabled="busy" @click="linkAssignment = row">
+                Lien de réservation
+              </button>
               <button
                 class="secondary"
                 :disabled="busy"

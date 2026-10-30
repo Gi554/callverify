@@ -14,6 +14,7 @@ from .crm.mail_bridge import escalation_events, escalation_eligible
 from .crm.assignments import AssignmentViewSet
 from .crm.appointments import AppointmentViewSet
 from .crm import calendly
+from .crm.booking_links import own as own_booking_link
 from .crm.views import ContactViewSet, dashboard
 from .crm.lots import lots, release as lots_release
 
@@ -24,6 +25,7 @@ router.register('assignments', AssignmentViewSet, basename='assurance-assignment
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
 urlpatterns = [path('api/assurance/pipeline/', configuration)]
+urlpatterns += [path('api/assurance/advisor-booking-link/', own_booking_link)]
 urlpatterns += [path('api/assurance/internal/calendly/', calendly.internal)]
 urlpatterns += [path('api/assurance/calendly/pending/', calendly.pending)]
 urlpatterns += [

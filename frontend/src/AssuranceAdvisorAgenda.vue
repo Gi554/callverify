@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CalendarDays, Clock3, Link2, Plus, Save, X } from 'lucide-vue-next';
 import PortalCalendars from './PortalCalendars.vue';
 import SidePanel from './SidePanel.vue';
+import AdvisorBookingLink from './AdvisorBookingLink.vue';
 const props = defineProps<{
   request: (path: string, body?: any) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -78,6 +79,7 @@ onMounted(load);
 </script>
 <template>
   <section class="advisor-agenda">
+    <AdvisorBookingLink :request="request" />
     <header>
       <span class="agenda-icon"><CalendarDays :size="26" /></span>
       <div>
