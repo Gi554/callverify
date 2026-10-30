@@ -12,5 +12,6 @@ def visible_contacts(user):
     # Until the first lot is handed out the team shares one pool, as before; afterwards each
     # setter works only the prospects of their own lot.
     if user.role == 'setter' and Contact.objects.filter(assigned_setter_id__isnull=False).exists():
-        qs = qs.filter(assigned_setter_id=user.pk)
+        # Own lot, plus the files the setter created themselves (numbers dialed by hand).
+        qs = qs.filter(Q(assigned_setter_id=user.pk) | Q(created_by_id=user.pk))
     return qs
