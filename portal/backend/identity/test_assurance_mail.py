@@ -240,6 +240,8 @@ class AssuranceMailTests(TestCase):
                     'created_at': timezone.now().isoformat(),
                     'kind': 'report_missing',
                     'appointment_id': appointment,
+                    'prospect_name': 'Léa Tremblay',
+                    'starts_at': '2026-11-01T15:30:00Z',
                 }
             ]
         }
@@ -256,7 +258,31 @@ class AssuranceMailTests(TestCase):
         self.assertIn('/crm?workspace=assurance&appointment=42', mail.outbox[0].body)
         self.assertIn('Une seule relance', mail.outbox[0].body)
         self.assertIn('présent', mail.outbox[0].body)
+        self.assertIn('Léa Tremblay', mail.outbox[0].body)
+        self.assertIn('01/11/2026 à 10:30', mail.outbox[0].body)
+        self.assertIn('heure du Québec', mail.outbox[0].body)
         self.assertIn('Renseigner le rendez-vous', mail.outbox[0].alternatives[0][0])
+
+    def test_report_details_are_required_and_html_escaped(self):
+        for changes in (
+            {'starts_at': None},
+            {'starts_at': '2026-11-01T10:00:00'},
+            {'prospect_name': ''},
+            {'prospect_name': 42},
+        ):
+            events = self.report_feed()
+            events['events'][0].update(changes)
+            with patch('portal.backend.identity.assurance_mail.fetch', return_value=events):
+                with self.assertRaises(ValueError):
+                    sync('reminders')
+        events = self.report_feed()
+        events['events'][0]['prospect_name'] = '<script>unsafe</script>'
+        with patch('portal.backend.identity.assurance_mail.fetch', return_value=events):
+            sync('reminders')
+        with patch('portal.backend.identity.assurance_mail.eligible', return_value=True):
+            dispatch()
+        self.assertNotIn('<script>', mail.outbox[0].alternatives[0][0])
+        self.assertIn('&lt;script&gt;', mail.outbox[0].alternatives[0][0])
 
     def test_report_email_rechecks_eligibility_before_delivery(self):
         with patch('portal.backend.identity.assurance_mail.fetch', return_value=self.report_feed()):

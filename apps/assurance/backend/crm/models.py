@@ -1,3 +1,4 @@
+from datetime import time
 from django.db import models
 
 
@@ -350,6 +351,7 @@ class ReminderPolicy(models.Model):
     reports_enabled = models.BooleanField(default=True)
     task_interval_hours = models.PositiveIntegerField(default=24)
     report_grace_hours = models.PositiveIntegerField(default=1)
+    report_cutoff_time = models.TimeField(default=time(18, 0))
     report_reminders_from = models.DateTimeField(null=True, blank=True)
     report_interval_hours = models.PositiveIntegerField(default=24)
     escalations_enabled = models.BooleanField(default=False)
@@ -378,6 +380,7 @@ class ReminderEvent(models.Model):
     anchor_at = models.DateTimeField()
     policy_revision = models.PositiveIntegerField()
     valid_until = models.DateTimeField()
+    not_before = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

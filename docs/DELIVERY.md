@@ -1,5 +1,26 @@
 # Suivi des livraisons CRM AMX
 
+## Relance conseiller à J+1, 18 h au Québec
+
+Le premier rappel de compte rendu manquant intervient le lendemain de la date du rendez-vous,
+à 18 h dans America/Toronto par défaut. L’administration peut modifier l’heure et les minutes
+avec révision et motif audité. Le calcul suit les jours locaux et les changements d’heure ; un
+ancien rendez-vous de plusieurs jours doit être terminé avant la relance. Les anciens délais
+en heures restent acceptés par l’API pour compatibilité mais ne pilotent plus cette échéance.
+
+Une seule relance est prévue par occurrence et destinataire, même après changement de règle.
+Le courriel contient le nom du prospect, la date/heure du rendez-vous au Québec et le lien vers
+sa fiche autorisée. Le contrôle avant envoi exclut annulation, compte rendu déjà saisi, changement
+de destinataire ou reprogrammation. Aucun statut de présence n’est inventé. Les comptes de
+recette .invalid ne reçoivent pas de mail. Le seuil d’activation antérieur et la fenêtre de sept
+jours évitent une reprise massive d’anciennes relances. Les événements de l’ancienne cadence
+n’ont aucune éligibilité avant recalcul du nouveau seuil.
+
+Vérifications : génération avant/à l’échéance, transitions hiver/été, modification administrateur,
+permissions, absence de doublon, annulation/compte rendu et flux signé. Relais mail et rendu HTML
+échappé vérifiés avec moteur locmem, sans envoi à un conseiller réel ; typage frontend vérifié.
+Limites : SMS non intégré pour ce parcours ; rémunération CAD encore à livrer.
+
 ## Retour conseiller Oui/Non et suivi d’absence Assurance
 
 Le conseiller répond à « Le prospect a-t-il répondu à la rencontre ? », avec rappel du type

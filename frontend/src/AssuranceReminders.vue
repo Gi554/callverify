@@ -111,17 +111,15 @@ onUnmounted(() => {
         ><input v-model="rules.reports_enabled" type="checkbox" :disabled="busy" />Rappeler les
         comptes rendus manquants</label
       ><label
-        >Délai après fin du RDV (heures)<input
-          v-model.number="rules.report_grace_hours"
-          type="number"
-          min="0"
-          max="720"
+        >Heure limite le lendemain du RDV (Québec)<input
+          v-model="rules.report_cutoff_time"
+          type="time"
           required
           :disabled="busy"
       /></label>
       <p>
-        Une seule relance par rendez-vous sans compte rendu, une heure après sa fin par défaut. Les
-        rendez-vous annulés ou déjà renseignés ne sont pas relancés.
+        Une seule relance par rendez-vous sans compte rendu, le lendemain à 18 h au Québec par
+        défaut. Les rendez-vous annulés ou déjà renseignés ne sont pas relancés.
       </p>
       <h4>Escalades administrateur</h4>
       <p>
