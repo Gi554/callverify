@@ -1,5 +1,42 @@
 # Suivi des livraisons CRM AMX
 
+## Suivi hebdomadaire et rémunération Assurance en CAD
+
+L’administration dispose de « Suivi et rémunération » : semaine du lundi au dimanche au Québec
+par défaut, navigation de sept jours et période personnalisée de 366 jours maximum. Le tableau
+présente par setter les appels Orvia dont le poste a décroché, rendez-vous enregistrés, transmis
+par le nouveau formulaire externe, à venir, honorés, absents déclarés, présences validées pour
+rémunération, présences sans tarif et montant valorisé en CAD. Les réservations externes jamais
+transmises sont inconnues du CRM ; les anciennes occurrences restent dans « Pris ». Les appels
+composés hors Orvia ne sont pas reconstitués à partir des résultats manuels de fiche. Une panne
+du service d’appels donne une valeur indisponible, pas un faux zéro. Les totaux d’appels incluent
+les administrateurs, le tableau détaille les setters associés ou connus par un rendez-vous.
+
+Le tarif est individuel, nullable, versionné, modifiable seulement par un administrateur avec
+motif audité. Aucun tarif réel n’est inventé à la migration. Une présence confirmée conserve son
+tarif et sa révision lors de sa validation ; une correction négative ou une annulation l’exclut
+du montant courant sans effacer son ancien tarif. Un tarif de zéro est distinct d’un tarif
+absent. Les présences anciennes sans tarif peuvent être valorisées pour une période avec motif,
+confirmation et contrôle de révision ; aucun montant déjà valorisé n’est remplacé. Les calculs
+utilisent des décimaux à deux positions, et non des flottants. Les accès setter/conseiller n’ont
+aucun accès aux tarifs ni aux données de rémunération.
+
+Le détail par setter affiche chaque occurrence, conseiller, date Québec, présence, tarif conservé,
+date de valorisation et montant actuellement retenu. L’export CSV reprend toutes les pages du
+périmètre appliqué avec protections contre les formules de tableur et échec explicite si les
+appels sont indisponibles. Il peut être régénéré après correction d’une présence ; ce suivi
+n’est pas une clôture de paie et ne déclenche aucun paiement.
+
+Vérifications : droits, tarifs négatifs/décimales/revisions, somme de centimes, absence et annulation,
+corrections Oui/Non/Oui, conservation des tarifs anciens, valorisation idempotente/audit atomique,
+semaine Québec et changement d’heure, appels acceptés distincts des refus/incertitudes/blocages,
+absence de fuite des tarifs via les sorties conseiller. Concurrence de valorisation contrôlée
+sur PostgreSQL en CI. Tests frontend de tarifs, période appliquée, détails et export multi-page.
+
+Les lots fonctionnels demandés dans la demande Assurance du 30 octobre sont implémentés.
+Restent : revue esthétique finale si demandée, recette métier par les utilisateurs et éventuel
+raccordement SMS (aucun service d’envoi SMS n’est intégré à ce parcours).
+
 ## Relance conseiller à J+1, 18 h au Québec
 
 Le premier rappel de compte rendu manquant intervient le lendemain de la date du rendez-vous,
@@ -127,15 +164,12 @@ URL HTTPS sans identifiants, suppression du lien, conflits de version et concurr
 dans la CI. Limite : cette livraison gère les liens ; elle ne constitue pas encore le nouveau
 parcours complet de transmission manuelle ni une synchronisation du fournisseur.
 
-### Demande Assurance du 30 octobre — suite à livrer
+### Demande Assurance du 30 octobre — état actuel
 
-- Remplacer le rappel à une heure par le lendemain à **18 h America/Toronto**, configurable
-  par l’administrateur ; inclure nom, date/heure et lien. SMS conditionné à un service intégré.
-- Statistiques hebdomadaires appels, rendez-vous pris/transmis/à venir/validés/non honorés et
-  calcul de rémunération sur les rendez-vous validés, avec **tarif par setter en CAD** (devise confirmée par l’utilisateur).
-
-Ces points correspondent à la nouvelle demande ; les anciens paragraphes décrivent les
-livraisons précédentes et ne signifient pas que cette refonte est déjà entièrement réalisée.
+Les liens externes, la transmission combinée, la fiche simplifiée, les retours Oui/Non,
+la relance J+1 à 18 h et le suivi des rémunérations CAD sont implémentés et décrits en tête
+de ce document. Les paragraphes plus anciens conservent le périmètre de chaque livraison
+à sa date. La recette utilisateur et l’éventuel raccordement SMS restent distincts.
 
 ## Relance douce du conseiller après un rendez-vous Assurance
 

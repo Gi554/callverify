@@ -49,7 +49,14 @@ const advisor = computed(() => props.role === 'advisor');
 // Field roles get the shared frame without search, calls or steering: kept simple for phones.
 const simple = computed(() => ['advisor', 'closer', 'client'].includes(props.role));
 // Modules opened from the "Pilotage" block of the administrator sidebar.
-const steeringIds = ['statistics', 'assignments', 'agreements', 'fields', 'qualification'];
+const steeringIds = [
+  'statistics',
+  'compensation',
+  'assignments',
+  'agreements',
+  'fields',
+  'qualification',
+];
 const mainItems = computed(() =>
   props.items.filter((item) =>
     admin.value ? !steeringIds.includes(item.id) : item.id !== 'statistics',

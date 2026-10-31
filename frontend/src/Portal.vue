@@ -32,6 +32,7 @@ import TaskAlerts from './TaskAlerts.vue';
 import CallsCenter from './CallsCenter.vue';
 import AssuranceReminders from './AssuranceReminders.vue';
 import AssuranceStatistics from './AssuranceStatistics.vue';
+import AssuranceCompensation from './AssuranceCompensation.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
 import { RefreshCw } from 'lucide-vue-next';
 import { appointmentLink } from './appointment-link';
@@ -314,6 +315,7 @@ const navigation = computed(() => {
       );
     if (role.value === 'administrator')
       items.push(
+        { id: 'compensation', label: 'Suivi et rémunération', icon: 'statistics' },
         { id: 'agreements', label: 'Mandats et contrats', icon: 'agreements' },
         { id: 'fields', label: 'Paramètres métier', icon: 'fields' },
       );
@@ -676,6 +678,11 @@ onMounted(async () => {
                       :role="role"
                       :request="assurance"
                       @changed="refreshAssurance"
+                    />
+                    <AssuranceCompensation
+                      v-else-if="assuranceModule === 'compensation' && role === 'administrator'"
+                      :request="assurance"
+                      :portal="portal"
                     />
                     <AssuranceStatistics
                       v-else-if="assuranceModule === 'statistics' && role !== 'advisor'"

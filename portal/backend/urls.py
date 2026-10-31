@@ -167,3 +167,7 @@ urlpatterns += [
         call_rules.exclusion_detail,
     ),
 ]
+
+from .identity.call_statistics import statistics as assurance_call_statistics
+
+urlpatterns += [path('api/portal/assurance/call-statistics/', assurance_call_statistics)]
