@@ -319,3 +319,14 @@ class CallExclusion(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+'
     )
+
+
+class IsolationMailRelay(models.Model):
+    event_id = models.PositiveBigIntegerField(unique=True)
+    recipient_id = models.PositiveBigIntegerField()
+    mail = models.OneToOneField(PortalMail, null=True, on_delete=models.PROTECT)
+
+
+class IsolationMailCursor(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    after_id = models.PositiveBigIntegerField(default=0)

@@ -101,6 +101,16 @@ services:
         condition: service_healthy
       assurance:
         condition: service_started
+  isolation-mail-relay:
+    build: .
+    environment: *portal-environment
+    command: python manage.py relay_isolation_mail --settings=portal.backend.settings --loop --interval 30
+    restart: unless-stopped
+    depends_on:
+      portal-db:
+        condition: service_healthy
+      api:
+        condition: service_started
   assurance-mail-relay:
     build: .
     environment: *portal-environment

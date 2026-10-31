@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import F, Exists, OuterRef
+from django.db.models import F, Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
@@ -18,9 +18,9 @@ from .models import (
 OUTCOMES = {
     'closed': 'Vente conclue',
     'completed': 'Tenue',
-    'follow_up': 'Suivi nécessaire',
-    'interested': 'Intéressé',
-    'not_interested': 'Non intéressé',
+    'follow_up': 'Suivi nÃ©cessaire',
+    'interested': 'IntÃ©ressÃ©',
+    'not_interested': 'Non intÃ©ressÃ©',
     'not_performed': 'Non tenue',
 }
 
@@ -35,9 +35,11 @@ class ResultInput(serializers.Serializer):
 
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
-            raise ValidationError('Champs non autorisés')
+            raise ValidationError('Champs non autorisÃ©s')
         if data['performed'] == (data['outcome'] == 'not_performed'):
-            raise ValidationError('Résultat commercial incohérent avec la réalisation de la visite')
+            raise ValidationError(
+                'RÃ©sultat commercial incohÃ©rent avec la rÃ©alisation de la visite'
+            )
         if data.get('closed') and not data['performed']:
             raise ValidationError('Une vente conclue exige une visite tenue.')
         if 'closed' in data:
@@ -67,7 +69,7 @@ class SupplementInput(serializers.Serializer):
 
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
-            raise ValidationError('Champs non autorisés')
+            raise ValidationError('Champs non autorisÃ©s')
         return data
 
 
@@ -84,7 +86,7 @@ class ResultMixin:
     @action(detail=True, methods=['get', 'post'])
     def supplements(self, request, pk=None):
         if request.method == 'POST' and request.user.role != 'client':
-            raise PermissionDenied('Complément réservé au client de la visite')
+            raise PermissionDenied('ComplÃ©ment rÃ©servÃ© au client de la visite')
         original = self.get_object()
         if request.method == 'GET':
             qs = IsolationVisitSupplement.objects.filter(visit=original).order_by('-pk')
@@ -103,21 +105,21 @@ class ResultMixin:
                 request.user.pk,
                 data['note'],
             ):
-                raise Conflict('Identifiant de complément déjà utilisé')
+                raise Conflict('Identifiant de complÃ©ment dÃ©jÃ  utilisÃ©')
             return Response(supplement_output(row))
 
         with transaction.atomic():
             if not IsolationVisit.objects.filter(pk=original.pk, client_id=request.user.pk).update(
                 revision=F('revision')
             ):
-                raise PermissionDenied('Visite non autorisée')
+                raise PermissionDenied('Visite non autorisÃ©e')
             existing = IsolationVisitSupplement.objects.filter(
                 request_id=data['request_id']
             ).first()
             if existing:
                 return replay(existing)
             if not IsolationVisitResult.objects.filter(visit=original).exists():
-                raise Conflict('Renseignez le résultat initial avant un complément')
+                raise Conflict('Renseignez le rÃ©sultat initial avant un complÃ©ment')
             row, created = IsolationVisitSupplement.objects.get_or_create(
                 request_id=data['request_id'],
                 defaults={
@@ -138,7 +140,7 @@ class ResultMixin:
     @action(detail=True, methods=['get', 'post'])
     def result(self, request, pk=None):
         if request.method == 'POST' and request.user.role != 'client':
-            raise PermissionDenied('Résultat à renseigner par le client de la visite')
+            raise PermissionDenied('RÃ©sultat Ã  renseigner par le client de la visite')
         original = self.get_object()
         if request.method == 'GET':
             row = IsolationVisitResult.objects.filter(visit=original).first()
@@ -155,7 +157,7 @@ class ResultMixin:
             )
             visit = IsolationVisit.objects.get(pk=original.pk)
             if visit.client_id != request.user.pk:
-                raise PermissionDenied('Visite non autorisée')
+                raise PermissionDenied('Visite non autorisÃ©e')
             existing = IsolationVisitResult.objects.filter(visit=visit).first()
             before = (
                 None
@@ -175,11 +177,11 @@ class ResultMixin:
             if existing and all(getattr(existing, key) == value for key, value in fields.items()):
                 return Response(result_output(existing))
             if existing and not data['reason'].strip():
-                raise Conflict('Résultat déjà enregistré ; indiquez un motif pour le corriger.')
+                raise Conflict('RÃ©sultat dÃ©jÃ  enregistrÃ© ; indiquez un motif pour le corriger.')
             if visit.revision != data['revision']:
-                raise Conflict('Visite modifiée : rechargez avant de répondre')
+                raise Conflict('Visite modifiÃ©e : rechargez avant de rÃ©pondre')
             if visit.status != 'scheduled' or visit.ends_at > timezone.now():
-                raise Conflict('Résultat attendu après la fin d’une visite non annulée')
+                raise Conflict('RÃ©sultat attendu aprÃ¨s la fin dâ€™une visite non annulÃ©e')
             row, _ = IsolationVisitResult.objects.update_or_create(
                 visit=visit,
                 defaults={'author_client_id': request.user.pk, 'author_closer_id': None, **fields},
@@ -245,9 +247,9 @@ def client_dashboard(request):
             'prospects': visits.values('prospect_id').distinct().count(),
             'visits': visits.count(),
             'upcoming': visits.filter(status='scheduled', starts_at__gt=now).count(),
-            'results_due': visits.filter(
-                status='scheduled', ends_at__lte=now, result__isnull=True
-            ).count(),
+            'results_due': visits.filter(status='scheduled', ends_at__lte=now)
+            .filter(Q(result__isnull=True) | Q(result__closed__isnull=True))
+            .count(),
             'reported': visits.filter(result__isnull=False).count(),
         }
     )

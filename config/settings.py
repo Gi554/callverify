@@ -126,6 +126,7 @@ LOOKUP_PACKAGES = os.getenv('LOOKUP_PACKAGES', '')
 if set(filter(None, LOOKUP_PACKAGES.split(','))) - {'line_type_intelligence', 'line_status'}:
     raise ImproperlyConfigured('Unsupported LOOKUP_PACKAGES')
 CELERY_BEAT_SCHEDULE = {
+    'isolation-client-reminders': {'task': 'core.tasks.isolation_reminders_task', 'schedule': 60.0},
     'dispatch-outbox': {'task': 'core.tasks.dispatch_task', 'schedule': 30.0},
     'purge-expired-files': {'task': 'core.tasks.purge_task', 'schedule': 3600.0},
 }

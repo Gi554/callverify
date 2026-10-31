@@ -63,3 +63,10 @@ def lookup_task(check_id):
 @shared_task
 def export_task(job_id):
     build_export(job_id)
+
+
+@shared_task
+def isolation_reminders_task():
+    from .isolation_reminders import generate
+
+    return generate()

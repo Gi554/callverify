@@ -25,6 +25,7 @@ def notice(visit, recipient, role, kind, key):
                 'recipient_id': recipient,
                 'recipient_role': role,
                 'kind': kind,
+                'anchor_at': visit.starts_at,
             },
         )
 
@@ -83,8 +84,14 @@ class Notices(viewsets.GenericViewSet):
     pagination_class = Pager
 
     def get_queryset(self):
+        from django.db.models import Q
+        from .isolation_reminders import candidates
+
         rows = IsolationNotice.objects.filter(
             recipient_id=self.request.user.pk, recipient_role=self.request.user.role
+        )
+        rows = rows.filter(
+            ~Q(kind__in=['booked', 'result_due']) | Q(pk__in=candidates().values('pk'))
         )
         if self.request.query_params.get('unread') == 'true':
             rows = rows.filter(read_at__isnull=True)

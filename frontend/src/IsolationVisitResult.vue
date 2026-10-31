@@ -5,9 +5,16 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
 const emit = defineEmits<{ saved: []; cancel: [] }>();
-const performed = ref(''),
-  closed = ref(''),
-  note = ref(''),
+const performed = ref(props.visit.result ? (props.visit.result.performed ? 'yes' : 'no') : ''),
+  closed = ref(
+    props.visit.result?.closed === null || props.visit.result?.closed === undefined
+      ? ''
+      : props.visit.result.closed
+        ? 'yes'
+        : 'no',
+  ),
+  note = ref(props.visit.result?.note || ''),
+  reason = ref(''),
   busy = ref(false),
   error = ref('');
 async function save() {
@@ -27,6 +34,7 @@ async function save() {
             ? 'closed'
             : 'completed',
       note: note.value,
+      ...(props.visit.result ? { reason: reason.value } : {}),
     });
     emit('saved');
   } catch (e: any) {
@@ -64,7 +72,15 @@ async function save() {
         </select></label
       >
       <label>Notes · facultatives<textarea v-model="note" maxlength="3000"></textarea></label>
-      <button class="primary" :disabled="!performed || !closed">Enregistrer le résultat</button>
+      <label v-if="visit.result"
+        >Motif de la mise à jour<textarea v-model="reason" required maxlength="1000"></textarea>
+      </label>
+      <button
+        class="primary"
+        :disabled="!performed || !closed || (!!visit.result && !reason.trim())"
+      >
+        Enregistrer le résultat
+      </button>
       <button type="button" class="secondary" @click="emit('cancel')">Annuler la saisie</button>
     </fieldset>
   </form>
