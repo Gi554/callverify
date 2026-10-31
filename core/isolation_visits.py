@@ -56,6 +56,7 @@ class SlotInput(serializers.Serializer):
 
 
 class BookingInput(SlotInput):
+    previous_visit_id = serializers.IntegerField(min_value=1, required=False)
     publication = serializers.ChoiceField(choices=['internal', 'google'], default='internal')
     prospect_id = serializers.IntegerField(min_value=1)
     request_id = serializers.UUIDField()
@@ -123,6 +124,9 @@ def output(row):
         result = None
     return {
         'id': row.pk,
+        'process_id': str(row.process_id),
+        'previous_visit_id': row.previous_visit_id,
+        'next_visit_id': getattr(getattr(row, 'next_visit', None), 'pk', None),
         'prospect': {
             'id': row.prospect_id,
             'name': row.prospect.name,
@@ -183,16 +187,22 @@ class IsolationVisitViewSet(
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
-        qs = IsolationVisit.objects.select_related('prospect', 'result').order_by('starts_at', 'pk')
+        qs = IsolationVisit.objects.select_related('prospect', 'result', 'next_visit').order_by(
+            'starts_at', 'pk'
+        )
         if self.request.user.role == 'setter':
             qs = qs.filter(prospect__assigned_setter_id=self.request.user.pk)
         if self.request.user.role == 'client':
             qs = qs.filter(client_id=self.request.user.pk)
         period = self.request.query_params.get('period', '')
-        if period not in ('', 'upcoming'):
+        if period not in ('', 'upcoming', 'history'):
             raise ValidationError('Période invalide')
         if period == 'upcoming':
-            qs = qs.filter(ends_at__gt=timezone.now())
+            qs = qs.filter(status='scheduled', ends_at__gt=timezone.now())
+        elif period == 'history':
+            qs = qs.filter(Q(ends_at__lte=timezone.now()) | Q(status='cancelled')).order_by(
+                '-starts_at', '-pk'
+            )
         if self.request.query_params.get('result_due') == 'true':
             qs = qs.filter(status='scheduled', ends_at__lte=timezone.now()).filter(
                 Q(result__isnull=True) | Q(result__closed__isnull=True)
@@ -315,6 +325,8 @@ class IsolationVisitViewSet(
         canonical.update(client=claims['client']['id'], setter=claims['setter']['id'])
         if data['publication'] == 'google':
             canonical['publication'] = 'google'
+        if 'previous_visit_id' in data:
+            canonical['previous_visit_id'] = data['previous_visit_id']
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
         def replay(row):
@@ -335,6 +347,27 @@ class IsolationVisitViewSet(
                 raise
             if prospect.assigned_setter_id != claims['setter']['id']:
                 raise Conflict('Responsable modifié : rechargez')
+            # The prospect lock serializes the whole commercial process, including result changes.
+            latest = (
+                IsolationVisit.objects.filter(prospect=prospect, client_id=claims['client']['id'])
+                .select_related('result', 'next_visit')
+                .order_by('-pk')
+                .first()
+            )
+            previous = None
+            if latest and latest.status == 'scheduled' and latest.ends_at <= timezone.now():
+                if (
+                    getattr(latest, 'result', None)
+                    and not latest.result.performed
+                    and not getattr(latest, 'next_visit', None)
+                ):
+                    previous = latest
+            if 'previous_visit_id' in data and (
+                not previous or previous.pk != data['previous_visit_id']
+            ):
+                raise Conflict(
+                    'La visite précédente doit être la dernière visite non tenue de ce prospect et de ce client.'
+                )
             c2_snapshot = captured(prospect)
             calendar(claims['client']['id'])
             available(prospect, claims['client']['id'], data)
@@ -350,6 +383,8 @@ class IsolationVisitViewSet(
             row, created = IsolationVisit.objects.get_or_create(
                 request_id=data['request_id'],
                 defaults={
+                    **({'process_id': latest.process_id} if latest else {}),
+                    'previous_visit': previous,
                     'fingerprint': fingerprint,
                     'publication': data['publication'],
                     'publication_status': 'pending'
