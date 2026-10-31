@@ -2045,7 +2045,9 @@ class StatisticsTests(TestCase):
         from uuid import uuid4
         from datetime import timedelta
 
-        day = self.row.starts_at.date()
+        from packages.quebec_period import ZONE
+
+        day = self.row.starts_at.astimezone(ZONE).date()
         earlier = self.row.starts_at - timedelta(days=3)
         Appointment.objects.create(
             **self.base,
@@ -2073,6 +2075,35 @@ class StatisticsTests(TestCase):
         scoped = self.client.get(url).data
         self.assertEqual(sum(row['appointments'] for row in scoped['daily']), 0)
         self.assertEqual(scoped['previous']['totals']['appointments'], 0)
+
+    def test_quebec_day_bounds_daily_series_and_exports_at_dst(self):
+        from datetime import datetime, timedelta
+        from .models import Appointment
+        from packages.quebec_period import ZONE
+        from openpyxl import load_workbook
+        from io import BytesIO
+        from unittest.mock import patch
+
+        start = datetime(2026, 11, 1, 23, 30, tzinfo=ZONE)
+        Appointment.objects.filter(pk=self.row.pk).update(
+            starts_at=start, ends_at=start + timedelta(minutes=20)
+        )
+        url = self.url + '?from=2026-11-01&to=2026-11-01'
+        response = self.client.get(url)
+        self.assertEqual(response.data['timezone'], 'America/Toronto')
+        self.assertEqual(response.data['totals']['appointments'], 1)
+        self.assertEqual(response.data['daily'][0]['appointments'], 1)
+        self.assertIn(
+            'Du (Québec)', self.client.get(url + '&export=csv').content.decode('utf-8-sig')
+        )
+        book = load_workbook(BytesIO(self.client.get(url + '&export=xlsx').content))
+        self.assertEqual(book['Synthèse']['A2'].value, 'Du (Québec)')
+        with patch('django.utils.timezone.now', return_value=start):
+            self.assertEqual(str(self.client.get(self.url).data['to']), '2026-11-01')
+        Appointment.objects.filter(pk=self.row.pk).update(
+            starts_at=start + timedelta(hours=1), ends_at=start + timedelta(hours=2)
+        )
+        self.assertEqual(self.client.get(url).data['totals']['appointments'], 0)
 
     def test_missing_report_is_not_counted_as_no_and_zero_rate_is_unknown(self):
         data = self.client.get(self.query()).data['totals']

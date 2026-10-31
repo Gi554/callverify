@@ -9,44 +9,39 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   username?: string;
 }>();
-const DAY = 86400000;
+// Calendar labels are computed in Québec, independent of the browser's timezone.
 const iso = (date: Date) => date.toISOString().slice(0, 10);
-const today = new Date(),
-  from = ref(iso(new Date(today.getTime() - 29 * DAY))),
-  to = ref(iso(today)),
+function quebecToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const part = (key: string) => parts.find((p) => p.type === key)?.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+function shift(day: string, offset: number) {
+  const date = new Date(day + 'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate() + offset);
+  return iso(date);
+}
+const from = ref(shift(quebecToday(), -29)),
+  to = ref(quebecToday()),
   page = ref(1),
   result = ref<any>(null),
   busy = ref(false),
   error = ref('');
-// Quick periods only fill the dates; the API and its UTC day bounds are unchanged.
 const presets = [
-  {
-    id: '7',
-    label: '7 jours',
-    range: () => [iso(new Date(Date.now() - 6 * DAY)), iso(new Date())],
-  },
-  {
-    id: '30',
-    label: '30 jours',
-    range: () => [iso(new Date(Date.now() - 29 * DAY)), iso(new Date())],
-  },
-  {
-    id: 'month',
-    label: 'Ce mois',
-    range: () => {
-      const now = new Date();
-      return [iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))), iso(now)];
-    },
-  },
+  { id: '7', label: '7 jours', range: () => [shift(quebecToday(), -6), quebecToday()] },
+  { id: '30', label: '30 jours', range: () => [shift(quebecToday(), -29), quebecToday()] },
+  { id: 'month', label: 'Ce mois', range: () => [quebecToday().slice(0, 8) + '01', quebecToday()] },
   {
     id: 'previous',
     label: 'Mois dernier',
     range: () => {
-      const now = new Date();
-      return [
-        iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))),
-        iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0))),
-      ];
+      const end = shift(quebecToday().slice(0, 8) + '01', -1);
+      return [end.slice(0, 8) + '01', end];
     },
   },
 ];

@@ -167,9 +167,17 @@ test('a quick period fills the dates and recomputes', async () => {
       .props.onClick()
     await flush()
     const query = new URLSearchParams(f.requests.at(-1).split('?')[1])
-    const expectedFrom = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
+    const expectedFrom = new Date(new Date(today + 'T12:00:00Z').getTime() - 6 * 86400000)
+      .toISOString()
+      .slice(0, 10)
     assert.equal(query.get('from'), expectedFrom)
-    assert.equal(query.get('to'), new Date().toISOString().slice(0, 10))
+    assert.equal(query.get('to'), today)
     assert.equal(query.get('page'), '1')
     const active = all(f.root).find((n) => n.tag === 'button' && n.props['aria-pressed'] === true)
     assert.equal(text(active).trim(), '7 jours')
@@ -221,5 +229,38 @@ test('indicators compare with the previous period and chart each day', async () 
     assert.ok(all(f.root).some((n) => n.tag === 'path' && /^M0.0,/.test(n.props.d)))
   } finally {
     f.close()
+  }
+})
+
+test('month presets use the Québec date when UTC has already crossed midnight', async () => {
+  const RealDate = globalThis.Date
+  globalThis.Date = class extends RealDate {
+    constructor(...args) {
+      super(...(args.length ? args : ['2026-11-01T02:30:00Z']))
+    }
+    static now() {
+      return new RealDate('2026-11-01T02:30:00Z').getTime()
+    }
+  }
+  const f = fixture()
+  try {
+    await flush()
+    all(f.root)
+      .find((n) => n.tag === 'button' && text(n).trim() === 'Ce mois')
+      .props.onClick()
+    await flush()
+    let query = new URLSearchParams(f.requests.at(-1).split('?')[1])
+    assert.equal(query.get('from'), '2026-10-01')
+    assert.equal(query.get('to'), '2026-10-31')
+    all(f.root)
+      .find((n) => n.tag === 'button' && text(n).trim() === 'Mois dernier')
+      .props.onClick()
+    await flush()
+    query = new URLSearchParams(f.requests.at(-1).split('?')[1])
+    assert.equal(query.get('from'), '2026-09-01')
+    assert.equal(query.get('to'), '2026-09-30')
+  } finally {
+    f.close()
+    globalThis.Date = RealDate
   }
 })
