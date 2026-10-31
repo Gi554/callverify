@@ -56,7 +56,7 @@ class RequalificationTests(TestCase):
         self.assertIn('publication_proof', response.data)
         self.assertEqual(Prospect.objects.count(), 1)
         self.assertFalse(IsolationUnqualified.objects.get().active)
-        self.assertEqual(ProspectActivity.objects.filter(kind='unqualified_programmed').count(), 1)
+        self.assertEqual(ProspectActivity.objects.filter(kind='visit_programmed').count(), 1)
         self.assertEqual(ProspectActivity.objects.filter(kind='call_result').count(), 0)
         self.assertEqual(
             self.book(

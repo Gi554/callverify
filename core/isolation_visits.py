@@ -472,7 +472,7 @@ class IsolationVisitViewSet(
             event(
                 prospect,
                 request.user,
-                'unqualified_programmed' if request.user.role == 'client' else 'call_result',
+                'visit_programmed' if request.user.role == 'client' else 'call_result',
                 '',
                 {
                     'result': 'appointment_booked',

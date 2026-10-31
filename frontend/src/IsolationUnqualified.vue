@@ -51,6 +51,7 @@ const labels: Record<string, string> = {
   callback_updated: 'Rappel modifié',
   callback_closed: 'Rappel terminé',
   unqualified: 'Rendez-vous non qualifié',
+  visit_programmed: 'Visite programmée par le client',
 };
 const results: Record<string, string> = {
   appointment_booked: 'Rendez-vous pris',
