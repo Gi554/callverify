@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from uuid import uuid4
 
 
 class AdminUser(AbstractUser):
@@ -241,6 +242,10 @@ class IsolationFollowUp(models.Model):
 
 
 class IsolationVisit(models.Model):
+    process_id = models.UUIDField(default=uuid4, db_index=True, editable=False)
+    previous_visit = models.OneToOneField(
+        'self', on_delete=models.PROTECT, null=True, blank=True, related_name='next_visit'
+    )
     publication = models.CharField(max_length=20, default='internal')
     publication_status = models.CharField(max_length=20, default='internal')
     publication_error = models.CharField(max_length=40, blank=True)

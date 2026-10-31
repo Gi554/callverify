@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import IsolationCloserAssignment from './IsolationCloserAssignment.vue';
 import IsolationC2 from './IsolationC2.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
@@ -10,6 +10,7 @@ import IsolationSharedActivities from './IsolationSharedActivities.vue';
 import IsolationVisitSupplements from './IsolationVisitSupplements.vue';
 const props = defineProps<{
   visitId?: number;
+  period?: 'upcoming' | 'history';
   prospectId?: number;
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
@@ -61,6 +62,7 @@ const prospect = ref<any>(null),
   zone = ref('America/Toronto'),
   reason = ref(''),
   editing = ref<any>(null),
+  previousVisit = ref<any>(null),
   cancelling = ref<any>(null),
   history = ref<any>(null),
   historyRows = ref<any[]>([]),
@@ -68,6 +70,15 @@ const prospect = ref<any>(null),
   historyCount = ref(0);
 watch([busy, c2Busy], () => emit('busy', busy.value || c2Busy.value), { flush: 'sync' });
 let requestId = crypto.randomUUID();
+const bookingForm = ref<HTMLFormElement | null>(null);
+async function beginAgain(row: any) {
+  previousVisit.value = row;
+  editing.value = null;
+  localStart.value = '';
+  changed();
+  await nextTick();
+  bookingForm.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+}
 function changed() {
   requestId = crypto.randomUUID();
 }
@@ -95,7 +106,7 @@ async function load() {
       `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
     );
   const data = await props.request(
-    `visits/?page=${page.value}&result_due=${dueOnly.value}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
+    `visits/?page=${page.value}&result_due=${dueOnly.value}${props.period ? '&period=' + props.period : ''}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
   );
   rows.value = data.results;
   count.value = data.count;
@@ -143,10 +154,12 @@ async function save() {
       body.prospect_id = current.id;
       body.request_id = requestId;
       body.publication = 'google';
+      if (previousVisit.value) body.previous_visit_id = previousVisit.value.id;
       saved = await props.request('visits/', body);
     }
     await publish(saved);
     editing.value = null;
+    previousVisit.value = null;
     changed();
     start.value = '';
     end.value = '';
@@ -222,6 +235,7 @@ onMounted(() => run(load));
       @dirty="c2Dirty = $event"
     />
     <form
+      ref="bookingForm"
       v-if="role !== 'client' && (prospect || editing)"
       @submit.prevent="save"
       @input="changed"
@@ -229,6 +243,10 @@ onMounted(() => run(load));
     >
       <fieldset :disabled="busy || c2Busy">
         <legend>{{ editing ? 'Reporter une visite' : 'Programmer une visite' }}</legend>
+        <p v-if="previousVisit">
+          Nouvelle visite après la visite non tenue n° {{ previousVisit.id }}. L’ancienne visite et
+          son résultat sont conservés.
+        </p>
         <template v-if="!editing"
           ><AvailabilitySlots
             v-if="prospect"
@@ -317,6 +335,28 @@ onMounted(() => run(load));
               : 'Planifiée'
         }}
       </h4>
+      <p v-if="row.previous_visit_id">
+        Nouvelle visite après la visite n° {{ row.previous_visit_id }}.
+      </p>
+      <p v-if="row.next_visit_id">
+        Une nouvelle visite n° {{ row.next_visit_id }} a été programmée. Cette occurrence reste
+        conservée.
+      </p>
+      <button
+        v-if="
+          prospect &&
+          !visitId &&
+          ['setter', 'administrator'].includes(role) &&
+          row.result?.performed === false &&
+          row.status === 'scheduled' &&
+          !row.next_visit_id
+        "
+        class="secondary"
+        :disabled="busy || c2Busy"
+        @click="beginAgain(row)"
+      >
+        Programmer une nouvelle visite après cette absence
+      </button>
       <p>
         {{ visitDate(row.starts_at, row.timezone) }} → {{ visitDate(row.ends_at, row.timezone) }} ·
         {{ row.timezone }}

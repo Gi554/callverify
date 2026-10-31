@@ -308,6 +308,13 @@ const navigation = computed(() => {
       { id: 'overview', label: 'Mes visites', icon: 'appointments' },
       { id: 'statistics', label: 'Mes statistiques', icon: 'statistics' },
     ];
+  if (workspace.value === 'isolation' && role.value === 'client')
+    return [
+      { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
+      { id: 'appointments', label: 'Visites programmées', icon: 'appointments' },
+      { id: 'visit-history', label: 'Historique des visites', icon: 'appointments' },
+      { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
+    ];
   const items = [
     { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
     {
@@ -797,8 +804,15 @@ onMounted(async () => {
                       @changed="refreshIsolation"
                     />
                     <IsolationVisits
-                      v-else-if="isolationModule === 'appointments'"
-                      :key="appointmentFocus || 0"
+                      v-else-if="['appointments', 'visit-history'].includes(isolationModule)"
+                      :key="`${isolationModule}-${appointmentFocus || 0}`"
+                      :period="
+                        appointmentFocus
+                          ? undefined
+                          : isolationModule === 'visit-history'
+                            ? 'history'
+                            : 'upcoming'
+                      "
                       :visit-id="appointmentFocus || undefined"
                       :role="role"
                       :portal="portal"

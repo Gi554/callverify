@@ -1,5 +1,31 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — nouvelles occurrences et historique client (lot 7)
+
+Après une non-tenue, le setter peut programmer une nouvelle visite depuis la même fiche.
+L’ancienne visite conserve son résultat, ses dates et sa qualification capturée. La nouvelle
+occurrence est liée à la précédente et le serveur refuse un lien vers une autre fiche/client,
+une visite tenue, non renseignée, future ou déjà suivie d’une nouvelle occurrence. Les reprises
+de la même commande ne créent pas de visite supplémentaire. Le formulaire repasse par la
+qualification existante et les contrôles de créneau/Google déjà livrés.
+
+Un identifiant de processus commercial est partagé entre les visites du même prospect/client,
+même si l’appelant omet le lien précédent. Les visites historiques sont regroupées de manière
+conservatrice par prospect/client, sans inventer d’anciens liens de reprogrammation. Il n’existe
+pas encore de commande de nouveau cycle commercial indépendant pour une même fiche/client.
+Ce regroupement prépare le dédoublonnage de rémunération ; il ne calcule aucun montant à ce stade.
+
+Le menu client distingue Visites programmées et Historique des visites. Les visites annulées
+restent dans l’historique, les visites programmées sont futures et non annulées. Une fiche
+ouverte par lien reste consultable indépendamment de cette période. Les deux listes gardent
+le périmètre du client et les résultats tenus/non tenus/vente.
+
+Vérifications : 37 tests métier ciblés (5 réservés à PostgreSQL), nouvelle occurrence/rejeu,
+ancien résultat conservé, lien invalide et report destructif refusés, séparation historique/
+à venir et autre client refusé ; régression de 188 tests Isolation (15 réservés à PostgreSQL),
+9 tests frontend de réservation et liens, lint/format et migrations. CI complète requise avant
+fusion. Non-qualifiés et rémunération restent à livrer.
+
 ## Isolation V2 — notifications client et relance du résultat (lot 6)
 
 Une publication Google confirmée produit une notification privée et un courriel client lié à

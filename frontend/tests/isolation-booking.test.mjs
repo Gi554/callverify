@@ -97,7 +97,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture({ fail = false, google = false, publicationFail = false } = {}) {
+function fixture({ fail = false, google = false, publicationFail = false, absent = false } = {}) {
   const root = { children: [] },
     writes = [],
     events = []
@@ -122,7 +122,29 @@ function fixture({ fail = false, google = false, publicationFail = false } = {})
       }
       if (path.startsWith('work-queue/'))
         return { id: 7, name: 'Client', revision: 3, assigned_setter: { id: 21 } }
-      return { results: [], count: 0 }
+      return {
+        results: absent
+          ? [
+              {
+                id: 12,
+                status: 'scheduled',
+                prospect: { id: 7, name: 'Client' },
+                original_setter: { id: 21, name: 'Setter' },
+                client: { id: 72, name: 'Client' },
+                starts_at: '2026-01-01T10:00:00Z',
+                ends_at: '2026-01-01T11:00:00Z',
+                timezone: 'America/Toronto',
+                result: {
+                  performed: false,
+                  closed: false,
+                  outcome: 'not_performed',
+                  created_at: '2026-01-01T12:00:00Z',
+                },
+              },
+            ]
+          : [],
+        count: absent ? 1 : 0,
+      }
     },
   })
   app.mount(root)
@@ -136,6 +158,26 @@ async function submit(f) {
   await form.props.onSubmit({ preventDefault() {} })
   await flush()
 }
+
+test('a no-show starts a new visit linked to the previous occurrence, without modifying it', async () => {
+  const f = fixture({ absent: true })
+  try {
+    await flush()
+    const action = all(f.root).find(
+      (n) => n.tag === 'button' && n.text?.includes('après cette absence'),
+    )
+    assert.ok(action)
+    action.props.onClick()
+    await flush()
+    await submit(f)
+    assert.equal(f.writes.length, 1)
+    assert.equal(f.writes[0].path, 'visits/')
+    assert.equal(f.writes[0].body.previous_visit_id, 12)
+    assert.equal(f.writes[0].body.prospect_id, 7)
+  } finally {
+    f.app.unmount()
+  }
+})
 
 test('Isolation booking awaits C2 saving and sends its new revision with an explicit Canadian instant', async () => {
   const f = fixture()
