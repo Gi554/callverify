@@ -187,6 +187,10 @@ test('Isolation client reminder opens the exact authorised visit after login', a
         await flush()
       }
       const visits = find(f, 'IsolationVisits')
+      assert.deepEqual(
+        find(f, 'CrmShell').props.items.map((item) => item.id),
+        ['overview', 'appointments', 'unqualified', 'visit-history', 'isolation-agenda'],
+      )
       assert.equal(visits.props['visit-id'], 42)
       assert.equal(f.address.search, '')
     } finally {

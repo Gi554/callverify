@@ -20,6 +20,7 @@ from .models import (
     IsolationVisit,
     IsolationVisitCalendar,
     IsolationVisitResult,
+    IsolationUnqualified,
     AuditEvent,
 )
 from .isolation_work import VisitAuthentication, Pager, Conflict, visible
@@ -347,6 +348,9 @@ class IsolationVisitViewSet(
                 raise
             if prospect.assigned_setter_id != claims['setter']['id']:
                 raise Conflict('Responsable modifié : rechargez')
+            pending = IsolationUnqualified.objects.filter(prospect=prospect, active=True).first()
+            if pending and pending.client_id != claims['client']['id']:
+                raise Conflict('La fiche non qualifiée appartient à un autre client.')
             # The prospect lock serializes the whole commercial process, including result changes.
             latest = (
                 IsolationVisit.objects.filter(prospect=prospect, client_id=claims['client']['id'])
@@ -403,6 +407,10 @@ class IsolationVisitViewSet(
             if not created:
                 transaction.set_rollback(True)
                 return replay(row)
+            if pending:
+                pending.active = False
+                pending.programmed_visit = row
+                pending.save(update_fields=['active', 'programmed_visit'])
             from .isolation_followups import event
 
             event(

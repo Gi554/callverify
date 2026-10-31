@@ -35,7 +35,9 @@ code = code
   .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
     name === 'IsolationC2'
       ? `const IsolationC2={setup(props,{expose,emit}){expose({async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`
-      : `const ${name}={render:()=>null}`,
+      : name === 'SidePanel'
+        ? `const ${name}={inheritAttrs:false,setup(props,{slots}){return ()=>slots.default?.()}}`
+        : `const ${name}={render:()=>null}`,
   )
   .replace(/vShow as _vShow,?/g, '')
 code =
@@ -154,7 +156,7 @@ async function submit(f) {
   const input = all(f.root).find((n) => n.tag === 'input' && n.props.type === 'datetime-local')
   input.props['onUpdate:modelValue']('2030-12-01T10:00')
   await flush()
-  const form = all(f.root).find((n) => n.tag === 'form')
+  const form = all(f.root).find((n) => n.tag === 'form' && all(n).includes(input))
   await form.props.onSubmit({ preventDefault() {} })
   await flush()
 }
@@ -206,6 +208,40 @@ test('a failed C2 save stops booking before any proof or visit request', async (
     assert.ok(all(f.root).some((n) => n.props?.role === 'alert' && n.text === 'Conflit C2'))
   } finally {
     f.app.unmount()
+  }
+})
+
+test('an interested prospect can be saved as unqualified with a reason and optional note, without booking', async () => {
+  for (const fail of [false, true]) {
+    const f = fixture({ fail })
+    try {
+      await flush()
+      const action = all(f.root).find(
+        (n) => n.tag === 'button' && n.text?.includes('Enregistrer un rendez-vous non qualifié'),
+      )
+      action.props.onClick()
+      await flush()
+      const form = all(f.root).find(
+        (n) =>
+          n.tag === 'form' &&
+          all(n).some((child) => child.tag === 'option' && child.props.value === 'distance'),
+      )
+      const select = all(form).find((n) => n.tag === 'select')
+      select.props['onUpdate:modelValue']('distance')
+      await flush()
+      await form.props.onSubmit({ preventDefault() {} })
+      await flush()
+      assert.equal(f.writes.length, fail ? 0 : 1)
+      if (!fail) {
+        assert.equal(f.writes[0].path, 'isolation-unqualified/')
+        assert.equal(f.writes[0].body.reason, 'distance')
+        assert.equal(f.writes[0].body.note, '')
+        assert.equal(f.writes[0].body.revision, 7)
+        assert.equal(f.writes[0].body.prospect_id, 7)
+      }
+    } finally {
+      f.app.unmount()
+    }
   }
 })
 
