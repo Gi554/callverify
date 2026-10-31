@@ -1,5 +1,6 @@
 """Read-only, service-authenticated availability for CRM confirmations."""
 
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.db import transaction
@@ -27,7 +28,9 @@ def active(pk, role, workspace):
     ).exists()
 
 
-def check(data, workspace='assurance'):
+def check(data, workspace='assurance', include_busy=False):
+    if include_busy and data['end'] - data['start'] > timedelta(days=7):
+        raise ValidationError('Sept jours maximum pour consulter les créneaux.')
     owner_role = 'advisor' if workspace == 'assurance' else 'client'
     if not active(data['actor'], data['role'], workspace) or not active(
         data['owner'], owner_role, workspace
@@ -40,8 +43,9 @@ def check(data, workspace='assurance'):
         CalendarConnection.objects.filter(pk=row.pk).update(revision=F('revision'))
         row.refresh_from_db()
         result = 'internal_only'
+        periods = []
         # A previously linked account must be reconnected, never treated as free.
-        if row.provider and not row.connected:
+        if (row.provider or include_busy) and not row.connected:
             raise Unavailable()
         if row.connected:
             try:
@@ -107,14 +111,18 @@ def check(data, workspace='assurance'):
         )
     if failure:
         raise Unavailable()
-    return {'result': result, 'checked_at': checked_at}
+    return {
+        'result': result,
+        'checked_at': checked_at,
+        **({'busy': periods} if include_busy else {}),
+    }
 
 
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([AllowAny])
 @throttle_classes([CalendarThrottle])
-def availability(request, workspace='assurance'):
+def availability(request, workspace='assurance', include_busy=False):
     if (
         request.query_params
         or not isinstance(request.data, dict)
@@ -127,6 +135,6 @@ def availability(request, workspace='assurance'):
         data = verify(request.data['proof'], workspace)
     except (signing.BadSignature, TypeError, ValueError, AttributeError):
         raise PermissionDenied('Preuve serveur invalide ou expirée.') from None
-    response = Response(check(data, workspace))
+    response = Response(check(data, workspace, include_busy=include_busy))
     response['Cache-Control'] = 'no-store'
     return response

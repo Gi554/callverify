@@ -6,6 +6,7 @@ import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
+import IsolationAgenda from './IsolationAgenda.vue';
 import PortalAccess from './PortalAccess.vue';
 import PortalPassword from './PortalPassword.vue';
 import PortalRecovery from './PortalRecovery.vue';
@@ -320,6 +321,12 @@ const navigation = computed(() => {
         { id: 'fields', label: 'Paramètres métier', icon: 'fields' },
       );
   } else {
+    if (['client', 'administrator'].includes(role.value))
+      items.push({
+        id: 'isolation-agenda',
+        label: 'Agenda et disponibilités',
+        icon: 'appointments',
+      });
     if (['setter', 'administrator'].includes(role.value))
       items.push({ id: 'followups', label: 'Tâches de rappel', icon: 'followups' });
     items.push({ id: 'statistics', label: 'Statistiques', icon: 'statistics' });
@@ -566,8 +573,20 @@ onMounted(async () => {
           <template v-else>
             <p v-if="busy" role="status">Chargement de votre espace…</p>
             <template v-if="workspace && summary">
+              <IsolationAgenda
+                v-if="
+                  workspace === 'isolation' &&
+                  activeModule === 'isolation-agenda' &&
+                  ['client', 'administrator'].includes(role)
+                "
+                :request="isolation"
+                :portal="portal"
+                :role="role"
+              />
               <IsolationCloserVisits
-                v-if="workspace === 'isolation' && role === 'closer' && activeModule === 'overview'"
+                v-else-if="
+                  workspace === 'isolation' && role === 'closer' && activeModule === 'overview'
+                "
                 :request="isolation"
               /><CrmOverview
                 v-else-if="activeModule === 'overview'"

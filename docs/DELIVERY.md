@@ -1,5 +1,33 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — horaires du client et créneaux de l’agenda (lot 3)
+
+Le menu client expose « Agenda et disponibilités » avec ses connexions personnelles et des plages
+hebdomadaires au Québec. L’administration peut régler les horaires, mais ne connecte pas l’agenda
+personnel du client. Aucun représentant ne connecte d’agenda (précision utilisateur). Le client
+reste unique ; les représentants restent affectés aux visites dans le CRM.
+
+Les plages sont versionnées et auditées, limitées à 28, sans chevauchement ni traversée de minuit.
+Lorsque la restriction est active, les jours sans plage sont fermés. Par compatibilité, elle est
+désactivée tant que le client n’a pas choisi ses horaires ; aucun horaire réel n’est inventé.
+Une réservation ou un report vérifie ces plages sous verrou et les rendez-vous existants ne
+sont pas déplacés lors d’un changement d’horaires.
+
+Le sélecteur de créneaux setter interroge maintenant le compte connecté par échange serveur
+signé, puis combine uniquement les périodes occupées avec les réservations Orvia et horaires
+fermés. Période limitée à sept jours, aucune information privée d’événement. Absence de connexion,
+erreur fournisseur ou réponse invalide empêchent l’affichage de créneaux libres. Le contrôle
+final existant est conservé. L’ancien GET de disponibilité interne reste compatible ; le nouveau
+parcours utilise le POST attesté. Documentation API consultée :
+https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query
+
+Vérifications : client/admin vs setter, règles de plage et révision, audit atomique, réservation
+hors horaires, créneaux externes signés et erreurs, absence de connexion et période bornée,
+contrat du pont serveur sans données privées ; édition et conflit frontend, calendrier existant.
+Limites : agenda principal du client seulement ; publication fiable de la visite dans Google,
+notifications/courriels et autres lots V2 restent à livrer. Aucun appel réel à un agenda client
+n’est déclenché par ces tests simulés. La V2 n’est pas déclarée terminée.
+
 ## Isolation V2 — qualification préremplie et âge facultatif (lot 2)
 
 L’âge est facultatif lors de la programmation ; s’il est renseigné, ses bornes 0–120 restent

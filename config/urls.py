@@ -60,3 +60,7 @@ urlpatterns += [
     path('api/client-folders/<int:client_id>/', client_folders),
     path('api/client-folders/<int:client_id>/export/', export_client),
 ]
+
+from core.isolation_hours import configuration as isolation_hours
+
+urlpatterns += [path('api/isolation-working-hours/', isolation_hours)]

@@ -101,6 +101,9 @@ def calendar(client):
 
 
 def available(prospect, client, data, exclude=None):
+    from .isolation_hours import ensure_open
+
+    ensure_open(data['starts_at'], data['ends_at'])
     if data['starts_at'] <= timezone.now():
         raise ValidationError('Créneau futur requis')
     rows = IsolationVisit.objects.filter(
@@ -205,21 +208,57 @@ class IsolationVisitViewSet(
     def retrieve(self, request, pk=None):
         return Response(output(self.get_object()))
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'post'])
     def availability(self, request):
         """Busy CRM intervals before booking; the client's external calendar stays checked at booking."""
         if request.user.role not in ('setter', 'administrator'):
             raise PermissionDenied('Disponibilités réservées aux setters et administrateurs')
-        prospect_id = request.query_params.get('prospect_id', '')
+        params = request.data if request.method == 'POST' else request.query_params
+        if request.method == 'POST' and (
+            not isinstance(params, dict) or set(params) != {'prospect_id', 'start', 'end', 'proof'}
+        ):
+            raise ValidationError('Prospect, période et preuve de réservation requis.')
+        if request.method == 'POST' and (
+            not isinstance(params['proof'], str) or len(params['proof']) > 3000
+        ):
+            raise ValidationError('Preuve de réservation invalide.')
+        prospect_id = str(params.get('prospect_id', ''))
         if not prospect_id.isdigit():
             raise ValidationError('Prospect invalide')
         prospect = get_object_or_404(visible(request.user), pk=int(prospect_id))
-        start = parse_datetime(request.query_params.get('start', ''))
-        end = parse_datetime(request.query_params.get('end', ''))
+        try:
+            start = (
+                parse_datetime(params.get('start'))
+                if isinstance(params.get('start'), str)
+                else None
+            )
+            end = parse_datetime(params.get('end')) if isinstance(params.get('end'), str) else None
+        except ValueError:
+            raise ValidationError('Période invalide.') from None
         if not start or not end or start.tzinfo is None or end.tzinfo is None:
             raise ValidationError('Période invalide : dates ISO 8601 avec décalage attendues')
         if not start < end <= start + timedelta(days=7):
             raise ValidationError('Période invalide : sept jours au maximum')
+        from .isolation_hours import closed_periods
+
+        external_busy = []
+        if request.method == 'POST':
+            claims = proof({'proof': params['proof']}, request.user, prospect)
+            from packages.calendar_connectors.booking import check
+
+            external = check(
+                request.user,
+                claims['client']['id'],
+                start,
+                end,
+                workspace='isolation',
+                include_busy=True,
+            )
+            external_busy = [
+                {'starts_at': row['start'], 'ends_at': row['end'], 'reason': 'external'}
+                for row in external['busy']
+            ]
+
         # Isolation has a single client (enforced by the portal): every scheduled visit occupies it.
         rows = (
             IsolationVisit.objects.filter(status='scheduled', starts_at__lt=end, ends_at__gt=start)
@@ -236,8 +275,12 @@ class IsolationVisitViewSet(
                         'reason': 'prospect' if row['prospect_id'] == prospect.pk else 'client',
                     }
                     for row in rows
-                ],
-                'external_calendar': 'checked_at_booking',
+                ]
+                + closed_periods(start, end)
+                + external_busy,
+                'external_calendar': 'checked_now'
+                if request.method == 'POST'
+                else 'checked_at_booking',
             }
         )
 
