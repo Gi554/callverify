@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import { actorNames } from './actor-names';
 const names = ref<Record<number, string>>({});
 import PhoneHistory from './PhoneHistory.vue';
@@ -63,6 +63,14 @@ async function load() {
     busy.value = false;
   }
 }
+async function callSaved(result: string) {
+  await load();
+  emit('saved');
+  if (!error.value && ['voicemail', 'invalid_number', 'disconnected'].includes(result)) {
+    await nextTick();
+    close();
+  }
+}
 async function save() {
   if (!prospect.value) return;
   busy.value = true;
@@ -103,7 +111,7 @@ function close() {
     return;
   emit('close');
 }
-defineExpose({ close });
+defineExpose({ close, reload: load });
 onMounted(load);
 const activityLabels: Record<string, string> = {
   note: 'Note',
@@ -116,10 +124,11 @@ const activityLabels: Record<string, string> = {
 const resultLabels: Record<string, string> = {
   appointment_booked: 'Rendez-vous pris',
   voicemail: 'Répondeur',
-  invalid_number: 'Numéro invalide déclaré',
+  invalid_number: 'Numéro non attribué',
   disconnected: 'Appel coupé',
   not_interested: 'Pas intéressé',
   callback: 'Rappel demandé',
+  other: 'Autre résultat',
   unreachable: 'Injoignable',
 };
 </script>
@@ -158,10 +167,7 @@ const resultLabels: Record<string, string> = {
         :blocked="busy || taskBusy"
         @busy="callBusy = $event"
         @dirty="callDirty = $event"
-        @saved="
-          load();
-          emit('saved');
-        "
+        @saved="callSaved"
         @book="emit('book')"
       />
     </div>

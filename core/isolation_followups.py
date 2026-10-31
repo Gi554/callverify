@@ -17,11 +17,12 @@ from .models import Prospect, ProspectActivity, IsolationFollowUp, IsolationVisi
 RESULTS = {
     'appointment_booked': 'Rendez-vous pris',
     'voicemail': 'Répondeur',
-    'invalid_number': 'Numéro invalide déclaré',
+    'invalid_number': 'Numéro non attribué',
     'disconnected': 'Appel coupé',
     'not_interested': 'Pas intéressé',
     'callback': 'Rappel demandé',
-    'unreachable': 'Injoignable',
+    'other': 'Autre résultat',
+    'unreachable': 'Injoignable',  # Historical API compatibility; hidden in new chooser.
 }
 
 

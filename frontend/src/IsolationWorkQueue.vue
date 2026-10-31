@@ -518,8 +518,8 @@ onBeforeUnmount(() => {
               }}</span>
               <div>
                 <button
-                  title="Visites et formulaire C2"
-                  aria-label="Visites et formulaire C2"
+                  title="Qualification et visites"
+                  aria-label="Qualification et visites"
                   @click="
                     visitProspect = row.id;
                     visitsOpen = true;
@@ -602,7 +602,7 @@ onBeforeUnmount(() => {
     /></SidePanel>
     <SidePanel
       :open="visitsOpen"
-      title="Visites et formulaire C2"
+      title="Qualification et visites"
       eyebrow="ISOLATION"
       :close-disabled="visitBusy"
       @request-close="visitsPanel?.close()"
@@ -616,7 +616,10 @@ onBeforeUnmount(() => {
         :request="request"
         @busy="visitBusy = $event"
         @close="visitsOpen = false"
-        @changed="load"
+        @changed="
+          load();
+          activityPanel?.reload();
+        "
     /></SidePanel>
     <SidePanel
       :open="!!selected && role === 'administrator'"

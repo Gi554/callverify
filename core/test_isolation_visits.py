@@ -63,6 +63,18 @@ class IsolationVisitTests(TestCase):
     def book(self, **changes):
         return self.client.post(self.url, self.payload(**changes), format='json')
 
+    def test_booking_records_one_linked_call_result_and_replay_does_not_duplicate(self):
+        from .models import ProspectActivity
+
+        response = self.book()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.book().status_code, 200)
+        events = ProspectActivity.objects.filter(prospect=self.prospect, kind='call_result')
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events.get().changes['result'], 'appointment_booked')
+        self.assertEqual(events.get().changes['appointment_id'], response.data['id'])
+        self.assertEqual(events.get().author_portal_id, 21)
+
     def test_calendar_window_overlap_boundaries_and_visibility(self):
         row = self.book()
         self.assertEqual(row.status_code, 201, row.data)
