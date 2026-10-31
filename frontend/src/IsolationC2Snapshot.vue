@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ snapshot: any }>();
+defineProps<{ snapshot: any; unqualified?: boolean }>();
 const labels: Record<string, string> = {
   full_name: 'Nom et prénom',
   phone: 'Téléphone',
@@ -23,10 +23,20 @@ function value(v: any) {
 </script>
 <template>
   <details class="c2-copy">
-    <summary>Qualification transmis avec la visite</summary>
+    <summary>
+      {{
+        unqualified
+          ? 'Informations conservées du prospect'
+          : 'Qualification transmise avec la visite'
+      }}
+    </summary>
     <template v-if="snapshot?.fields"
       ><p>
-        Copie du {{ new Date(snapshot.captured_at).toLocaleString('fr-FR') }} · Campagne
+        Copie du
+        {{
+          new Date(snapshot.captured_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+        }}
+        (Québec) · Campagne
         {{ snapshot.campaign_id }}
       </p>
       <dl>
@@ -35,7 +45,10 @@ function value(v: any) {
           <dd>{{ value(snapshot.fields[key]) }}</dd>
         </div>
       </dl>
-      <small
+      <small v-if="unqualified"
+        >Informations disponibles lors de l’enregistrement en rendez-vous non qualifié.</small
+      >
+      <small v-else
         >La copie conserve les informations à la réservation. Le créneau actuel est celui de la
         visite.</small
       ></template

@@ -50,7 +50,12 @@ def output(row):
         'reason': row.reason,
         'reason_label': REASONS[row.reason],
         'note': row.note,
-        'qualification': {'version': 1, 'fields': row.qualification},
+        'qualification': {
+            'version': 1,
+            'fields': row.qualification,
+            'captured_at': row.created_at.isoformat(),
+            'campaign_id': row.prospect.campaign_id,
+        },
         'setter': {'id': row.setter_id, 'name': row.setter_name},
         'client': {'id': row.client_id, 'name': row.client_name},
         'created_at': row.created_at,

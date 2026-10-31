@@ -199,7 +199,7 @@ onMounted(() => run(load));
           {{ when(selected.created_at) }} (Québec)
         </p>
         <p v-if="selected.note" class="note">{{ selected.note }}</p>
-        <IsolationC2Snapshot :snapshot="selected.qualification" />
+        <IsolationC2Snapshot :snapshot="selected.qualification" unqualified />
         <h4>Historique des appels et observations</h4>
         <article v-for="entry in history" :key="entry.id">
           <small>{{ when(entry.created_at) }} · {{ labels[entry.kind] || entry.kind }}</small>
