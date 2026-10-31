@@ -1,5 +1,30 @@
 # Suivi des livraisons CRM AMX
 
+## Retour conseiller Oui/Non et suivi d’absence Assurance
+
+Le conseiller répond à « Le prospect a-t-il répondu à la rencontre ? », avec rappel du type
+vidéo/téléphone et notes facultatives. Oui donne le statut « Rendez-vous validé » ; Non donne
+« Non honoré » et un rappel setter prévu au plus tard sous 24 heures, même si la règle générale
+de suivi prévoit un délai supérieur. Une tâche fermée est rouverte et auditée lorsqu’une nouvelle
+absence le nécessite ; les tâches et anciennes résolutions ne sont pas effacées de l’historique.
+Les corrections restent motivées et versionnées. Une ancienne déclaration de vente est conservée
+lorsqu’elle n’est pas modifiée ; aucune réponse commerciale supplémentaire n’est requise.
+
+Le setter reçoit une notification de présence/absence, peut ouvrir le rendez-vous concerné
+dans le bon mois de l’agenda et consulter les observations du conseiller. La lecture ne valide
+aucune rencontre. Le conseiller consulte les différentes occurrences du même prospect depuis
+le panneau de rendez-vous et peut passer de l’une à l’autre avec protection des saisies non
+enregistrées. Les libellés Assurance sont aussi cohérents dans les dossiers et exports ; Isolation
+conserve ses libellés et règles propres. Le décompte existant reste fondé sur les présences.
+
+Vérifications : notes/vente facultatives, conservation des ventes anciennes, correction auditée,
+notification dédupliquée et privée, absence sous 24 h et réouverture, refus avant fin/annulation
+ou par un autre rôle, historique scoped, exports et règle générale de suivi. Tests frontend
+Oui/Non sans valeur implicite, notes vides, historique et accès au rendez-vous setter.
+Limites : une correction de présence ne clôture pas automatiquement un suivi déjà ouvert ;
+le setter le termine selon ses permissions. Le nouveau délai de relance à J+1 18 h et le calcul
+de rémunération CAD sont les deux lots suivants.
+
 ## Fiche, résultats d’appel et navigation Assurance simplifiés
 
 Toutes les ouvertures de fiche setter/administrateur utilisent les quatre rubriques guidées :
@@ -83,8 +108,6 @@ parcours complet de transmission manuelle ni une synchronisation du fournisseur.
 
 ### Demande Assurance du 30 octobre — suite à livrer
 
-- Retour conseiller Oui/Non, « Rendez-vous validé » / « Non honoré », notification setter et
-  rappel d’absence sous 24 h ; conserver le dossier complet et son historique.
 - Remplacer le rappel à une heure par le lendemain à **18 h America/Toronto**, configurable
   par l’administrateur ; inclure nom, date/heure et lien. SMS conditionné à un service intégré.
 - Statistiques hebdomadaires appels, rendez-vous pris/transmis/à venir/validés/non honorés et

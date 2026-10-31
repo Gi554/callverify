@@ -123,7 +123,7 @@ class AppointmentStatusTests(TestCase):
         self.assertEqual(self.fixture.report(outcome='not_performed').status_code, 409)
         self.assertEqual(FollowUpTask.objects.count(), 1)
         result = self.client.get(self.fixture.url).data
-        self.assertEqual(result['outcome_label'], 'Absent')
+        self.assertEqual(result['outcome_label'], 'Non honoré')
         self.assertEqual(
             BusinessAudit.objects.get(action='appointment.reported').metadata['outcome'], 'absent'
         )

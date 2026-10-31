@@ -5,7 +5,14 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from .models import AppointmentReport, BusinessAudit, Contact, FollowUpTask
+from .models import (
+    AppointmentReport,
+    BusinessAudit,
+    Contact,
+    FollowUpTask,
+    FollowUpPolicy,
+    AppointmentNotification,
+)
 from . import tests as existing_tests
 
 
@@ -74,11 +81,14 @@ class AdvisorWorkspaceTests(TestCase):
         self.assertEqual(
             self.result(performed=False, sale_concluded=True, note='Absent').status_code, 400
         )
-        self.assertEqual(self.result(performed=False).status_code, 400)
-        self.assertEqual(self.result(performed=False, note='Absent').status_code, 200)
+        self.assertEqual(self.result(performed=False).status_code, 200)
+        self.assertEqual(
+            self.result(performed=False, note='Absent', revision=1, reason='Précision').status_code,
+            200,
+        )
         self.assertEqual(self.result(performed=False, note='Absent').status_code, 200)
         self.assertEqual(FollowUpTask.objects.count(), 1)
-        self.assertEqual(self.result(revision=1, reason='Presence corrected').status_code, 200)
+        self.assertEqual(self.result(revision=2, reason='Presence corrected').status_code, 200)
         self.assertEqual(FollowUpTask.objects.count(), 1)
         self.assertIsNone(FollowUpTask.objects.get().closed_at)
 
@@ -89,6 +99,63 @@ class AdvisorWorkspaceTests(TestCase):
         self.assertIsNone(self.client.get(self.result_url).data['result']['sale_concluded'])
         self.assertEqual(self.result(reason='Complete legacy record').status_code, 200)
         self.assertIs(AppointmentReport.objects.get().sale_concluded, False)
+
+    def test_boolean_absence_without_note_or_sale_notifies_setter_and_caps_callback_at_24h(self):
+        FollowUpPolicy.objects.create(pk=1, initial_hours=72)
+        data = {'revision': 0, 'performed': False}
+        self.assertEqual(self.client.post(self.result_url, data, format='json').status_code, 200)
+        self.assertEqual(self.client.post(self.result_url, data, format='json').status_code, 200)
+        report = AppointmentReport.objects.get()
+        self.assertEqual(report.outcome, 'absent')
+        self.assertEqual(report.note, '')
+        self.assertLessEqual(
+            FollowUpTask.objects.get().due_at, timezone.now() + timedelta(hours=24)
+        )
+        self.assertEqual(AppointmentNotification.objects.count(), 1)
+        self.auth(21, 'setter')
+        feed = self.client.get('/api/assurance/appointment-notifications/?unread=true').data
+        self.assertEqual(feed['count'], 1)
+        self.assertEqual(feed['results'][0]['label'], 'Rendez-vous non honoré')
+        item = feed['results'][0]['id']
+        self.assertEqual(
+            self.client.post(f'/api/assurance/appointment-notifications/{item}/read/').status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get('/api/assurance/appointment-notifications/?unread=true').data['count'],
+            0,
+        )
+
+    def test_simple_presence_correction_preserves_a_previous_sale(self):
+        self.assertEqual(self.result(sale_concluded=True).status_code, 200)
+        response = self.client.post(
+            self.result_url,
+            {'revision': 1, 'performed': True, 'note': 'Observation', 'reason': 'Précision'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIs(AppointmentReport.objects.get().sale_concluded, True)
+        self.assertEqual(AppointmentNotification.objects.count(), 1)
+
+    def test_new_absence_reopens_a_closed_follow_up_and_preserves_its_history(self):
+        task = FollowUpTask.objects.create(
+            appointment=self.appointment,
+            setter_id=21,
+            reason='Ancien suivi',
+            due_at=timezone.now() - timedelta(days=1),
+            closed_at=timezone.now() - timedelta(hours=1),
+            closed_by_id=21,
+            resolution='Traité',
+        )
+        response = self.client.post(
+            self.result_url, {'revision': 0, 'performed': False}, format='json'
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        task.refresh_from_db()
+        self.assertIsNone(task.closed_at)
+        self.assertLessEqual(task.due_at, timezone.now() + timedelta(hours=24))
+        audit = BusinessAudit.objects.get(action='appointment.absence_follow_up_reopened')
+        self.assertEqual(audit.metadata['before']['resolution'], 'Traité')
 
     def test_future_cancelled_and_wrong_roles_cannot_report(self):
         self.appointment.ends_at = timezone.now() + timedelta(hours=1)

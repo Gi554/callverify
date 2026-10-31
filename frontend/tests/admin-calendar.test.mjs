@@ -298,7 +298,7 @@ test('advisor uses the calendar and its own appointment panel without booking to
   }
 })
 
-test('email link opens the exact past meeting; other roles never use this entry', async () => {
+test('appointment focus opens an exact past meeting for the advisor or an authenticated setter notification', async () => {
   const f = fixture({ role: 'advisor', appointmentId: 42 })
   try {
     await flush()
@@ -317,7 +317,8 @@ test('email link opens the exact past meeting; other roles never use this entry'
   const setter = fixture({ role: 'setter', appointmentId: 42 })
   try {
     await flush()
-    assert.ok(!setter.requests.includes('appointments/42/'))
+    assert.ok(setter.requests.includes('appointments/42/'))
+    assert.ok(all(setter.root).some((n) => n.props?.['data-component'] === 'AssuranceAppointments'))
   } finally {
     setter.close()
   }

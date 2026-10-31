@@ -7,7 +7,7 @@ const props = defineProps<{
   appointmentId: number;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
-const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any] }>();
+const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; open: [id: number] }>();
 const tab = ref('result'),
   busy = ref(false),
   error = ref(''),
@@ -21,14 +21,12 @@ const clientError = ref(''),
   resultBase = ref('');
 const resultReady = ref(false);
 const performed = ref(''),
-  sale = ref(''),
   problem = ref(false),
   note = ref(''),
   reason = ref('');
 const resultDraft = computed(() =>
   JSON.stringify({
     performed: performed.value,
-    sale: sale.value,
     problem: problem.value,
     note: note.value,
   }),
@@ -67,7 +65,6 @@ defineExpose({ close });
 function setReport(value: any) {
   report.value = value;
   performed.value = value ? String(value.performed) : '';
-  sale.value = value?.sale_concluded == null ? '' : String(value.sale_concluded);
   problem.value = value?.problem || false;
   note.value = value?.note || '';
   reason.value = '';
@@ -104,7 +101,7 @@ async function reload() {
   if (close()) await load();
 }
 async function saveResult() {
-  if (busy.value || !canReport.value || !performed.value || !sale.value) return;
+  if (busy.value || !canReport.value || !performed.value) return;
   working(true);
   error.value = '';
   success.value = '';
@@ -112,13 +109,7 @@ async function saveResult() {
     const data = await props.request(`${base.value}/advisor-result/`, {
       revision: appointment.value.revision,
       performed: performed.value === 'true',
-      outcome:
-        performed.value === 'true'
-          ? 'performed'
-          : report.value?.performed === false
-            ? report.value.outcome || 'not_performed'
-            : 'absent',
-      sale_concluded: sale.value === 'true',
+      outcome: performed.value === 'true' ? 'performed' : 'absent',
       problem: problem.value,
       note: note.value,
       reason: reason.value,
@@ -171,6 +162,25 @@ function stamp(value: string) {
     timeZone: appointment.value?.timezone || 'America/Toronto',
   }).format(new Date(value));
 }
+const historyRows = ref<any[]>([]),
+  historyPage = ref(1),
+  historyCount = ref(0);
+async function loadHistory() {
+  if (!appointment.value || busy.value) return;
+  working(true);
+  error.value = '';
+  try {
+    const data = await props.request(
+      `appointments/?contact_id=${appointment.value.contact.id}&page=${historyPage.value}&period=`,
+    );
+    historyRows.value = data.results;
+    historyCount.value = data.count;
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    working(false);
+  }
+}
 function toggle(key: string, option: string, checked: boolean) {
   let values = [...(client.value.qualification[key] || [])];
   values = checked
@@ -208,6 +218,15 @@ onMounted(load);
       <button :class="{ active: tab === 'snapshot' }" @click="tab = 'snapshot'">
         <FilePenLine :size="16" />Qualification reçue
       </button>
+      <button
+        :class="{ active: tab === 'history' }"
+        @click="
+          tab = 'history';
+          loadHistory();
+        "
+      >
+        Historique des rendez-vous
+      </button>
     </nav>
     <div v-if="appointment?.calendar === 'calendly'" class="advisor-info">
       <p v-if="appointment.calendly?.conflict || appointment.calendly?.needs_review" role="alert">
@@ -236,8 +255,14 @@ onMounted(load);
     <p v-if="busy && !appointment" role="status">Chargement du rendez-vous…</p>
     <div v-if="appointment" v-show="tab === 'result'">
       <header class="advisor-section-title">
-        <h3>Comment s’est passé le rendez-vous ?</h3>
-        <p>Deux réponses pour suivre la présence et la conclusion commerciale.</p>
+        <h3>Le prospect a-t-il répondu à la rencontre ?</h3>
+        <p v-if="appointment.meeting_type">
+          ({{
+            appointment.meeting_type === 'video'
+              ? 'Rendez-vous par vidéoconférence'
+              : 'Rendez-vous par appel téléphonique'
+          }})
+        </p>
       </header>
       <p v-if="!canReport" class="advisor-info">
         {{
@@ -249,7 +274,7 @@ onMounted(load);
       <form @submit.prevent="saveResult">
         <fieldset :disabled="busy || !canReport" class="advisor-result-form">
           <fieldset class="answer-group">
-            <legend>Le client s’est-il présenté ?</legend>
+            <legend>Présence du prospect</legend>
             <label :class="{ chosen: performed === 'true' }"
               ><input
                 v-model="performed"
@@ -257,7 +282,7 @@ onMounted(load);
                 value="true"
                 name="attendance"
                 required
-              />Oui, rendez-vous tenu</label
+              />Oui</label
             >
             <label :class="{ chosen: performed === 'false' }"
               ><input
@@ -266,34 +291,17 @@ onMounted(load);
                 value="false"
                 name="attendance"
                 required
-              />Non, client absent</label
-            >
-          </fieldset>
-          <fieldset class="answer-group">
-            <legend>Une vente ou un contrat a-t-il été conclu ?</legend>
-            <label :class="{ chosen: sale === 'true' }"
-              ><input v-model="sale" type="radio" value="true" name="sale" required />Oui</label
-            >
-            <label :class="{ chosen: sale === 'false' }"
-              ><input v-model="sale" type="radio" value="false" name="sale" required />Non</label
-            >
-            <small v-if="report && report.sale_concluded == null"
-              >Vente non renseignée dans l’ancien compte rendu.</small
+              />Non</label
             >
           </fieldset>
           <label class="advisor-field"
-            >Note du rendez-vous<textarea
+            >Notes (facultatives)<textarea
               v-model="note"
               rows="4"
               maxlength="3000"
-              :required="performed === 'false' || problem"
-              placeholder="Besoins évoqués, décision du client, suite à donner…"
-            ></textarea
-            ><small>Motif requis en cas d’absence ou de suivi nécessaire.</small></label
-          >
-          <label class="advisor-check"
-            ><input v-model="problem" type="checkbox" />Un suivi par le setter est nécessaire</label
-          >
+              placeholder="Observation sur la rencontre ou sur l’absence…"
+            ></textarea>
+          </label>
           <label v-if="report" class="advisor-field"
             >Motif de la correction<input
               v-model="reason"
@@ -302,29 +310,54 @@ onMounted(load);
               placeholder="Pourquoi modifier le résultat précédent ?"
           /></label>
           <p class="advisor-info">
-            La vente déclarée ne crée pas automatiquement un contrat. Une correction conserve une
-            trace ; une tâche de suivi déjà ouverte reste à traiter.
+            Oui valide la rencontre pour le suivi du setter. Non lui crée un rappel à effectuer sous
+            24 heures. Une correction conserve une trace ; une tâche déjà ouverte reste à traiter.
           </p>
           <button
             class="advisor-save"
             type="submit"
-            :disabled="
-              !performed ||
-              !sale ||
-              (sale === 'true' && performed !== 'true') ||
-              resultDraft === resultBase
-            "
+            :disabled="!performed || resultDraft === resultBase"
           >
             <Save :size="16" />{{
               report ? 'Enregistrer la correction' : 'Enregistrer le résultat'
             }}
           </button>
-          <p v-if="sale === 'true' && performed !== 'true'" class="advisor-error">
-            Une vente exige un rendez-vous tenu.
-          </p>
         </fieldset>
       </form>
     </div>
+    <section v-if="appointment" v-show="tab === 'history'">
+      <h3>Rendez-vous de ce prospect</h3>
+      <article v-for="row in historyRows" :key="row.id">
+        <strong>{{ stamp(row.starts_at) }}</strong> · {{ row.business_status_label }}
+        <span v-if="row.meeting_type">
+          · {{ row.meeting_type === 'video' ? 'Vidéoconférence' : 'Appel téléphonique' }}</span
+        >
+        <button class="secondary" :disabled="busy" @click="emit('open', row.id)">
+          Consulter le rendez-vous
+        </button>
+      </article>
+      <p v-if="!busy && !historyRows.length">Aucun rendez-vous dans votre périmètre.</p>
+      <button
+        class="secondary"
+        :disabled="busy || historyPage === 1"
+        @click="
+          historyPage--;
+          loadHistory();
+        "
+      >
+        Précédent
+      </button>
+      <button
+        class="secondary"
+        :disabled="busy || historyPage * 25 >= historyCount"
+        @click="
+          historyPage++;
+          loadHistory();
+        "
+      >
+        Suivant
+      </button>
+    </section>
     <div v-show="tab === 'client'">
       <header class="advisor-section-title">
         <h3>Les informations du client</h3>

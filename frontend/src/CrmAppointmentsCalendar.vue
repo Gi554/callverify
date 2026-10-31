@@ -258,7 +258,8 @@ watch(
   () => props.appointmentId,
   async (id) => {
     const version = ++focusVersion;
-    if (!id || !assurance.value || props.role !== 'advisor') return;
+    if (!id || !assurance.value || !['advisor', 'setter', 'administrator'].includes(props.role))
+      return;
     try {
       const row = await props.request(`appointments/${id}/`);
       if (version !== focusVersion) return;
@@ -567,6 +568,7 @@ onBeforeUnmount(() => {
         v-if="selected && assurance && role === 'advisor'"
         :key="selected.id"
         ref="advisorDetail"
+        @open="openNotification"
         :appointment-id="selected.id"
         :request="request"
         @busy="detailBusy = $event"

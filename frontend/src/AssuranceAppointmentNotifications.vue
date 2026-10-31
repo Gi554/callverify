@@ -10,7 +10,7 @@ async function load() {
   if (busy.value) return;
   busy.value = true;
   try {
-    rows.value = (await props.request('appointment-notifications/')).results;
+    rows.value = (await props.request('appointment-notifications/?unread=true')).results;
     error.value = '';
   } catch (e: any) {
     error.value = e.message;
@@ -43,7 +43,7 @@ onBeforeUnmount(() => {
     class="appointment-alerts"
     aria-label="Notifications de rendez-vous"
   >
-    <h3>Vos nouvelles rencontres</h3>
+    <h3>Notifications de rendez-vous</h3>
     <p v-if="error" role="alert">{{ error }}</p>
     <button
       v-for="row in rows.filter((row) => !row.read_at)"

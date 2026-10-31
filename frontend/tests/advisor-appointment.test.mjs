@@ -83,7 +83,8 @@ async function flush() {
 function fixture({ legacy = false, reject = false } = {}) {
   const root = { children: [] },
     calls = [],
-    updates = []
+    updates = [],
+    opens = []
   const appt = {
     id: 7,
     revision: 0,
@@ -92,7 +93,8 @@ function fixture({ legacy = false, reject = false } = {}) {
     ends_at: '2020-01-01T15:00:00Z',
     timezone: 'America/Toronto',
     advisor: { name: 'Advisor' },
-    contact: { name: 'Client', phone: 'raw' },
+    contact: { id: 50, name: 'Client', phone: 'raw' },
+    meeting_type: 'video',
     qualification_snapshot: { original: true },
   }
   const record = {
@@ -117,6 +119,14 @@ function fixture({ legacy = false, reject = false } = {}) {
     request: async (path, body) => {
       calls.push({ path, body })
       if (body && reject) throw new Error('Fiche modifiée : rechargez')
+      if (path.startsWith('appointments/?contact_id='))
+        return {
+          results: [
+            appt,
+            { ...appt, id: 8, meeting_type: 'phone', business_status_label: 'Non honoré' },
+          ],
+          count: 2,
+        }
       if (path.endsWith('/client-record/'))
         return body ? { ...record, ...body } : structuredClone(record)
       if (path.endsWith('/advisor-result/'))
@@ -124,28 +134,30 @@ function fixture({ legacy = false, reject = false } = {}) {
       return structuredClone(appt)
     },
     onUpdated: (row) => updates.push(row),
+    onOpen: (id) => opens.push(id),
   })
   const exposed = app.mount(root)
-  return { root, calls, updates, exposed, close: () => app.unmount() }
+  return { root, calls, updates, opens, exposed, close: () => app.unmount() }
 }
 const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).includes(label))
 const input = (f, name, value) =>
   all(f.root).find((n) => n.tag === 'input' && n.props.name === name && n.props.value === value)
 const forms = (f) => all(f.root).filter((n) => n.tag === 'form')
 
-test('advisor explicitly records attendance and sale without an implicit yes/no default', async () => {
+test('advisor explicitly records presence without a sale question or implicit default', async () => {
   const f = fixture()
   try {
     await flush()
     assert.equal(button(f, 'Enregistrer le résultat').props.disabled, true)
     input(f, 'attendance', 'true').props['onUpdate:modelValue']('true')
-    input(f, 'sale', 'false').props['onUpdate:modelValue']('false')
     await flush()
     await forms(f)[0].props.onSubmit({ preventDefault() {} })
     await flush()
     const sent = f.calls.find((c) => c.body)?.body
     assert.equal(sent.performed, true)
-    assert.equal(sent.sale_concluded, false)
+    assert.ok(!Object.hasOwn(sent, 'sale_concluded'))
+    assert.match(text(f.root), /Le prospect a-t-il répondu à la rencontre/)
+    assert.match(text(f.root), /vidéoconférence/)
     assert.equal(sent.revision, 0)
     assert.match(text(f.root), /Résultat du rendez-vous enregistré/)
     assert.equal(f.updates[0].revision, 1)
@@ -153,11 +165,11 @@ test('advisor explicitly records attendance and sale without an implicit yes/no 
     f.close()
   }
 })
-test('legacy report shows unknown sale and asks for a correction reason', async () => {
+test('legacy report keeps a correction reason without making sale mandatory', async () => {
   const f = fixture({ legacy: true })
   try {
     await flush()
-    assert.match(text(f.root), /Vente non renseignée/)
+    assert.doesNotMatch(text(f.root), /Une vente ou un contrat/)
     assert.match(text(f.root), /Motif de la correction/)
     assert.equal(button(f, 'Enregistrer la correction').props.disabled, true)
   } finally {
@@ -184,6 +196,43 @@ test('client conflict retains edits and panel close protects unsaved work', asyn
     assert.equal(sent.revision, 3)
   } finally {
     globalThis.window = previous
+    f.close()
+  }
+})
+
+test('an absence can be recorded without notes and requests a callback rather than a sale', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    input(f, 'attendance', 'false').props['onUpdate:modelValue']('false')
+    await flush()
+    assert.equal(button(f, 'Enregistrer le résultat').props.disabled, false)
+    assert.ok(!all(f.root).some((n) => n.tag === 'input' && n.props.name === 'sale'))
+    await forms(f)[0].props.onSubmit({ preventDefault() {} })
+    await flush()
+    const sent = f.calls.find((c) => c.body).body
+    assert.equal(sent.performed, false)
+    assert.equal(sent.outcome, 'absent')
+    assert.equal(sent.note, '')
+  } finally {
+    f.close()
+  }
+})
+
+test('appointment history reads the same prospect and opens the selected occurrence without reporting it', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    button(f, 'Historique des rendez-vous').props.onClick()
+    await flush()
+    assert.ok(f.calls.some((c) => c.path.includes('appointments/?contact_id=50')))
+    const links = all(f.root).filter(
+      (n) => n.tag === 'button' && text(n).includes('Consulter le rendez-vous'),
+    )
+    links[1].props.onClick()
+    assert.deepEqual(f.opens, [8])
+    assert.ok(!f.calls.some((c) => c.body))
+  } finally {
     f.close()
   }
 })

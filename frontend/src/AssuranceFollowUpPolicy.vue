@@ -76,7 +76,8 @@ onMounted(load);
     <h3>Règles de suivi Assurance</h3>
     <p>
       Ces règles concernent les nouvelles tâches et les prochaines réouvertures. Les tâches ouvertes
-      conservent leur planification. Délais en heures écoulées, sans calendrier de jours ouvrés.
+      conservent leur planification, sauf un nouveau signalement d’absence dont le rappel reste
+      plafonné à 24 heures. Délais en heures écoulées, sans calendrier de jours ouvrés.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>

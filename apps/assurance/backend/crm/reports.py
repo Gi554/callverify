@@ -32,8 +32,6 @@ class ReportInput(serializers.Serializer):
         data.setdefault('outcome', 'performed' if data['performed'] else 'not_performed')
         if data['performed'] != (data['outcome'] == 'performed'):
             raise ValidationError('Résultat incompatible avec la présence déclarée.')
-        if (not data['performed'] or data['problem']) and not data['note'].strip():
-            raise ValidationError('Précisez le motif du suivi')
         return data
 
 
@@ -200,12 +198,25 @@ class ReportMixin:
                 task = FollowUpTask.objects.create(
                     appointment=appointment,
                     setter_id=appointment.setter_id,
-                    reason=row.note,
-                    due_at=timezone.now() + timedelta(hours=rules.initial_hours),
+                    reason=row.note
+                    or (
+                        'Suivi du rendez-vous demandé.'
+                        if row.performed
+                        else 'Rendez-vous non honoré : rappeler pour reprogrammer.'
+                    ),
+                    due_at=timezone.now()
+                    + timedelta(
+                        hours=min(24, rules.initial_hours)
+                        if not row.performed
+                        else rules.initial_hours
+                    ),
                     priority=rules.default_priority,
                     policy_revision=rules.revision,
                 )
                 notify(task, 'report', f'report:{row.pk}')
+            from .appointment_notifications import notify_attendance
+
+            notify_attendance(appointment, row.performed)
             BusinessAudit.objects.create(
                 actor_id=request.user.pk,
                 object_id=appointment.pk,

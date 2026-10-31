@@ -50,6 +50,10 @@ function close() {
   selected.value = null;
   void load();
 }
+function openPrevious(id: number) {
+  if (detailBusy.value || (detail.value && !detail.value.close())) return;
+  selected.value = { ...selected.value, appointment_id: id };
+}
 function searchRows() {
   page.value = 1;
   void load();
@@ -163,6 +167,8 @@ onMounted(load);
         :appointment-id="selected.appointment_id"
         :request="request"
         @busy="detailBusy = $event"
+        @open="openPrevious"
+        @updated="load"
     /></SidePanel>
   </section>
 </template>

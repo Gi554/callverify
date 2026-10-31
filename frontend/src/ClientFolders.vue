@@ -86,7 +86,7 @@ const prospect = ref<any>(null),
 const editor = ref<InstanceType<typeof AssuranceContactEditor> | null>(null);
 const activity = ref<InstanceType<typeof IsolationProspectActivity> | null>(null);
 const visits = ref<InstanceType<typeof IsolationVisits> | null>(null);
-const labels: Record<string, string> = {
+const baseLabels: Record<string, string> = {
   scheduled: 'Planifié',
   rescheduled: 'Reprogrammé',
   performed: 'Rendez-vous tenu',
@@ -109,6 +109,17 @@ const labels: Record<string, string> = {
   closed: 'Terminé',
   booked: 'RDV réservé',
 };
+const labels = computed<Record<string, string>>(() => ({
+  ...baseLabels,
+  ...(props.workspace === 'assurance'
+    ? {
+        performed: 'Rendez-vous validé',
+        absent: 'Non honoré',
+        invalid_number: 'Numéro non attribué',
+        other: 'Autre résultat',
+      }
+    : {}),
+}));
 const appointmentStates = [
   'scheduled',
   'rescheduled',

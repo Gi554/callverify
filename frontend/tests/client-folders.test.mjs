@@ -176,7 +176,7 @@ test('admin opens client folder, sees confirmed presence countdown and pages the
   assert.ok(text(root).includes('Présences seules décomptées'))
   const metric = all(root).find((n) => n.props?.class === 'metric-peach')
   assert.ok(text(metric).includes('5'))
-  assert.ok(text(root).includes('Absent'))
+  assert.ok(text(root).includes('Non honoré'))
   assert.ok(calls.some(([, path]) => path.includes('client-folders/31/?page=1')))
   button(root, 'Suivant').props.onClick()
   await flush()
