@@ -93,3 +93,12 @@ urlpatterns += [
     path('api/assurance/client-folders/<int:client_id>/', client_folders),
     path('api/assurance/client-folders/<int:client_id>/export/', export_client),
 ]
+
+from .crm import compensation
+
+urlpatterns += [
+    path('api/assurance/compensation/', compensation.summary),
+    path('api/assurance/compensation/<int:setter_id>/rate/', compensation.rate),
+    path('api/assurance/compensation/<int:setter_id>/value/', compensation.value_missing),
+    path('api/assurance/compensation/<int:setter_id>/details/', compensation.details),
+]

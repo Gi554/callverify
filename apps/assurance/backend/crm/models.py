@@ -154,7 +154,25 @@ class CalendlyBooking(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class SetterRate(models.Model):
+    setter_id = models.PositiveBigIntegerField(primary_key=True)
+    amount = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__isnull=True) | models.Q(amount__gte=0),
+                name='assurance_rate_nonnegative',
+            )
+        ]
+
+
 class AppointmentReport(models.Model):
+    unit_rate_cad = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
+    rate_revision = models.PositiveIntegerField(null=True, blank=True)
+    valued_at = models.DateTimeField(null=True, blank=True)
     sale_concluded = models.BooleanField(null=True, blank=True)
     outcome = models.CharField(
         max_length=20,
@@ -180,7 +198,11 @@ class AppointmentReport(models.Model):
                 | models.Q(sale_concluded=False)
                 | models.Q(performed=True),
                 name='assurance_sale_requires_attendance',
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(unit_rate_cad__isnull=True) | models.Q(unit_rate_cad__gte=0),
+                name='assurance_report_rate_nonnegative',
+            ),
         ]
 
 
