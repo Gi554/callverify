@@ -63,7 +63,7 @@ class ClientFolderExportTests(TestCase):
         )
         _, rows = self.csv(section='summary')
         values = {row['Indicateur']: row['Valeur'] for row in rows}
-        self.assertEqual(values['Rendez-vous tenu'], '1')
+        self.assertEqual(values['Rendez-vous validé'], '1')
         self.assertEqual(
             values['Ventes ou contrats conclus sur rendez-vous tenus non annulés'], '1'
         )
@@ -71,7 +71,7 @@ class ClientFolderExportTests(TestCase):
         self.row.save()
         _, rows = self.csv(section='summary')
         values = {row['Indicateur']: row['Valeur'] for row in rows}
-        self.assertEqual(values['Rendez-vous tenu'], '0')
+        self.assertEqual(values['Rendez-vous validé'], '0')
         self.assertEqual(values['Annulé'], '1')
         _, appointments = self.csv(section='appointments')
         self.assertEqual(appointments[0]['Statut du rendez-vous'], 'Annulé')
@@ -89,7 +89,7 @@ class ClientFolderExportTests(TestCase):
         _, rows = self.csv(section='appointments', status='absent')
         self.assertEqual(rows[0]['Auteur réservation ID'], '99')
         self.assertEqual(rows[0]['Auteur compte rendu ID'], '31')
-        self.assertEqual(rows[0]['Statut du rendez-vous'], 'Absent')
+        self.assertEqual(rows[0]['Statut du rendez-vous'], 'Non honoré')
         self.assertTrue(rows[0]['Début (UTC ISO 8601)'].endswith('+00:00'))
         ContactCallOutcome.objects.create(
             contact=self.row.contact,

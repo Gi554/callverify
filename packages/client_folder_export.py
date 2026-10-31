@@ -102,6 +102,19 @@ def safe(value, file):
 
 
 def export(request, workspace, client_id):
+    state_labels = {
+        **LABELS,
+        **(
+            {
+                'performed': 'Rendez-vous validé',
+                'absent': 'Non honoré',
+                'invalid_number': 'Numéro non attribué',
+                'other': 'Autre résultat',
+            }
+            if workspace == 'assurance'
+            else {}
+        ),
+    }
     if request.user.role != 'administrator':
         raise PermissionDenied('Export des dossiers réservé aux administrateurs.')
     if set(request.query_params) - {'file', 'section', 'search', 'status'}:
@@ -125,7 +138,7 @@ def export(request, workspace, client_id):
         if workspace == 'assurance':
             states += ['rescheduled', 'absent']
         indicators += [
-            ('Rendez-vous', LABELS[state], info['statuses'].get(state, 0)) for state in states
+            ('Rendez-vous', state_labels[state], info['statuses'].get(state, 0)) for state in states
         ]
         indicators += [
             ('Prospects', stage['label'], stage['total']) for stage in info['prospect_statuses']
@@ -137,7 +150,7 @@ def export(request, workspace, client_id):
         labels = (
             {stage['status']: stage['label'] for stage in info['prospect_statuses']}
             if section == 'prospects'
-            else LABELS
+            else state_labels
         )
         headers = [*prefix, *[label for _, label in FIELDS[section]], 'Périmètre et règle']
         values = []

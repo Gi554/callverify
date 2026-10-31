@@ -1263,11 +1263,10 @@ class ReportTests(TestCase):
         self.auth(99, 'administrator')
         self.assertEqual(self.report().status_code, 403)
 
-    def test_future_cancelled_stale_and_missing_reason_are_rejected(self):
+    def test_future_cancelled_and_stale_are_rejected(self):
         from django.utils import timezone
         from datetime import timedelta
 
-        self.assertEqual(self.report(note='').status_code, 400)
         self.assertEqual(self.report(revision=99).status_code, 409)
         self.appointment.ends_at = timezone.now() + timedelta(hours=1)
         self.appointment.save()
@@ -1752,7 +1751,7 @@ class FollowUpPolicyTests(TestCase):
                 self.client.post(self.url, self.payload(), format='json').status_code, 403
             )
 
-    def test_new_tasks_use_policy_without_replanning_existing_tasks(self):
+    def test_absence_tasks_keep_policy_priority_but_cap_new_deadlines_at_24h(self):
         from .models import FollowUpTask
         from django.utils import timezone
 
@@ -1780,7 +1779,7 @@ class FollowUpPolicyTests(TestCase):
         self.assertEqual(latest.priority, 'high')
         self.assertEqual(latest.policy_revision, 1)
         self.assertAlmostEqual(
-            (latest.due_at - timezone.now()).total_seconds() / 3600, 48, places=2
+            (latest.due_at - timezone.now()).total_seconds() / 3600, 24, places=2
         )
 
     def test_reopening_uses_new_delay_and_preserves_existing_priority(self):

@@ -1,8 +1,8 @@
 export const appointmentStatusLabels: Record<string, string> = {
   scheduled: 'Planifié',
   rescheduled: 'Reprogrammé',
-  performed: 'Rendez-vous fait',
-  absent: 'Absent',
+  performed: 'Rendez-vous validé',
+  absent: 'Non honoré',
   not_performed: 'Non effectué — autre motif',
   report_due: 'À renseigner',
   cancelled: 'Annulé',

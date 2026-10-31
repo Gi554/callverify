@@ -72,6 +72,7 @@ async function run(action: () => Promise<void>) {
 async function load() {
   if (props.appointmentId) {
     rows.value = [await props.request(`appointments/${props.appointmentId}/`)];
+    savedReport.value = await props.request(`appointments/${props.appointmentId}/report/`);
     count.value = 1;
     emit('updated', rows.value[0]);
     return;
@@ -422,6 +423,24 @@ onMounted(() =>
       >
         Fermer la qualification
       </button>
+    </section>
+    <section
+      v-if="
+        appointmentId &&
+        savedReport &&
+        typeof savedReport.performed === 'boolean' &&
+        role !== 'advisor'
+      "
+    >
+      <h4>
+        Retour du conseiller ·
+        {{
+          savedReport.performed ? 'Rendez-vous validé' : savedReport.outcome_label || 'Non honoré'
+        }}
+      </h4>
+      <p style="white-space: pre-wrap">
+        {{ savedReport.note || 'Aucune observation complémentaire.' }}
+      </p>
     </section>
     <section v-if="editing && canWrite">
       <h4>Gérer le rendez-vous {{ editing.id }}</h4>

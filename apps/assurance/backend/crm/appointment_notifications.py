@@ -6,6 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .models import AppointmentNotification
+from rest_framework.exceptions import ValidationError
 
 LABELS = {
     'appointment_transmitted': 'Nouveau rendez-vous transmis',
@@ -16,6 +17,18 @@ LABELS = {
 
 class Pager(PageNumberPagination):
     page_size = 25
+
+
+def notify_attendance(appointment, performed):
+    return AppointmentNotification.objects.get_or_create(
+        event_key=f'attendance:{appointment.pk}:{appointment.revision}',
+        defaults={
+            'appointment': appointment,
+            'recipient_id': appointment.setter_id,
+            'role': 'setter',
+            'kind': 'attendance_confirmed' if performed else 'attendance_absent',
+        },
+    )[0]
 
 
 class AppointmentNotificationViewSet(viewsets.GenericViewSet):
@@ -39,7 +52,13 @@ class AppointmentNotificationViewSet(viewsets.GenericViewSet):
         )
 
     def list(self, request):
-        rows = self.paginate_queryset(self.get_queryset())
+        unread = request.query_params.get('unread', 'false')
+        if unread not in ('true', 'false'):
+            raise ValidationError('Filtre non lues invalide.')
+        qs = self.get_queryset()
+        if unread == 'true':
+            qs = qs.filter(read_at__isnull=True)
+        rows = self.paginate_queryset(qs)
         response = self.get_paginated_response(
             [
                 {

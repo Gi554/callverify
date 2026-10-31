@@ -27,6 +27,7 @@ import IsolationCloserVisits from './IsolationCloserVisits.vue';
 import AssuranceFollowUps from './AssuranceFollowUps.vue';
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue';
 import AssuranceNotifications from './AssuranceNotifications.vue';
+import AssuranceAppointmentNotifications from './AssuranceAppointmentNotifications.vue';
 import TaskAlerts from './TaskAlerts.vue';
 import CallsCenter from './CallsCenter.vue';
 import AssuranceReminders from './AssuranceReminders.vue';
@@ -336,6 +337,10 @@ function openProspect(value: { id: number; mode: 'edit' | 'call' }) {
   prospectFocus.value = value;
   selectModule('contacts');
 }
+function openAssuranceAppointment(id: number) {
+  selectModule('appointments');
+  appointmentFocus.value = id;
+}
 const pageTitle = computed(
   () => navigation.value.find((item) => item.id === activeModule.value)?.label || 'Mes espaces',
 );
@@ -587,7 +592,10 @@ onMounted(async () => {
                     v-if="role !== 'advisor'"
                     :request="assurance"
                     :refresh-version="notificationVersion"
-                    @open-tasks="selectModule('followups')"
+                    @open-tasks="selectModule('followups')" /><AssuranceAppointmentNotifications
+                    v-if="role === 'setter'"
+                    :request="assurance"
+                    @open="openAssuranceAppointment"
                 /></template>
               </CrmOverview>
               <section
