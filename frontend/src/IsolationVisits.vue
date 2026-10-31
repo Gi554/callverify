@@ -99,9 +99,15 @@ async function load() {
   rows.value = data.results;
   count.value = data.count;
 }
-function loadBusy(start: string, end: string) {
-  const query = new URLSearchParams({ prospect_id: String(prospect.value.id), start, end });
-  return props.request(`visits/availability/?${query}`).then((data: any) => data.busy);
+async function loadBusy(start: string, end: string) {
+  const proof = await attest(prospect.value);
+  const data = await props.request('visits/availability/', {
+    prospect_id: String(prospect.value.id),
+    start,
+    end,
+    proof,
+  });
+  return data.busy;
 }
 async function attest(row: any) {
   if (!row.assigned_setter)
@@ -216,7 +222,7 @@ onMounted(() => run(load));
             :load="loadBusy"
             :load-key="String(prospect.id)"
             label="Disponibilités du client Isolation"
-            note="L’agenda Google ou Microsoft du client est vérifié à la confirmation."
+            note="Les horaires du client et son agenda connecté sont consultés. Nouvelle vérification à la confirmation."
           /><label
             >Date et heure du rendez-vous<input
               v-model="localStart"

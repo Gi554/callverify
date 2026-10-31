@@ -262,6 +262,18 @@ class IsolationVisit(models.Model):
         indexes = [models.Index(fields=['client_id', 'status', 'starts_at'])]
 
 
+class IsolationWorkingHours(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    enabled = models.BooleanField(default=False)
+    windows = models.JSONField(default=list)
+    revision = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=models.Q(pk=1), name='single_isolation_working_hours')
+        ]
+
+
 class IsolationVisitCalendar(models.Model):
     client_id = models.PositiveBigIntegerField(primary_key=True)
     version = models.PositiveIntegerField(default=0)

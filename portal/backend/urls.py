@@ -171,3 +171,11 @@ urlpatterns += [
 from .identity.call_statistics import statistics as assurance_call_statistics
 
 urlpatterns += [path('api/portal/assurance/call-statistics/', assurance_call_statistics)]
+
+urlpatterns += [
+    path(
+        'api/portal/internal/isolation/calendar-periods/',
+        booking_calendars.availability,
+        {'workspace': 'isolation', 'include_busy': True},
+    )
+]

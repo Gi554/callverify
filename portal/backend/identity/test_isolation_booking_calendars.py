@@ -52,6 +52,33 @@ class IsolationBookingCalendarTests(TestCase):
         self.assertEqual(CalendarConnection.objects.count(), 1)
         self.assertEqual(row.workspace, 'isolation')
 
+    def test_period_query_requires_a_connected_calendar_and_exposes_only_intervals(self):
+        url = '/api/portal/internal/isolation/calendar-periods/'
+        self.assertEqual(
+            self.client.post(url, {'proof': self.proof()}, format='json').status_code, 503
+        )
+        CalendarConnection.objects.get_or_create(user=self.owner, workspace='isolation')
+        CalendarConnection.objects.update(
+            provider='google',
+            connected=True,
+            payload=seal(TOKENS),
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        periods = [{'start': self.start.isoformat(), 'end': self.end.isoformat()}]
+        with patch.object(providers, 'busy', return_value=periods):
+            response = self.client.post(url, {'proof': self.proof()}, format='json')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['busy'], periods)
+            self.assertEqual(set(response.data), {'result', 'checked_at', 'busy'})
+        with patch.object(providers, 'busy', side_effect=providers.ProviderError()):
+            self.assertEqual(
+                self.client.post(url, {'proof': self.proof()}, format='json').status_code, 503
+            )
+        self.end = self.start + timedelta(days=8)
+        self.assertEqual(
+            self.client.post(url, {'proof': self.proof()}, format='json').status_code, 400
+        )
+
     def test_wrong_space_proof_or_inactive_client_never_queries_provider(self):
         with patch.object(providers, 'busy') as busy:
             self.assertEqual(self.post(self.proof('assurance')).status_code, 403)

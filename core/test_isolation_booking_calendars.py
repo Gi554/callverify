@@ -71,6 +71,54 @@ class IsolationBookingCalendarTests(TestCase):
         )
         self.external_check.assert_not_called()
 
+    def test_period_bridge_rejects_missing_calendar_invalid_or_private_payloads(self):
+        from packages.calendar_connectors.booking import check as shared
+
+        user = type('Actor', (), {'pk': 21, 'role': 'setter'})()
+        good = {
+            'result': 'busy',
+            'checked_at': self.start.isoformat(),
+            'busy': [{'start': self.start.isoformat(), 'end': self.end.isoformat()}],
+        }
+        for data, allowed in (
+            (good, True),
+            ({**good, 'result': 'internal_only'}, False),
+            (
+                {
+                    **good,
+                    'busy': [
+                        {
+                            'start': self.start.isoformat(),
+                            'end': self.end.isoformat(),
+                            'title': 'PRIVATE',
+                        }
+                    ],
+                },
+                False,
+            ),
+            ({**good, 'busy': [{'start': 'invalid', 'end': self.end.isoformat()}]}, False),
+        ):
+            response = Mock(status_code=200)
+            response.raw.read.return_value = json.dumps(data).encode()
+            response.__enter__ = Mock(return_value=response)
+            response.__exit__ = Mock(return_value=None)
+            with patch(
+                'packages.calendar_connectors.booking.requests.post', return_value=response
+            ) as post:
+                if allowed:
+                    self.assertEqual(
+                        shared(
+                            user, 72, self.start, self.end, workspace='isolation', include_busy=True
+                        ),
+                        good,
+                    )
+                    self.assertTrue(post.call_args.args[0].endswith('/isolation/calendar-periods/'))
+                else:
+                    with self.assertRaises(Unavailable):
+                        shared(
+                            user, 72, self.start, self.end, workspace='isolation', include_busy=True
+                        )
+
     def test_shared_bridge_uses_isolation_key_and_target_only(self):
         user = Mock(pk=21, role='setter')
         response = Mock()
