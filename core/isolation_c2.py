@@ -1,6 +1,7 @@
 """Isolation-only qualification. Drafts are internal; booked copies are immutable."""
 
 import re
+import unicodedata
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -8,7 +9,7 @@ from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from .models import Prospect, AuditEvent
+from .models import Prospect, AuditEvent, ImportRow
 
 
 class C2Input(serializers.Serializer):
@@ -57,7 +58,7 @@ def complete(value):
     missing = [
         key
         for key, value in data.items()
-        if key != 'monthly_electricity' and (value is None or value == '')
+        if key not in ('monthly_electricity', 'age') and (value is None or value == '')
     ]
     if missing:
         raise ValidationError(
@@ -74,6 +75,42 @@ def captured(prospect):
         'setter_id': prospect.assigned_setter_id,
         'fields': complete(prospect.c2),
     }
+
+
+def defaults(prospect):
+    """Only recognized columns from the original nonduplicate import, never guess a value."""
+    result = {'full_name': prospect.name, 'phone': prospect.raw_phone}
+    imported = (
+        ImportRow.objects.filter(prospect=prospect, duplicate=False, error='')
+        .order_by('pk')
+        .first()
+    )
+    if not imported or not isinstance(imported.source, dict):
+        return result
+    aliases = {
+        'address': ('address', 'adresse', 'adressecomplete', 'fulladdress'),
+        'city': ('city', 'ville', 'municipalite'),
+        'postal_code': ('postalcode', 'codepostal', 'postcode'),
+    }
+
+    def normalize(key):
+        value = unicodedata.normalize('NFKD', str(key)).encode('ascii', 'ignore').decode().lower()
+        return re.sub('[^a-z0-9]', '', value)
+
+    source = {normalize(key): value for key, value in imported.source.items()}
+    for field, keys in aliases.items():
+        found = [
+            str(source[key]).strip()
+            for key in keys
+            if key in source and source[key] is not None and str(source[key]).strip()
+        ]
+        # Conflicting columns are left empty for human review.
+        if not found or len(set(found)) != 1:
+            continue
+        serializer = C2Input(data={field: found[0]})
+        if serializer.is_valid():
+            result[field] = serializer.validated_data[field]
+    return result
 
 
 class DraftInput(serializers.Serializer):
@@ -119,7 +156,7 @@ class C2Mixin:
             {
                 'c2': row.c2,
                 'revision': row.assignment_revision,
-                'defaults': {'full_name': row.name, 'phone': row.raw_phone},
+                'defaults': defaults(row),
             }
         )
         response['Cache-Control'] = 'no-store'

@@ -90,7 +90,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture({ fail = false, loadFail = false } = {}) {
+function fixture({ fail = false, loadFail = false, defaults = {}, draft = {} } = {}) {
   const root = { children: [] },
     writes = [],
     dirty = [],
@@ -109,8 +109,8 @@ function fixture({ fail = false, loadFail = false } = {}) {
           }
           if (loadFail) throw new Error('Chargement indisponible')
           return {
-            c2: {},
-            defaults: { full_name: 'Client test', phone: '5145550100' },
+            c2: draft,
+            defaults: { full_name: 'Client test', phone: '5145550100', ...defaults },
             revision: 3,
           }
         },
@@ -182,6 +182,29 @@ test('a failed load blocks booking preparation and never sends an empty C2', asy
     await assert.rejects(f.exposed().ensureSaved(), /Chargez/)
     assert.equal(f.writes.length, 0)
     assert.equal(f.saved.length, 0)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('known import fields prefill qualification while saved values and explicit blanks take precedence', async () => {
+  const f = fixture({
+    defaults: { address: '12 rue Test', city: 'Montréal', postal_code: 'H2X 1Y4' },
+    draft: { city: 'Québec', postal_code: '' },
+  })
+  try {
+    await flush()
+    set(
+      all(f.root).find((n) => n.tag === 'select'),
+      false,
+    )
+    await flush()
+    await f.exposed().ensureSaved()
+    const fields = f.writes[0].body.c2
+    assert.equal(fields.address, '12 rue Test')
+    assert.equal(fields.city, 'Québec')
+    assert.equal(fields.postal_code, '')
+    assert.equal(fields.age, null)
   } finally {
     f.app.unmount()
   }
