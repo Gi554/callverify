@@ -1,5 +1,26 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — tenue, vente et rappel setter (lot 5)
+
+Le formulaire client pose deux questions distinctes sans présélection : visite tenue et vente
+conclue. Les notes sont facultatives ; une vente sans présence est refusée. Les anciens appels
+API sans champ vente conservent un résultat commercial inconnu. Le client peut corriger avec
+révision et motif ; les anciennes valeurs restent dans l’audit. Le représentant affecté conserve
+son parcours déjà versionné et applique les mêmes règles de suivi.
+
+Une non-tenue crée un seul rappel sous 24 h lié à cette occurrence et notifie le setter responsable
+actuel du prospect, conformément à la propriété des suivis existants. Après transfert du prospect,
+les tâches suivent son nouveau responsable ; l’attribution statistique de la visite reste celle du
+setter d’origine. Les visites non tenues ne bloquent plus la réapparition dans la file active.
+Une nouvelle correction négative après traitement peut rouvrir le même suivi en conservant
+l’ancienne résolution dans l’audit. Une correction positive ne clôture pas automatiquement une
+tâche déjà ouverte. Les notifications sont privées ; leur lecture ne change aucun résultat ni tâche.
+
+Vérifications : Oui/Non et vente indépendante, vente sans présence refusée, notes vides, rejeux,
+corrections motivées/auditées, rappel unique et réouverture, atomicité, file active et notifications
+entre setters. Les notifications/courriels client de réservation et les relances automatiques
+restent le prochain lot ; aucun SMS ni rémunération Isolation n’est annoncé par ce lot.
+
 ## Isolation V2 — publication Google avec état confirmé (lot 4)
 
 Le nouveau formulaire demande une publication Google : le contrôle final requiert un compte

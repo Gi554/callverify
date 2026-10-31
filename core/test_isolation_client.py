@@ -148,7 +148,6 @@ class IsolationClientTests(TestCase):
         for changes in (
             {'performed': False},
             {'outcome': 'not_performed'},
-            {'note': ' '},
             {'outcome': 'sale'},
             {'author_client_id': 73},
         ):

@@ -16,11 +16,12 @@ from .models import (
 )
 
 OUTCOMES = {
-    'completed': 'Effectuée',
+    'closed': 'Vente conclue',
+    'completed': 'Tenue',
     'follow_up': 'Suivi nécessaire',
     'interested': 'Intéressé',
     'not_interested': 'Non intéressé',
-    'not_performed': 'Non effectuée',
+    'not_performed': 'Non tenue',
 }
 
 
@@ -28,13 +29,25 @@ class ResultInput(serializers.Serializer):
     revision = serializers.IntegerField(min_value=0)
     performed = serializers.BooleanField()
     outcome = serializers.ChoiceField(choices=list(OUTCOMES))
-    note = serializers.CharField(max_length=3000)
+    note = serializers.CharField(max_length=3000, allow_blank=True, default='')
+    closed = serializers.BooleanField(required=False, allow_null=True)
+    reason = serializers.CharField(max_length=1000, allow_blank=True, default='')
 
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
             raise ValidationError('Champs non autorisés')
         if data['performed'] == (data['outcome'] == 'not_performed'):
             raise ValidationError('Résultat commercial incohérent avec la réalisation de la visite')
+        if data.get('closed') and not data['performed']:
+            raise ValidationError('Une vente conclue exige une visite tenue.')
+        if 'closed' in data:
+            data['outcome'] = (
+                'closed'
+                if data['closed']
+                else 'completed'
+                if data['performed']
+                else 'not_performed'
+            )
         return data
 
 
@@ -134,6 +147,9 @@ class ResultMixin:
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         with transaction.atomic():
+            Prospect.objects.filter(pk=original.prospect_id).update(
+                assignment_revision=F('assignment_revision')
+            )
             IsolationVisit.objects.filter(pk=original.pk, client_id=request.user.pk).update(
                 revision=F('revision')
             )
@@ -141,29 +157,47 @@ class ResultMixin:
             if visit.client_id != request.user.pk:
                 raise PermissionDenied('Visite non autorisée')
             existing = IsolationVisitResult.objects.filter(visit=visit).first()
-            if existing:
-                if any(
-                    getattr(existing, key) != data[key] for key in ('performed', 'outcome', 'note')
-                ):
-                    raise Conflict('Résultat déjà enregistré ; historique conservé')
+            before = (
+                None
+                if existing is None
+                else {
+                    key: value
+                    for key, value in result_output(existing).items()
+                    if key != 'created_at'
+                }
+            )
+            fields = {key: data[key] for key in ('performed', 'outcome', 'note')}
+            fields['closed'] = data.get('closed', existing.closed if existing else None)
+            if not fields['performed'] and fields['closed']:
+                fields['closed'] = False
+            if fields['closed']:
+                fields['outcome'] = 'closed'
+            if existing and all(getattr(existing, key) == value for key, value in fields.items()):
                 return Response(result_output(existing))
+            if existing and not data['reason'].strip():
+                raise Conflict('Résultat déjà enregistré ; indiquez un motif pour le corriger.')
             if visit.revision != data['revision']:
                 raise Conflict('Visite modifiée : rechargez avant de répondre')
             if visit.status != 'scheduled' or visit.ends_at > timezone.now():
                 raise Conflict('Résultat attendu après la fin d’une visite non annulée')
-            row = IsolationVisitResult.objects.create(
+            row, _ = IsolationVisitResult.objects.update_or_create(
                 visit=visit,
-                author_client_id=request.user.pk,
-                **{key: data[key] for key in ('performed', 'outcome', 'note')},
+                defaults={'author_client_id': request.user.pk, 'author_closer_id': None, **fields},
             )
             visit.revision += 1
             visit.save(update_fields=['revision'])
+            from .isolation_notices import result_changed
+
+            result_changed(visit, row, before, request.user)
             AuditEvent.objects.create(
                 action='isolation.visit.result_recorded',
                 object_id=str(visit.pk),
                 metadata={
                     'actor_portal_id': request.user.pk,
                     'result_id': row.pk,
+                    'before': before,
+                    'closed': row.closed,
+                    'reason': data['reason'],
                     'performed': row.performed,
                     'outcome': row.outcome,
                     'revision': visit.revision,

@@ -220,6 +220,13 @@ class ProspectActivityShare(models.Model):
 
 
 class IsolationFollowUp(models.Model):
+    absence_visit = models.OneToOneField(
+        'IsolationVisit',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='absence_task',
+    )
     prospect = models.ForeignKey(Prospect, on_delete=models.PROTECT, related_name='follow_ups')
     request_id = models.UUIDField(unique=True)
     fingerprint = models.CharField(max_length=64)
@@ -264,6 +271,16 @@ class IsolationVisit(models.Model):
             )
         ]
         indexes = [models.Index(fields=['client_id', 'status', 'starts_at'])]
+
+
+class IsolationNotice(models.Model):
+    visit = models.ForeignKey(IsolationVisit, on_delete=models.PROTECT, related_name='notices')
+    recipient_id = models.PositiveBigIntegerField(db_index=True)
+    recipient_role = models.CharField(max_length=20)
+    kind = models.CharField(max_length=30)
+    event_key = models.CharField(max_length=150, unique=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class IsolationWorkingHours(models.Model):
