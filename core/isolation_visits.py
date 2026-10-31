@@ -57,6 +57,7 @@ class SlotInput(serializers.Serializer):
 
 
 class BookingInput(SlotInput):
+    unqualified_id = serializers.IntegerField(min_value=1, required=False)
     previous_visit_id = serializers.IntegerField(min_value=1, required=False)
     publication = serializers.ChoiceField(choices=['internal', 'google'], default='internal')
     prospect_id = serializers.IntegerField(min_value=1)
@@ -84,7 +85,28 @@ def proof(data, user, prospect):
         raise ValidationError('Attestation de réservation invalide ou expirée')
     if prospect.assigned_setter_id is None or claims['setter']['id'] != prospect.assigned_setter_id:
         raise Conflict('Responsable du prospect modifié ou absent')
+    if user.role == 'client' and (
+        claims['client']['id'] != user.pk
+        or claims.get('reactivation') != data.get('unqualified_id')
+        or not data.get('unqualified_id')
+    ):
+        raise PermissionDenied('Attestation de reprise de cette fiche requise.')
     return claims
+
+
+def booking_subject(user, pk, unqualified_id=None):
+    if user.role == 'client':
+        if not unqualified_id:
+            raise PermissionDenied('La réservation client requiert une fiche non qualifiée.')
+        return get_object_or_404(
+            IsolationUnqualified.objects.select_related('prospect'),
+            pk=unqualified_id,
+            prospect_id=pk,
+            client_id=user.pk,
+        ).prospect
+    if unqualified_id is not None:
+        raise ValidationError('La reprise directe est réservée au client.')
+    return get_object_or_404(visible(user), pk=pk)
 
 
 def lock_prospect(prospect, user, revision=None):
@@ -238,11 +260,17 @@ class IsolationVisitViewSet(
     @action(detail=False, methods=['get', 'post'])
     def availability(self, request):
         """Busy CRM intervals before booking; the client's external calendar stays checked at booking."""
-        if request.user.role not in ('setter', 'administrator'):
+        if request.user.role not in ('setter', 'administrator', 'client') or (
+            request.user.role == 'client' and request.method != 'POST'
+        ):
             raise PermissionDenied('Disponibilités réservées aux setters et administrateurs')
         params = request.data if request.method == 'POST' else request.query_params
         if request.method == 'POST' and (
-            not isinstance(params, dict) or set(params) != {'prospect_id', 'start', 'end', 'proof'}
+            not isinstance(params, dict)
+            or (
+                set(params) != {'prospect_id', 'start', 'end', 'proof'}
+                and set(params) != {'prospect_id', 'start', 'end', 'proof', 'unqualified_id'}
+            )
         ):
             raise ValidationError('Prospect, période et preuve de réservation requis.')
         if request.method == 'POST' and (
@@ -252,7 +280,17 @@ class IsolationVisitViewSet(
         prospect_id = str(params.get('prospect_id', ''))
         if not prospect_id.isdigit():
             raise ValidationError('Prospect invalide')
-        prospect = get_object_or_404(visible(request.user), pk=int(prospect_id))
+        unqualified_id = (
+            serializers.IntegerField(min_value=1).run_validation(params['unqualified_id'])
+            if 'unqualified_id' in params
+            else None
+        )
+        prospect = booking_subject(request.user, int(prospect_id), unqualified_id)
+        if (
+            request.user.role == 'client'
+            and not IsolationUnqualified.objects.filter(pk=unqualified_id, active=True).exists()
+        ):
+            raise Conflict('Cette fiche a déjà été programmée.')
         try:
             start = (
                 parse_datetime(params.get('start'))
@@ -270,7 +308,9 @@ class IsolationVisitViewSet(
 
         external_busy = []
         if request.method == 'POST':
-            claims = proof({'proof': params['proof']}, request.user, prospect)
+            claims = proof(
+                {'proof': params['proof'], 'unqualified_id': unqualified_id}, request.user, prospect
+            )
             from packages.calendar_connectors.booking import check
 
             external = check(
@@ -312,12 +352,16 @@ class IsolationVisitViewSet(
         )
 
     def create(self, request):
-        if request.user.role == 'client':
-            raise PermissionDenied('Réservation réservée aux setters et administrateurs')
+        if request.user.role == 'client' and (
+            not isinstance(request.data, dict) or not request.data.get('unqualified_id')
+        ):
+            raise PermissionDenied('La réservation client requiert une fiche non qualifiée.')
         serializer = BookingInput(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        prospect = get_object_or_404(visible(request.user), pk=data['prospect_id'])
+        if request.user.role == 'client' and data['publication'] != 'google':
+            raise PermissionDenied('La reprise client doit être publiée dans son agenda Google.')
+        prospect = booking_subject(request.user, data['prospect_id'], data.get('unqualified_id'))
         claims = proof(data, request.user, prospect)
         canonical = {
             key: (data[key].isoformat() if key in ('starts_at', 'ends_at') else data[key])
@@ -328,6 +372,8 @@ class IsolationVisitViewSet(
             canonical['publication'] = 'google'
         if 'previous_visit_id' in data:
             canonical['previous_visit_id'] = data['previous_visit_id']
+        if 'unqualified_id' in data:
+            canonical['unqualified_id'] = data['unqualified_id']
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
         def replay(row):
@@ -343,12 +389,22 @@ class IsolationVisitViewSet(
                 prospect = lock_prospect(prospect, request.user, data['revision'])
             except Conflict:
                 existing = IsolationVisit.objects.filter(request_id=data['request_id']).first()
-                if existing and visible(request.user).filter(pk=data['prospect_id']).exists():
+                if existing and (
+                    request.user.role == 'client'
+                    and existing.client_id == request.user.pk
+                    or visible(request.user).filter(pk=data['prospect_id']).exists()
+                ):
                     return replay(existing)
                 raise
             if prospect.assigned_setter_id != claims['setter']['id']:
                 raise Conflict('Responsable modifié : rechargez')
             pending = IsolationUnqualified.objects.filter(prospect=prospect, active=True).first()
+            if request.user.role == 'client' and (
+                not pending
+                or pending.pk != data.get('unqualified_id')
+                or pending.client_id != request.user.pk
+            ):
+                raise Conflict('Cette fiche non qualifiée a déjà été programmée ou modifiée.')
             if pending and pending.client_id != claims['client']['id']:
                 raise Conflict('La fiche non qualifiée appartient à un autre client.')
             # The prospect lock serializes the whole commercial process, including result changes.
@@ -416,7 +472,7 @@ class IsolationVisitViewSet(
             event(
                 prospect,
                 request.user,
-                'call_result',
+                'visit_programmed' if request.user.role == 'client' else 'call_result',
                 '',
                 {
                     'result': 'appointment_booked',

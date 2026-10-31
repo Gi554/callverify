@@ -19,6 +19,10 @@ class AssignmentInput(serializers.Serializer):
         return data
 
 
+class BookingProofInput(AssignmentInput):
+    unqualified_id = serializers.IntegerField(min_value=1, required=False)
+
+
 @api_view(['GET', 'POST'])
 def setters(request):
     require_admin(request.user, 'isolation')
@@ -67,11 +71,13 @@ def visit_proof(request):
     from packages.access.isolation_visits import issue_booking
 
     actor = Membership.objects.filter(user=request.user, workspace='isolation', active=True).first()
-    if not actor or actor.role not in ('administrator', 'setter'):
+    if not actor or actor.role not in ('administrator', 'setter', 'client'):
         raise PermissionDenied('Réservation Isolation non autorisée')
-    serializer = AssignmentInput(data=request.data)
+    serializer = BookingProofInput(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
+    if (actor.role == 'client') != ('unqualified_id' in data):
+        raise PermissionDenied('La reprise client requiert une fiche non qualifiée précise.')
     if actor.role == 'setter' and data['setter_id'] != request.user.pk:
         raise PermissionDenied('Réservation limitée à vos prospects')
     active = Membership.objects.filter(
@@ -84,6 +90,8 @@ def visit_proof(request):
     if len(clients) != 1:
         raise ValidationError('Configurer exactement un client Isolation actif pour réserver')
     client = clients[0]
+    if actor.role == 'client' and client.user_id != request.user.pk:
+        raise PermissionDenied('Le client actif doit être le compte connecté.')
     AccessAudit.objects.create(
         user=request.user,
         workspace='isolation',
@@ -99,6 +107,7 @@ def visit_proof(request):
                 setter.user.username,
                 client.user_id,
                 client.user.username,
+                reactivation=data.get('unqualified_id'),
             ),
             'expires_in': 120,
         }

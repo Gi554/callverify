@@ -29,7 +29,7 @@ def verify_closer(token, actor, visit):
     return row
 
 
-def issue_booking(actor, prospect, setter, setter_name, client, client_name):
+def issue_booking(actor, prospect, setter, setter_name, client, client_name, reactivation=None):
     return signing.dumps(
         {
             'aud': 'isolation',
@@ -37,6 +37,7 @@ def issue_booking(actor, prospect, setter, setter_name, client, client_name):
             'prospect': prospect,
             'setter': {'id': setter, 'name': setter_name},
             'client': {'id': client, 'name': client_name},
+            **({'reactivation': reactivation} if reactivation is not None else {}),
         },
         key=key_for('isolation'),
         salt=SALT,
@@ -62,4 +63,10 @@ def verify_booking(token, actor, prospect):
             raise signing.BadSignature('Invalid name')
     if claims['setter']['id'] == claims['client']['id']:
         raise signing.BadSignature('Distinct roles required')
+    if 'reactivation' in claims and (
+        type(claims['reactivation']) is not int
+        or claims['reactivation'] <= 0
+        or claims['client']['id'] != actor
+    ):
+        raise signing.BadSignature('Invalid reactivation')
     return claims

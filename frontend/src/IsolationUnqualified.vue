@@ -2,7 +2,25 @@
 import { onMounted, ref } from 'vue';
 import SidePanel from './SidePanel.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
-const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
+import IsolationVisits from './IsolationVisits.vue';
+const props = defineProps<{
+  request: (path: string, body?: any) => Promise<any>;
+  portal: (path: string, body?: any) => Promise<any>;
+  role: string;
+}>();
+const requalifying = ref(false),
+  bookingBusy = ref(false),
+  booking = ref<any>(null);
+function closeDetail() {
+  if (busy.value || bookingBusy.value) return;
+  if (requalifying.value) booking.value?.close();
+  else selected.value = null;
+}
+async function programmed() {
+  requalifying.value = false;
+  selected.value = null;
+  await run(load);
+}
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -33,6 +51,7 @@ const labels: Record<string, string> = {
   callback_updated: 'Rappel modifié',
   callback_closed: 'Rappel terminé',
   unqualified: 'Rendez-vous non qualifié',
+  visit_programmed: 'Visite programmée par le client',
 };
 const results: Record<string, string> = {
   appointment_booked: 'Rendez-vous pris',
@@ -85,6 +104,7 @@ async function loadCallbacks() {
   callbackCount.value = data.count;
 }
 async function open(row: any) {
+  requalifying.value = false;
   await run(async () => {
     selected.value = await props.request(`isolation-unqualified/${row.id}/`);
     historyPage.value = 1;
@@ -187,8 +207,8 @@ onMounted(() => run(load));
     <SidePanel
       :open="!!selected"
       title="Rendez-vous non qualifié"
-      :close-disabled="busy"
-      @request-close="selected = null"
+      :close-disabled="busy || bookingBusy"
+      @request-close="closeDetail"
     >
       <section v-if="selected" class="detail">
         <p v-if="error" role="alert">{{ error }}</p>
@@ -200,6 +220,27 @@ onMounted(() => run(load));
         </p>
         <p v-if="selected.note" class="note">{{ selected.note }}</p>
         <IsolationC2Snapshot :snapshot="selected.qualification" unqualified />
+        <button
+          v-if="role === 'client' && selected.active && !requalifying"
+          class="primary"
+          :disabled="busy"
+          @click="requalifying = true"
+        >
+          Requalifier et programmer une visite
+        </button>
+        <IsolationVisits
+          v-if="requalifying"
+          ref="booking"
+          :key="selected.id"
+          :prospect-id="selected.prospect_id"
+          :reactivation-id="selected.id"
+          :role="role"
+          :request="request"
+          :portal="portal"
+          @busy="bookingBusy = $event"
+          @close="requalifying = false"
+          @changed="programmed"
+        />
         <h4>Historique des appels et observations</h4>
         <article v-for="entry in history" :key="entry.id">
           <small>{{ when(entry.created_at) }} · {{ labels[entry.kind] || entry.kind }}</small>
