@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 from unittest import skipUnless
 from concurrent.futures import ThreadPoolExecutor
@@ -188,7 +189,17 @@ class ReminderTests(TestCase):
         )
         data = self.client.get(url).data['events'][0]
         self.assertEqual(
-            set(data), {'id', 'created_at', 'recipient_id', 'role', 'kind', 'appointment_id'}
+            set(data),
+            {
+                'id',
+                'created_at',
+                'recipient_id',
+                'role',
+                'kind',
+                'appointment_id',
+                'prospect_name',
+                'starts_at',
+            },
         )
         self.assertEqual(data['kind'], 'report_missing')
         self.assertEqual(data['appointment_id'], self.appointment.pk)
@@ -213,20 +224,59 @@ class ReminderTests(TestCase):
                 generate()
         self.assertFalse(ReminderEvent.objects.exists())
 
-    def test_report_nudge_one_hour_after_end_only_once(self):
-        now = timezone.now()
-        Appointment.objects.filter(pk=self.appointment.pk).update(
-            starts_at=now - timedelta(hours=2), ends_at=now - timedelta(minutes=59)
+    def test_report_nudge_next_day_at_quebec_cutoff_only_once(self):
+        zone = ZoneInfo('America/Toronto')
+        for start in (
+            datetime(2026, 10, 31, 21, tzinfo=zone),
+            datetime(2026, 3, 7, 21, tzinfo=zone),
+        ):
+            ReminderEvent.objects.all().delete()
+            Appointment.objects.filter(pk=self.appointment.pk).update(
+                starts_at=start, ends_at=start + timedelta(hours=1)
+            )
+            due = datetime.combine(
+                start.date() + timedelta(days=1), datetime.min.time(), zone
+            ).replace(hour=18)
+            due = due.astimezone(dt_timezone.utc)
+            with patch('django.utils.timezone.now', return_value=due - timedelta(seconds=1)):
+                self.assertEqual(generate()['created'], 0)
+            with patch('django.utils.timezone.now', return_value=due):
+                self.assertEqual(generate()['created'], 1)
+                self.assertEqual(active().count(), 1)
+            with patch('django.utils.timezone.now', return_value=due + timedelta(days=2)):
+                self.assertEqual(generate()['created'], 0)
+                self.assertEqual(generate()['existing'], 1)
+            self.assertEqual(ReminderEvent.objects.count(), 1)
+            self.assertFalse(AppointmentReport.objects.exists())
+
+    def test_admin_cutoff_is_validated_audited_and_legacy_events_cannot_send_early(self):
+        self.missing()
+        generate()
+        ReminderEvent.objects.update(not_before=None)
+        self.assertEqual(active().count(), 0)
+        url = '/api/assurance/reminder-policy/'
+        data = self.client.get(url).data
+        self.assertEqual(data['report_cutoff_time'], '18:00')
+        self.assertEqual(
+            self.client.post(
+                url, {**data, 'report_cutoff_time': '19:30:05', 'reason': 'Test'}, format='json'
+            ).status_code,
+            400,
         )
-        with patch('django.utils.timezone.now', return_value=now):
-            self.assertEqual(generate()['created'], 0)
-        with patch('django.utils.timezone.now', return_value=now + timedelta(minutes=1)):
-            self.assertEqual(generate()['created'], 1)
-        with patch('django.utils.timezone.now', return_value=now + timedelta(days=2)):
-            self.assertEqual(generate()['created'], 0)
-            self.assertEqual(generate()['existing'], 1)
+        response = self.client.post(
+            url, {**data, 'report_cutoff_time': '19:30', 'reason': 'Soir'}, format='json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['report_cutoff_time'], '19:30')
+        self.assertEqual(
+            BusinessAudit.objects.get(action='policy.reminders_changed').metadata['after'][
+                'report_cutoff_time'
+            ],
+            '19:30',
+        )
+        generate()
         self.assertEqual(ReminderEvent.objects.count(), 1)
-        self.assertFalse(AppointmentReport.objects.exists())
+        self.assertEqual(active().count(), 1)
 
     def test_no_retrospective_or_expired_report_nudge(self):
         self.missing()
@@ -253,8 +303,8 @@ class ReminderConcurrencyTests(TransactionTestCase):
     def test_two_workers_create_one_advisor_nudge(self):
         fixture()
         Appointment.objects.update(
-            starts_at=timezone.now() - timedelta(hours=3),
-            ends_at=timezone.now() - timedelta(hours=2),
+            starts_at=timezone.now() - timedelta(days=3),
+            ends_at=timezone.now() - timedelta(days=2),
         )
 
         def attempt(_):

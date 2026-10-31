@@ -88,9 +88,16 @@ def reminder_events(request):
         .exclude(recipient_role='administrator')
         .filter(pk__gt=after)
         .order_by('pk')
-        .values('id', 'created_at', 'recipient_id', 'recipient_role', 'kind', 'appointment_id')[
-            :100
-        ]
+        .values(
+            'id',
+            'created_at',
+            'recipient_id',
+            'recipient_role',
+            'kind',
+            'appointment_id',
+            'appointment__contact__name',
+            'appointment__starts_at',
+        )[:100]
     )
     response = Response(
         {
@@ -102,6 +109,14 @@ def reminder_events(request):
                     'role': row['recipient_role'],
                     'kind': row['kind'],
                     'appointment_id': row['appointment_id'],
+                    **(
+                        {
+                            'prospect_name': row['appointment__contact__name'],
+                            'starts_at': row['appointment__starts_at'],
+                        }
+                        if row['kind'] == 'report_missing'
+                        else {}
+                    ),
                 }
                 for row in rows
             ]

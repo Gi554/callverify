@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -99,6 +100,8 @@ def sync(stream='incidents'):
         if created is None or timezone.is_naive(created):
             raise ValueError('Invalid event date')
         appointment = None
+        prospect = None
+        starts = None
         if stream == 'reminders' and event.get('kind') == 'report_missing':
             appointment = event.get('appointment_id')
             if (
@@ -107,11 +110,22 @@ def sync(stream='incidents'):
                 or not 0 < appointment <= 9223372036854775807
             ):
                 raise ValueError('Invalid appointment reminder')
-        prepared.append((event_id, user_id, created, role, appointment))
+            prospect = event.get('prospect_name')
+            stamp = event.get('starts_at')
+            starts = parse_datetime(stamp) if isinstance(stamp, str) else None
+            if (
+                not isinstance(prospect, str)
+                or not prospect.strip()
+                or len(prospect) > 500
+                or starts is None
+                or timezone.is_naive(starts)
+            ):
+                raise ValueError('Invalid appointment details')
+        prepared.append((event_id, user_id, created, role, appointment, prospect, starts))
         previous = event_id
     counts = {'queued': 0, 'already_queued': 0, 'skipped': 0}
     expanded = []
-    for event_id, user_id, created, role, appointment in prepared:
+    for event_id, user_id, created, role, appointment, prospect, starts in prepared:
         recipients = (
             Membership.objects.filter(
                 workspace='assurance', role='administrator', active=True, user__is_active=True
@@ -122,9 +136,10 @@ def sync(stream='incidents'):
             else [user_id]
         )
         expanded.extend(
-            (event_id, recipient, created, role, appointment) for recipient in recipients
+            (event_id, recipient, created, role, appointment, prospect, starts)
+            for recipient in recipients
         )
-    for event_id, user_id, created, role, appointment in expanded:
+    for event_id, user_id, created, role, appointment, prospect, starts in expanded:
         with transaction.atomic():
             user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
             if (
@@ -169,12 +184,15 @@ def sync(stream='incidents'):
             notice = 'La lecture de cet e-mail ne clôture aucune tâche et ne renseigne aucun compte rendu. Retrouvez les détails uniquement après connexion à votre espace autorisé.'
             url = f'{public_url()}/crm'
             action = 'Consulter mon espace'
+            details = (('Espace', 'Assurance'),)
             if appointment:
+                when = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
+                details += (('Prospect', prospect), ('Rendez-vous', when + ' (heure du Québec)'))
                 title = 'Un petit retour sur votre rendez-vous ?'
                 intro = (
-                    'Votre rendez-vous est terminé et son résultat reste à renseigner. '
-                    'Quand vous avez un instant, indiquez si votre contact était présent, '
-                    'si une vente ou un contrat a été conclu, et ajoutez vos notes utiles.'
+                    f'Le résultat de votre rendez-vous avec {prospect}, prévu le {when} '
+                    '(heure du Québec), reste à renseigner. Quand vous avez un instant, '
+                    'indiquez si votre contact était présent et ajoutez vos notes utiles.'
                 )
                 action = 'Renseigner le rendez-vous'
                 url += f'?workspace=assurance&appointment={appointment}'
@@ -195,7 +213,7 @@ def sync(stream='incidents'):
                     name=user.get_username(),
                     url=url,
                     notice=notice,
-                    details=(('Espace', 'Assurance'),),
+                    details=details,
                 ),
                 recipient=user.email,
                 guard={'kind': guard_kind, 'event': event_id, 'user': user_id, 'role': role},

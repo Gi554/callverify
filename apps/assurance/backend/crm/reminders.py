@@ -1,7 +1,8 @@
 """Periodic reminders: current period only, never infer a negative appointment result."""
 
 import hashlib
-from datetime import timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
@@ -18,6 +19,7 @@ FIELDS = (
     'reports_enabled',
     'task_interval_hours',
     'report_grace_hours',
+    'report_cutoff_time',
     'report_interval_hours',
     'escalations_enabled',
     'task_escalation_hours',
@@ -39,7 +41,23 @@ def policy():
 
 
 def output_policy(row):
-    return {key: getattr(row, key) for key in FIELDS}
+    result = {key: getattr(row, key) for key in FIELDS}
+    result['report_cutoff_time'] = row.report_cutoff_time.strftime('%H:%M')
+    return result
+
+
+def report_deadline(appointment, rules):
+    """Next calendar day in Québec, including daylight-saving transitions."""
+    zone = ZoneInfo('America/Toronto')
+    day = appointment.starts_at.astimezone(zone).date() + timedelta(days=1)
+    deadline = datetime.combine(day, rules.report_cutoff_time, zone)
+    # Legacy long meetings must have ended before any report is requested.
+    if deadline <= appointment.ends_at:
+        day = appointment.ends_at.astimezone(zone).date()
+        deadline = datetime.combine(day, rules.report_cutoff_time, zone)
+        if deadline <= appointment.ends_at:
+            deadline = datetime.combine(day + timedelta(days=1), rules.report_cutoff_time, zone)
+    return deadline
 
 
 def active():
@@ -60,7 +78,7 @@ def active():
             appointment__status='scheduled',
             appointment__report__isnull=True,
             appointment__ends_at=F('anchor_at'),
-            appointment__ends_at__lte=now - timedelta(hours=rules.report_grace_hours),
+            not_before__lte=now,
             appointment__advisor_id=F('recipient_id'),
         )
         if rules.report_reminders_from:
@@ -79,8 +97,7 @@ def active():
             appointment__status='scheduled',
             appointment__report__isnull=True,
             appointment__ends_at=F('anchor_at'),
-            appointment__ends_at__lte=now
-            - timedelta(hours=rules.report_grace_hours + rules.report_escalation_hours),
+            not_before__lte=now,
         )
     return ReminderEvent.objects.filter(
         conditions, policy_revision=rules.revision, valid_until__gt=now
@@ -151,7 +168,7 @@ def generate():
                     appointment = row
                     task = None
                     anchor = row.ends_at
-                    start = anchor + timedelta(hours=rules.report_grace_hours)
+                    start = report_deadline(row, rules)
                     interval = rules.report_interval_hours
                     recipient = row.advisor_id
                     role = 'advisor'
@@ -191,8 +208,14 @@ def generate():
                         'anchor_at': anchor,
                         'policy_revision': rules.revision,
                         'valid_until': valid_until,
+                        'not_before': start,
                     },
                 )
+                if not created and kind == 'report_missing':
+                    # Keep the same event/relay identity after policy changes: no second mail.
+                    ReminderEvent.objects.filter(pk=event.pk).update(
+                        not_before=start, valid_until=valid_until, policy_revision=rules.revision
+                    )
                 counts['created' if created else 'existing'] += 1
                 # No actor is invented for an automatic action; the event is its audit trail.
     return counts
@@ -203,6 +226,13 @@ class PolicyInput(serializers.Serializer):
     reports_enabled = serializers.BooleanField()
     task_interval_hours = serializers.IntegerField(min_value=1, max_value=720)
     report_grace_hours = serializers.IntegerField(min_value=0, max_value=720)
+    report_cutoff_time = serializers.TimeField(required=False)
+
+    def validate_report_cutoff_time(self, value):
+        if value.second or value.microsecond:
+            raise ValidationError('Heure et minutes uniquement')
+        return value
+
     report_interval_hours = serializers.IntegerField(min_value=1, max_value=720)
     escalations_enabled = serializers.BooleanField()
     task_escalation_hours = serializers.IntegerField(min_value=1, max_value=2160)
@@ -230,7 +260,7 @@ def configuration(request):
         ReminderPolicy.objects.get_or_create(pk=1)
         row = ReminderPolicy.objects.get(pk=1)
         before = output_policy(row)
-        changes = {key: data[key] for key in FIELDS if key != 'revision'}
+        changes = {key: data.get(key, getattr(row, key)) for key in FIELDS if key != 'revision'}
         if not ReminderPolicy.objects.filter(pk=1, revision=data['revision']).update(
             **changes, revision=F('revision') + 1
         ):
