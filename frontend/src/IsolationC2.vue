@@ -46,6 +46,7 @@ async function load() {
       monthly_electricity: null,
       construction_year: null,
       age: null,
+      ...row.defaults,
       ...row.c2,
     };
     revision.value = row.revision;
@@ -117,8 +118,8 @@ defineExpose({ ensureSaved, dirty });
       <span>ISOLATION · QUALIFICATION</span>
       <h3>Préparer la visite</h3>
       <p>
-        Enregistrez votre brouillon à tout moment. Tous les champs, sauf le coût d’électricité, sont
-        requis pour réserver.
+        Enregistrez votre brouillon à tout moment. Tous les champs, sauf le coût d’électricité et
+        l’âge, sont requis pour réserver.
       </p>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
@@ -170,7 +171,7 @@ defineExpose({ ensureSaved, dirty });
                 values.construction_year === '' ? null : values.construction_year
             " /></label
         ><label
-          >Âge du client<input
+          >Âge du prospect · facultatif<input
             v-model.number="values.age"
             type="number"
             min="0"

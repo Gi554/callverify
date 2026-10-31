@@ -1,5 +1,23 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — qualification préremplie et âge facultatif (lot 2)
+
+L’âge est facultatif lors de la programmation ; s’il est renseigné, ses bornes 0–120 restent
+contrôlées. Le coût d’électricité reste numérique facultatif. Les autres champs requis et
+les valeurs Oui/Non inconnues ne sont pas inventés.
+
+La qualification propose les coordonnées connues, ainsi que l’adresse, la ville et le code
+postal disponibles sur la première ligne d’import d’origine non dupliquée. Seules des colonnes
+explicitement reconnues sont utilisées, avec validation et normalisation du code postal.
+Des colonnes contradictoires ou invalides restent vides ; aucun champ source privé arbitraire
+n’est transmis. Les valeurs déjà enregistrées dans la qualification, y compris un blanc explicite,
+priment sur les valeurs proposées. Les copies historiques des visites restent inchangées.
+
+Vérifications : réservation sans âge, maintien des autres champs obligatoires, imports valides,
+conflictuels/invalides et doublons, droits d’un autre setter, priorité du brouillon dans le
+frontend, sauvegarde et conflits existants. Les créneaux réels et la publication Google de la
+V2 restent à livrer ; ce lot ne les annonce pas comme terminés.
+
 ## Isolation V2 — parcours d’appel et qualification (lot 1)
 
 Périmètre confirmé : un seul client Isolation pour le moment ; rémunération future en CAD avec

@@ -25,6 +25,51 @@ class IsolationC2Tests(TestCase):
             self.draft_url, {'revision': 0, 'c2': {**fixtures.C2_DATA, **changes}}, format='json'
         )
 
+    def test_age_is_optional_for_booking_but_required_qualification_remains_checked(self):
+        Prospect.objects.filter(pk=self.prospect.pk).update(c2={**fixtures.C2_DATA, 'age': None})
+        response = self.book()
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertIsNone(response.data['c2_snapshot']['fields']['age'])
+
+    def test_original_import_prefills_only_known_valid_columns_without_overwriting_draft(self):
+        from .models import ImportBatch, ImportRow
+
+        batch = ImportBatch.objects.create(
+            campaign=self.prospect.campaign, original='synthetic.csv'
+        )
+        ImportRow.objects.create(
+            batch=batch,
+            prospect=self.prospect,
+            line=2,
+            source={
+                'Adresse complète': '12 rue Test',
+                'Ville': 'Montréal',
+                'Code postal': 'h2x1y4',
+                'private_note': 'DO NOT SHARE',
+            },
+        )
+        ImportRow.objects.create(
+            batch=batch,
+            prospect=self.prospect,
+            line=3,
+            duplicate=True,
+            source={'Ville': 'Autre ville'},
+        )
+        response = self.client.get(self.draft_url)
+        self.assertEqual(response.data['defaults']['city'], 'Montréal')
+        self.assertEqual(response.data['defaults']['address'], '12 rue Test')
+        self.assertEqual(response.data['defaults']['postal_code'], 'H2X 1Y4')
+        self.assertNotIn('DO NOT SHARE', str(response.data))
+        self.assertEqual(response.data['c2'], fixtures.C2_DATA)
+        ImportRow.objects.filter(line=2).update(
+            source={'Ville': 'Montréal', 'City': 'Québec', 'Code postal': 'bad'}
+        )
+        defaults = self.client.get(self.draft_url).data['defaults']
+        self.assertNotIn('city', defaults)
+        self.assertNotIn('postal_code', defaults)
+        self.auth(22, 'setter')
+        self.assertEqual(self.client.get(self.draft_url).status_code, 404)
+
     def test_partial_draft_keeps_unknown_answers_and_does_not_touch_lookup(self):
         response = self.client.post(
             self.draft_url, {'revision': 0, 'c2': {'city': 'Québec'}}, format='json'
@@ -69,9 +114,9 @@ class IsolationC2Tests(TestCase):
         self.assertEqual(data['monthly_electricity'], '0.00')
         self.assertEqual(self.book(revision=1).status_code, 201)
 
-    def test_every_required_field_blocks_new_booking_but_electricity_is_optional(self):
+    def test_every_required_field_blocks_new_booking_except_electricity_and_age(self):
         for key in fixtures.C2_DATA:
-            if key == 'monthly_electricity':
+            if key in ('monthly_electricity', 'age'):
                 continue
             self.prospect.c2 = {k: v for k, v in fixtures.C2_DATA.items() if k != key}
             self.prospect.save()
