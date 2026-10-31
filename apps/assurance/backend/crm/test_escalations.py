@@ -77,7 +77,7 @@ class EscalationTests(TestCase):
             self.assertEqual(active().filter(kind='task_escalation').count(), 1)
         self.assertEqual(ReminderEvent.objects.filter(kind='task_escalation').count(), 2)
 
-    def test_report_escalation_waits_for_grace_and_extra_delay(self):
+    def test_report_escalation_waits_for_quebec_cutoff_and_extra_delay(self):
         self.rules()
         now = timezone.now()
         Appointment.objects.update(
@@ -85,7 +85,16 @@ class EscalationTests(TestCase):
         )
         generate()
         self.assertEqual(active().filter(kind='report_escalation').count(), 0)
-        with patch('django.utils.timezone.now', return_value=now + timedelta(hours=2)):
+        from .reminders import report_deadline
+
+        rules = ReminderPolicy.objects.get(pk=1)
+        due = report_deadline(
+            Appointment.objects.get(pk=self.source.appointment.pk), rules
+        ) + timedelta(hours=rules.report_escalation_hours)
+        with patch('django.utils.timezone.now', return_value=due - timedelta(seconds=1)):
+            generate()
+            self.assertEqual(active().filter(kind='report_escalation').count(), 0)
+        with patch('django.utils.timezone.now', return_value=due):
             generate()
             self.assertEqual(active().filter(kind='report_escalation').count(), 1)
         self.assertFalse(AppointmentReport.objects.exists())
