@@ -39,7 +39,7 @@ class SlotInput(serializers.Serializer):
 
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
-            raise ValidationError('Champs non autorisÃ©s')
+            raise ValidationError('Champs non autorisés')
         try:
             zone = ZoneInfo(data['timezone'])
         except (ValueError, ZoneInfoNotFoundError):
@@ -47,11 +47,11 @@ class SlotInput(serializers.Serializer):
         for key in ('starts_at', 'ends_at'):
             raw = parse_datetime(str(self.initial_data[key]))
             if raw is None or timezone.is_naive(raw):
-                raise ValidationError('Date ISO 8601 avec dÃ©calage explicite requise')
+                raise ValidationError('Date ISO 8601 avec décalage explicite requise')
             if raw.astimezone(zone).utcoffset() != raw.utcoffset():
-                raise ValidationError('DÃ©calage incompatible avec le fuseau')
+                raise ValidationError('Décalage incompatible avec le fuseau')
         if not timedelta(0) < data['ends_at'] - data['starts_at'] <= timedelta(days=31):
-            raise ValidationError('FenÃªtre positive limitÃ©e Ã  31 jours')
+            raise ValidationError('Fenêtre positive limitée à 31 jours')
         return data
 
 
@@ -71,7 +71,7 @@ class CancelInput(serializers.Serializer):
 
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
-            raise ValidationError('Champs non autorisÃ©s')
+            raise ValidationError('Champs non autorisés')
         return data
 
 
@@ -79,9 +79,9 @@ def proof(data, user, prospect):
     try:
         claims = verify_booking(data['proof'], user.pk, prospect.pk)
     except (signing.BadSignature, TypeError, ValueError):
-        raise ValidationError('Attestation de rÃ©servation invalide ou expirÃ©e')
+        raise ValidationError('Attestation de réservation invalide ou expirée')
     if prospect.assigned_setter_id is None or claims['setter']['id'] != prospect.assigned_setter_id:
-        raise Conflict('Responsable du prospect modifiÃ© ou absent')
+        raise Conflict('Responsable du prospect modifié ou absent')
     return claims
 
 
@@ -92,7 +92,7 @@ def lock_prospect(prospect, user, revision=None):
     if revision is not None:
         qs = qs.filter(assignment_revision=revision)
     if not qs.update(assignment_revision=F('assignment_revision') + 1):
-        raise Conflict('Prospect modifiÃ© ou rÃ©attribuÃ© : rechargez')
+        raise Conflict('Prospect modifié ou réattribué : rechargez')
     return Prospect.objects.get(pk=prospect.pk)
 
 
@@ -106,14 +106,14 @@ def available(prospect, client, data, exclude=None):
 
     ensure_open(data['starts_at'], data['ends_at'])
     if data['starts_at'] <= timezone.now():
-        raise ValidationError('CrÃ©neau futur requis')
+        raise ValidationError('Créneau futur requis')
     rows = IsolationVisit.objects.filter(
         status='scheduled', starts_at__lt=data['ends_at'], ends_at__gt=data['starts_at']
     ).filter(Q(client_id=client) | Q(prospect_id=prospect.pk))
     if exclude:
         rows = rows.exclude(pk=exclude)
     if rows.exists():
-        raise Conflict('CrÃ©neau dÃ©jÃ  rÃ©servÃ© pour le client ou le prospect')
+        raise Conflict('Créneau déjà réservé pour le client ou le prospect')
 
 
 def output(row):
@@ -190,7 +190,7 @@ class IsolationVisitViewSet(
             qs = qs.filter(client_id=self.request.user.pk)
         period = self.request.query_params.get('period', '')
         if period not in ('', 'upcoming'):
-            raise ValidationError('PÃ©riode invalide')
+            raise ValidationError('Période invalide')
         if period == 'upcoming':
             qs = qs.filter(ends_at__gt=timezone.now())
         if self.request.query_params.get('result_due') == 'true':
@@ -228,16 +228,16 @@ class IsolationVisitViewSet(
     def availability(self, request):
         """Busy CRM intervals before booking; the client's external calendar stays checked at booking."""
         if request.user.role not in ('setter', 'administrator'):
-            raise PermissionDenied('DisponibilitÃ©s rÃ©servÃ©es aux setters et administrateurs')
+            raise PermissionDenied('Disponibilités réservées aux setters et administrateurs')
         params = request.data if request.method == 'POST' else request.query_params
         if request.method == 'POST' and (
             not isinstance(params, dict) or set(params) != {'prospect_id', 'start', 'end', 'proof'}
         ):
-            raise ValidationError('Prospect, pÃ©riode et preuve de rÃ©servation requis.')
+            raise ValidationError('Prospect, période et preuve de réservation requis.')
         if request.method == 'POST' and (
             not isinstance(params['proof'], str) or len(params['proof']) > 3000
         ):
-            raise ValidationError('Preuve de rÃ©servation invalide.')
+            raise ValidationError('Preuve de réservation invalide.')
         prospect_id = str(params.get('prospect_id', ''))
         if not prospect_id.isdigit():
             raise ValidationError('Prospect invalide')
@@ -250,11 +250,11 @@ class IsolationVisitViewSet(
             )
             end = parse_datetime(params.get('end')) if isinstance(params.get('end'), str) else None
         except ValueError:
-            raise ValidationError('PÃ©riode invalide.') from None
+            raise ValidationError('Période invalide.') from None
         if not start or not end or start.tzinfo is None or end.tzinfo is None:
-            raise ValidationError('PÃ©riode invalide : dates ISO 8601 avec dÃ©calage attendues')
+            raise ValidationError('Période invalide : dates ISO 8601 avec décalage attendues')
         if not start < end <= start + timedelta(days=7):
-            raise ValidationError('PÃ©riode invalide : sept jours au maximum')
+            raise ValidationError('Période invalide : sept jours au maximum')
         from .isolation_hours import closed_periods
 
         external_busy = []
@@ -302,7 +302,7 @@ class IsolationVisitViewSet(
 
     def create(self, request):
         if request.user.role == 'client':
-            raise PermissionDenied('RÃ©servation rÃ©servÃ©e aux setters et administrateurs')
+            raise PermissionDenied('Réservation réservée aux setters et administrateurs')
         serializer = BookingInput(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -319,7 +319,7 @@ class IsolationVisitViewSet(
 
         def replay(row):
             if row.fingerprint != fingerprint or row.booked_by_id != request.user.pk:
-                raise Conflict('Identifiant de rÃ©servation dÃ©jÃ  utilisÃ©')
+                raise Conflict('Identifiant de réservation déjà utilisé')
             return booking_response(row, request.user)
 
         existing = IsolationVisit.objects.filter(request_id=data['request_id']).first()
@@ -334,7 +334,7 @@ class IsolationVisitViewSet(
                     return replay(existing)
                 raise
             if prospect.assigned_setter_id != claims['setter']['id']:
-                raise Conflict('Responsable modifiÃ© : rechargez')
+                raise Conflict('Responsable modifié : rechargez')
             c2_snapshot = captured(prospect)
             calendar(claims['client']['id'])
             available(prospect, claims['client']['id'], data)
@@ -346,7 +346,7 @@ class IsolationVisitViewSet(
                 **({'publication': True} if data['publication'] == 'google' else {}),
             )
             if data['starts_at'] <= timezone.now():
-                raise ValidationError('CrÃ©neau futur requis')
+                raise ValidationError('Créneau futur requis')
             row, created = IsolationVisit.objects.get_or_create(
                 request_id=data['request_id'],
                 defaults={
@@ -399,7 +399,7 @@ class IsolationVisitViewSet(
 
     def modify(self, request, cancel=False):
         if request.user.role == 'client':
-            raise PermissionDenied('Modification rÃ©servÃ©e aux setters et administrateurs')
+            raise PermissionDenied('Modification réservée aux setters et administrateurs')
         original = self.get_object()
         serializer = (CancelInput if cancel else RescheduleInput)(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -414,7 +414,7 @@ class IsolationVisitViewSet(
                 or row.starts_at <= timezone.now()
                 or IsolationVisitResult.objects.filter(visit=row).exists()
             ):
-                raise Conflict('Visite modifiÃ©e, annulÃ©e, renseignÃ©e ou dÃ©jÃ  commencÃ©e')
+                raise Conflict('Visite modifiée, annulée, renseignée ou déjà commencée')
             before = snapshot(row)
             external = None
             if cancel:
@@ -422,7 +422,7 @@ class IsolationVisitViewSet(
             else:
                 claims = proof(data, request.user, prospect)
                 if claims['client']['id'] != row.client_id:
-                    raise Conflict('Client de la visite diffÃ©rent de la configuration active')
+                    raise Conflict('Client de la visite différent de la configuration active')
                 available(prospect, row.client_id, data, exclude=row.pk)
                 external = external_check(
                     request.user,
@@ -433,7 +433,7 @@ class IsolationVisitViewSet(
                     **({'publication': True} if row.publication == 'google' else {}),
                 )
                 if data['starts_at'] <= timezone.now():
-                    raise ValidationError('CrÃ©neau futur requis')
+                    raise ValidationError('Créneau futur requis')
                 for key in ('starts_at', 'ends_at', 'timezone'):
                     setattr(row, key, data[key])
             row.revision += 1

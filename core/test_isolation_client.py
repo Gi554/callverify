@@ -43,7 +43,7 @@ class IsolationClientTests(TestCase):
             'revision': 0,
             'performed': True,
             'outcome': 'interested',
-            'note': 'Visite effectuÃƒÆ’Ã‚Â©e, prospect intÃƒÆ’Ã‚Â©ressÃƒÆ’Ã‚Â©',
+            'note': 'Visite effectuée, prospect intéressé',
             **changes,
         }
 
@@ -54,7 +54,7 @@ class IsolationClientTests(TestCase):
         other = Prospect.objects.create(
             campaign=self.prospect.campaign,
             raw_phone='secret',
-            name='Hors pÃƒÆ’Ã‚Â©rimÃƒÆ’Ã‚Â¨tre',
+            name='Hors périmètre',
             assigned_setter_id=22,
         )
         foreign = IsolationVisit.objects.create(
@@ -105,7 +105,7 @@ class IsolationClientTests(TestCase):
             self.report(
                 closed=False,
                 revision=self.visit.revision,
-                reason='ComplÃƒÂ©ter le rÃƒÂ©sultat commercial',
+                reason='Compléter le résultat commercial',
             ).status_code,
             201,
         )
@@ -215,7 +215,7 @@ class IsolationClientTests(TestCase):
         self.assertEqual(
             self.client.post(
                 self.url + 'cancel/',
-                {'revision': 1, 'reason': 'Effacer le rÃƒÆ’Ã‚Â©sultat'},
+                {'revision': 1, 'reason': 'Effacer le résultat'},
                 format='json',
             ).status_code,
             409,
@@ -257,7 +257,7 @@ class IsolationClientConcurrencyTests(TransactionTestCase):
             'revision': 0,
             'performed': True,
             'outcome': 'completed',
-            'note': 'EffectuÃƒÆ’Ã‚Â©e',
+            'note': 'Effectuée',
         }
         self.assertEqual(sorted(self.race([payload, payload])), [200, 201])
         self.assertEqual(IsolationVisitResult.objects.count(), 1)
@@ -270,7 +270,7 @@ class IsolationClientConcurrencyTests(TransactionTestCase):
             'revision': 0,
             'performed': True,
             'outcome': 'interested',
-            'note': 'IntÃƒÆ’Ã‚Â©ressÃƒÆ’Ã‚Â©',
+            'note': 'Intéressé',
         }
         second = {'revision': 0, 'performed': False, 'outcome': 'not_performed', 'note': 'Absent'}
         self.assertEqual(sorted(self.race([first, second])), [201, 409])
