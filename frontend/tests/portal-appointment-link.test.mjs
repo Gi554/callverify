@@ -74,15 +74,24 @@ async function flush() {
   }
 }
 
-async function fixture({ loggedIn, role = 'advisor' }) {
+async function fixture({
+  loggedIn,
+  role = 'advisor',
+  isolationRole = 'closer',
+  isolationLink = false,
+}) {
   const saved = new Map(
     ['location', 'history', 'localStorage', 'window', 'fetch'].map((key) => [key, globalThis[key]]),
   )
-  const address = new URL('https://orvia-crm.com/crm?workspace=assurance&appointment=42')
+  const address = new URL(
+    isolationLink
+      ? 'https://orvia-crm.com/crm?workspace=isolation&visit=42'
+      : 'https://orvia-crm.com/crm?workspace=assurance&appointment=42',
+  )
   const member = {
     username: 'advisor',
     workspaces: [
-      { workspace: 'isolation', role: 'closer' },
+      { workspace: 'isolation', role: isolationRole },
       { workspace: 'assurance', role },
     ],
     admin_workspaces: [],
@@ -164,6 +173,32 @@ test('an adviser link grants no appointment focus to a setter', async () => {
   const f = await fixture({ loggedIn: true, role: 'setter' })
   try {
     assert.equal(find(f, 'CrmAppointmentsCalendar'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('Isolation client reminder opens the exact authorised visit after login', async () => {
+  for (const loggedIn of [true, false]) {
+    const f = await fixture({ loggedIn, isolationRole: 'client', isolationLink: true })
+    try {
+      if (!loggedIn) {
+        await find(f, 'PortalLogin').props.onSubmit({ username: 'client', password: 'test' })
+        await flush()
+      }
+      const visits = find(f, 'IsolationVisits')
+      assert.equal(visits.props['visit-id'], 42)
+      assert.equal(f.address.search, '')
+    } finally {
+      f.close()
+    }
+  }
+})
+
+test('Isolation visit hint does not grant a setter access to a client result panel', async () => {
+  const f = await fixture({ loggedIn: true, isolationRole: 'setter', isolationLink: true })
+  try {
+    assert.equal(find(f, 'IsolationVisits'), undefined)
   } finally {
     f.close()
   }

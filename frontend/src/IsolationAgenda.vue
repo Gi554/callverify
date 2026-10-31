@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import SidePanel from './SidePanel.vue';
 import PortalCalendars from './PortalCalendars.vue';
+import IsolationReminderPolicy from './IsolationReminderPolicy.vue';
 const props = defineProps<{
   role: string;
   request: (path: string, body?: any) => Promise<any>;
@@ -103,6 +104,7 @@ onMounted(load);
       :request="portal"
       simple
     />
+    <IsolationReminderPolicy v-if="role === 'administrator'" :request="request" />
     <SidePanel
       :open="!!draft"
       title="Horaires de visite"

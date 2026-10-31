@@ -273,7 +273,23 @@ class IsolationVisit(models.Model):
         indexes = [models.Index(fields=['client_id', 'status', 'starts_at'])]
 
 
+class IsolationReminderPolicy(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    enabled = models.BooleanField(default=True)
+    delay_hours = models.PositiveIntegerField(default=24)
+    revision = models.PositiveIntegerField(default=0)
+    active_from = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(pk=1), name='single_isolation_reminder_policy'
+            )
+        ]
+
+
 class IsolationNotice(models.Model):
+    anchor_at = models.DateTimeField(null=True, blank=True)
     visit = models.ForeignKey(IsolationVisit, on_delete=models.PROTECT, related_name='notices')
     recipient_id = models.PositiveBigIntegerField(db_index=True)
     recipient_role = models.CharField(max_length=20)

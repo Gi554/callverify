@@ -37,8 +37,9 @@ import AssuranceStatistics from './AssuranceStatistics.vue';
 import AssuranceCompensation from './AssuranceCompensation.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
 import { RefreshCw } from 'lucide-vue-next';
-import { appointmentLink } from './appointment-link';
+import { appointmentLink, isolationVisitLink } from './appointment-link';
 const pendingAppointment = ref(appointmentLink(new URL(location.href)));
+const pendingIsolationVisit = ref(isolationVisitLink(new URL(location.href)));
 const appointmentFocus = ref<number | null>(null);
 type Membership = { workspace: string; role: string };
 const user = ref<{
@@ -175,6 +176,15 @@ async function enter(value: string) {
     history.replaceState(null, '', url.pathname + url.search + url.hash);
   }
   isolationModule.value = 'overview';
+  if (value === 'isolation' && pendingIsolationVisit.value && role.value === 'client') {
+    isolationModule.value = 'appointments';
+    appointmentFocus.value = pendingIsolationVisit.value;
+    pendingIsolationVisit.value = null;
+    const url = new URL(location.href);
+    url.searchParams.delete('visit');
+    url.searchParams.delete('workspace');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
   managing.value = false;
   passwordOpen.value = false;
   try {
@@ -210,6 +220,13 @@ async function login(credentials: { username: string; password: string }) {
     user.value = authenticated;
     // A single authorised space opens directly; several are listed in « Mes espaces ».
     if (
+      pendingIsolationVisit.value &&
+      authenticated.workspaces.some(
+        (m: Membership) => m.workspace === 'isolation' && m.role === 'client',
+      )
+    )
+      await enter('isolation');
+    else if (
       pendingAppointment.value &&
       authenticated.workspaces.some(
         (m: Membership) => m.workspace === 'assurance' && m.role === 'advisor',
@@ -347,6 +364,10 @@ function openProspect(value: { id: number; mode: 'edit' | 'call' }) {
   prospectFocus.value = value;
   selectModule('contacts');
 }
+function openIsolationVisit(id: number) {
+  selectModule('appointments');
+  appointmentFocus.value = id;
+}
 function openAssuranceAppointment(id: number) {
   selectModule('appointments');
   appointmentFocus.value = id;
@@ -357,6 +378,7 @@ const pageTitle = computed(
 function selectModule(id: string) {
   if (!navigation.value.some((item) => item.id === id)) return;
   if (id !== 'contacts') prospectFocus.value = null;
+  if (id !== 'appointments') appointmentFocus.value = null;
   managing.value = false;
   passwordOpen.value = false;
   if (workspace.value === 'assurance') assuranceModule.value = id;
@@ -415,6 +437,7 @@ onMounted(async () => {
     user.value = await portal('session/');
     const allowed = user.value?.workspaces.map((item) => item.workspace) || [];
     const target = [
+      pendingIsolationVisit.value ? 'isolation' : '',
       pendingAppointment.value ? 'assurance' : '',
       rememberedWorkspace(),
       user.value?.landing || '',
@@ -506,6 +529,11 @@ onMounted(async () => {
         />
       </template>
       <main class="amx-main">
+        <IsolationNotices
+          v-if="workspace === 'isolation' && role === 'client' && ready"
+          :request="isolation"
+          @open="openIsolationVisit"
+        />
         <p v-if="calendarNotice" role="status">{{ calendarNotice }}</p>
         <p v-if="!ready" class="subtle">Chargement de votre espace…</p>
         <p v-if="error" role="alert" class="error">{{ error }}</p>
@@ -770,6 +798,8 @@ onMounted(async () => {
                     />
                     <IsolationVisits
                       v-else-if="isolationModule === 'appointments'"
+                      :key="appointmentFocus || 0"
+                      :visit-id="appointmentFocus || undefined"
                       :role="role"
                       :portal="portal"
                       :request="isolation"

@@ -143,7 +143,7 @@ def output(row):
         'result': result,
         'result_due': row.status == 'scheduled'
         and row.ends_at <= timezone.now()
-        and result is None,
+        and (result is None or result['closed'] is None),
     }
 
 
@@ -194,7 +194,9 @@ class IsolationVisitViewSet(
         if period == 'upcoming':
             qs = qs.filter(ends_at__gt=timezone.now())
         if self.request.query_params.get('result_due') == 'true':
-            qs = qs.filter(status='scheduled', ends_at__lte=timezone.now(), result__isnull=True)
+            qs = qs.filter(status='scheduled', ends_at__lte=timezone.now()).filter(
+                Q(result__isnull=True) | Q(result__closed__isnull=True)
+            )
         prospect = self.request.query_params.get('prospect_id', '')
         if prospect:
             if not prospect.isdigit():

@@ -91,6 +91,23 @@ def eligible(guard, recipient):
             if guard['kind'] == 'assurance_reminder'
             else source_eligible(guard['event'], user.pk)
         )
+    if guard['kind'] == 'isolation_notice':
+        from .isolation_mail import eligible as source_eligible
+
+        user = (
+            get_user_model()
+            .objects.filter(pk=guard['user'], is_active=True, email=recipient)
+            .first()
+        )
+        if (
+            not user
+            or not Membership.objects.filter(
+                user=user, workspace='isolation', role='client', active=True
+            ).exists()
+            or get_user_model().objects.filter(email__iexact=recipient, is_active=True).count() != 1
+        ):
+            return False
+        return source_eligible(guard['event'], user.pk)
     if guard['kind'] == 'invitation':
         row = Invitation.objects.select_related('issuer').filter(pk=guard['id']).first()
         return bool(

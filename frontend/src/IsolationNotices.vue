@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
-const emit = defineEmits<{ tasks: [] }>();
+const emit = defineEmits<{ tasks: []; open: [id: number] }>();
 const rows = ref<any[]>([]),
   error = ref(''),
   busy = ref(false);
@@ -20,6 +20,7 @@ async function load() {
 }
 async function open(row: any) {
   if (row.kind === 'not_held') emit('tasks');
+  else if (['booked', 'result_due'].includes(row.kind)) emit('open', row.visit_id);
   try {
     await props.request(`isolation-notices/${row.id}/read/`, {});
     row.read_at = new Date().toISOString();
@@ -53,7 +54,13 @@ onBeforeUnmount(() => {
     >
       {{ row.label }} · {{ row.prospect_name }} ·
       {{ new Date(row.starts_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' }) }} —
-      {{ row.kind === 'not_held' ? 'Consulter mes rappels' : 'Marquer comme lu' }}
+      {{
+        row.kind === 'not_held'
+          ? 'Consulter mes rappels'
+          : ['booked', 'result_due'].includes(row.kind)
+            ? 'Ouvrir la visite'
+            : 'Marquer comme lu'
+      }}
     </button>
   </section>
 </template>

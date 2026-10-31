@@ -72,3 +72,14 @@ urlpatterns += [path('api/isolation-working-hours/', isolation_hours)]
 from core.isolation_publication import status as isolation_publication_status
 
 urlpatterns += [path('api/internal/isolation/publication-status/', isolation_publication_status)]
+
+from core import isolation_reminders
+
+urlpatterns += [
+    path('api/isolation-reminder-policy/', isolation_reminders.configuration),
+    path('api/internal/isolation/mail-events/', isolation_reminders.mail_events),
+    path(
+        'api/internal/isolation/mail-events/<int:pk>/<int:user_id>/',
+        isolation_reminders.mail_eligible,
+    ),
+]

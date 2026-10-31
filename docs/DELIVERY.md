@@ -1,5 +1,28 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — notifications client et relance du résultat (lot 6)
+
+Une publication Google confirmée produit une notification privée et un courriel client lié à
+la visite exacte. Un résultat encore incomplet déclenche une seule relance 24 h après la fin
+de visite ; délai de 1 à 720 h et suspension réglables par l’administration, avec révision,
+motif et audit. Les anciens comptes rendus sans réponse commerciale restent à compléter.
+Le client accède au résultat depuis le lien, y compris après connexion, sans attribution de droit.
+
+Le worker évalue les visites chaque minute ; le nouveau service isolation-mail-relay transmet
+les événements minimaux signés à la file SMTP chiffrée du portail toutes les 30 secondes.
+La file recontrôle l’accès, le destinataire et l’éligibilité juste avant SMTP. Annulation, report,
+résultat complété ou suspension du rappel invalident les messages devenus caducs. Identité
+persistante par occurrence ; les relectures n’envoient pas de nouveau message. Activation à la
+migration sans reprise massive du stock historique ; fenêtre de reprise de sept jours.
+Heure du Québec dans les courriels, aucune qualification détaillée envoyée.
+
+Vérifications : seuil 24 h, dédoublonnage, résultat, annulation/report/suspension, preuves serveur,
+périmètre client, file chiffrée et lien authentifié ; 303 tests portail et 24 tests Isolation
+ciblés, 10 tests frontend, lint/format, TypeScript, build et migrations. Google et SMTP simulés,
+aucun courriel réel envoyé pour ces tests. Limites : dépend de worker/beat, du relais et de SMTP ;
+une course après le dernier contrôle SMTP reste possible. Aucun SMS livré. Reprogrammations
+liées, non-qualifiés et rémunération restent à terminer séparément.
+
 ## Isolation V2 — tenue, vente et rappel setter (lot 5)
 
 Le formulaire client pose deux questions distinctes sans présélection : visite tenue et vente
@@ -116,7 +139,7 @@ notifications, non-qualifiés ou rémunérations de la V2.
 1. Agenda Google du client et représentants : jours/heures, créneaux réels, contrôle final,
    publication fiable et états d’erreur explicites ; qualification préremplie et âge facultatif.
 2. Visites programmées, historique par occurrence, tenue/vente et rappels setter sur non-tenue.
-3. Notifications et courriels de réservation ; relance de résultat après 24 h configurable.
+3. Notifications et relance livrées au lot 6 ; recette réelle après connexion Google du client.
 4. Rendez-vous non qualifiés : motifs, recherche ville/code postal, tri et réactivation de la
    même fiche sans perte d’historique.
 5. Statistiques hebdomadaires et rémunération CAD : visite tenue + prime de vente, versionnement

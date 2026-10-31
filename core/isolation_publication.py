@@ -74,6 +74,10 @@ def status(request):
         row.save(
             update_fields=['publication_status', 'publication_error', 'publication_checked_at']
         )
+        if row.publication_status == 'confirmed':
+            from .isolation_reminders import booked
+
+            booked(row)
         if changed:
             AuditEvent.objects.create(
                 action='isolation.visit.publication_checked',

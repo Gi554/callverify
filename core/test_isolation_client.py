@@ -98,6 +98,17 @@ class IsolationClientTests(TestCase):
         self.assertEqual(self.client.get('/api/visits/?result_due=true').data['count'], 1)
         self.assertEqual(self.client.get('/api/client-dashboard/').data['results_due'], 1)
         self.assertEqual(self.report().status_code, 201)
+        # Legacy attendance-only reports still need the separate sales answer.
+        self.assertEqual(self.client.get('/api/client-dashboard/').data['results_due'], 1)
+        self.visit.refresh_from_db()
+        self.assertEqual(
+            self.report(
+                closed=False,
+                revision=self.visit.revision,
+                reason='Compléter le résultat commercial',
+            ).status_code,
+            201,
+        )
         result = self.client.get('/api/client-dashboard/').data
         self.assertEqual(result['results_due'], 0)
         self.assertEqual(result['reported'], 1)
@@ -242,7 +253,12 @@ class IsolationClientConcurrencyTests(TransactionTestCase):
             return list(pool.map(submit, payloads))
 
     def test_identical_concurrent_results_are_idempotent(self):
-        payload = {'revision': 0, 'performed': True, 'outcome': 'completed', 'note': 'Effectuée'}
+        payload = {
+            'revision': 0,
+            'performed': True,
+            'outcome': 'completed',
+            'note': 'Effectuée',
+        }
         self.assertEqual(sorted(self.race([payload, payload])), [200, 201])
         self.assertEqual(IsolationVisitResult.objects.count(), 1)
         self.assertEqual(
@@ -250,7 +266,12 @@ class IsolationClientConcurrencyTests(TransactionTestCase):
         )
 
     def test_different_concurrent_results_cannot_overwrite(self):
-        first = {'revision': 0, 'performed': True, 'outcome': 'interested', 'note': 'Intéressé'}
+        first = {
+            'revision': 0,
+            'performed': True,
+            'outcome': 'interested',
+            'note': 'Intéressé',
+        }
         second = {'revision': 0, 'performed': False, 'outcome': 'not_performed', 'note': 'Absent'}
         self.assertEqual(sorted(self.race([first, second])), [201, 409])
         self.assertEqual(IsolationVisitResult.objects.count(), 1)

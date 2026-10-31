@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import F, Exists, OuterRef
+from django.db.models import F, Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
@@ -245,9 +245,9 @@ def client_dashboard(request):
             'prospects': visits.values('prospect_id').distinct().count(),
             'visits': visits.count(),
             'upcoming': visits.filter(status='scheduled', starts_at__gt=now).count(),
-            'results_due': visits.filter(
-                status='scheduled', ends_at__lte=now, result__isnull=True
-            ).count(),
+            'results_due': visits.filter(status='scheduled', ends_at__lte=now)
+            .filter(Q(result__isnull=True) | Q(result__closed__isnull=True))
+            .count(),
             'reported': visits.filter(result__isnull=False).count(),
         }
     )
