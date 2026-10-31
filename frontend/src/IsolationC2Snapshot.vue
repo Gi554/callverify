@@ -23,7 +23,7 @@ function value(v: any) {
 </script>
 <template>
   <details class="c2-copy">
-    <summary>Formulaire C2 transmis avec la visite</summary>
+    <summary>Qualification transmis avec la visite</summary>
     <template v-if="snapshot?.fields"
       ><p>
         Copie du {{ new Date(snapshot.captured_at).toLocaleString('fr-FR') }} · Campagne
@@ -40,7 +40,7 @@ function value(v: any) {
         visite.</small
       ></template
     >
-    <p v-else>Aucun C2 conservé pour cette ancienne visite.</p>
+    <p v-else>Aucune qualification conservée pour cette ancienne visite.</p>
   </details>
 </template>
 <style scoped>

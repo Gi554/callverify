@@ -1,5 +1,36 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — parcours d’appel et qualification (lot 1)
+
+Périmètre confirmé : un seul client Isolation pour le moment ; rémunération future en CAD avec
+montant par visite tenue et prime supplémentaire de vente, configurables par setter.
+
+Le choix des résultats propose les sept libellés demandés, dont « Numéro non attribué » et
+« Autre résultat ». L’ancien résultat Injoignable reste lisible et accepté dans l’API. Répondeur,
+numéro non attribué et appel coupé enregistrent avant de fermer la fiche ; en session, le décompte
+habituel prépare le prochain prospect. Une erreur d’enregistrement ou de rechargement conserve
+la fiche ouverte. Le rappel conserve date/heure Québec et note facultative. « Rendez-vous pris »
+ouvre directement la qualification et la programmation ; aucun faux rendez-vous n’est déclaré
+avant la réservation. Une visite créée enregistre son résultat d’appel lié dans la même transaction,
+sans doublon lors d’une répétition. Le retour de programmation recharge la révision de la fiche.
+
+Les libellés visibles « Formulaire C2 » deviennent « Qualification » ; les routes et snapshots
+historiques C2 restent compatibles. Ce lot ne livre pas les nouvelles disponibilités Google,
+notifications, non-qualifiés ou rémunérations de la V2.
+
+### Isolation V2 — lots restants
+
+1. Agenda Google du client et représentants : jours/heures, créneaux réels, contrôle final,
+   publication fiable et états d’erreur explicites ; qualification préremplie et âge facultatif.
+2. Visites programmées, historique par occurrence, tenue/vente et rappels setter sur non-tenue.
+3. Notifications et courriels de réservation ; relance de résultat après 24 h configurable.
+4. Rendez-vous non qualifiés : motifs, recherche ville/code postal, tri et réactivation de la
+   même fiche sans perte d’historique.
+5. Statistiques hebdomadaires et rémunération CAD : visite tenue + prime de vente, versionnement
+   des règles et dédoublonnage du processus commercial lors d’une reprogrammation.
+6. Recette complète par rôle ; SMS conditionné à un service intégré. Revue esthétique finale
+   séparée. Assurance conserve son parcours de réservation externe.
+
 ## Statistiques Assurance : journées du Québec cohérentes
 
 L’ancien module Statistiques (administrateur et setter) utilise maintenant America/Toronto

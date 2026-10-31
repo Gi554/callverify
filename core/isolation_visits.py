@@ -299,6 +299,20 @@ class IsolationVisitViewSet(
             if not created:
                 transaction.set_rollback(True)
                 return replay(row)
+            from .isolation_followups import event
+
+            event(
+                prospect,
+                request.user,
+                'call_result',
+                '',
+                {
+                    'result': 'appointment_booked',
+                    'appointment_id': row.pk,
+                    'phone': prospect.raw_phone,
+                    'source': 'visit_booking',
+                },
+            )
             AuditEvent.objects.create(
                 action='isolation.visit.booked',
                 object_id=str(row.pk),

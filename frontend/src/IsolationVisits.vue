@@ -30,7 +30,10 @@ const c2 = ref<any>(null),
   duration = ref(60);
 function close() {
   if (busy.value || c2Busy.value) return;
-  if (!c2Dirty.value || window.confirm('Quitter sans enregistrer les modifications C2 ?'))
+  if (
+    !c2Dirty.value ||
+    window.confirm('Quitter sans enregistrer les modifications de qualification ?')
+  )
     emit('close');
 }
 const assigning = ref<any>(null);
@@ -114,7 +117,7 @@ async function save() {
   await run(async () => {
     const record = editing.value;
     if (!record) {
-      if (!c2.value) throw new Error('Chargez le formulaire C2 avant de réserver.');
+      if (!c2.value) throw new Error('Chargez la qualification avant de réserver.');
       await c2.value.ensureSaved();
     }
     const current = record
@@ -202,7 +205,7 @@ onMounted(() => run(load));
       @change="changed"
     >
       <fieldset :disabled="busy || c2Busy">
-        <legend>{{ editing ? 'Reporter une visite' : 'Réserver une visite' }}</legend>
+        <legend>{{ editing ? 'Reporter une visite' : 'Programmer une visite' }}</legend>
         <template v-if="!editing"
           ><AvailabilitySlots
             v-if="prospect"
@@ -248,7 +251,7 @@ onMounted(() => run(load));
         ><label v-if="editing"
           >Motif du report<textarea v-model="reason" required maxlength="1000"></textarea></label
         ><button class="primary">
-          {{ editing ? 'Confirmer le report' : 'Confirmer la réservation' }}</button
+          {{ editing ? 'Confirmer le report' : 'Programmer la visite' }}</button
         ><button
           v-if="editing"
           type="button"

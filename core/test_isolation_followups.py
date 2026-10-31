@@ -106,7 +106,14 @@ class FollowUpTests(TestCase):
 
     def test_results_are_declared_and_do_not_change_lookup_or_commercial_status(self):
         for index, result in enumerate(
-            ('voicemail', 'invalid_number', 'disconnected', 'not_interested', 'unreachable')
+            (
+                'voicemail',
+                'invalid_number',
+                'disconnected',
+                'not_interested',
+                'unreachable',
+                'other',
+            )
         ):
             response = self.call(result=result, revision=index)
             self.assertEqual(response.status_code, 201, response.data)
@@ -115,7 +122,7 @@ class FollowUpTests(TestCase):
         self.prospect.phone.refresh_from_db()
         self.assertEqual(self.prospect.phone.line_status, 'unknown')
         self.assertEqual(self.prospect.commercial_status, 'to_contact')
-        self.assertEqual(ProspectActivity.objects.filter(kind='call_result').count(), 5)
+        self.assertEqual(ProspectActivity.objects.filter(kind='call_result').count(), 6)
         self.assertFalse(IsolationFollowUp.objects.exists())
         self.assertFalse(IsolationVisit.objects.exists())
 

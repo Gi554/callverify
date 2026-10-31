@@ -105,7 +105,8 @@ async function flush() {
 function fixture({ fail = false } = {}) {
   const root = { children: [] },
     writes = [],
-    saved = []
+    saved = [],
+    booked = []
   const app = renderer.createApp(component, {
     prospect: { id: 7, revision: 3 },
     request: async (path, body) => {
@@ -116,10 +117,11 @@ function fixture({ fail = false } = {}) {
       }
       return { results: [], count: 0 }
     },
-    onSaved: () => saved.push(true),
+    onSaved: (value) => saved.push(value),
+    onBook: () => booked.push(true),
   })
   app.mount(root)
-  return { root, writes, saved, app }
+  return { root, writes, saved, booked, app }
 }
 function set(node, value) {
   node.props['onUpdate:modelValue'](value)
@@ -154,7 +156,7 @@ test('declared callback saves a Canadian instant and never requests telephony', 
     assert.equal(f.writes[0].body.due_at, '2030-12-01T10:00:00-05:00')
     assert.equal(f.writes[0].body.revision, 3)
     assert.equal(f.writes[0].body.result, 'callback')
-    assert.deepEqual(f.saved, [true])
+    assert.deepEqual(f.saved, ['callback'])
   } finally {
     f.app.unmount()
   }
@@ -180,3 +182,50 @@ test('a failed declared result retains its note and does not acknowledge success
     f.app.unmount()
   }
 })
+
+test('seven outcomes are offered and booking opens qualification without inventing an appointment', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    const options = all(f.root)
+      .filter((n) => n.tag === 'option')
+      .map((n) => n.props.value)
+      .filter(Boolean)
+    assert.deepEqual(options, [
+      'appointment_booked',
+      'voicemail',
+      'invalid_number',
+      'disconnected',
+      'not_interested',
+      'callback',
+      'other',
+    ])
+    const select = all(f.root).find((n) => n.tag === 'select')
+    set(select, 'appointment_booked')
+    select.props.onChange()
+    await flush()
+    assert.deepEqual(f.booked, [true])
+    assert.equal(f.writes.length, 0)
+    assert.equal(f.saved.length, 0)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+for (const result of ['voicemail', 'invalid_number', 'disconnected', 'other']) {
+  test(`${result} acknowledges its exact result only after successful persistence`, async () => {
+    const f = fixture()
+    try {
+      await flush()
+      set(
+        all(f.root).find((n) => n.tag === 'select'),
+        result,
+      )
+      await submit(f)
+      assert.deepEqual(f.saved, [result])
+      assert.equal(f.writes[0].body.note, '')
+    } finally {
+      f.app.unmount()
+    }
+  })
+}

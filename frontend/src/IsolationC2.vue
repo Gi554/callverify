@@ -60,8 +60,8 @@ async function load() {
   }
 }
 async function ensureSaved() {
-  if (!loaded.value) throw new Error('Chargez le formulaire C2 avant de réserver.');
-  if (busy.value) throw new Error('Enregistrement C2 en cours.');
+  if (!loaded.value) throw new Error('Chargez la qualification avant de réserver.');
+  if (busy.value) throw new Error('Enregistrement de qualification en cours.');
   if (!dirty.value) return;
   busy.value = true;
   error.value = '';
@@ -75,7 +75,7 @@ async function ensureSaved() {
     revision.value = row.revision;
     baseline.value = JSON.stringify(values.value);
     emit('saved', row.revision);
-    message.value = 'Brouillon C2 enregistré.';
+    message.value = 'Brouillon de qualification enregistré.';
   } catch (e: any) {
     error.value = e.message;
     throw e;
@@ -84,7 +84,11 @@ async function ensureSaved() {
   }
 }
 async function reload() {
-  if (dirty.value && !window.confirm('Recharger et abandonner les modifications C2 ?')) return;
+  if (
+    dirty.value &&
+    !window.confirm('Recharger et abandonner les modifications de qualification ?')
+  )
+    return;
   try {
     await load();
   } catch {}
@@ -110,7 +114,7 @@ defineExpose({ ensureSaved, dirty });
 <template>
   <section class="c2-form">
     <header>
-      <span>ISOLATION · FORMULAIRE C2</span>
+      <span>ISOLATION · QUALIFICATION</span>
       <h3>Préparer la visite</h3>
       <p>
         Enregistrez votre brouillon à tout moment. Tous les champs, sauf le coût d’électricité, sont
@@ -176,12 +180,12 @@ defineExpose({ ensureSaved, dirty });
         /></label>
       </div>
       <button type="button" class="secondary" :disabled="!dirty" @click="save">
-        {{ busy ? 'Enregistrement…' : 'Enregistrer le brouillon C2' }}</button
+        {{ busy ? 'Enregistrement…' : 'Enregistrer le brouillon de qualification' }}</button
       ><small v-if="dirty">Modifications à enregistrer</small
-      ><button type="button" class="secondary" @click="reload">Recharger le C2</button>
+      ><button type="button" class="secondary" @click="reload">Recharger la qualification</button>
     </fieldset>
     <button v-else type="button" class="secondary" :disabled="busy" @click="load().catch(() => {})">
-      Charger le formulaire C2
+      Charger la qualification
     </button>
   </section>
 </template>

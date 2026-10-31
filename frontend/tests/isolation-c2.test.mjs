@@ -164,7 +164,9 @@ test('a conflicting C2 save rejects booking preparation and retains the dirty dr
     assert.equal(f.writes[0].body.c2.full_name, 'Autre nom')
     assert.equal(f.dirty.at(-1), true)
     assert.deepEqual(f.saved, [3])
-    const reload = all(f.root).find((n) => n.tag === 'button' && n.text === 'Recharger le C2')
+    const reload = all(f.root).find(
+      (n) => n.tag === 'button' && n.text === 'Recharger la qualification',
+    )
     await reload.props.onClick()
     await flush()
     assert.equal(f.exposed().dirty, true)
