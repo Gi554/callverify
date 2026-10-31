@@ -56,6 +56,7 @@ class SlotInput(serializers.Serializer):
 
 
 class BookingInput(SlotInput):
+    publication = serializers.ChoiceField(choices=['internal', 'google'], default='internal')
     prospect_id = serializers.IntegerField(min_value=1)
     request_id = serializers.UUIDField()
 
@@ -134,7 +135,9 @@ def output(row):
         'timezone': row.timezone,
         'status': row.status,
         'revision': row.revision,
-        'calendar': 'internal',
+        'calendar': row.publication,
+        'publication_status': row.publication_status,
+        'publication_error': row.publication_error,
         'closer': None if row.closer_id is None else {'id': row.closer_id, 'name': row.closer_name},
         'c2_snapshot': row.c2_snapshot,
         'result': result,
@@ -142,6 +145,17 @@ def output(row):
         and row.ends_at <= timezone.now()
         and result is None,
     }
+
+
+def booking_response(row, user, status=200):
+    data = output(row)
+    if row.publication == 'google' and row.publication_status in ('pending', 'error'):
+        from packages.access.isolation_events import issue
+
+        data['publication_proof'] = issue(
+            'publish_visit', actor=user.pk, role=user.role, owner=row.client_id, visit=row.pk
+        )
+    return Response(data, status=status)
 
 
 def snapshot(row):
@@ -297,12 +311,14 @@ class IsolationVisitViewSet(
             for key in ('starts_at', 'ends_at', 'timezone', 'prospect_id')
         }
         canonical.update(client=claims['client']['id'], setter=claims['setter']['id'])
+        if data['publication'] == 'google':
+            canonical['publication'] = 'google'
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
         def replay(row):
             if row.fingerprint != fingerprint or row.booked_by_id != request.user.pk:
                 raise Conflict('Identifiant de réservation déjà utilisé')
-            return Response(output(row))
+            return booking_response(row, request.user)
 
         existing = IsolationVisit.objects.filter(request_id=data['request_id']).first()
         if existing:
@@ -321,7 +337,11 @@ class IsolationVisitViewSet(
             calendar(claims['client']['id'])
             available(prospect, claims['client']['id'], data)
             external = external_check(
-                request.user, claims['client']['id'], data['starts_at'], data['ends_at']
+                request.user,
+                claims['client']['id'],
+                data['starts_at'],
+                data['ends_at'],
+                **({'publication': True} if data['publication'] == 'google' else {}),
             )
             if data['starts_at'] <= timezone.now():
                 raise ValidationError('Créneau futur requis')
@@ -329,6 +349,10 @@ class IsolationVisitViewSet(
                 request_id=data['request_id'],
                 defaults={
                     'fingerprint': fingerprint,
+                    'publication': data['publication'],
+                    'publication_status': 'pending'
+                    if data['publication'] == 'google'
+                    else 'internal',
                     'prospect': prospect,
                     'c2_snapshot': c2_snapshot,
                     'client_id': claims['client']['id'],
@@ -368,7 +392,8 @@ class IsolationVisitViewSet(
                     'external_check': external,
                 },
             )
-        return Response(output(row), status=201)
+        row.refresh_from_db()
+        return booking_response(row, request.user, status=201)
 
     def modify(self, request, cancel=False):
         if request.user.role == 'client':
@@ -398,14 +423,32 @@ class IsolationVisitViewSet(
                     raise Conflict('Client de la visite différent de la configuration active')
                 available(prospect, row.client_id, data, exclude=row.pk)
                 external = external_check(
-                    request.user, row.client_id, data['starts_at'], data['ends_at'], row.pk
+                    request.user,
+                    row.client_id,
+                    data['starts_at'],
+                    data['ends_at'],
+                    row.pk,
+                    **({'publication': True} if row.publication == 'google' else {}),
                 )
                 if data['starts_at'] <= timezone.now():
                     raise ValidationError('Créneau futur requis')
                 for key in ('starts_at', 'ends_at', 'timezone'):
                     setattr(row, key, data[key])
             row.revision += 1
-            row.save(update_fields=['starts_at', 'ends_at', 'timezone', 'status', 'revision'])
+            if row.publication == 'google':
+                row.publication_status = 'pending'
+                row.publication_error = ''
+            row.save(
+                update_fields=[
+                    'starts_at',
+                    'ends_at',
+                    'timezone',
+                    'status',
+                    'revision',
+                    'publication_status',
+                    'publication_error',
+                ]
+            )
             AuditEvent.objects.create(
                 action='isolation.visit.cancelled' if cancel else 'isolation.visit.rescheduled',
                 object_id=str(row.pk),
@@ -417,7 +460,8 @@ class IsolationVisitViewSet(
                     **({'external_check': external} if external else {}),
                 },
             )
-        return Response(output(row))
+        row.refresh_from_db()
+        return booking_response(row, request.user)
 
     @action(detail=True, methods=['post'])
     def reschedule(self, request, pk=None):

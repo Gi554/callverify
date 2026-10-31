@@ -18,7 +18,16 @@ class Unavailable(APIException):
     default_detail = 'Disponibilité externe impossible à vérifier ; réservation non confirmée.'
 
 
-def check(user, advisor, start, end, source_id=None, workspace='assurance', include_busy=False):
+def check(
+    user,
+    advisor,
+    start,
+    end,
+    source_id=None,
+    workspace='assurance',
+    include_busy=False,
+    publication=False,
+):
     base = settings.PORTAL_INTERNAL_URL.rstrip('/')
     parsed = urlsplit(base)
     if (
@@ -36,7 +45,7 @@ def check(user, advisor, start, end, source_id=None, workspace='assurance', incl
         with requests.post(
             base
             + f'/api/portal/internal/{workspace}/calendar-'
-            + ('periods/' if include_busy else 'check/'),
+            + ('periods/' if include_busy else 'ready/' if publication else 'check/'),
             json={'proof': proof},
             timeout=(5, 90),
             allow_redirects=False,

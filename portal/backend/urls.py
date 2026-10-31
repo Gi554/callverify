@@ -179,3 +179,14 @@ urlpatterns += [
         {'workspace': 'isolation', 'include_busy': True},
     )
 ]
+
+from .identity.isolation_publication import publish as isolation_publish
+
+urlpatterns += [
+    path('api/portal/internal/isolation/publish-visit/', isolation_publish),
+    path(
+        'api/portal/internal/isolation/calendar-ready/',
+        booking_calendars.availability,
+        {'workspace': 'isolation', 'publication': True},
+    ),
+]

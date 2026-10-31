@@ -108,6 +108,7 @@ def source(user, workspace, pk):
         raise Unavailable()
     return {
         'id': pk,
+        'isolation_publication': workspace == 'isolation' and row.get('calendar') == 'google',
         'revision': row['revision'],
         'status': row['status'],
         'starts_at': first,
@@ -143,7 +144,7 @@ def credential(connection):
     return tokens['access']
 
 
-def sync_one(connection, pk, withdraw=False):
+def _sync_one(connection, pk, withdraw=False):
     user = connection.user
     workspace = connection.workspace
     require_owner(user, workspace)
@@ -178,6 +179,9 @@ def sync_one(connection, pk, withdraw=False):
             ledger.create_attempted = False
             ledger.expected_start = target['starts_at']
             ledger.expected_end = target['ends_at']
+        if target is not None and target.get('isolation_publication'):
+            ledger.isolation_publication = True
+            ledger.source_revision = target['revision']
         first_attempt = not ledger.create_attempted
         if not withdraw:
             ledger.create_attempted = True
@@ -199,6 +203,8 @@ def sync_one(connection, pk, withdraw=False):
             access = credential(connection)
             remote = events.find(connection.provider, access, ledger.key)
             target = None if withdraw else source(user, workspace, pk)
+            if target is not None:
+                ledger.source_revision = target['revision']
             if withdraw or target['status'] == 'cancelled':
                 if (
                     remote is None
@@ -260,6 +266,16 @@ def sync_one(connection, pk, withdraw=False):
             metadata={'source_id': pk, 'status': ledger.status, 'error_code': ledger.error_code},
         )
         return ledger.status
+
+
+def sync_one(connection, pk, withdraw=False):
+    state = _sync_one(connection, pk, withdraw)
+    if connection.workspace == 'isolation':
+        from .isolation_publication import feedback
+
+        if not feedback(connection, pk):
+            return 'feedback_pending'
+    return state
 
 
 def sync_connection(connection):

@@ -1,5 +1,31 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — publication Google avec état confirmé (lot 4)
+
+Le nouveau formulaire demande une publication Google : le contrôle final requiert un compte
+Google connecté et la publication explicitement activée par le client. L’intention de visite
+est conservée en base avec état « en cours » avant l’appel fournisseur. Le navigateur demande
+ensuite sa publication avec une preuve signée liée à la visite ; le worker existant reprend
+également les intentions si le navigateur se ferme. Le compte rendu Google est retransmis au
+CRM par échange serveur signé et l’interface distingue en cours, confirmé, retiré et à vérifier.
+Une visite n’est jamais annoncée confirmée dans Google sur un simple enregistrement local.
+
+Le moteur existant conserve une clé de création persistante, recherche le même événement lors
+d’une reprise et ne crée pas aveuglément un second événement après réponse incertaine. Il revérifie
+les occupations avant écriture et protège les événements modifiés hors Orvia. Les retours de
+publication vérifient client, révision et horodatage ; une réponse obsolète ne confirme pas une
+visite annulée ou modifiée. Le retour serveur a lieu après libération des verrous fournisseur.
+Les anciens parcours API internes restent compatibles et identifiables comme internes. Assurance
+ne publie toujours pas les réservations effectuées via un lien externe.
+
+Vérifications : intention/rejeu, preuve liée, statut sans preuve refusé, mauvaise révision/client,
+annulation et horodatage, reprise après réponse incertaine avec même clé, Google et activation
+requises, publication après sauvegarde et absence de double réservation frontend. Fournisseurs
+simulés, aucune création réelle dans l’agenda du client pendant les tests.
+Limites : une réponse fournisseur incertaine peut nécessiter une vérification manuelle ; aucune
+transaction atomique commune entre Google et les bases. Notifications/courriels et autres lots V2
+restent à livrer ; ce lot ne constitue pas la V2 complète.
+
 ## Isolation V2 — horaires du client et créneaux de l’agenda (lot 3)
 
 Le menu client expose « Agenda et disponibilités » avec ses connexions personnelles et des plages

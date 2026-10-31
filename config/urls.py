@@ -64,3 +64,7 @@ urlpatterns += [
 from core.isolation_hours import configuration as isolation_hours
 
 urlpatterns += [path('api/isolation-working-hours/', isolation_hours)]
+
+from core.isolation_publication import status as isolation_publication_status
+
+urlpatterns += [path('api/internal/isolation/publication-status/', isolation_publication_status)]

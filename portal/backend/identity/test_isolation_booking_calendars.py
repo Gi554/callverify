@@ -79,6 +79,30 @@ class IsolationBookingCalendarTests(TestCase):
             self.client.post(url, {'proof': self.proof()}, format='json').status_code, 400
         )
 
+    def test_publication_ready_requires_google_and_explicit_sync_optin(self):
+        path = '/api/portal/internal/isolation/calendar-ready/'
+        CalendarConnection.objects.create(
+            user=self.owner,
+            workspace='isolation',
+            provider='google',
+            connected=True,
+            payload=seal(TOKENS),
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        self.assertEqual(
+            self.client.post(path, {'proof': self.proof()}, format='json').status_code, 503
+        )
+        CalendarConnection.objects.update(auto_sync=True)
+        with patch.object(providers, 'busy', return_value=[]):
+            self.assertEqual(
+                self.client.post(path, {'proof': self.proof()}, format='json').data['result'],
+                'free',
+            )
+        CalendarConnection.objects.update(provider='microsoft')
+        self.assertEqual(
+            self.client.post(path, {'proof': self.proof()}, format='json').status_code, 503
+        )
+
     def test_wrong_space_proof_or_inactive_client_never_queries_provider(self):
         with patch.object(providers, 'busy') as busy:
             self.assertEqual(self.post(self.proof('assurance')).status_code, 403)
