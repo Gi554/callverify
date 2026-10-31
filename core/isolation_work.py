@@ -168,7 +168,9 @@ class WorkViewSet(
 
             qs = qs.annotate(
                 _queue_booking=Exists(
-                    IsolationVisit.objects.filter(prospect_id=OuterRef('pk'), status='scheduled')
+                    IsolationVisit.objects.filter(
+                        prospect_id=OuterRef('pk'), status='scheduled'
+                    ).exclude(result__performed=False)
                 )
             )
             qs = qs.annotate(

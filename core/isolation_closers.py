@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from packages.access.isolation_visits import verify_closer
 from .isolation_work import WorkAuthentication, Pager, Conflict
-from .models import IsolationVisit, IsolationVisitResult, AuditEvent
+from .models import IsolationVisit, IsolationVisitResult, AuditEvent, Prospect
 
 
 class AssignmentInput(serializers.Serializer):
@@ -174,6 +174,9 @@ class CloserVisits(viewsets.GenericViewSet):
             json.dumps(data, sort_keys=True, default=str).encode()
         ).hexdigest()
         with transaction.atomic():
+            Prospect.objects.filter(pk=original.prospect_id).update(
+                assignment_revision=F('assignment_revision')
+            )
             if not IsolationVisit.objects.filter(pk=original.pk, closer_id=request.user.pk).update(
                 revision=F('revision')
             ):
@@ -216,6 +219,9 @@ class CloserVisits(viewsets.GenericViewSet):
             )
             row.revision += 1
             row.save(update_fields=['revision'])
+            from .isolation_notices import result_changed
+
+            result_changed(row, report, before, request.user)
             AuditEvent.objects.create(
                 action='isolation.visit.closer_reported',
                 object_id=str(row.pk),

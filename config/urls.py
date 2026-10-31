@@ -30,6 +30,10 @@ for prefix, view, name in [
     ('audit', views.AuditViewSet, 'audit'),
 ]:
     router.register(prefix, view, basename=name)
+from core.isolation_notices import Notices
+
+router.register('isolation-notices', Notices, basename='isolation-notice')
+
 urlpatterns = [
     path('api/', include(router.urls)),
     path('api/auth/csrf/', views.csrf),

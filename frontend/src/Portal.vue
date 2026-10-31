@@ -7,6 +7,7 @@ import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
+import IsolationNotices from './IsolationNotices.vue';
 import PortalAccess from './PortalAccess.vue';
 import PortalPassword from './PortalPassword.vue';
 import PortalRecovery from './PortalRecovery.vue';
@@ -618,6 +619,11 @@ onMounted(async () => {
                     :request="assurance"
                     @open="openAssuranceAppointment"
                 /></template>
+                <IsolationNotices
+                  v-else-if="workspace === 'isolation' && role === 'setter'"
+                  :request="isolation"
+                  @tasks="selectModule('followups')"
+                />
               </CrmOverview>
               <section
                 v-else

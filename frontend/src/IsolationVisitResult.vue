@@ -5,19 +5,27 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
 const emit = defineEmits<{ saved: []; cancel: [] }>();
-const performed = ref('yes'),
-  outcome = ref('completed'),
+const performed = ref(''),
+  closed = ref(''),
   note = ref(''),
   busy = ref(false),
   error = ref('');
 async function save() {
+  if (!performed.value || !closed.value || (closed.value === 'yes' && performed.value !== 'yes'))
+    return;
   busy.value = true;
   error.value = '';
   try {
     await props.request(`visits/${props.visit.id}/result/`, {
       revision: props.visit.revision,
       performed: performed.value === 'yes',
-      outcome: outcome.value,
+      closed: closed.value === 'yes',
+      outcome:
+        performed.value === 'no'
+          ? 'not_performed'
+          : closed.value === 'yes'
+            ? 'closed'
+            : 'completed',
       note: note.value,
     });
     emit('saved');
@@ -38,31 +46,26 @@ async function save() {
     <p v-if="error" role="alert">{{ error }}</p>
     <fieldset :disabled="busy">
       <label
-        >La visite a-t-elle eu lieu ?<select
+        >Le rendez-vous a-t-il été tenu ?<select
           v-model="performed"
-          @change="outcome = performed === 'no' ? 'not_performed' : 'completed'"
-        >
-          <option value="yes">Oui, effectuée</option>
-          <option value="no">Non, non effectuée</option>
-        </select></label
-      ><label
-        >Résultat<select v-model="outcome">
-          <option v-if="performed === 'no'" value="not_performed">Non effectuée</option>
-          <template v-else
-            ><option value="completed">Effectuée, sans qualification supplémentaire</option>
-            <option value="follow_up">Suivi nécessaire</option>
-            <option value="interested">Intéressé</option>
-            <option value="not_interested">Non intéressé</option></template
-          >
-        </select></label
-      ><label
-        >Compte rendu ou motif obligatoire<textarea
-          v-model="note"
           required
-          maxlength="3000"
-        ></textarea></label
-      ><button class="primary">Enregistrer le résultat</button
-      ><button type="button" class="secondary" @click="emit('cancel')">Annuler la saisie</button>
+          @change="performed === 'no' && (closed = 'no')"
+        >
+          <option value="">Choisir</option>
+          <option value="yes">Oui</option>
+          <option value="no">Non</option>
+        </select></label
+      >
+      <label
+        >Le rendez-vous a-t-il été closé ?<select v-model="closed" required>
+          <option value="">Choisir</option>
+          <option value="yes" :disabled="performed !== 'yes'">Oui</option>
+          <option value="no">Non</option>
+        </select></label
+      >
+      <label>Notes · facultatives<textarea v-model="note" maxlength="3000"></textarea></label>
+      <button class="primary" :disabled="!performed || !closed">Enregistrer le résultat</button>
+      <button type="button" class="secondary" @click="emit('cancel')">Annuler la saisie</button>
     </fieldset>
   </form>
 </template>
