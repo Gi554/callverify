@@ -1,5 +1,31 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — enregistrement et consultation des non-qualifiés (lot 8)
+
+Le setter ou l’administration peut enregistrer un prospect intéressé non programmable depuis
+la qualification, avec motif hors zone, ville non desservie, distance ou autre et note facultative.
+La qualification peut rester partielle : informations connues et coordonnées originales sont
+conservées, sans second formulaire. Le client reçoit explicitement accès à cette fiche, aux
+observations/appels déclarés et aux tâches de suivi. Le formulaire annonce ce partage avant
+enregistrement. Aucun rendez-vous ni résultat tenu/vente n’est créé par cette opération.
+
+Une seule entrée active par prospect, preuves du client/setter, révision et audit atomiques ;
+rejeux idempotents et réservation future déjà présente refusée. La fiche quitte la file active
+de prospection sans devenir « pas intéressé ». Elle reste consultable depuis les contacts.
+Le client et l’administration disposent d’une rubrique dédiée : filtres ville, code postal
+avec/sans espace et motif, tri date/setter, fiche de qualification et historique paginé.
+Le client ne voit que ses entrées ; un setter n’accède qu’à ses prospects actuels.
+
+Une programmation ultérieure par setter archive l’entrée active et la lie à la nouvelle visite
+dans la même transaction. Aucune donnée ni historique n’est supprimé. La requalification et
+programmation directement par le client restent le prochain lot, pas annoncées livrées ici.
+Les historiques présentés concernent les interactions CRM déclarées ; pas un nouvel import CDR.
+
+Vérifications : qualification partielle, note vide, preuves/rôles, autre client/setter refusé,
+filtres/tri, historique, doublons et révision, rollback sur audit, sortie après programmation ;
+193 tests Isolation (15 réservés PostgreSQL), 10 tests frontend réservation/navigation, lint,
+format, TypeScript, migrations et build. CI complète et PostgreSQL avant fusion.
+
 ## Isolation V2 — nouvelles occurrences et historique client (lot 7)
 
 Après une non-tenue, le setter peut programmer une nouvelle visite depuis la même fiche.

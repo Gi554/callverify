@@ -8,6 +8,7 @@ import CrmOverview from './CrmOverview.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
 import IsolationNotices from './IsolationNotices.vue';
+import IsolationUnqualified from './IsolationUnqualified.vue';
 import PortalAccess from './PortalAccess.vue';
 import PortalPassword from './PortalPassword.vue';
 import PortalRecovery from './PortalRecovery.vue';
@@ -312,6 +313,7 @@ const navigation = computed(() => {
     return [
       { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
       { id: 'appointments', label: 'Visites programmées', icon: 'appointments' },
+      { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'visit-history', label: 'Historique des visites', icon: 'appointments' },
       { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
     ];
@@ -346,6 +348,8 @@ const navigation = computed(() => {
         { id: 'fields', label: 'Paramètres métier', icon: 'fields' },
       );
   } else {
+    if (role.value === 'administrator')
+      items.push({ id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' });
     if (['client', 'administrator'].includes(role.value))
       items.push({
         id: 'isolation-agenda',
@@ -802,6 +806,10 @@ onMounted(async () => {
                       :request="isolation"
                       @navigate="selectModule"
                       @changed="refreshIsolation"
+                    />
+                    <IsolationUnqualified
+                      v-else-if="isolationModule === 'unqualified'"
+                      :request="isolation"
                     />
                     <IsolationVisits
                       v-else-if="['appointments', 'visit-history'].includes(isolationModule)"

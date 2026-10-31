@@ -164,18 +164,22 @@ class WorkViewSet(
             if mode not in ('active', 'all'):
                 raise ValidationError('File de prospection invalide.')
             from django.db.models import Exists, OuterRef, Case, When, Value, CharField
-            from .models import IsolationVisit
+            from .models import IsolationVisit, IsolationUnqualified
 
             qs = qs.annotate(
+                _queue_unqualified=Exists(
+                    IsolationUnqualified.objects.filter(prospect_id=OuterRef('pk'), active=True)
+                ),
                 _queue_booking=Exists(
                     IsolationVisit.objects.filter(
                         prospect_id=OuterRef('pk'), status='scheduled'
                     ).exclude(result__performed=False)
-                )
+                ),
             )
             qs = qs.annotate(
                 _queue_reason=Case(
                     When(_queue_booking=True, then=Value('appointment_booked')),
+                    When(_queue_unqualified=True, then=Value('unqualified')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     default=Value(''),
                     output_field=CharField(),

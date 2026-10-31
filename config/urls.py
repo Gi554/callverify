@@ -33,6 +33,9 @@ for prefix, view, name in [
 from core.isolation_notices import Notices
 
 router.register('isolation-notices', Notices, basename='isolation-notice')
+from core.isolation_unqualified import Unqualified
+
+router.register('isolation-unqualified', Unqualified, basename='isolation-unqualified')
 
 urlpatterns = [
     path('api/', include(router.urls)),

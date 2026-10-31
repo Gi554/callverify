@@ -8,6 +8,10 @@ import AvailabilitySlots from './AvailabilitySlots.vue';
 import IsolationVisitResult from './IsolationVisitResult.vue';
 import IsolationSharedActivities from './IsolationSharedActivities.vue';
 import IsolationVisitSupplements from './IsolationVisitSupplements.vue';
+import SidePanel from './SidePanel.vue';
+const nonqualified = ref(false),
+  nonqualifiedReason = ref(''),
+  nonqualifiedNote = ref('');
 const props = defineProps<{
   visitId?: number;
   period?: 'upcoming' | 'history';
@@ -32,7 +36,7 @@ const c2 = ref<any>(null),
 function close() {
   if (busy.value || c2Busy.value) return;
   if (
-    !c2Dirty.value ||
+    (!c2Dirty.value && !nonqualifiedReason.value && !nonqualifiedNote.value) ||
     window.confirm('Quitter sans enregistrer les modifications de qualification ?')
   )
     emit('close');
@@ -167,6 +171,34 @@ async function save() {
     await load();
     emit('changed');
   });
+}
+async function saveUnqualified() {
+  await run(async () => {
+    await c2.value.ensureSaved();
+    const proof = await attest(prospect.value);
+    await props.request('isolation-unqualified/', {
+      prospect_id: prospect.value.id,
+      revision: prospect.value.revision,
+      request_id: requestId,
+      proof,
+      reason: nonqualifiedReason.value,
+      note: nonqualifiedNote.value,
+    });
+    nonqualified.value = false;
+    nonqualifiedReason.value = '';
+    nonqualifiedNote.value = '';
+    changed();
+    await load();
+    emit('changed');
+  });
+}
+function closeUnqualified() {
+  if (
+    !busy.value &&
+    ((!nonqualifiedReason.value && !nonqualifiedNote.value) ||
+      window.confirm('Abandonner cette saisie ?'))
+  )
+    nonqualified.value = false;
 }
 async function publish(row: any) {
   publicationMessage.value = '';
@@ -308,6 +340,43 @@ onMounted(() => run(load));
         </button>
       </fieldset>
     </form>
+    <button
+      v-if="prospect && ['setter', 'administrator'].includes(role) && !editing"
+      class="secondary"
+      :disabled="busy || c2Busy"
+      @click="nonqualified = true"
+    >
+      Enregistrer un rendez-vous non qualifié
+    </button>
+    <SidePanel
+      :open="nonqualified"
+      title="Rendez-vous non qualifié"
+      :close-disabled="busy || c2Busy"
+      @request-close="closeUnqualified"
+    >
+      <form @submit.prevent="saveUnqualified" @input="changed" @change="changed">
+        <p>
+          Le prospect reste intéressé. Ses informations disponibles, ses appels et ses suivis seront
+          consultables par le client Isolation.
+        </p>
+        <p v-if="error" role="alert">{{ error }}</p>
+        <fieldset :disabled="busy || c2Busy">
+          <label
+            >Motif<select v-model="nonqualifiedReason" required>
+              <option value="">Choisir un motif</option>
+              <option value="out_of_area">Hors zone d’intervention</option>
+              <option value="city_not_served">Ville non desservie actuellement</option>
+              <option value="distance">Distance trop importante</option>
+              <option value="other">Autre</option>
+            </select></label
+          >
+          <label
+            >Notes facultatives<textarea v-model="nonqualifiedNote" maxlength="3000"></textarea>
+          </label>
+          <button class="primary" :disabled="!nonqualifiedReason">Enregistrer la fiche</button>
+        </fieldset>
+      </form>
+    </SidePanel>
     <article v-for="row in rows" :key="row.id">
       <p
         v-if="row.calendar === 'google'"

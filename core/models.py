@@ -278,6 +278,39 @@ class IsolationVisit(models.Model):
         indexes = [models.Index(fields=['client_id', 'status', 'starts_at'])]
 
 
+class IsolationUnqualified(models.Model):
+    prospect = models.ForeignKey(
+        Prospect, on_delete=models.PROTECT, related_name='unqualified_entries'
+    )
+    client_id = models.PositiveBigIntegerField(db_index=True)
+    client_name = models.CharField(max_length=150)
+    setter_id = models.PositiveBigIntegerField()
+    setter_name = models.CharField(max_length=150)
+    actor_id = models.PositiveBigIntegerField()
+    request_id = models.UUIDField(unique=True)
+    fingerprint = models.CharField(max_length=64)
+    reason = models.CharField(max_length=30)
+    note = models.TextField(blank=True)
+    qualification = models.JSONField(default=dict)
+    city = models.CharField(max_length=150, blank=True)
+    postal_code = models.CharField(max_length=10, blank=True)
+    active = models.BooleanField(default=True)
+    programmed_visit = models.OneToOneField(
+        IsolationVisit, on_delete=models.PROTECT, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['prospect'],
+                condition=models.Q(active=True),
+                name='one_active_isolation_unqualified',
+            )
+        ]
+        indexes = [models.Index(fields=['client_id', 'active', 'created_at'])]
+
+
 class IsolationReminderPolicy(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1)
     enabled = models.BooleanField(default=True)
