@@ -16,6 +16,7 @@ const props = defineProps<{
   visitId?: number;
   period?: 'upcoming' | 'history';
   prospectId?: number;
+  reactivationId?: number;
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -107,7 +108,9 @@ async function load() {
   }
   if (props.prospectId)
     prospect.value = await props.request(
-      `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
+      props.reactivationId
+        ? `isolation-unqualified/${props.reactivationId}/prospect/`
+        : `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
     );
   const data = await props.request(
     `visits/?page=${page.value}&result_due=${dueOnly.value}${props.period ? '&period=' + props.period : ''}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
@@ -122,6 +125,7 @@ async function loadBusy(start: string, end: string) {
     start,
     end,
     proof,
+    ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
   });
   return data.busy;
 }
@@ -132,8 +136,15 @@ async function attest(row: any) {
     await props.portal('isolation/visit-proof/', {
       prospect_id: row.id,
       setter_id: row.assigned_setter.id,
+      ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
     })
   ).proof;
+}
+function qualificationRequest(path: string, body?: any) {
+  return props.request(
+    props.reactivationId ? `isolation-unqualified/${props.reactivationId}/qualification/` : path,
+    body,
+  );
 }
 async function save() {
   await run(async () => {
@@ -158,6 +169,7 @@ async function save() {
       body.prospect_id = current.id;
       body.request_id = requestId;
       body.publication = 'google';
+      if (props.reactivationId) body.unqualified_id = props.reactivationId;
       if (previousVisit.value) body.previous_visit_id = previousVisit.value.id;
       saved = await props.request('visits/', body);
     }
@@ -255,12 +267,12 @@ onMounted(() => run(load));
         "
       />Résultats à renseigner uniquement</label
     ><IsolationC2
-      v-if="role !== 'client' && prospect"
+      v-if="(role !== 'client' || reactivationId) && prospect"
       v-show="!editing"
       ref="c2"
       :key="prospect.id"
       :prospect-id="prospect.id"
-      :request="request"
+      :request="qualificationRequest"
       :blocked="busy"
       @saved="(revision) => (prospect.revision = revision)"
       @busy="c2Busy = $event"
@@ -268,7 +280,7 @@ onMounted(() => run(load));
     />
     <form
       ref="bookingForm"
-      v-if="role !== 'client' && (prospect || editing)"
+      v-if="(role !== 'client' || reactivationId) && (prospect || editing)"
       @submit.prevent="save"
       @input="changed"
       @change="changed"

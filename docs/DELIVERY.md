@@ -1,5 +1,29 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — requalification et programmation par le client (lot 9)
+
+Le client peut ouvrir une fiche non qualifiée, choisir « Requalifier et programmer une visite »,
+reprendre la qualification déjà connue, vérifier les créneaux de son agenda et programmer la
+visite sans créer un nouveau prospect. Les modifications de qualification sont versionnées et
+auditées. La copie initiale non qualifiée et son historique restent conservés ; la visite reçoit
+sa propre copie de qualification. Le setter actuellement responsable demeure associé à la visite.
+La reprise client n’invente pas un appel passé par le setter : elle est une interaction distincte.
+
+La preuve de réservation est liée au client connecté, au prospect et à l’entrée non qualifiée.
+L’accès client reste interdit à la file setter, aux fiches d’un autre client et à la réservation
+libre d’un prospect. Le contrôle de calendrier signé n’autorise le rôle client que pour son propre
+agenda Isolation ; aucun élargissement Assurance. Une entrée déjà programmée refuse une nouvelle
+qualification et une deuxième programmation ; une reprise de la même commande retourne la même
+visite. Les erreurs de disponibilité n’archivent pas l’entrée et ne consomment pas sa révision.
+
+Seule une programmation enregistrée archive l’entrée et la lie à la nouvelle visite. La publication
+Google et sa confirmation utilisent le moteur existant : un état en cours ou en erreur n’est pas
+annoncé comme une confirmation Google. Les brouillons sont protégés lors de la fermeture du panneau.
+Vérifications : même prospect/historique, preuve liée, propriétaire, échec calendrier sans mutation,
+rejeu et entrée terminée, droits portail/calendrier, parcours frontend client, régression Isolation
+et portail, lint/format, TypeScript et build. Fournisseur simulé ; recette Google réelle ouverte.
+Restent : sélection du représentant à la programmation et statistiques/rémunération CAD Isolation.
+
 ## Isolation V2 — enregistrement et consultation des non-qualifiés (lot 8)
 
 Le setter ou l’administration peut enregistrer un prospect intéressé non programmable depuis
