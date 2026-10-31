@@ -44,8 +44,8 @@ def response(result, groups, kind):
         'Setter ID',
         'Setter',
         *LABELS.values(),
-        'Du (UTC)',
-        'Au inclus (UTC)',
+        'Du (Québec)',
+        'Au inclus (Québec)',
         'Calculé le (UTC)',
         'Définition',
     ]
@@ -76,8 +76,8 @@ def response(result, groups, kind):
         summary.title = 'Synthèse'
         summary.append(['Statistiques Assurance', 'Valeur'])
         for label, value in [
-            ('Du (UTC)', meta[0]),
-            ('Au inclus (UTC)', meta[1]),
+            ('Du (Québec)', meta[0]),
+            ('Au inclus (Québec)', meta[1]),
             ('Calculé le (UTC)', meta[2]),
             ('Définition', result['definition']),
         ]:

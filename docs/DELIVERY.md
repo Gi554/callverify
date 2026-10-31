@@ -1,5 +1,20 @@
 # Suivi des livraisons CRM AMX
 
+## Statistiques Assurance : journées du Québec cohérentes
+
+L’ancien module Statistiques (administrateur et setter) utilise maintenant America/Toronto
+pour les bornes de période, les séries quotidiennes, la période précédente et les dates par
+défaut. Ses compteurs ne basculent plus sur la journée suivante à minuit UTC. Les raccourcis
+7/30 jours et mois courant/précédent suivent la date du Québec, même si le navigateur est en
+Europe. Les exports CSV/XLSX identifient leurs dates de période comme Québec ; l’horodatage
+du calcul reste explicitement en UTC. Les règles métier des indicateurs et les permissions
+restent celles de ce module ; la rémunération conserve ses règles propres de présence validée.
+
+Vérifications : rendez-vous à 23 h 30 le dimanche du passage à l’heure d’hiver, exclusion du
+lendemain, regroupement quotidien, date par défaut, en-têtes CSV/XLSX et raccourcis mensuels
+avec une horloge UTC déjà au lendemain. Tests de permissions/export existants et typage Vue.
+Aucune donnée ni configuration d’agenda n’est modifiée.
+
 ## Suivi hebdomadaire et rémunération Assurance en CAD
 
 L’administration dispose de « Suivi et rémunération » : semaine du lundi au dimanche au Québec
