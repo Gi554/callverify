@@ -49,6 +49,7 @@ const outcomes: Record<string, string> = {
   not_interested: 'Non intéressé',
   not_performed: 'Non effectuée',
 };
+const publicationMessage = ref('');
 const prospect = ref<any>(null),
   rows = ref<any[]>([]),
   page = ref(1),
@@ -134,14 +135,17 @@ async function save() {
       ? { starts_at: start.value, ends_at: end.value, timezone: zone.value }
       : bookingInterval(localStart.value, zone.value, Number(duration.value));
     const body: any = { ...interval, proof, revision: record ? record.revision : current.revision };
+    let saved: any;
     if (record) {
       body.reason = reason.value;
-      await props.request(`visits/${record.id}/reschedule/`, body);
+      saved = await props.request(`visits/${record.id}/reschedule/`, body);
     } else {
       body.prospect_id = current.id;
       body.request_id = requestId;
-      await props.request('visits/', body);
+      body.publication = 'google';
+      saved = await props.request('visits/', body);
     }
+    await publish(saved);
     editing.value = null;
     changed();
     start.value = '';
@@ -151,12 +155,23 @@ async function save() {
     emit('changed');
   });
 }
+async function publish(row: any) {
+  publicationMessage.value = '';
+  if (!row?.publication_proof) return;
+  try {
+    await props.portal('internal/isolation/publish-visit/', { proof: row.publication_proof });
+  } catch {
+    publicationMessage.value =
+      'La visite est conservée dans Orvia. La publication Google reste à vérifier ; consultez son état ci-dessous avant de recommencer.';
+  }
+}
 async function cancel() {
   await run(async () => {
-    await props.request(`visits/${cancelling.value.id}/cancel/`, {
+    const saved = await props.request(`visits/${cancelling.value.id}/cancel/`, {
       revision: cancelling.value.revision,
       reason: reason.value,
     });
+    await publish(saved);
     cancelling.value = null;
     reason.value = '';
     await load();
@@ -176,9 +191,11 @@ onMounted(() => run(load));
     <h3 v-if="!visitId && prospect">Visites · {{ prospect.name || prospect.raw_phone }}</h3>
     <p v-if="!visitId && role !== 'client'">
       Les visites concernent le client Isolation unique. Les conflits internes et les occupations de
-      son agenda Google ou Microsoft connecté sont contrôlés avant confirmation.
+      son agenda Google connecté sont contrôlés avant confirmation. Activez la publication dans les
+      réglages de l’agenda du client.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="publicationMessage" role="status">{{ publicationMessage }}</p>
     <button class="secondary" :disabled="busy" @click="run(load)">
       Recharger les visites et la fiche</button
     ><label v-if="!visitId && role === 'client'"
@@ -274,6 +291,20 @@ onMounted(() => run(load));
       </fieldset>
     </form>
     <article v-for="row in rows" :key="row.id">
+      <p
+        v-if="row.calendar === 'google'"
+        :role="row.publication_status === 'error' ? 'alert' : 'status'"
+      >
+        {{
+          row.publication_status === 'confirmed'
+            ? 'Visite confirmée dans Google Agenda.'
+            : row.publication_status === 'removed'
+              ? 'Visite retirée de Google Agenda.'
+              : row.publication_status === 'error'
+                ? 'Publication Google à vérifier. Ouvrez Agenda et disponibilités pour consulter la synchronisation avant de reprogrammer.'
+                : 'Enregistrement Orvia conservé. Publication Google en cours ; la visite n’est pas encore confirmée dans Google.'
+        }}
+      </p>
       <h4>
         {{ row.prospect.name || row.prospect.phone }} ·
         {{

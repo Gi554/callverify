@@ -234,6 +234,10 @@ class IsolationFollowUp(models.Model):
 
 
 class IsolationVisit(models.Model):
+    publication = models.CharField(max_length=20, default='internal')
+    publication_status = models.CharField(max_length=20, default='internal')
+    publication_error = models.CharField(max_length=40, blank=True)
+    publication_checked_at = models.DateTimeField(null=True, blank=True)
     closer_id = models.PositiveBigIntegerField(null=True, blank=True, db_index=True)
     closer_name = models.CharField(max_length=150, blank=True)
     c2_snapshot = models.JSONField(default=dict)

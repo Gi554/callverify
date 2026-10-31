@@ -97,7 +97,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture({ fail = false } = {}) {
+function fixture({ fail = false, google = false, publicationFail = false } = {}) {
   const root = { children: [] },
     writes = [],
     events = []
@@ -105,7 +105,12 @@ function fixture({ fail = false } = {}) {
   const app = renderer.createApp(component, {
     prospectId: 7,
     role: 'setter',
-    portal: async () => {
+    portal: async (path) => {
+      if (path === 'internal/isolation/publish-visit/') {
+        events.push('publication')
+        if (publicationFail) throw new Error('Indisponible')
+        return { state: 'synced' }
+      }
       events.push('proof')
       return { proof: 'signed-proof' }
     },
@@ -113,7 +118,7 @@ function fixture({ fail = false } = {}) {
       if (body) {
         events.push('booking')
         writes.push({ path, body })
-        return { id: 42 }
+        return { id: 42, ...(google ? { publication_proof: 'signed-publication' } : {}) }
       }
       if (path.startsWith('work-queue/'))
         return { id: 7, name: 'Client', revision: 3, assigned_setter: { id: 21 } }
@@ -159,5 +164,26 @@ test('a failed C2 save stops booking before any proof or visit request', async (
     assert.ok(all(f.root).some((n) => n.props?.role === 'alert' && n.text === 'Conflit C2'))
   } finally {
     f.app.unmount()
+  }
+})
+
+test('Google publication follows the committed booking and a failure never posts a second visit', async () => {
+  for (const publicationFail of [false, true]) {
+    const f = fixture({ google: true, publicationFail })
+    try {
+      await flush()
+      await submit(f)
+      assert.deepEqual(f.events, ['c2', 'proof', 'booking', 'publication'])
+      assert.equal(f.writes.length, 1)
+      assert.equal(f.writes[0].body.publication, 'google')
+      if (publicationFail)
+        assert.ok(
+          all(f.root).some(
+            (n) => n.props?.role === 'status' && String(n.text).includes('conservée dans Orvia'),
+          ),
+        )
+    } finally {
+      f.app.unmount()
+    }
   }
 })

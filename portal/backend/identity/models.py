@@ -189,6 +189,7 @@ class CalendlyWebhookReceipt(models.Model):
 
 
 class CalendarSync(models.Model):
+    isolation_publication = models.BooleanField(default=False)
     import uuid
 
     connection = models.ForeignKey(

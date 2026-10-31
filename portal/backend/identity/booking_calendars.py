@@ -28,7 +28,7 @@ def active(pk, role, workspace):
     ).exists()
 
 
-def check(data, workspace='assurance', include_busy=False):
+def check(data, workspace='assurance', include_busy=False, publication=False):
     if include_busy and data['end'] - data['start'] > timedelta(days=7):
         raise ValidationError('Sept jours maximum pour consulter les créneaux.')
     owner_role = 'advisor' if workspace == 'assurance' else 'client'
@@ -45,7 +45,11 @@ def check(data, workspace='assurance', include_busy=False):
         result = 'internal_only'
         periods = []
         # A previously linked account must be reconnected, never treated as free.
-        if (row.provider or include_busy) and not row.connected:
+        if publication and (row.provider != 'google' or not row.auto_sync or not row.connected):
+            raise Unavailable(
+                'Connectez Google et activez la publication des visites dans votre agenda.'
+            )
+        if (row.provider or include_busy or publication) and not row.connected:
             raise Unavailable()
         if row.connected:
             try:
@@ -122,7 +126,7 @@ def check(data, workspace='assurance', include_busy=False):
 @authentication_classes([])
 @permission_classes([AllowAny])
 @throttle_classes([CalendarThrottle])
-def availability(request, workspace='assurance', include_busy=False):
+def availability(request, workspace='assurance', include_busy=False, publication=False):
     if (
         request.query_params
         or not isinstance(request.data, dict)
@@ -135,6 +139,6 @@ def availability(request, workspace='assurance', include_busy=False):
         data = verify(request.data['proof'], workspace)
     except (signing.BadSignature, TypeError, ValueError, AttributeError):
         raise PermissionDenied('Preuve serveur invalide ou expirée.') from None
-    response = Response(check(data, workspace, include_busy=include_busy))
+    response = Response(check(data, workspace, include_busy=include_busy, publication=publication))
     response['Cache-Control'] = 'no-store'
     return response
