@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## « Mes prospects » du conseiller : cartes sur mobile
+
+Sur téléphone (écran de 760 px ou moins), la liste des prospects du conseiller n’est plus un tableau qui défile sur le côté : chaque prospect devient une carte (nom en tête, puis téléphone, courriel, rendez-vous tenus et le bouton « Ouvrir la fiche » pleine largeur). Les trois compteurs du haut sont plus compacts, les marges de la page réduites. Sur ordinateur, rien ne change.
+
+Limites : réglage visuel non vérifié à l’écran par moi ; les autres tableaux de l’application ne sont pas encore repris de la même façon ; revue esthétique à la revue finale.
+
 ## Correctif : fiche d’un prospect côté conseiller (erreur « Service métier indisponible »)
 
 Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance) affichait « Service métier indisponible ». La cause : le chargement demandait l’adresse `/api/assurance//appointments/81/` avec une double barre, que le service répond par une erreur 404 sans message ; l’adresse était écrite avec une barre au début. Le composant écrit désormais des adresses relatives, et la fonction d’appel des services métier retire toute barre initiale, ce qui protège aussi les autres écrans. Un test vérifie qu’aucune adresse ne commence par une barre.
