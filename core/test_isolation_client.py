@@ -114,6 +114,27 @@ class IsolationClientTests(TestCase):
         self.assertEqual(result['reported'], 1)
         self.assertEqual(self.client.get('/api/visits/?result_due=true').data['count'], 0)
 
+    def test_missing_updates_boundary_scope_and_complete_report(self):
+        deadline = self.visit.ends_at + timedelta(hours=24)
+        url = '/api/visits/?period=missing_updates'
+        with patch('django.utils.timezone.now', return_value=deadline - timedelta(seconds=1)):
+            self.assertEqual(self.client.get(url).data['count'], 0)
+        with patch('django.utils.timezone.now', return_value=deadline):
+            self.assertEqual(self.client.get(url).data['count'], 1)
+            self.assertEqual(self.client.get('/api/client-dashboard/').data['missing_updates'], 1)
+            self.auth(73, 'client')
+            self.assertEqual(self.client.get(url).data['count'], 0)
+            self.auth(91, 'administrator')
+            self.assertEqual(self.client.get(url).data['count'], 1)
+            self.auth(72, 'client')
+            self.assertFalse(IsolationVisitResult.objects.exists())
+            IsolationVisit.objects.filter(pk=self.visit.pk).update(status='cancelled')
+            self.assertEqual(self.client.get(url).data['count'], 0)
+            IsolationVisit.objects.filter(pk=self.visit.pk).update(status='scheduled')
+            self.assertEqual(self.report(closed=False).status_code, 201)
+            self.assertEqual(self.client.get(url).data['count'], 0)
+            self.assertEqual(self.client.get('/api/client-dashboard/').data['missing_updates'], 0)
+
     def test_immutable_report_retry_and_audit(self):
         self.assertEqual(self.report().status_code, 201)
         self.assertEqual(self.report().status_code, 200)

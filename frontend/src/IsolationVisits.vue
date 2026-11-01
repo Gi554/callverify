@@ -33,7 +33,7 @@ async function loadRepresentatives() {
 }
 const props = defineProps<{
   visitId?: number;
-  period?: 'upcoming' | 'history';
+  period?: 'upcoming' | 'history' | 'missing_updates';
   prospectId?: number;
   reactivationId?: number;
   role: string;
@@ -275,6 +275,10 @@ onMounted(() => run(load));
 </script>
 <template>
   <section>
+    <p v-if="period === 'missing_updates'" role="status">
+      Rendez-vous terminés depuis au moins 24 heures dont le résultat reste à compléter. Aucune
+      absence ni validation n’est déduite automatiquement.
+    </p>
     <h3 v-if="!visitId && prospect">Visites · {{ prospect.name || prospect.raw_phone }}</h3>
     <p v-if="!visitId && role !== 'client'">
       Les visites concernent le client Isolation unique. Les conflits internes et les occupations de

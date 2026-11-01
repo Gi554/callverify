@@ -18,6 +18,24 @@ Limite : le correctif est vérifié par les tests et le code compilé, pas encor
 
 ## Isolation — accès du client aux fiches et visites à venir
 
+### Demande tableau de bord client — suivi des résultats manquants
+
+Les rubriques client deviennent « Rendez-vous à venir » et « Rendez-vous passés ».
+« Rendez-vous sans mise à jour » est accessible au client et à l’administrateur :
+elle regroupe les visites non annulées terminées depuis au moins 24 heures dont le
+résultat reste incomplet. Un résultat explicite complet retire la visite de cette
+vue, sans déduire automatiquement présence, absence ou vente. L’historique reste
+accessible et conserve les occurrences. Les droits existants restent appliqués.
+
+Vérifications : seuil exact de 24 heures, avant le seuil, autre client, visibilité
+administrateur, exclusion des annulations, sortie après réponse et navigation.
+
+Reste à livrer pour la nouvelle demande : notification dès la fin de visite,
+choix du responsable du rappel après absence, relances personnelles du client et
+reprogrammation associée, déclaration non qualifiée par le client, indicateurs
+hebdomadaires payables du setter. Le rappel après 24 heures et la rémunération
+distincte présence/vente existent déjà ; leurs adaptations devront être vérifiées.
+
 Retouche demandée sur « Mes visites » du représentant : le texte devient
 « Consultez les fiches clients et renseignez le résultat des visites. ». Le bouton
 Actualiser est aligné à droite du titre de la liste, y compris sur mobile ; le
