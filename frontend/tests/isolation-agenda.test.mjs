@@ -107,8 +107,13 @@ test('client hours are visible in Québec and editing sends a versioned weekly p
   const f = fixture()
   try {
     await flush()
+    assert.ok(button(f, 'Mon calendrier'))
+    button(f, 'Mes disponibilités').props.onClick()
+    await flush()
     assert.match(text(f.root), /09:00 – 17:00/)
     assert.match(text(f.root), /heure du Québec/)
+    button(f, 'Mes disponibilités').props.onClick()
+    await flush()
     button(f, 'Modifier mes horaires').props.onClick()
     await flush()
     const times = all(f.root).filter((n) => n.tag === 'input' && n.props.type === 'time')
@@ -132,6 +137,8 @@ test('client hours are visible in Québec and editing sends a versioned weekly p
 test('a conflicting hours save retains the form and reports failure', async () => {
   const f = fixture({ fail: true })
   try {
+    await flush()
+    button(f, 'Mes disponibilités').props.onClick()
     await flush()
     button(f, 'Modifier mes horaires').props.onClick()
     await flush()

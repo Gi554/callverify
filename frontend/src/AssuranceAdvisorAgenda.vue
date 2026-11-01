@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CalendarDays, Clock3, Link2, Plus, Save, X } from 'lucide-vue-next';
 import PortalCalendars from './PortalCalendars.vue';
 import SidePanel from './SidePanel.vue';
+import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue';
 import AdvisorBookingLink from './AdvisorBookingLink.vue';
 const props = defineProps<{
   request: (path: string, body?: any) => Promise<any>;
@@ -23,7 +24,7 @@ const value = ref<any>(null),
   busy = ref(false),
   error = ref(''),
   message = ref(''),
-  tab = ref('hours');
+  tab = ref('calendar');
 const base = ref('');
 const dirty = computed(() => !!draft.value && JSON.stringify(draft.value) !== base.value);
 async function load() {
@@ -88,6 +89,14 @@ onMounted(load);
       </div>
     </header>
     <nav aria-label="Paramètres de mon agenda">
+      <button
+        class="secondary"
+        :class="{ active: tab === 'calendar' }"
+        :aria-pressed="tab === 'calendar'"
+        @click="tab = 'calendar'"
+      >
+        Mon calendrier
+      </button>
       <button :class="{ active: tab === 'hours' }" @click="tab = 'hours'">
         <Clock3 :size="17" />Mes disponibilités</button
       ><button :class="{ active: tab === 'connection' }" @click="tab = 'connection'">
@@ -137,6 +146,14 @@ onMounted(load);
         </article>
       </div>
     </div>
+    <CrmAppointmentsCalendar
+      v-if="tab === 'calendar'"
+      workspace="assurance"
+      :role="'advisor'"
+      :request="request"
+      :portal="portal"
+      :connected-agenda="true"
+    />
     <div v-show="tab === 'connection'" class="agenda-connection">
       <PortalCalendars :request="portal" workspace="assurance" simple />
     </div>

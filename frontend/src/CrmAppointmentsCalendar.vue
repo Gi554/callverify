@@ -26,6 +26,7 @@ import {
   eventsForDay,
   loadCalendarRows,
   calendarCells,
+  loadConnectedBusy,
 } from './calendar-grid';
 const props = defineProps<{
   workspace: string;
@@ -34,6 +35,7 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   username?: string;
   appointmentId?: number | null;
+  connectedAgenda?: boolean;
 }>();
 const emit = defineEmits<{ navigate: [value: string]; changed: [] }>();
 const zone = ref('America/Toronto'),
@@ -45,6 +47,11 @@ const rows = ref<any[]>([]),
   error = ref(''),
   loadedCount = ref(0),
   expectedCount = ref(0);
+const externalRows = ref<any[]>([]),
+  externalConnected = ref<boolean | null>(null),
+  externalLoading = ref(false),
+  externalError = ref('');
+const isolationDetail = ref<InstanceType<typeof IsolationVisits> | null>(null);
 const selected = ref<any>(null),
   selectedDay = ref(''),
   creating = ref(false),
@@ -144,9 +151,14 @@ const filtered = computed(() => {
     );
   });
 });
-const cells = computed(() => calendarCells(filtered.value, days.value, zone.value));
+const visibleRows = computed(() =>
+  [...filtered.value, ...externalRows.value].sort(
+    (a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at),
+  ),
+);
+const cells = computed(() => calendarCells(visibleRows.value, days.value, zone.value));
 const dayRows = computed(() =>
-  selectedDay.value ? eventsForDay(filtered.value, selectedDay.value, zone.value) : [],
+  selectedDay.value ? eventsForDay(visibleRows.value, selectedDay.value, zone.value) : [],
 );
 const monthCount = computed(
   () =>
@@ -157,6 +169,7 @@ const monthCount = computed(
     ).length,
 );
 function person(row: any) {
+  if (row.external_busy) return 'Occupé · agenda personnel';
   return (
     (row.contact || row.prospect)?.name ||
     (row.contact || row.prospect)?.phone ||
@@ -180,6 +193,7 @@ function fullDay(value: string) {
   }).format(new Date(value + 'T12:00:00Z'));
 }
 function color(row: any) {
+  if (row.external_busy) return 'external-busy';
   if (assurance.value) return appointmentTone(row);
   return row.status === 'cancelled'
     ? 'cancelled'
@@ -192,11 +206,41 @@ function move(delta: number) {
 }
 let generation = 0,
   disposed = false;
+async function loadExternal(
+  version: number,
+  window: { ends_after: string; starts_before: string },
+) {
+  if (!props.connectedAgenda) return;
+  externalLoading.value = true;
+  try {
+    const result = await loadConnectedBusy(
+      props.portal,
+      props.workspace,
+      window,
+      () => version === generation && !disposed,
+    );
+    if (result) {
+      externalConnected.value = result.connected;
+      externalRows.value = result.periods;
+    }
+  } catch (e: any) {
+    if (version === generation && !disposed) {
+      externalError.value = e.message || 'Agenda personnel indisponible.';
+      externalRows.value = [];
+    }
+  } finally {
+    if (version === generation && !disposed) externalLoading.value = false;
+  }
+}
 async function load() {
   const version = ++generation;
   busy.value = true;
   error.value = '';
   rows.value = [];
+  externalRows.value = [];
+  externalConnected.value = null;
+  externalError.value = '';
+  void loadExternal(version, gridWindow(days.value, zone.value));
   loadedCount.value = 0;
   expectedCount.value = 0;
   try {
@@ -231,6 +275,10 @@ async function load() {
   }
 }
 function open(row: any) {
+  if (row.external_busy) {
+    selectedDay.value = dayKey(row.starts_at, zone.value);
+    return;
+  }
   selectedDay.value = '';
   selected.value = row;
 }
@@ -247,6 +295,10 @@ async function openNotification(id: number) {
 function closeDetail() {
   if (detailBusy.value) return;
   if (advisorDetail.value && !advisorDetail.value.close()) return;
+  if (isolationDetail.value) {
+    isolationDetail.value.close();
+    return;
+  }
   selected.value = null;
   void load();
   void loadOwnQuota();
@@ -289,17 +341,17 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <section class="appointment-calendar">
-    <details v-if="assurance && role === 'advisor'">
+  <section class="appointment-calendar" :class="{ 'connected-agenda': connectedAgenda }">
+    <details v-if="assurance && role === 'advisor' && !connectedAgenda">
       <summary>Mon lien de réservation</summary>
       <AdvisorBookingLink :request="request" />
     </details>
     <AssuranceAppointmentNotifications
-      v-if="assurance && role === 'advisor'"
+      v-if="assurance && role === 'advisor' && !connectedAgenda"
       :request="request"
       @open="openNotification"
     />
-    <header class="calendar-heading">
+    <header v-if="!connectedAgenda" class="calendar-heading">
       <div>
         <span class="calendar-eyebrow"
           >{{ admin ? 'ÉQUIPE' : 'MON ESPACE' }} {{ assurance ? 'ASSURANCE' : 'ISOLATION' }}</span
@@ -340,7 +392,7 @@ onBeforeUnmount(() => {
         >
       </div>
       <ProspectExport
-        v-if="assurance && role === 'advisor'"
+        v-if="assurance && role === 'advisor' && !connectedAgenda"
         :request="request"
         path="contacts/export/"
         label="Mes prospects"
@@ -402,6 +454,22 @@ onBeforeUnmount(() => {
             <RefreshCw :size="16" />
           </button>
         </div>
+      </div>
+      <div v-if="connectedAgenda" class="calendar-connection-state" aria-live="polite">
+        <span v-if="externalLoading">Consultation de l’agenda personnel…</span>
+        <span v-else-if="externalError" role="alert"
+          >{{ externalError }} Les périodes personnelles ne sont pas affichées ; les créneaux vides
+          ne garantissent pas une disponibilité.
+          <button class="calendar-today-button" @click="load">Réessayer</button></span
+        >
+        <span v-else-if="externalConnected"
+          >Agenda personnel connecté · Les périodes occupées sont affichées sans leur titre privé.
+          Elles peuvent inclure les rendez-vous Orvia déjà publiés.</span
+        >
+        <span v-else
+          >Vos rendez-vous Orvia sont affichés. Connectez votre agenda dans « Connexion de mon
+          agenda » pour voir aussi ses périodes occupées.</span
+        >
       </div>
       <div class="calendar-filters">
         <label class="calendar-search"
@@ -480,7 +548,7 @@ onBeforeUnmount(() => {
         tabindex="0"
         role="region"
         :aria-label="`Calendrier de ${title}`"
-        :aria-busy="busy"
+        :aria-busy="busy || externalLoading"
       >
         <div class="calendar-weekdays">
           <span
@@ -524,7 +592,7 @@ onBeforeUnmount(() => {
               <strong>{{ person(row) }}</strong
               ><small v-if="row.advisor">{{ row.advisor.name }}</small
               ><span><Clock3 :size="11" />{{ time(row.starts_at) }} – {{ time(row.ends_at) }}</span
-              ><small v-if="assurance || row.status === 'cancelled'">{{
+              ><small v-if="!row.external_busy && (assurance || row.status === 'cancelled')">{{
                 assurance ? appointmentStatus(row) : row.next_visit_id ? 'Reprogrammé' : 'Annulé'
               }}</small>
             </button>
@@ -539,6 +607,9 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <footer class="calendar-footer">
+        <span v-if="connectedAgenda"
+          ><span class="legend-dot external"></span>Occupé dans l’agenda personnel</span
+        >
         <span><span class="legend-dot"></span>Planifié</span
         ><template v-if="assurance"
           ><span><span class="legend-dot done"></span>Fait</span
@@ -588,13 +659,17 @@ onBeforeUnmount(() => {
         @updated="selected = $event" /><IsolationVisits
         v-else-if="selected"
         :key="selected.id"
+        ref="isolationDetail"
         :visit-id="selected.id"
         :request="request"
         :portal="portal"
         :role="role"
         @busy="detailBusy = $event"
         @updated="selected = $event"
-        @close="closeDetail"
+        @close="
+          selected = null;
+          load();
+        "
         @changed="
           load();
           emit('changed');
@@ -619,13 +694,15 @@ onBeforeUnmount(() => {
           <strong>{{ person(row) }}</strong
           ><span>{{ time(row.starts_at) }} – {{ time(row.ends_at) }} · {{ zone }}</span
           ><small>{{
-            assurance
-              ? appointmentStatus(row)
-              : row.status === 'cancelled'
-                ? row.next_visit_id
-                  ? 'Reprogrammé'
-                  : 'Annulé'
-                : 'Planifié'
+            row.external_busy
+              ? 'Événement privé · consultation uniquement'
+              : assurance
+                ? appointmentStatus(row)
+                : row.status === 'cancelled'
+                  ? row.next_visit_id
+                    ? 'Reprogrammé'
+                    : 'Annulé'
+                  : 'Planifié'
           }}</small>
         </button>
       </div></SidePanel
@@ -665,6 +742,29 @@ onBeforeUnmount(() => {
   </section>
 </template>
 <style scoped>
+.appointment-calendar.connected-agenda {
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  border-radius: 20px;
+}
+.calendar-connection-state {
+  padding: 14px 22px;
+  background: #f3f0fc;
+  color: #554578;
+  font-size: 12px;
+  line-height: 1.6;
+  border-bottom: 1px solid #e7e1f4;
+}
+.calendar-event.external-busy {
+  background: repeating-linear-gradient(135deg, #eeedf3, #eeedf3 6px, #f6f5f9 6px, #f6f5f9 12px);
+  color: #626574;
+  border: 1px solid #dedde7;
+}
+.legend-dot.external {
+  background: #9c98af;
+}
+
 .quota-countdown {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -703,6 +803,9 @@ onBeforeUnmount(() => {
   }
 }
 .appointment-calendar {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   color: #282830;
   padding: 28px;
   background: #f5f5f8;
@@ -783,6 +886,7 @@ onBeforeUnmount(() => {
   background: #494050;
 }
 .calendar-surface {
+  min-width: 0;
   border: 1px solid #ebe9ef;
   border-radius: 18px;
   background: white;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import SidePanel from './SidePanel.vue';
+import CrmAppointmentsCalendar from './CrmAppointmentsCalendar.vue';
 import IsolationPageHeader from './IsolationPageHeader.vue';
 import PortalCalendars from './PortalCalendars.vue';
 import IsolationReminderPolicy from './IsolationReminderPolicy.vue';
@@ -14,8 +15,13 @@ const value = ref<any>(null),
   busy = ref(false),
   error = ref(''),
   message = ref(''),
-  tab = ref('hours');
+  tab = ref('calendar');
 const base = ref('');
+const calendarVersion = ref(0);
+function refresh() {
+  calendarVersion.value++;
+  void load();
+}
 const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const dirty = computed(() => draft.value && JSON.stringify(draft.value) !== base.value);
 async function load() {
@@ -62,9 +68,17 @@ onMounted(load);
       title="Mon agenda et mes disponibilités"
       subtitle="Vos horaires de visite et votre agenda, réunis au même endroit, à l’heure du Québec."
       :busy="busy"
-      @refresh="load"
+      @refresh="refresh"
     />
     <nav class="iso-tabs" aria-label="Réglages de l’agenda">
+      <button
+        class="secondary"
+        :class="{ active: tab === 'calendar' }"
+        :aria-pressed="tab === 'calendar'"
+        @click="tab = 'calendar'"
+      >
+        Mon calendrier
+      </button>
       <button class="secondary" :aria-pressed="tab === 'hours'" @click="tab = 'hours'">
         Mes disponibilités</button
       ><button
@@ -104,6 +118,15 @@ onMounted(load);
         agenda ne sont pas affichés aux setters.
       </p>
     </template>
+    <CrmAppointmentsCalendar
+      :key="calendarVersion"
+      v-if="tab === 'calendar'"
+      workspace="isolation"
+      :role="role"
+      :request="request"
+      :portal="portal"
+      :connected-agenda="role === 'client'"
+    />
     <PortalCalendars
       v-if="tab === 'connection' && role === 'client'"
       workspace="isolation"
