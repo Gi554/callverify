@@ -52,8 +52,22 @@ doublon et invalidée après changement d’échéance, transfert du suivi, pré
 réservation avec attestation liée à la relance, même prospect/processus, rejeu et
 échec calendrier sans consommation du suivi ; tests portail et formulaire.
 
-Reste à livrer pour la nouvelle demande : notification dès la fin de visite,
-déclaration non qualifiée par le client, indicateurs
+### Demande tableau de bord client — non-qualification après visite
+
+Le client peut déclarer « Rendez-vous non qualifié — non validé » dans le formulaire
+de résultat, avec motif obligatoire et note facultative. Le résultat est visible
+au setter concerné et donne une notification privée. Il ne crée pas un rappel
+d’absence, ferme un ancien suivi actif si le résultat est corrigé et n’est ni une
+absence ni une présence payable. Les rapports séparent les non-qualifiés des absences.
+Le dossier conserve son prospect, ses visites, notes et motifs ; il revient dans
+la file active du setter pour être retravaillé. La rubrique historique des fiches
+non qualifiées avant réservation conserve son fonctionnement distinct.
+
+Vérifications : motif requis, refus d’une déclaration incohérente, autre client
+refusé, notification privée unique, aucun paiement ou rappel d’absence, statistiques
+distinctes, correction d’un ancien rappel et formulaire conditionnel.
+
+Reste à livrer pour la nouvelle demande : notification dès la fin de visite, indicateurs
 hebdomadaires payables du setter. Le rappel après 24 heures et la rémunération
 distincte présence/vente existent déjà ; leurs adaptations devront être vérifiées.
 

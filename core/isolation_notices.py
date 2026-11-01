@@ -40,7 +40,7 @@ def result_changed(visit, report, previous, actor):
 
     sync_client_followup(visit, report)
     existing_task = IsolationFollowUp.objects.filter(absence_visit=visit).first()
-    if report.performed or report.follow_up_owner == 'client':
+    if report.performed or report.follow_up_owner == 'client' or report.outcome == 'unqualified':
         if existing_task and existing_task.closed_at is None:
             existing_task.closed_at = timezone.now()
             existing_task.closed_by_id = actor.pk
@@ -105,6 +105,10 @@ def result_changed(visit, report, previous, actor):
                 ]
             )
         sync(prospect)
+    if report.outcome == 'unqualified':
+        if not previous or previous.get('outcome') != 'unqualified':
+            notice(visit, owner, 'setter', 'unqualified', f'result:{visit.pk}:{visit.revision}')
+        return
     if not report.performed and report.follow_up_owner == 'client':
         return
     if (
@@ -157,6 +161,7 @@ class Notices(viewsets.GenericViewSet):
             'booked': 'Nouvelle visite programmée',
             'result_due': 'Résultat de visite à renseigner',
             'personal_followup': 'Relance personnelle à effectuer',
+            'unqualified': 'Rendez-vous non qualifié — non validé',
         }
         response = self.get_paginated_response(
             [

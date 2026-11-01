@@ -15,6 +15,7 @@ LABELS = {
     'reported': 'Résultats renseignés',
     'performed': 'Effectuées (Oui)',
     'not_performed': 'Non effectuées (Non)',
+    'unqualified': 'Non qualifiées — non validées',
     'results_due': 'Résultats manquants',
     'interested': 'Intéressés',
     'not_interested': 'Non intéressés',

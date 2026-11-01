@@ -36,6 +36,7 @@ const labels: Record<string, string> = {
   visits: 'Rendez-vous réservés',
   performed: 'Rendez-vous tenus',
   not_performed: 'Non tenus déclarés',
+  unqualified: 'Non qualifiés — non validés',
   closed: 'Ventes conclues déclarées',
   performed_rate: 'Présence / résultats renseignés (%)',
   closing_rate: 'Conclusion / rendez-vous tenus (%)',
@@ -50,6 +51,7 @@ const columns = [
   'visits',
   'performed',
   'not_performed',
+  'unqualified',
   'closed',
   'results_due',
   'closure_unknown',
@@ -90,6 +92,7 @@ const percent = (value: any) =>
   value === null || value === undefined ? '—' : number(value) + ' %';
 const details = [
   'not_performed',
+  'unqualified',
   'results_due',
   'closure_unknown',
   'not_closed',

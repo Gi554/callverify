@@ -17,6 +17,7 @@ from .models import (
 )
 
 OUTCOMES = {
+    'unqualified': 'Non qualifié — non validé',
     'closed': 'Vente conclue',
     'completed': 'Tenue',
     'follow_up': 'Suivi nécessaire',
@@ -40,6 +41,15 @@ class ResultInput(serializers.Serializer):
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
             raise ValidationError('Champs non autorisés')
+        if data['outcome'] == 'unqualified':
+            if data['performed'] or data.get('closed'):
+                raise ValidationError(
+                    'Un rendez-vous non qualifié ne peut pas être validé ou closé.'
+                )
+            if not data.get('absence_reason', '').strip():
+                raise ValidationError('Indiquez le motif de non-qualification.')
+            data.update(closed=False, follow_up_owner='setter', follow_up_at=None)
+            return data
         if data['performed'] == (data['outcome'] == 'not_performed'):
             raise ValidationError('Résultat commercial incohérent avec la réalisation de la visite')
         if data.get('closed') and not data['performed']:

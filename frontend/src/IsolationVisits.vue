@@ -68,6 +68,7 @@ const supplements = ref<any>(null),
 const reporting = ref<any>(null),
   dueOnly = ref(false);
 const outcomes: Record<string, string> = {
+  unqualified: 'Non qualifié — non validé',
   closed: 'Vente conclue',
   completed: 'Effectuée',
   follow_up: 'Suivi nécessaire',
@@ -472,11 +473,13 @@ onMounted(() => run(load));
         {{
           row.status === 'cancelled'
             ? 'Annulée'
-            : row.result
-              ? row.result.performed
-                ? 'Effectuée'
-                : 'Non effectuée'
-              : 'Planifiée'
+            : row.result?.outcome === 'unqualified'
+              ? 'Non qualifié — non validé'
+              : row.result
+                ? row.result.performed
+                  ? 'Effectuée'
+                  : 'Non effectuée'
+                : 'Planifiée'
         }}
       </h4>
       <p v-if="row.previous_visit_id">
@@ -557,14 +560,26 @@ onMounted(() => run(load));
         </button></template
       >
       <p v-if="row.result">
-        Résultat : {{ row.result.performed ? 'Oui, effectuée' : 'Non, non effectuée' }} ·
-        {{ outcomes[row.result.outcome] }} · {{ visitDate(row.result.created_at) }} · Québec
+        Résultat :
+        {{
+          row.result.outcome === 'unqualified'
+            ? 'Non qualifié — non validé'
+            : row.result.performed
+              ? 'Présenté'
+              : 'Non présenté'
+        }}
+        · {{ outcomes[row.result.outcome] }} · {{ visitDate(row.result.created_at) }} · Québec
       </p>
       <p v-if="row.result" style="white-space: pre-wrap">{{ row.result.note }}</p>
       <p v-if="row.result?.absence_reason" style="white-space: pre-wrap">
-        Motif de non-présentation : {{ row.result.absence_reason }}
+        {{
+          row.result.outcome === 'unqualified'
+            ? 'Motif de non-qualification'
+            : 'Motif de non-présentation'
+        }}
+        : {{ row.result.absence_reason }}
       </p>
-      <p v-if="row.result && !row.result.performed">
+      <p v-if="row.result && !row.result.performed && row.result.outcome !== 'unqualified'">
         Suivi :
         {{
           row.result.follow_up_owner === 'client'
