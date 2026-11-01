@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { CalendarDays, Clock3 } from 'lucide-vue-next';
+import IsolationPageHeader from './IsolationPageHeader.vue';
+import IsolationVisitCard from './IsolationVisitCard.vue';
+import { visitName, initials, visitStatus, visitTone } from './isolation-visit-display';
 import IsolationCloserAssignment from './IsolationCloserAssignment.vue';
 import IsolationC2 from './IsolationC2.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
@@ -42,6 +46,26 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
+const listView = computed(() => !props.visitId && !props.prospectId);
+const selectedVisit = ref<any>(null),
+  detailBusy = ref(false),
+  detailRef = ref<any>(null);
+const pageHeading = computed(() =>
+  props.period === 'history'
+    ? 'Rendez-vous passés'
+    : props.period === 'missing_updates'
+      ? 'Rendez-vous sans mise à jour'
+      : props.period === 'upcoming'
+        ? 'Rendez-vous à venir'
+        : 'Mes rendez-vous',
+);
+const pageSubtitle = computed(() =>
+  props.period === 'history'
+    ? 'Retrouvez chaque rencontre et partagez la suite avec votre équipe.'
+    : props.period === 'missing_updates'
+      ? 'Un petit retour, pour que chaque dossier continue d’avancer.'
+      : 'Préparez vos rencontres et désignez le bon représentant.',
+);
 function visitDate(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
     timeZone: 'America/Toronto',
@@ -53,13 +77,24 @@ const emit = defineEmits<{ close: []; changed: []; busy: [value: boolean]; updat
 const c2 = ref<any>(null),
   c2Busy = ref(false),
   c2Dirty = ref(false),
+  resultBusy = ref(false),
+  resultDirty = ref(false),
   localStart = ref(''),
   duration = ref(60);
+function cancelReport() {
+  if (resultBusy.value) return;
+  if (resultDirty.value && !window.confirm('Abandonner ce résultat sans enregistrer ?')) return;
+  reporting.value = null;
+  resultDirty.value = false;
+}
 function close() {
-  if (busy.value || c2Busy.value) return;
+  if (busy.value || c2Busy.value || resultBusy.value) return;
   if (
-    (!c2Dirty.value && !nonqualifiedReason.value && !nonqualifiedNote.value) ||
-    window.confirm('Quitter sans enregistrer les modifications de qualification ?')
+    (!c2Dirty.value &&
+      !nonqualifiedReason.value &&
+      !nonqualifiedNote.value &&
+      !resultDirty.value) ||
+    window.confirm('Quitter sans enregistrer les modifications ?')
   )
     emit('close');
 }
@@ -96,7 +131,11 @@ const prospect = ref<any>(null),
   historyRows = ref<any[]>([]),
   historyPage = ref(1),
   historyCount = ref(0);
-watch([busy, c2Busy], () => emit('busy', busy.value || c2Busy.value), { flush: 'sync' });
+watch(
+  [busy, c2Busy, resultBusy],
+  () => emit('busy', busy.value || c2Busy.value || resultBusy.value),
+  { flush: 'sync' },
+);
 let requestId = crypto.randomUUID();
 const bookingForm = ref<HTMLFormElement | null>(null);
 async function beginAgain(row: any) {
@@ -290,8 +329,16 @@ defineExpose({ close });
 onMounted(() => run(load));
 </script>
 <template>
-  <section>
-    <p v-if="period === 'missing_updates'" role="status">
+  <section :class="['iso-visits', listView ? 'iso-page' : 'iso-detail']">
+    <IsolationPageHeader
+      v-if="listView"
+      :title="pageHeading"
+      :subtitle="pageSubtitle"
+      eyebrow="MES RENDEZ-VOUS · ISOLATION"
+      :busy="busy"
+      @refresh="run(load)"
+    />
+    <p class="iso-notice" v-if="period === 'missing_updates'" role="status">
       Rendez-vous terminés depuis au moins 24 heures dont le résultat reste à compléter. Aucune
       absence ni validation n’est déduite automatiquement.
     </p>
@@ -303,9 +350,11 @@ onMounted(() => run(load));
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="publicationMessage" role="status">{{ publicationMessage }}</p>
-    <button class="secondary" :disabled="busy" @click="run(load)">
+    <button v-if="!listView" class="secondary" :disabled="busy" @click="run(load)">
       Recharger les visites et la fiche</button
-    ><label v-if="!visitId && role === 'client'"
+    ><label
+      class="iso-filter-check"
+      v-if="!visitId && role === 'client' && period !== 'missing_updates'"
       ><input
         v-model="dueOnly"
         type="checkbox"
@@ -329,6 +378,7 @@ onMounted(() => run(load));
       @dirty="c2Dirty = $event"
     />
     <form
+      class="iso-form"
       ref="bookingForm"
       v-if="(role !== 'client' || reactivationId || clientFollowupId) && (prospect || editing)"
       @submit.prevent="save"
@@ -468,222 +518,313 @@ onMounted(() => run(load));
         </fieldset>
       </form>
     </SidePanel>
-    <article v-for="row in rows" :key="row.id">
-      <p
-        v-if="row.calendar === 'google'"
-        :role="row.publication_status === 'error' ? 'alert' : 'status'"
-      >
-        {{
-          row.publication_status === 'confirmed'
-            ? 'Visite confirmée dans Google Agenda.'
-            : row.publication_status === 'removed'
-              ? 'Visite retirée de Google Agenda.'
-              : row.publication_status === 'error'
-                ? 'Publication Google à vérifier. Ouvrez Agenda et disponibilités pour consulter la synchronisation avant de reprogrammer.'
-                : 'Enregistrement Orvia conservé. Publication Google en cours ; la visite n’est pas encore confirmée dans Google.'
-        }}
-      </p>
-      <h4>
-        {{ row.c2_snapshot?.fields?.full_name || row.prospect.name || row.prospect.phone }} ·
-        {{
-          row.status === 'cancelled'
-            ? row.next_visit_id
-              ? 'Reprogrammé'
-              : 'Annulée'
-            : row.result?.outcome === 'unqualified'
-              ? 'Non qualifié — non validé'
-              : row.result
-                ? row.result.performed
-                  ? row.result.closed === true
-                    ? 'Présenté — closé'
-                    : row.result.closed === false
-                      ? 'Présenté — non closé'
-                      : 'Présenté — vente à préciser'
-                  : 'Non présenté'
-                : 'Planifiée'
-        }}
-      </h4>
-      <p v-if="row.previous_visit_id">
-        Nouvelle visite après la visite n° {{ row.previous_visit_id }}.
-      </p>
-      <p v-if="row.next_visit_id">
-        Une nouvelle visite n° {{ row.next_visit_id }} a été programmée. Cette occurrence reste
-        conservée.
-      </p>
-      <button
-        v-if="
-          prospect &&
-          !visitId &&
-          ['setter', 'administrator'].includes(role) &&
-          row.result?.performed === false &&
-          row.status === 'scheduled' &&
-          !row.next_visit_id
-        "
-        class="secondary"
-        :disabled="busy || c2Busy"
-        @click="beginAgain(row)"
-      >
-        Programmer une nouvelle visite après cette absence
-      </button>
-      <p>{{ visitDate(row.starts_at) }} → {{ visitDate(row.ends_at) }} · Heure du Québec</p>
-      <p>
-        Téléphone : {{ row.c2_snapshot?.fields?.phone || row.prospect.phone || 'Non renseigné' }}
-      </p>
-      <p>
-        Adresse : {{ row.c2_snapshot?.fields?.address || 'Non renseignée' }}<br />
-        {{ row.c2_snapshot?.fields?.city || 'Ville non renseignée' }} ·
-        {{ row.c2_snapshot?.fields?.postal_code || 'Code postal non renseigné' }}
-      </p>
-      <IsolationC2Snapshot :snapshot="row.c2_snapshot" />
-      <p>Closer : {{ row.closer?.name || 'Non attribué' }}</p>
-      <button
-        v-if="['client', 'administrator'].includes(role) && row.status === 'scheduled'"
-        class="secondary"
-        :disabled="busy"
-        @click="assigning = row"
-      >
-        Attribuer / réattribuer un closer
-      </button>
-      <p v-if="row.result">
-        Vente :
-        {{
-          row.result.closed === null
-            ? 'Non renseignée'
-            : row.result.closed
-              ? 'Conclue'
-              : 'Non conclue'
-        }}
-      </p>
-      <p>
-        Client : {{ row.client.name }} · Setter à la réservation : {{ row.original_setter.name }}
-      </p>
-      <template
-        v-if="
-          role !== 'client' &&
-          row.status === 'scheduled' &&
-          new Date(row.starts_at).getTime() > Date.now()
-        "
-        ><button
-          class="secondary"
-          :disabled="busy"
-          @click="
-            editing = row;
-            cancelling = null;
-            start = row.starts_at;
-            end = row.ends_at;
-            zone = 'UTC';
-            reason = '';
-          "
-        >
-          Reporter</button
-        ><button
-          class="secondary"
-          :disabled="busy"
-          @click="
-            cancelling = row;
-            editing = null;
-            reason = '';
-          "
-        >
-          Annuler la visite
-        </button></template
-      >
-      <p v-if="row.result">
-        Résultat :
-        {{
-          row.result.outcome === 'unqualified'
-            ? 'Non qualifié — non validé'
-            : row.result.performed
-              ? 'Présenté'
-              : 'Non présenté'
-        }}
-        · {{ outcomes[row.result.outcome] }} · {{ visitDate(row.result.created_at) }} · Québec
-      </p>
-      <p v-if="row.result" style="white-space: pre-wrap">{{ row.result.note }}</p>
-      <p v-if="row.result?.absence_reason" style="white-space: pre-wrap">
-        {{
-          row.result.outcome === 'unqualified'
-            ? 'Motif de non-qualification'
-            : 'Motif de non-présentation'
-        }}
-        : {{ row.result.absence_reason }}
-      </p>
-      <p v-if="row.result && !row.result.performed && row.result.outcome !== 'unqualified'">
-        Suivi :
-        {{
-          row.result.follow_up_owner === 'client'
-            ? 'Relance personnelle du client'
-            : 'Rappel par le setter'
-        }}
-      </p>
-      <button
-        class="secondary"
-        :disabled="busy"
-        @click="resultHistory = resultHistory === row.id ? null : row.id"
-      >
-        Historique du rendez-vous
-      </button>
-      <IsolationVisitHistory
-        v-if="resultHistory === row.id"
-        :key="`${row.id}-${row.revision}`"
-        :visit-id="row.id"
-        :request="request"
+    <section v-if="listView" class="iso-panel">
+      <header class="iso-panel-heading">
+        <div>
+          <h2>
+            {{
+              period === 'missing_updates'
+                ? 'Votre retour est attendu'
+                : period === 'history'
+                  ? 'L’historique de vos rencontres'
+                  : 'Les prochaines rencontres'
+            }}
+            <span class="iso-counter">{{ count }}</span>
+          </h2>
+          <p>
+            {{
+              period === 'missing_updates'
+                ? 'Ces rendez-vous sont terminés depuis plus de 24 heures.'
+                : 'Coordonnées, qualification et résultat dans chaque fiche.'
+            }}
+          </p>
+        </div>
+        <span class="iso-toolbar-note"><Clock3 :size="14" />Heure du Québec</span>
+      </header>
+    </section>
+    <div v-if="listView && rows.length" class="iso-visits-grid">
+      <IsolationVisitCard
+        v-for="row in rows"
+        :key="row.id"
+        :visit="row"
+        :busy="busy"
+        @open="selectedVisit = row"
       />
-      <button v-if="row.result" class="secondary" :disabled="busy" @click="supplements = row">
-        Consulter / compléter le résultat
-      </button>
-      <p v-else-if="row.result_due">Résultat en attente</p>
-      <button
-        v-if="role === 'client' && row.result_due"
-        class="primary"
-        :disabled="busy"
-        @click="reporting = row"
-      >
-        Renseigner le résultat</button
-      ><button class="secondary" :disabled="busy" @click="sharedActivities = row">
-        Observations partagées</button
+    </div>
+    <template v-if="!listView">
+      <article v-for="row in rows" :key="row.id" class="iso-visit-detail">
+        <p
+          v-if="row.calendar === 'google'"
+          :role="row.publication_status === 'error' ? 'alert' : 'status'"
+        >
+          {{
+            row.publication_status === 'confirmed'
+              ? 'Visite confirmée dans Google Agenda.'
+              : row.publication_status === 'removed'
+                ? 'Visite retirée de Google Agenda.'
+                : row.publication_status === 'error'
+                  ? 'Publication Google à vérifier. Ouvrez Agenda et disponibilités pour consulter la synchronisation avant de reprogrammer.'
+                  : 'Enregistrement Orvia conservé. Publication Google en cours ; la visite n’est pas encore confirmée dans Google.'
+          }}
+        </p>
+        <header class="iso-detail-identity">
+          <span class="iso-avatar">{{ initials(visitName(row)) }}</span>
+          <div>
+            <h3>{{ visitName(row) }}</h3>
+            <span class="iso-status" :class="visitTone(row)"
+              ><span></span>{{ visitStatus(row) }}</span
+            >
+          </div>
+        </header>
+        <p v-if="row.previous_visit_id">
+          Nouvelle visite après la visite n° {{ row.previous_visit_id }}.
+        </p>
+        <p v-if="row.next_visit_id">
+          Une nouvelle visite n° {{ row.next_visit_id }} a été programmée. Cette occurrence reste
+          conservée.
+        </p>
+        <button
+          v-if="
+            prospect &&
+            !visitId &&
+            ['setter', 'administrator'].includes(role) &&
+            row.result?.performed === false &&
+            row.status === 'scheduled' &&
+            !row.next_visit_id
+          "
+          class="secondary"
+          :disabled="busy || c2Busy"
+          @click="beginAgain(row)"
+        >
+          Programmer une nouvelle visite après cette absence
+        </button>
+        <dl class="iso-detail-grid">
+          <div>
+            <dt>Rendez-vous · Québec</dt>
+            <dd>{{ visitDate(row.starts_at) }}<br />→ {{ visitDate(row.ends_at) }}</dd>
+          </div>
+          <div>
+            <dt>Téléphone</dt>
+            <dd>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone || 'Non renseigné' }}</dd>
+          </div>
+          <div>
+            <dt>Adresse du rendez-vous</dt>
+            <dd>
+              {{ row.c2_snapshot?.fields?.address || 'Non renseignée' }}<br />{{
+                row.c2_snapshot?.fields?.city
+              }}
+              {{ row.c2_snapshot?.fields?.postal_code }}
+            </dd>
+          </div>
+          <div>
+            <dt>Représentant</dt>
+            <dd>{{ row.closer?.name || 'À désigner' }}</dd>
+            <button
+              v-if="['client', 'administrator'].includes(role) && row.status === 'scheduled'"
+              class="iso-text-link"
+              :disabled="busy"
+              @click="assigning = row"
+            >
+              {{ row.closer ? 'Modifier le représentant' : 'Désigner un représentant' }}
+              <ArrowUpRight :size="12" />
+            </button>
+          </div>
+          <div>
+            <dt>Setter à la réservation</dt>
+            <dd>{{ row.original_setter.name }}</dd>
+          </div>
+          <div>
+            <dt>Client Isolation</dt>
+            <dd>{{ row.client.name }}</dd>
+          </div>
+        </dl>
+        <IsolationC2Snapshot :snapshot="row.c2_snapshot" />
+        <p v-if="row.result">
+          Vente :
+          {{
+            row.result.closed === null
+              ? 'Non renseignée'
+              : row.result.closed
+                ? 'Conclue'
+                : 'Non conclue'
+          }}
+        </p>
+
+        <template
+          v-if="
+            role !== 'client' &&
+            row.status === 'scheduled' &&
+            new Date(row.starts_at).getTime() > Date.now()
+          "
+          ><button
+            class="secondary"
+            :disabled="busy"
+            @click="
+              editing = row;
+              cancelling = null;
+              start = row.starts_at;
+              end = row.ends_at;
+              zone = 'UTC';
+              reason = '';
+            "
+          >
+            Reporter</button
+          ><button
+            class="secondary"
+            :disabled="busy"
+            @click="
+              cancelling = row;
+              editing = null;
+              reason = '';
+            "
+          >
+            Annuler la visite
+          </button></template
+        >
+        <p v-if="row.result">
+          Résultat :
+          {{
+            row.result.outcome === 'unqualified'
+              ? 'Non qualifié — non validé'
+              : row.result.performed
+                ? 'Présenté'
+                : 'Non présenté'
+          }}
+          · {{ outcomes[row.result.outcome] }} · {{ visitDate(row.result.created_at) }} · Québec
+        </p>
+        <p v-if="row.result" style="white-space: pre-wrap">{{ row.result.note }}</p>
+        <p v-if="row.result?.absence_reason" style="white-space: pre-wrap">
+          {{
+            row.result.outcome === 'unqualified'
+              ? 'Motif de non-qualification'
+              : 'Motif de non-présentation'
+          }}
+          : {{ row.result.absence_reason }}
+        </p>
+        <p v-if="row.result && !row.result.performed && row.result.outcome !== 'unqualified'">
+          Suivi :
+          {{
+            row.result.follow_up_owner === 'client'
+              ? 'Relance personnelle du client'
+              : 'Rappel par le setter'
+          }}
+        </p>
+        <div class="iso-visit-actions">
+          <button
+            class="secondary"
+            :disabled="busy"
+            @click="resultHistory = resultHistory === row.id ? null : row.id"
+          >
+            Historique du rendez-vous
+          </button>
+          <IsolationVisitHistory
+            v-if="resultHistory === row.id"
+            :key="`${row.id}-${row.revision}`"
+            :visit-id="row.id"
+            :request="request"
+          />
+          <button v-if="row.result" class="secondary" :disabled="busy" @click="supplements = row">
+            Consulter / compléter le résultat
+          </button>
+          <p v-else-if="row.result_due">Résultat en attente</p>
+          <button
+            v-if="role === 'client' && row.result_due"
+            class="primary"
+            :disabled="busy"
+            @click="reporting = row"
+          >
+            Renseigner le résultat</button
+          ><button class="secondary" :disabled="busy" @click="sharedActivities = row">
+            Observations partagées</button
+          ><button
+            v-if="role === 'administrator'"
+            class="secondary"
+            :disabled="busy"
+            @click="
+              run(async () => {
+                history = row;
+                historyPage = 1;
+                await loadHistory();
+              })
+            "
+          >
+            Historique administratif
+          </button>
+        </div>
+      </article>
+    </template>
+    <div v-if="!rows.length && !error" class="iso-empty">
+      <span class="iso-empty-icon"><CalendarDays :size="26" /></span
+      ><strong>{{
+        busy
+          ? 'Chargement des rendez-vous…'
+          : period === 'missing_updates'
+            ? 'Tous vos rendez-vous sont à jour'
+            : 'Aucun rendez-vous à afficher'
+      }}</strong>
+      <p>
+        {{
+          period === 'missing_updates'
+            ? 'Les résultats manquants depuis plus de 24 heures apparaîtront ici.'
+            : 'Les rendez-vous de cette rubrique apparaîtront ici.'
+        }}
+      </p>
+    </div>
+    <footer v-if="!visitId" class="iso-pagination">
+      <span>{{ count }} visite(s) · page {{ page }}</span
       ><button
-        v-if="role === 'administrator'"
         class="secondary"
-        :disabled="busy"
+        :disabled="busy || page === 1"
         @click="
           run(async () => {
-            history = row;
-            historyPage = 1;
-            await loadHistory();
+            page--;
+            await load();
           })
         "
       >
-        Historique
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="busy || page * 25 >= count"
+        @click="
+          run(async () => {
+            page++;
+            await load();
+          })
+        "
+      >
+        Suivant
       </button>
-    </article>
-    <p v-if="!rows.length">Aucune visite dans votre périmètre.</p>
-    <p v-if="!visitId">{{ count }} visite(s) · page {{ page }}</p>
-    <button
-      class="secondary"
-      v-if="!visitId"
-      :disabled="busy || page === 1"
-      @click="
-        run(async () => {
-          page--;
-          await load();
-        })
+    </footer>
+    <SidePanel
+      :open="!!selectedVisit"
+      :title="
+        selectedVisit?.c2_snapshot?.fields?.full_name ||
+        selectedVisit?.prospect?.name ||
+        'Rendez-vous'
       "
+      eyebrow="MON RENDEZ-VOUS · ISOLATION"
+      :close-disabled="detailBusy"
+      @request-close="detailRef?.close()"
     >
-      Précédent</button
-    ><button
-      class="secondary"
-      v-if="!visitId"
-      :disabled="busy || page * 25 >= count"
-      @click="
-        run(async () => {
-          page++;
-          await load();
-        })
-      "
-    >
-      Suivant</button
-    ><IsolationCloserAssignment
+      <IsolationVisits
+        v-if="selectedVisit"
+        ref="detailRef"
+        :key="selectedVisit.id"
+        :visit-id="selectedVisit.id"
+        :role="role"
+        :portal="portal"
+        :request="request"
+        @busy="detailBusy = $event"
+        @close="selectedVisit = null"
+        @updated="selectedVisit = $event"
+        @changed="
+          run(load);
+          emit('changed');
+        "
+      />
+    </SidePanel>
+    <IsolationCloserAssignment
       v-if="assigning"
       :key="assigning.id"
       :visit="assigning"
@@ -717,10 +858,13 @@ onMounted(() => run(load));
       :key="reporting.id"
       :visit="reporting"
       :request="request"
-      @cancel="reporting = null"
+      @busy="resultBusy = $event"
+      @dirty="resultDirty = $event"
+      @cancel="cancelReport"
       @saved="
         run(async () => {
           reporting = null;
+          resultDirty = false;
           page = 1;
           await load();
           emit('changed');
@@ -765,6 +909,8 @@ onMounted(() => run(load));
         Suivant</button
       ><button class="secondary" @click="history = null">Fermer l’historique</button>
     </section>
-    <button class="secondary" :disabled="busy" @click="close">Fermer les visites</button>
+    <button v-if="!listView" class="secondary" :disabled="busy" @click="close">
+      Fermer les visites
+    </button>
   </section>
 </template>

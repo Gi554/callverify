@@ -1,8 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { CalendarDays, Clock3, Users, Sparkles, ArrowUpRight } from 'lucide-vue-next';
+import IsolationPageHeader from './IsolationPageHeader.vue';
+import IsolationVisitCard from './IsolationVisitCard.vue';
 import SidePanel from './SidePanel.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
-const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
+const props = defineProps<{
+  request: (path: string, body?: any) => Promise<any>;
+  summary?: any;
+  username?: string;
+}>();
+const emit = defineEmits<{ changed: [] }>();
+const filter = ref('all');
+function changeFilter(value: string) {
+  filter.value = value;
+  page.value = 1;
+  run(load);
+}
 const rows = ref<any[]>([]),
   count = ref(0),
   page = ref(1),
@@ -49,7 +63,9 @@ async function run(action: () => Promise<void>) {
   }
 }
 async function load() {
-  const data = await props.request(`closer-visits/?page=${page.value}`);
+  const data = await props.request(
+    `closer-visits/?page=${page.value}${filter.value === 'upcoming' ? '&period=upcoming' : filter.value === 'due' ? '&result_due=true' : ''}`,
+  );
   rows.value = data.results;
   count.value = data.count;
 }
@@ -90,104 +106,148 @@ async function save() {
     reason.value = '';
     await loadHistory();
     await load();
+    emit('changed');
   });
 }
 onMounted(() => run(load));
 </script>
 <template>
-  <section>
-    <header class="visits-heading">
-      <h2>Mes visites Isolation</h2>
-      <button class="secondary" :disabled="busy" @click="run(load)">Actualiser</button>
-    </header>
-    <p>Consultez les fiches clients et renseignez le résultat des visites.</p>
-    <p v-if="error && !selected" role="alert">{{ error }}</p>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Prospect</th>
-            <th>Rendez-vous</th>
-            <th>Setter</th>
-            <th>Résultat</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td>
-              {{ row.c2_snapshot?.fields?.full_name || row.prospect.name
-              }}<small>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone }}</small>
-            </td>
-            <td data-label="Rendez-vous">{{ date(row) }}<small>Heure du Québec</small></td>
-            <td data-label="Setter">{{ row.original_setter.name }}</td>
-            <td data-label="Résultat">
-              {{
-                row.status === 'cancelled'
-                  ? row.next_visit_id
-                    ? 'Reprogrammé'
-                    : 'Annulée'
-                  : row.result?.outcome === 'unqualified'
-                    ? 'Non qualifié — non validé'
-                    : !row.result
-                      ? 'À renseigner'
-                      : row.result.performed
-                        ? 'Tenue'
-                        : 'Non tenue'
-              }}<small v-if="row.result"
-                >Vente :
-                {{
-                  row.result.closed === null
-                    ? 'non renseignée'
-                    : row.result.closed
-                      ? 'conclue'
-                      : 'non conclue'
-                }}</small
-              >
-            </td>
-            <td>
-              <button class="secondary" :disabled="busy" @click="open(row)">
-                Ouvrir la visite
-              </button>
-            </td>
-          </tr>
-          <tr v-if="!rows.length">
-            <td colspan="5">Aucune visite attribuée.</td>
-          </tr>
-        </tbody>
-      </table>
+  <section class="iso-page iso-closer-home">
+    <IsolationPageHeader
+      title="Mes visites, en un regard"
+      subtitle="Consultez les fiches clients et renseignez le résultat des visites."
+      :eyebrow="username ? 'BONJOUR ' + username + ' · ISOLATION' : 'MON ESPACE · REPRÉSENTANT'"
+      :busy="busy"
+      @refresh="run(load)"
+    />
+    <div class="iso-metrics">
+      <button class="iso-metric purple" @click="changeFilter('all')">
+        <div>
+          <span>Visites attribuées</span><strong>{{ summary?.visits ?? count }}</strong
+          ><small>Vos rencontres, votre suivi</small>
+        </div>
+        <span class="iso-metric-icon"><Users :size="25" /></span>
+      </button>
+      <button class="iso-metric blue" @click="changeFilter('upcoming')">
+        <div>
+          <span>Rendez-vous à venir</span><strong>{{ summary?.upcoming ?? '—' }}</strong
+          ><small>À préparer sereinement</small>
+        </div>
+        <span class="iso-metric-icon"><CalendarDays :size="25" /></span>
+      </button>
+      <button class="iso-metric peach" @click="changeFilter('due')">
+        <div>
+          <span>Résultats à compléter</span><strong>{{ summary?.results_due ?? '—' }}</strong
+          ><small>Gardez l’équipe dans la boucle</small>
+        </div>
+        <span class="iso-metric-icon"><Clock3 :size="25" /></span>
+      </button>
     </div>
-    <p>{{ count }} visite(s) · page {{ page }}</p>
-    <button
-      class="secondary"
-      :disabled="busy || page === 1"
-      @click="
-        run(async () => {
-          page--;
-          await load();
-        })
-      "
-    >
-      Précédent</button
-    ><button
-      class="secondary"
-      :disabled="busy || page * 25 >= count"
-      @click="
-        run(async () => {
-          page++;
-          await load();
-        })
-      "
-    >
-      Suivant</button
-    ><SidePanel
+    <section class="iso-closer-banner">
+      <div>
+        <span class="iso-quick-icon"><Sparkles :size="23" /></span>
+        <div>
+          <h2>Chaque rencontre fait avancer un dossier.</h2>
+          <p>Un retour après votre visite, et toute l’équipe sait quelle suite donner.</p>
+        </div>
+      </div>
+      <button class="secondary" :disabled="busy" @click="changeFilter('due')">
+        Compléter mes résultats <ArrowUpRight :size="16" />
+      </button>
+    </section>
+    <section class="iso-panel">
+      <header class="iso-panel-heading">
+        <div>
+          <h2>
+            Mon carnet de visites <span class="iso-counter">{{ count }}</span>
+          </h2>
+          <p>Les coordonnées et la qualification sont à portée de main.</p>
+        </div>
+        <span class="iso-toolbar-note">Heure du Québec</span>
+      </header>
+      <div class="iso-filter-tabs">
+        <button
+          v-for="tab in [
+            { id: 'all', label: 'Toutes mes visites' },
+            { id: 'upcoming', label: 'À venir' },
+            { id: 'due', label: 'À compléter' },
+          ]"
+          :key="tab.id"
+          :class="{ active: filter === tab.id }"
+          :aria-pressed="filter === tab.id"
+          :disabled="busy"
+          @click="changeFilter(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+    </section>
+    <p v-if="error && !selected" role="alert">{{ error }}</p>
+    <div v-if="rows.length" class="iso-visits-grid">
+      <IsolationVisitCard
+        v-for="row in rows"
+        :key="row.id"
+        :visit="row"
+        :busy="busy"
+        action-label="Ouvrir la visite"
+        @open="open(row)"
+      />
+    </div>
+    <div v-else class="iso-empty">
+      <span class="iso-empty-icon"><CalendarDays :size="27" /></span
+      ><strong>{{
+        busy
+          ? 'Chargement de vos visites…'
+          : filter === 'due'
+            ? 'Vos résultats sont à jour'
+            : 'Aucune visite pour le moment'
+      }}</strong>
+      <p>
+        {{
+          filter === 'due'
+            ? 'Les comptes rendus à compléter apparaîtront ici après vos rendez-vous.'
+            : 'Les visites qui vous sont attribuées apparaîtront dans cet espace.'
+        }}
+      </p>
+    </div>
+    <footer class="iso-pagination">
+      <span>{{ count }} visite(s) · page {{ page }}</span
+      ><button
+        class="secondary"
+        :disabled="busy || page === 1"
+        @click="
+          run(async () => {
+            page--;
+            await load();
+          })
+        "
+      >
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="busy || page * 25 >= count"
+        @click="
+          run(async () => {
+            page++;
+            await load();
+          })
+        "
+      >
+        Suivant
+      </button>
+    </footer>
+    <SidePanel
       :open="!!selected"
-      title="Compte rendu de visite"
+      :title="
+        selected?.c2_snapshot?.fields?.full_name ||
+        selected?.prospect?.name ||
+        'Compte rendu de visite'
+      "
       eyebrow="ISOLATION · CLOSER"
       :close-disabled="busy"
       @request-close="close"
-      ><template v-if="selected"
-        ><p v-if="error" role="alert">{{ error }}</p>
+      ><section v-if="selected" class="iso-detail">
+        <p v-if="error" role="alert">{{ error }}</p>
         <p>{{ date(selected) }} · Heure du Québec</p>
         <p>Closer : {{ selected.closer?.name }} · Setter : {{ selected.original_setter.name }}</p>
         <IsolationC2Snapshot :snapshot="selected.c2_snapshot" />
@@ -282,27 +342,8 @@ onMounted(() => run(load));
           "
         >
           Suivant
-        </button></template
-      ></SidePanel
+        </button>
+      </section></SidePanel
     >
   </section>
 </template>
-<style scoped>
-.visits-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-}
-.visits-heading h2 {
-  margin: 0;
-}
-.visits-heading button {
-  white-space: nowrap;
-}
-@media (max-width: 650px) {
-  .visits-heading h2 {
-    font-size: 20px;
-  }
-}
-</style>

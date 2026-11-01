@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { Clock3, ArrowUpRight, Phone, CalendarDays } from 'lucide-vue-next';
+import IsolationPageHeader from './IsolationPageHeader.vue';
+import { initials } from './isolation-visit-display';
 import SidePanel from './SidePanel.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import { bookingInterval } from './booking-time';
@@ -41,7 +44,11 @@ async function loadHistory() {
   }
 }
 function date(value: string) {
-  return new Date(value).toLocaleString('fr-CA', { timeZone: 'America/Toronto' });
+  return new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 }
 function local(value: string) {
   if (!value) return '';
@@ -134,76 +141,112 @@ async function changed() {
 onMounted(load);
 </script>
 <template>
-  <section>
-    <h3>À recontacter par moi-même</h3>
-    <p>Ces relances restent chez le client. Aucune tâche n’est confiée au setter.</p>
+  <section class="iso-page">
+    <IsolationPageHeader
+      title="Mes relances personnelles"
+      subtitle="Le bon moment pour reprendre contact, avec toutes les informations sous la main."
+      eyebrow="À RECONTACTER PAR MOI-MÊME · ISOLATION"
+      :busy="busy"
+      @refresh="load"
+    />
+    <section class="iso-closer-banner">
+      <div>
+        <span class="iso-quick-icon"><Clock3 :size="23" /></span>
+        <div>
+          <h2>{{ count }} relance(s) dans votre carnet</h2>
+          <p>
+            Ces suivis restent dans l’espace du client. Les rappels du setter sont gérés séparément.
+          </p>
+        </div>
+      </div>
+      <span class="iso-toolbar-note"><CalendarDays :size="16" />Heure du Québec</span>
+    </section>
     <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="bookingNotice" role="status">{{ bookingNotice }}</p>
-    <button class="secondary" :disabled="busy" @click="load">Actualiser</button>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Prospect</th>
-            <th>Motif</th>
-            <th>Rappel · Québec</th>
-            <th v-if="role === 'administrator'">Client</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td>
-              {{ row.name }}<small>{{ row.phone }}</small>
-            </td>
-            <td data-label="Motif">{{ row.reason }}</td>
-            <td data-label="Rappel · Québec">
-              {{ row.due_at ? date(row.due_at) : 'Date à définir' }}
-            </td>
-            <td v-if="role === 'administrator'" data-label="Client">{{ row.client.name }}</td>
-            <td>
-              <button class="secondary" :disabled="busy" @click="open(row)">Ouvrir la fiche</button>
-            </td>
-          </tr>
-          <tr v-if="!rows.length">
-            <td :colspan="role === 'administrator' ? 5 : 4">
-              {{ busy ? 'Chargement…' : 'Aucune relance personnelle.' }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <p v-if="bookingNotice" class="iso-notice info" role="status">{{ bookingNotice }}</p>
+    <div v-if="rows.length" class="iso-visits-grid">
+      <article v-for="row in rows" :key="row.id" class="iso-visit-card iso-personal-card">
+        <div class="iso-visit-top">
+          <span class="iso-avatar">{{ initials(row.name) }}</span
+          ><span
+            class="iso-status"
+            :class="!row.due_at ? 'muted' : Date.parse(row.due_at) <= Date.now() ? 'amber' : 'blue'"
+            ><span></span
+            >{{
+              !row.due_at
+                ? 'À planifier'
+                : Date.parse(row.due_at) <= Date.now()
+                  ? 'À recontacter'
+                  : 'Rappel prévu'
+            }}</span
+          >
+        </div>
+        <h3>{{ row.name }}</h3>
+        <p class="iso-card-phone"><Phone :size="13" />{{ row.phone }}</p>
+        <div class="iso-personal-due">
+          <Clock3 :size="15" />
+          <div>
+            <strong>{{ row.due_at ? date(row.due_at) : 'Choisir une date de rappel' }}</strong
+            ><small>{{
+              row.due_at ? 'Heure du Québec' : 'Une date peut être ajoutée dans la fiche.'
+            }}</small>
+          </div>
+        </div>
+        <p class="iso-personal-reason">{{ row.reason }}</p>
+        <p class="iso-note-preview">
+          {{ row.note || 'Ajoutez une note pour préparer le prochain échange.' }}
+        </p>
+        <p v-if="role === 'administrator'" class="iso-toolbar-note">
+          Client · {{ row.client.name }}
+        </p>
+        <button class="iso-card-open" :disabled="busy" @click="open(row)">
+          Ouvrir la fiche <ArrowUpRight :size="17" />
+        </button>
+      </article>
     </div>
-    <p>{{ count }} relance(s) · page {{ page }}</p>
-    <button
-      class="secondary"
-      :disabled="busy || page === 1"
-      @click="
-        page--;
-        load();
-      "
-    >
-      Précédent
-    </button>
-    <button
-      class="secondary"
-      :disabled="busy || page * 25 >= count"
-      @click="
-        page++;
-        load();
-      "
-    >
-      Suivant
-    </button>
+    <div v-else class="iso-empty">
+      <span class="iso-empty-icon"><Clock3 :size="27" /></span
+      ><strong>{{
+        busy ? 'Chargement des relances…' : 'Votre carnet de relances est à jour'
+      }}</strong>
+      <p>Les prospects que vous choisissez de recontacter personnellement apparaîtront ici.</p>
+    </div>
+    <footer class="iso-pagination">
+      <span>{{ count }} relance(s) · page {{ page }}</span
+      ><button
+        class="secondary"
+        :disabled="busy || page === 1"
+        @click="
+          page--;
+          load();
+        "
+      >
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="busy || page * 25 >= count"
+        @click="
+          page++;
+          load();
+        "
+      >
+        Suivant
+      </button>
+    </footer>
     <SidePanel
       :open="!!selected"
       :title="selected?.name || 'Relance personnelle'"
       :close-disabled="busy || visitBusy"
       @request-close="close"
     >
-      <template v-if="selected">
+      <section v-if="selected" class="iso-detail">
         <p>{{ selected.phone }} · {{ selected.reason }}</p>
         <p v-if="error" role="alert">{{ error }}</p>
-        <form v-if="role === 'client'" @submit.prevent="save" @input="dirty = true">
+        <form
+          class="iso-form"
+          v-if="role === 'client'"
+          @submit.prevent="save"
+          @input="dirty = true"
+        >
           <fieldset :disabled="busy || visitBusy">
             <label
               >Date et heure de rappel · Québec<input v-model="due" type="datetime-local"
@@ -256,7 +299,7 @@ onMounted(load);
           @close="selected = null"
           @changed="changed"
         />
-      </template>
+      </section>
     </SidePanel>
   </section>
 </template>

@@ -6,6 +6,7 @@ import './login.css'
 import './workspace.css'
 import './crm-theme.css'
 import './compact-type.css'
+import './isolation-ui.css'
 const redirect = crmEntryRedirect(new URL(window.location.href))
 if (redirect) window.history.replaceState(null, '', redirect)
 

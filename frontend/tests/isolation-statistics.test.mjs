@@ -39,6 +39,10 @@ code =
     .replace(/vModelSelect as _vModelSelect,?/g, '')
     .replace(/vModelDynamic as _vModelDynamic,?/g, '') +
   ';const _vModelText={},_vModelSelect={},_vModelDynamic={};'
+code = code.replace(
+  /import IsolationPageHeader from ['"]\.\/IsolationPageHeader\.vue['"]/g,
+  `const IsolationPageHeader={props:['title','subtitle','busy'],emits:['refresh'],render(){return this.subtitle}}`,
+)
 code = withStatComponents(code)
 const component = (await import(url(code))).default
 globalThis.document = { activeElement: null }

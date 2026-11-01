@@ -16,6 +16,7 @@ import PortalRecovery from './PortalRecovery.vue';
 import PortalInvitationAccept from './PortalInvitationAccept.vue';
 import IsolationWorkQueue from './IsolationWorkQueue.vue';
 import IsolationClient from './IsolationClient.vue';
+import IsolationClientHome from './IsolationClientHome.vue';
 import IsolationClientFollowUps from './IsolationClientFollowUps.vue';
 import IsolationQualification from './IsolationQualification.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
@@ -486,6 +487,13 @@ onMounted(async () => {
     class="amx-root"
     :class="{
       'is-authenticated': !!user,
+      'isolation-layout':
+        !!user &&
+        workspace === 'isolation' &&
+        !passwordOpen &&
+        !managing &&
+        (['client', 'closer'].includes(role) ||
+          ['personal-followups', 'missing-updates', 'unqualified'].includes(activeModule)),
       'setter-home':
         !!user &&
         ['setter', 'administrator'].includes(role) &&
@@ -655,7 +663,22 @@ onMounted(async () => {
                   workspace === 'isolation' && role === 'closer' && activeModule === 'overview'
                 "
                 :request="isolation"
-              /><CrmOverview
+                :summary="summary"
+                :username="user.username"
+                @changed="refreshWorkspace"
+              />
+              <IsolationClientHome
+                v-else-if="
+                  workspace === 'isolation' && role === 'client' && activeModule === 'overview'
+                "
+                :summary="summary"
+                :username="user.username"
+                :request="isolation"
+                @navigate="selectModule"
+                @refresh="refreshWorkspace"
+                @open="openIsolationVisit"
+              />
+              <CrmOverview
                 v-else-if="activeModule === 'overview'"
                 :workspace="workspace"
                 :role="role"

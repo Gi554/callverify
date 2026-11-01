@@ -3,6 +3,17 @@ import { ref, onMounted } from 'vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import SidePanel from './SidePanel.vue';
+import IsolationPageHeader from './IsolationPageHeader.vue';
+import {
+  Search,
+  FolderOpen,
+  Users,
+  Clock3,
+  CircleCheck,
+  ArrowUpRight,
+  CalendarDays,
+} from 'lucide-vue-next';
+import { initials } from './isolation-visit-display';
 const showStatistics = ref(false);
 const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
@@ -39,98 +50,145 @@ async function load() {
 onMounted(load);
 </script>
 <template>
-  <section>
-    <button class="secondary" @click="showStatistics = !showStatistics">
-      {{ showStatistics ? 'Masquer les statistiques' : 'Voir les statistiques' }}</button
-    ><IsolationStatistics v-if="showStatistics" role="client" :request="request" />
-    <h3>Mes fiches clients</h3>
-    <p>Retrouvez les coordonnées, qualifications et résultats des visites de chaque client.</p>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <template v-if="summary"
-      ><p>
-        {{ summary.upcoming }} visite(s) à venir · {{ summary.reported }} résultat(s) renseigné(s)
-      </p>
-      <p v-if="summary.results_due" role="status">
-        {{ summary.results_due }} visite(s) passée(s) attendent votre résultat. La consultation ne
-        supprime pas cette attente.
-      </p></template
-    ><button class="secondary" :disabled="busy" @click="load">
-      Actualiser mes compteurs et dossiers
-    </button>
-    <form
-      @submit.prevent="
-        page = 1;
-        load();
-      "
+  <section class="iso-page">
+    <IsolationPageHeader
+      title="Mes fiches clients"
+      subtitle="Vos dossiers, les échanges et la suite de chaque rendez-vous."
+      eyebrow="MES DOSSIERS · ISOLATION"
+      :busy="busy"
+      @refresh="load"
     >
-      <label>Rechercher un dossier par nom<input v-model="search" /></label
-      ><button class="secondary" :disabled="busy">Rechercher</button>
-    </form>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Dossier</th>
-            <th>Téléphone</th>
-            <th>Référence</th>
-            <th>Suivi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td>
-              <strong>{{ row.name || 'Prospect sans nom' }}</strong>
-            </td>
-            <td data-label="Téléphone">{{ row.raw_phone }}</td>
-            <td data-label="Référence">{{ row.reference || '—' }}</td>
-            <td data-label="Suivi">
-              <button
-                class="secondary"
-                :disabled="busy"
-                @click="
-                  prospect = row.id;
-                  dossierName = row.name || 'Prospect sans nom';
-                  visitsOpen = true;
-                "
-              >
-                Ouvrir la fiche
-              </button>
-            </td>
-          </tr>
-          <tr v-if="!rows.length">
-            <td colspan="4">{{ busy ? 'Chargement…' : 'Aucun dossier dans votre périmètre.' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <template #actions
+        ><button class="secondary" @click="showStatistics = !showStatistics">
+          {{ showStatistics ? 'Fermer les statistiques' : 'Statistiques' }}
+        </button></template
+      >
+    </IsolationPageHeader>
+    <section v-if="showStatistics" class="iso-panel">
+      <IsolationStatistics role="client" :request="request" />
+    </section>
+    <div class="iso-metrics">
+      <div class="iso-metric purple">
+        <div>
+          <span>Dossiers clients</span><strong>{{ count }}</strong
+          ><small>{{ search ? 'Selon votre recherche' : 'Dans votre espace' }}</small>
+        </div>
+        <span class="iso-metric-icon"><Users :size="24" /></span>
+      </div>
+      <div class="iso-metric blue">
+        <div>
+          <span>Rendez-vous à venir</span><strong>{{ summary?.upcoming ?? '—' }}</strong
+          ><small>Les prochaines rencontres</small>
+        </div>
+        <span class="iso-metric-icon"><CalendarDays :size="24" /></span>
+      </div>
+      <div class="iso-metric green">
+        <div>
+          <span>Résultats renseignés</span><strong>{{ summary?.reported ?? '—' }}</strong
+          ><small>Votre suivi en un regard</small>
+        </div>
+        <span class="iso-metric-icon"><CircleCheck :size="24" /></span>
+      </div>
     </div>
-    <p>{{ count }} dossier(s) · page {{ page }}</p>
-    <button
-      class="secondary"
-      :disabled="busy || page === 1"
-      @click="
-        page--;
-        load();
-      "
-    >
-      Précédent</button
-    ><button
-      class="secondary"
-      :disabled="busy || page * 25 >= count"
-      @click="
-        page++;
-        load();
-      "
-    >
-      Suivant</button
-    ><button
-      class="secondary"
-      @click="
-        prospect = undefined;
-        visitsOpen = true;
-      "
-    >
-      Toutes mes visites</button
-    ><SidePanel
+    <p v-if="error" role="alert">{{ error }}</p>
+    <p v-if="summary?.results_due" class="iso-notice">
+      <Clock3 :size="17" /><span
+        ><strong>{{ summary.results_due }} résultat(s) attendent votre retour.</strong> Ouvrez une
+        fiche pour compléter le résultat d’une visite.</span
+      >
+    </p>
+    <section class="iso-panel">
+      <header class="iso-panel-heading">
+        <div>
+          <h2>
+            Votre carnet clients <span class="iso-counter">{{ count }}</span>
+          </h2>
+          <p>Ouvrez un dossier pour retrouver ses visites et sa qualification.</p>
+        </div>
+        <button
+          class="iso-text-link"
+          @click="
+            prospect = undefined;
+            visitsOpen = true;
+          "
+        >
+          Toutes les visites <ArrowUpRight :size="15" />
+        </button>
+      </header>
+      <form
+        class="iso-toolbar"
+        @submit.prevent="
+          page = 1;
+          load();
+        "
+      >
+        <label class="iso-search"
+          ><Search :size="17" /><input
+            v-model="search"
+            aria-label="Rechercher un dossier par nom"
+            placeholder="Rechercher un client…"
+          /><button class="iso-text-link" :disabled="busy">Rechercher</button></label
+        ><span class="iso-toolbar-note"
+          ><FolderOpen :size="14" />Vos dossiers, au même endroit</span
+        >
+      </form>
+    </section>
+    <div v-if="rows.length" class="iso-visits-grid iso-folders-grid">
+      <article v-for="row in rows" :key="row.id" class="iso-folder-card">
+        <div class="iso-folder-tab"><FolderOpen :size="17" /><span>DOSSIER CLIENT</span></div>
+        <div class="iso-folder-identity">
+          <span class="iso-avatar">{{ initials(row.name || 'Client') }}</span>
+          <h3>{{ row.name || 'Prospect sans nom' }}</h3>
+        </div>
+        <p>{{ row.raw_phone || 'Téléphone non renseigné' }}</p>
+        <small class="iso-folder-reference">{{ row.reference || 'Sans référence' }}</small>
+        <button
+          class="iso-card-open"
+          :disabled="busy"
+          @click="
+            prospect = row.id;
+            dossierName = row.name || 'Prospect sans nom';
+            visitsOpen = true;
+          "
+        >
+          Ouvrir la fiche <ArrowUpRight :size="17" />
+        </button>
+      </article>
+    </div>
+    <div v-else class="iso-empty">
+      <span class="iso-empty-icon"><FolderOpen :size="26" /></span
+      ><strong>{{ busy ? 'Chargement des dossiers…' : 'Aucun dossier à afficher' }}</strong>
+      <p>
+        {{
+          search
+            ? 'Essayez un autre nom dans votre recherche.'
+            : 'Les fiches des prospects qui vous sont confiés apparaîtront ici.'
+        }}
+      </p>
+    </div>
+    <footer class="iso-pagination">
+      <span>{{ count }} dossier(s) · page {{ page }}</span
+      ><button
+        class="secondary"
+        :disabled="busy || page === 1"
+        @click="
+          page--;
+          load();
+        "
+      >
+        Précédent</button
+      ><button
+        class="secondary"
+        :disabled="busy || page * 25 >= count"
+        @click="
+          page++;
+          load();
+        "
+      >
+        Suivant
+      </button>
+    </footer>
+    <SidePanel
       :open="visitsOpen"
       :title="prospect ? dossierName : 'Toutes mes visites'"
       eyebrow="FICHE CLIENT · ISOLATION"
@@ -138,6 +196,7 @@ onMounted(load);
       @request-close="visitsRef?.close()"
     >
       <IsolationVisits
+        class="iso-detail"
         v-if="visitsOpen"
         ref="visitsRef"
         :key="prospect || 0"
