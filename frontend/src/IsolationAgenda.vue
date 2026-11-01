@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import SidePanel from './SidePanel.vue';
+import IsolationPageHeader from './IsolationPageHeader.vue';
 import PortalCalendars from './PortalCalendars.vue';
 import IsolationReminderPolicy from './IsolationReminderPolicy.vue';
 const props = defineProps<{
@@ -56,10 +57,14 @@ async function save() {
 onMounted(load);
 </script>
 <template>
-  <section class="isolation-agenda">
-    <h2>Mon agenda et mes disponibilités</h2>
-    <p>Horaires de visite du client Isolation · heure du Québec</p>
-    <nav aria-label="Réglages de l’agenda">
+  <section class="isolation-agenda iso-page">
+    <IsolationPageHeader
+      title="Mon agenda et mes disponibilités"
+      subtitle="Vos horaires de visite et votre agenda, réunis au même endroit, à l’heure du Québec."
+      :busy="busy"
+      @refresh="load"
+    />
+    <nav class="iso-tabs" aria-label="Réglages de l’agenda">
       <button class="secondary" :aria-pressed="tab === 'hours'" @click="tab = 'hours'">
         Mes disponibilités</button
       ><button
@@ -91,8 +96,9 @@ onMounted(load);
           }}</small>
         </article>
       </div>
-      <button class="primary" :disabled="busy" @click="edit">Modifier mes horaires</button
-      ><button class="secondary" :disabled="busy" @click="load">Actualiser</button>
+      <div class="iso-form-actions">
+        <button class="primary" :disabled="busy" @click="edit">Modifier mes horaires</button>
+      </div>
       <p>
         L’agenda connecté reste consulté pour les événements déjà occupés. Les titres privés de cet
         agenda ne sont pas affichés aux setters.
@@ -112,7 +118,7 @@ onMounted(load);
       :close-disabled="busy"
       @request-close="close"
     >
-      <form v-if="draft" class="hours" @submit.prevent="save">
+      <form v-if="draft" class="hours iso-detail iso-form" @submit.prevent="save">
         <p v-if="error" role="alert">{{ error }}</p>
         <label
           ><input v-model="draft.enabled" type="checkbox" :disabled="busy" />Limiter la

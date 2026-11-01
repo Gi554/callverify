@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { MapPin, Phone, ArrowUpRight, FolderOpen, UserRound, Search } from 'lucide-vue-next';
+import IsolationPageHeader from './IsolationPageHeader.vue';
+import { initials } from './isolation-visit-display';
 import SidePanel from './SidePanel.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
 import IsolationVisits from './IsolationVisits.vue';
@@ -64,7 +67,11 @@ const results: Record<string, string> = {
   unreachable: 'Injoignable',
 };
 const when = (value: string) =>
-  new Date(value).toLocaleString('fr-CA', { timeZone: 'America/Toronto' });
+  new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 async function run(action: () => Promise<void>) {
   if (busy.value) return;
   busy.value = true;
@@ -118,67 +125,82 @@ async function open(row: any) {
 onMounted(() => run(load));
 </script>
 <template>
-  <section class="unqualified">
-    <p>
-      Les prospects intéressés dont la visite ne peut pas encore être programmée restent regroupés
-      ici.
-    </p>
+  <section class="unqualified iso-page">
+    <IsolationPageHeader
+      title="Les dossiers à requalifier"
+      subtitle="Gardez le contact avec les prospects intéressés, en attendant le bon moment."
+      eyebrow="RENDEZ-VOUS NON QUALIFIÉS · ISOLATION"
+      :busy="busy"
+      @refresh="run(load)"
+    />
+
     <p v-if="error" role="alert">{{ error }}</p>
-    <form
-      class="filters"
-      @submit.prevent="
-        run(async () => {
-          page = 1;
-          await load();
-        })
-      "
-    >
-      <label>Ville<input v-model="city" maxlength="150" /></label>
-      <label>Code postal<input v-model="postal" maxlength="10" /></label>
-      <label
-        >Motif<select v-model="reason">
-          <option value="">Tous les motifs</option>
-          <option v-for="(label, key) in reasons" :key="key" :value="key">{{ label }}</option>
-        </select></label
+    <section class="iso-panel">
+      <header class="iso-panel-heading">
+        <div>
+          <h2>
+            Retrouver un dossier <span class="iso-counter">{{ count }}</span>
+          </h2>
+          <p>Affinez par ville, code postal ou motif de qualification.</p>
+        </div>
+        <span class="iso-quick-icon"><Search :size="18" /></span>
+      </header>
+      <form
+        class="iso-filters"
+        @submit.prevent="
+          run(async () => {
+            page = 1;
+            await load();
+          })
+        "
       >
-      <label
-        >Trier par<select v-model="sort">
-          <option value="-date">Plus récents</option>
-          <option value="date">Plus anciens</option>
-          <option value="setter">Setter responsable</option>
-        </select></label
-      >
-      <button class="primary" :disabled="busy">Rechercher</button>
-    </form>
-    <p>{{ count }} fiche(s)</p>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Prospect</th>
-            <th>Ville / code postal</th>
-            <th>Motif</th>
-            <th>Setter</th>
-            <th>Enregistré le · Québec</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td>{{ row.name }}<br />{{ row.phone }}</td>
-            <td>{{ row.city || 'Non renseignée' }}<br />{{ row.postal_code }}</td>
-            <td>{{ row.reason_label }}</td>
-            <td>{{ row.setter.name }}</td>
-            <td>{{ when(row.created_at) }}</td>
-            <td>
-              <button class="secondary" :disabled="busy" @click="open(row)">Ouvrir la fiche</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <label>Ville<input v-model="city" maxlength="150" /></label>
+        <label>Code postal<input v-model="postal" maxlength="10" /></label>
+        <label
+          >Motif<select v-model="reason">
+            <option value="">Tous les motifs</option>
+            <option v-for="(label, key) in reasons" :key="key" :value="key">{{ label }}</option>
+          </select></label
+        >
+        <label
+          >Trier par<select v-model="sort">
+            <option value="-date">Plus récents</option>
+            <option value="date">Plus anciens</option>
+            <option value="setter">Setter responsable</option>
+          </select></label
+        >
+        <button class="primary" :disabled="busy">Rechercher</button>
+      </form>
+    </section>
+    <div v-if="rows.length" class="iso-visits-grid">
+      <article v-for="row in rows" :key="row.id" class="iso-visit-card">
+        <div class="iso-visit-top">
+          <span class="iso-avatar">{{ initials(row.name) }}</span
+          ><span class="iso-status purple"><span></span>À requalifier</span>
+        </div>
+        <h3>{{ row.name }}</h3>
+        <p class="iso-card-phone"><Phone :size="13" />{{ row.phone }}</p>
+        <p class="iso-personal-reason">{{ row.reason_label }}</p>
+        <p class="iso-card-address">
+          <MapPin :size="15" /><span
+            >{{ row.city || 'Ville non renseignée' }}<small>{{ row.postal_code }}</small></span
+          >
+        </p>
+        <div class="iso-visit-people">
+          <span><UserRound :size="13" />{{ row.setter.name }}</span
+          ><small>Enregistré le {{ when(row.created_at) }} · Québec</small>
+        </div>
+        <button class="iso-card-open" :disabled="busy" @click="open(row)">
+          Ouvrir la fiche <ArrowUpRight :size="17" />
+        </button>
+      </article>
     </div>
-    <p v-if="!rows.length && !busy">Aucune fiche ne correspond à ces filtres.</p>
-    <div class="actions">
+    <div v-else class="iso-empty">
+      <span class="iso-empty-icon"><FolderOpen :size="26" /></span
+      ><strong>{{ busy ? 'Chargement des dossiers…' : 'Aucun dossier avec ces critères' }}</strong>
+      <p>Les prospects qui nécessitent une requalification apparaîtront ici.</p>
+    </div>
+    <div class="iso-pagination">
       <button
         class="secondary"
         :disabled="busy || page === 1"
@@ -210,7 +232,7 @@ onMounted(() => run(load));
       :close-disabled="busy || bookingBusy"
       @request-close="closeDetail"
     >
-      <section v-if="selected" class="detail">
+      <section v-if="selected" class="detail iso-detail">
         <p v-if="error" role="alert">{{ error }}</p>
         <h3>{{ selected.name }}</h3>
         <p>{{ selected.phone }}</p>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import StatKpi from './StatKpi.vue';
+import IsolationPageHeader from './IsolationPageHeader.vue';
 import StatDonut from './StatDonut.vue';
 import StatBars from './StatBars.vue';
 const props = defineProps<{
@@ -150,13 +151,19 @@ async function download(kind: string) {
 onMounted(() => load());
 </script>
 <template>
-  <section class="isolation-statistics">
-    <header class="statistics-hello">
-      <h2>Bonjour{{ username ? ', ' + username : '' }}</h2>
-      <p>Rendez-vous, présence et ventes déclarées dans votre périmètre Isolation.</p>
-    </header>
+  <section class="isolation-statistics iso-page">
+    <IsolationPageHeader
+      title="Vos résultats, en perspective"
+      :subtitle="
+        'Bonjour' +
+        (username ? ', ' + username : '') +
+        '. Retrouvez vos rendez-vous, présences et ventes déclarées.'
+      "
+      :busy="busy"
+      @refresh="load()"
+    />
     <p v-if="error" role="alert">{{ error }}</p>
-    <form @submit.prevent="load()">
+    <form class="iso-panel" @submit.prevent="load()">
       <fieldset :disabled="busy" class="statistics-filters">
         <label
           >Période<select v-model="mode">

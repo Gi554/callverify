@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { bookingInterval } from './booking-time';
 const props = defineProps<{
   visit: any;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
-const emit = defineEmits<{ saved: []; cancel: [] }>();
+const emit = defineEmits<{
+  saved: [];
+  cancel: [];
+  busy: [value: boolean];
+  dirty: [value: boolean];
+}>();
 const performed = ref(props.visit.result ? (props.visit.result.performed ? 'yes' : 'no') : ''),
   closed = ref(
     props.visit.result?.closed === null || props.visit.result?.closed === undefined
@@ -22,6 +27,12 @@ const followUpOwner = ref(props.visit.result?.follow_up_owner || ''),
   unqualified = ref(props.visit.result?.outcome === 'unqualified'),
   absenceReason = ref(props.visit.result?.absence_reason || ''),
   followUpAt = ref(local(props.visit.result?.follow_up_at));
+watch(
+  [performed, closed, note, reason, followUpOwner, unqualified, absenceReason, followUpAt],
+  () => emit('dirty', true),
+  { flush: 'sync' },
+);
+watch(busy, (value) => emit('busy', value), { flush: 'sync' });
 function local(value?: string) {
   if (!value) return '';
   const p = Object.fromEntries(
@@ -81,6 +92,7 @@ async function save() {
         : {}),
       ...(props.visit.result ? { reason: reason.value } : {}),
     });
+    emit('dirty', false);
     emit('saved');
   } catch (e: any) {
     error.value = e.message;
@@ -90,7 +102,7 @@ async function save() {
 }
 </script>
 <template>
-  <form @submit.prevent="save">
+  <form class="iso-form iso-result-form" @submit.prevent="save">
     <h4>Résultat de la visite · {{ visit.prospect.name || visit.prospect.phone }}</h4>
     <p>
       Le résultat est conservé dans l’historique. Une absence de réponse ne sera jamais enregistrée

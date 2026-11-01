@@ -32,10 +32,10 @@ code = code
       .join(';'),
   )
   .replace(/from ['"]vue['"]/g, `from '${vue}'`)
-  .replace(
-    /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
-    (_, name) =>
-      `const ${name}={props:['open','title','eyebrow','closeDisabled'],emits:['requestClose'],render(){return this.open ? this.$slots.default?.():null}}`,
+  .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
+    name === 'IsolationPageHeader'
+      ? `const ${name}={props:['title','subtitle','busy'],emits:['refresh'],render(){return this.subtitle}}`
+      : `const ${name}={props:['open','title','eyebrow','closeDisabled'],emits:['requestClose'],render(){return this.open ? this.$slots.default?.():null}}`,
   )
 for (const directive of ['vModelText', 'vModelSelect', 'vModelRadio', 'vModelCheckbox'])
   code =

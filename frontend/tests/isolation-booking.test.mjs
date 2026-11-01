@@ -32,6 +32,12 @@ code = code
     JSON.stringify(url(readFileSync(new URL('../src/booking-time.ts', import.meta.url), 'utf8'))),
   )
 code = code
+  .replace(
+    "'./isolation-visit-display'",
+    JSON.stringify(
+      url(readFileSync(new URL('../src/isolation-visit-display.ts', import.meta.url), 'utf8')),
+    ),
+  )
   .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
     name === 'IsolationC2'
       ? `const IsolationC2={setup(props,{expose,emit}){expose({async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`

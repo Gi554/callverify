@@ -16,6 +16,31 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Isolation — refonte des espaces client et représentant
+
+L’accueil du client affiche les compteurs réels, les prochaines visites et des accès
+aux fiches, relances personnelles et résultats attendus. L’accueil du représentant
+présente ses visites et les filtres « À venir » / « Résultats à renseigner ».
+Les fiches clients deviennent des dossiers en cartes avec recherche et pagination.
+Les listes de rendez-vous (à venir, passés, sans mise à jour), de relances personnelles
+et de dossiers non qualifiés utilisent une présentation compacte cohérente avec les
+espaces existants : couleurs pastel, monogrammes, statuts, dates du Québec et actions
+visibles. Les informations complètes restent accessibles dans les panneaux à droite.
+Les en-têtes de l’agenda et des statistiques suivent les mêmes repères visuels.
+La fermeture d’un résultat en cours respecte le brouillon et les opérations actives.
+
+Vérifications : 202 tests frontend, typage Vue, ESLint et compilation de production ;
+tests de l’accueil avec services disponibles/indisponibles, navigation et ouverture
+de la bonne visite, statuts explicites et date du Québec autour du changement d’heure.
+Contrôle visuel sur aperçu local isolé avec données fictives : accueils client et
+représentant, fiches et panneau de visite, rendez-vous, relances, non-qualifiés et
+horaires ; versions ordinateur et mobile (390 px). Le bouton Actualiser conserve un
+nom accessible sur mobile. Les données de revue restent hors de Git.
+
+Limites : cette livraison concerne l’interface et conserve les permissions et règles
+métier existantes. La recette réelle avec l’agenda Google du client et la réception
+des courriels reste à effectuer ; elle n’est pas remplacée par cet aperçu local.
+
 ## Isolation — accès du client aux fiches et visites à venir
 
 ### Demande tableau de bord client — suivi des résultats manquants

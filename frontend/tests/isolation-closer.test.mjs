@@ -36,7 +36,9 @@ code = `import {h} from '${pathToFileURL(require.resolve('vue')).href}';` + code
 code = code.replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
   name === 'SidePanel'
     ? `const SidePanel={props:['open','title','eyebrow','closeDisabled'],emits:['requestClose'],inheritAttrs:false,setup(props,{slots,emit}){return ()=>[h('button',{onClick:()=>emit('requestClose')},'Fermer le panneau'),slots.default?.()]}}`
-    : `const ${name}={render:()=>null}`,
+    : name === 'IsolationVisitCard'
+      ? `const ${name}={props:['visit','busy','actionLabel'],emits:['open'],setup(props,{emit}){return()=>h('button',{onClick:()=>emit('open')},props.actionLabel)}}`
+      : `const ${name}={render:()=>null}`,
 )
 code =
   code
