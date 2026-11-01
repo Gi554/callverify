@@ -20,8 +20,13 @@ class CloserInput(serializers.Serializer):
 
 @api_view(['GET', 'POST'])
 def closers(request):
+    allowed = (
+        ['administrator', 'client', 'setter']
+        if request.method == 'GET'
+        else ['administrator', 'client']
+    )
     if not Membership.objects.filter(
-        user=request.user, workspace='isolation', active=True, role__in=['administrator', 'client']
+        user=request.user, workspace='isolation', active=True, role__in=allowed
     ).exists():
         raise PermissionDenied('Attribution réservée au client Isolation et à son administration.')
     rows = Membership.objects.filter(

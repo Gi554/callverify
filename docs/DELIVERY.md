@@ -1,5 +1,28 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation V2 — représentant choisi à la programmation (lot 10)
+
+Le formulaire setter et la reprise client chargent les représentants Isolation actifs. Un seul
+est sélectionné automatiquement ; si plusieurs sont disponibles, le choix est obligatoire dans
+le nouveau formulaire. Sans représentant configuré, la visite peut être attribuée ultérieurement
+par le client ou l’administration. Une erreur d’annuaire bloque la programmation, pas le simple
+enregistrement d’une fiche non qualifiée. Le setter peut lire l’annuaire sans obtenir le droit
+de réattribuer librement les visites existantes.
+
+La centrale atteste le représentant choisi avec client, setter et prospect. Le serveur métier
+utilise uniquement cette identité signée ; un identifiant injecté dans le corps de réservation
+est refusé. Le représentant est affecté dès la création et peut consulter cette visite depuis
+son espace existant. L’agenda demeure celui du client unique : aucune connexion personnelle ni
+capacité parallèle par représentant n’est inventée. Les nouvelles réservations utilisent toujours
+l’heure du Québec ; les anciens reports gardent leur compatibilité de fuseau explicite.
+
+Le retour de programmation client ne recharge plus l’entrée non qualifiée archivée : il annonce
+la réussite au parent qui actualise la liste, sans transformer l’archivage attendu en erreur.
+Tests : représentant attesté, actif, rôle correct, rejeu/conflit, choix multiple obligatoire,
+sélection unique, annuaire indisponible, reprise client archivée et heures du Québec ; suites
+métier Isolation et portail ciblées, frontend, lint/format, TypeScript et build avant fusion.
+Statistiques et rémunération CAD demeurent à livrer ; recette fournisseur réelle ouverte.
+
 ## Isolation V2 — requalification et programmation par le client (lot 9)
 
 Le client peut ouvrir une fiche non qualifiée, choisir « Requalifier et programmer une visite »,

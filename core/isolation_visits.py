@@ -368,6 +368,8 @@ class IsolationVisitViewSet(
             for key in ('starts_at', 'ends_at', 'timezone', 'prospect_id')
         }
         canonical.update(client=claims['client']['id'], setter=claims['setter']['id'])
+        if 'closer' in claims:
+            canonical['closer'] = claims['closer']['id']
         if data['publication'] == 'google':
             canonical['publication'] = 'google'
         if 'previous_visit_id' in data:
@@ -456,6 +458,8 @@ class IsolationVisitViewSet(
                     'client_name': claims['client']['name'],
                     'setter_id': claims['setter']['id'],
                     'setter_name': claims['setter']['name'],
+                    'closer_id': claims.get('closer', {}).get('id'),
+                    'closer_name': claims.get('closer', {}).get('name', ''),
                     'booked_by_id': request.user.pk,
                     **{key: data[key] for key in ('starts_at', 'ends_at', 'timezone')},
                 },
