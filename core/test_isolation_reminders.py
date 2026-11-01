@@ -39,7 +39,46 @@ class IsolationReminderTests(TestCase):
                 self.client.get('/api/isolation-notices/?unread=true').data['count'], 1
             )
         self.assertFalse(IsolationVisitResult.objects.exists())
-        self.assertEqual(IsolationNotice.objects.get().recipient_id, 72)
+        self.assertEqual(IsolationNotice.objects.get(kind='result_due').recipient_id, 72)
+
+    def test_end_of_visit_notice_is_private_unique_and_clears_on_report(self):
+        self.active()
+        end = self.visit.ends_at
+        with patch('django.utils.timezone.now', return_value=end - timedelta(seconds=1)):
+            generate()
+            self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
+        with patch('django.utils.timezone.now', return_value=end):
+            generate()
+            generate()
+            response = self.client.get('/api/isolation-notices/').data
+            self.assertEqual(response['count'], 1)
+            self.assertEqual(response['results'][0]['kind'], 'result_ready')
+            self.assertFalse(IsolationVisitResult.objects.exists())
+            self.auth(73, 'client')
+            self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
+            self.auth(72, 'client')
+            self.assertEqual(self.report(closed=False).status_code, 201)
+            self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
+
+    def test_internal_booking_notice_and_24_hour_nudge_are_distinct(self):
+        self.active()
+        with patch('django.utils.timezone.now', return_value=self.visit.ends_at):
+            generate()
+        with patch(
+            'django.utils.timezone.now', return_value=self.visit.ends_at + timedelta(hours=24)
+        ):
+            generate()
+            feed = self.client.get('/api/isolation-notices/').data['results']
+            self.assertEqual([row['kind'] for row in feed], ['result_due'])
+        self.assertEqual(IsolationNotice.objects.filter(kind='result_ready').count(), 1)
+        self.assertEqual(IsolationNotice.objects.filter(kind='result_due').count(), 1)
+        IsolationVisit.objects.update(
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+        )
+        generate()
+        generate()
+        self.assertEqual(IsolationNotice.objects.filter(kind='booked').count(), 1)
 
     def test_report_cancel_reschedule_and_policy_pause_invalidate_unsent_mail(self):
         self.active()

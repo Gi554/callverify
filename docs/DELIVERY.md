@@ -67,7 +67,24 @@ Vérifications : motif requis, refus d’une déclaration incohérente, autre cl
 refusé, notification privée unique, aucun paiement ou rappel d’absence, statistiques
 distinctes, correction d’un ancien rappel et formulaire conditionnel.
 
-Reste à livrer pour la nouvelle demande : notification dès la fin de visite, indicateurs
+### Demande tableau de bord client — notifications de visite
+
+Une notification interne unique demande le résultat dès la fin de la visite
+(traitement et rafraîchissement périodiques d’une minute). Elle n’est pas un e-mail
+supplémentaire et ne déclare aucune présence. Après 24 heures elle laisse la place
+à la relance existante (avec e-mail selon la règle administrateur, 24 h par défaut).
+Les notifications devenues inutiles après réponse, annulation ou report ne restent
+pas proposées. Les visites internes donnent aussi une notification de nouvelle visite ;
+les publications Google restent soumises à leur confirmation effective.
+
+Les notifications privées du setter ouvrent maintenant la visite exacte pour les
+présences, ventes et non-qualifiés. Le rappel pour absence ouvre ses tâches ; les
+relances personnelles ouvrent la rubrique du client. Les horaires restent au Québec.
+
+Vérifications : seuil exact de fin, unicité, autre client, sortie après résultat,
+transition à 24 heures et réservation interne, parcours de navigation et CI complète.
+
+Reste à livrer pour la nouvelle demande : indicateurs
 hebdomadaires payables du setter. Le rappel après 24 heures et la rémunération
 distincte présence/vente existent déjà ; leurs adaptations devront être vérifiées.
 
