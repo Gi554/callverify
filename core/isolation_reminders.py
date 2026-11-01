@@ -217,6 +217,16 @@ def mail_events(request):
                     'created_at': r.created_at,
                     'prospect_name': r.visit.prospect.name or 'Prospect',
                     'starts_at': r.visit.starts_at,
+                    'ends_at': r.visit.ends_at,
+                    'prospect_email': r.visit.c2_snapshot.get('fields', {}).get('email', '')
+                    if r.kind == 'booked'
+                    else '',
+                    'visit_address': ' · '.join(
+                        str(r.visit.c2_snapshot.get('fields', {}).get(k, ''))
+                        for k in ('address', 'city', 'postal_code')
+                    ).strip(' ·')
+                    if r.kind == 'booked'
+                    else '',
                 }
                 for r in rows
             ]
@@ -231,6 +241,14 @@ def mail_events(request):
 @permission_classes([AllowAny])
 def mail_eligible(request, pk, user_id):
     authorize(request, 'mail_eligible', {'event': pk, 'user': user_id})
-    response = Response({'eligible': candidates().filter(pk=pk, recipient_id=user_id).exists()})
+    row = candidates().filter(pk=pk, recipient_id=user_id).select_related('visit').first()
+    response = Response(
+        {
+            'eligible': bool(row),
+            'prospect_email': row.visit.c2_snapshot.get('fields', {}).get('email', '')
+            if row and row.kind == 'booked'
+            else '',
+        }
+    )
     response['Cache-Control'] = 'no-store'
     return response

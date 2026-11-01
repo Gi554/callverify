@@ -14,6 +14,7 @@ from .models import Prospect, AuditEvent, ImportRow
 
 class C2Input(serializers.Serializer):
     full_name = serializers.CharField(max_length=250, allow_blank=True, default='')
+    email = serializers.EmailField(max_length=254, allow_blank=True, default='')
     phone = serializers.CharField(max_length=40, allow_blank=True, default='')
     address = serializers.CharField(max_length=500, allow_blank=True, default='')
     city = serializers.CharField(max_length=150, allow_blank=True, default='')
@@ -58,7 +59,7 @@ def complete(value):
     missing = [
         key
         for key, value in data.items()
-        if key not in ('monthly_electricity', 'age') and (value is None or value == '')
+        if key not in ('monthly_electricity', 'age', 'email') and (value is None or value == '')
     ]
     if missing:
         raise ValidationError(
@@ -88,6 +89,7 @@ def defaults(prospect):
     if not imported or not isinstance(imported.source, dict):
         return result
     aliases = {
+        'email': ('email', 'courriel', 'adresseemail', 'adressecourriel'),
         'address': ('address', 'adresse', 'adressecomplete', 'fulladdress'),
         'city': ('city', 'ville', 'municipalite'),
         'postal_code': ('postalcode', 'codepostal', 'postcode'),

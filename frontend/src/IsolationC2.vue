@@ -13,6 +13,7 @@ const emit = defineEmits<{
 const labels: Record<string, string> = {
   full_name: 'Nom et prénom',
   phone: 'Téléphone',
+  email: 'Courriel du prospect',
   address: 'Adresse complète',
   city: 'Ville',
   postal_code: 'Code postal',
@@ -39,6 +40,7 @@ async function load() {
     values.value = {
       full_name: row.defaults.full_name || '',
       phone: row.defaults.phone || '',
+      email: '',
       address: '',
       city: '',
       postal_code: '',
@@ -110,7 +112,7 @@ onMounted(() => {
   load().catch(() => {});
 });
 onBeforeUnmount(() => window.removeEventListener('beforeunload', unload));
-defineExpose({ ensureSaved, dirty });
+defineExpose({ ensureSaved, dirty, getEmail: () => values.value.email || '' });
 </script>
 <template>
   <section class="c2-form">
@@ -126,21 +128,25 @@ defineExpose({ ensureSaved, dirty });
     <p v-if="message" role="status">{{ message }}</p>
     <fieldset v-if="loaded" :disabled="busy || blocked">
       <div class="c2-grid">
-        <label v-for="key in ['full_name', 'phone', 'address', 'city', 'postal_code']" :key="key"
+        <label
+          v-for="key in ['full_name', 'phone', 'email', 'address', 'city', 'postal_code']"
+          :key="key"
           >{{ labels[key]
           }}<input
             v-model="values[key]"
-            :type="key === 'phone' ? 'tel' : 'text'"
+            :type="key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'"
             :maxlength="
-              key === 'address'
-                ? 500
-                : key === 'phone'
-                  ? 40
-                  : key === 'city'
-                    ? 150
-                    : key === 'postal_code'
-                      ? 10
-                      : 250
+              key === 'email'
+                ? 254
+                : key === 'address'
+                  ? 500
+                  : key === 'phone'
+                    ? 40
+                    : key === 'city'
+                      ? 150
+                      : key === 'postal_code'
+                        ? 10
+                        : 250
             " /></label
         ><label
           >Grenier accessible<select v-model="values.attic_accessible">

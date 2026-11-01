@@ -91,19 +91,21 @@ def eligible(guard, recipient):
             if guard['kind'] == 'assurance_reminder'
             else source_eligible(guard['event'], user.pk)
         )
-    if guard['kind'] == 'isolation_notice':
+    if guard['kind'] in ('isolation_notice', 'isolation_prospect_notice'):
         from .isolation_mail import eligible as source_eligible
 
-        user = (
-            get_user_model()
-            .objects.filter(pk=guard['user'], is_active=True, email=recipient)
-            .first()
-        )
+        user = get_user_model().objects.filter(pk=guard['user'], is_active=True).first()
         if (
             not user
             or not Membership.objects.filter(
                 user=user, workspace='isolation', role='client', active=True
             ).exists()
+        ):
+            return False
+        if guard['kind'] == 'isolation_prospect_notice':
+            return source_eligible(guard['event'], user.pk, recipient=recipient)
+        if (
+            user.email != recipient
             or get_user_model().objects.filter(email__iexact=recipient, is_active=True).count() != 1
         ):
             return False

@@ -60,6 +60,7 @@ class SlotInput(serializers.Serializer):
 
 
 class BookingInput(SlotInput):
+    prospect_email = serializers.EmailField(max_length=254, required=False, allow_blank=True)
     client_followup_id = serializers.IntegerField(min_value=1, required=False)
     unqualified_id = serializers.IntegerField(min_value=1, required=False)
     previous_visit_id = serializers.IntegerField(min_value=1, required=False)
@@ -414,6 +415,8 @@ class IsolationVisitViewSet(
         canonical.update(client=claims['client']['id'], setter=claims['setter']['id'])
         if 'closer' in claims:
             canonical['closer'] = claims['closer']['id']
+        if 'prospect_email' in data:
+            canonical['prospect_email'] = data['prospect_email']
         if data['publication'] == 'google':
             canonical['publication'] = 'google'
         if 'previous_visit_id' in data:
@@ -490,6 +493,16 @@ class IsolationVisitViewSet(
                 raise Conflict(
                     'La relance doit concerner la dernière visite non tenue de ce prospect.'
                 )
+            email = data.get('prospect_email', prospect.c2.get('email', ''))
+            if data['publication'] == 'google' and not email:
+                raise ValidationError(
+                    {
+                        'prospect_email': 'Renseignez le courriel du prospect pour envoyer sa confirmation.'
+                    }
+                )
+            if 'prospect_email' in data:
+                prospect.c2 = {**prospect.c2, 'email': email}
+                prospect.save(update_fields=['c2'])
             c2_snapshot = captured(prospect)
             calendar(claims['client']['id'])
             available(prospect, claims['client']['id'], data)

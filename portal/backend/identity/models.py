@@ -322,6 +322,9 @@ class CallExclusion(models.Model):
 
 
 class IsolationMailRelay(models.Model):
+    prospect_mail = models.OneToOneField(
+        PortalMail, null=True, on_delete=models.PROTECT, related_name='isolation_prospect_relay'
+    )
     event_id = models.PositiveBigIntegerField(unique=True)
     recipient_id = models.PositiveBigIntegerField()
     mail = models.OneToOneField(PortalMail, null=True, on_delete=models.PROTECT)

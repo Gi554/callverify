@@ -122,7 +122,18 @@ class IsolationReminderTests(TestCase):
         row = response.data['events'][0]
         self.assertEqual(
             set(row),
-            {'id', 'recipient_id', 'visit_id', 'kind', 'created_at', 'prospect_name', 'starts_at'},
+            {
+                'id',
+                'recipient_id',
+                'visit_id',
+                'kind',
+                'created_at',
+                'prospect_name',
+                'starts_at',
+                'ends_at',
+                'prospect_email',
+                'visit_address',
+            },
         )
         client.credentials(
             HTTP_AUTHORIZATION='Bearer ' + issue('mail_eligible', event=row['id'], user=72)

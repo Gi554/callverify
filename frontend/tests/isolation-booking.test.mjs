@@ -40,7 +40,7 @@ code = code
   )
   .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
     name === 'IsolationC2'
-      ? `const IsolationC2={setup(props,{expose,emit}){expose({async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`
+      ? `const IsolationC2={setup(props,{expose,emit}){expose({getEmail(){return globalThis.c2Booking.email},async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`
       : name === 'SidePanel'
         ? `const ${name}={inheritAttrs:false,setup(props,{slots}){return ()=>slots.default?.()}}`
         : `const ${name}={render:()=>null}`,
@@ -109,6 +109,7 @@ function fixture({
   fail = false,
   google = false,
   publicationFail = false,
+  email = 'prospect@example.test',
   absent = false,
   reactivation = false,
   representatives = [],
@@ -119,7 +120,7 @@ function fixture({
     events = [],
     proofs = [],
     changes = []
-  globalThis.c2Booking = { fail, events }
+  globalThis.c2Booking = { fail, events, email }
   const app = renderer.createApp(component, {
     prospectId: 7,
     role: reactivation ? 'client' : 'setter',
@@ -371,5 +372,29 @@ test('Google publication follows the committed booking and a failure never posts
     } finally {
       f.app.unmount()
     }
+  }
+})
+
+test('a new Google booking requires the prospect email and sends the explicit confirmation recipient', async () => {
+  const missing = fixture({ email: '' })
+  try {
+    await flush()
+    await submit(missing)
+    assert.equal(missing.writes.length, 0)
+    assert.ok(
+      all(missing.root).some(
+        (n) => n.props?.role === 'alert' && n.text?.includes('courriel du prospect'),
+      ),
+    )
+  } finally {
+    missing.app.unmount()
+  }
+  const valid = fixture()
+  try {
+    await flush()
+    await submit(valid)
+    assert.equal(valid.writes[0].body.prospect_email, 'prospect@example.test')
+  } finally {
+    valid.app.unmount()
   }
 })

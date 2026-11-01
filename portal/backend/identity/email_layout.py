@@ -22,7 +22,7 @@ def site_name():
 
 def layout(*, title, intro, action, url, notice, details=(), name=''):
     parsed = urlsplit(url)
-    if (
+    if (action or url) and (
         parsed.scheme not in (('http', 'https') if settings.DEBUG else ('https',))
         or not parsed.netloc
         or parsed.username
