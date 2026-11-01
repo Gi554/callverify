@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 const props = defineProps<{ request: (path: string, body?: any) => Promise<any> }>();
-const emit = defineEmits<{ tasks: []; open: [id: number] }>();
+const emit = defineEmits<{ tasks: []; personal: []; open: [id: number] }>();
 const rows = ref<any[]>([]),
   error = ref(''),
   busy = ref(false);
@@ -20,6 +20,7 @@ async function load() {
 }
 async function open(row: any) {
   if (row.kind === 'not_held') emit('tasks');
+  else if (row.kind === 'personal_followup') emit('personal');
   else if (['booked', 'result_due'].includes(row.kind)) emit('open', row.visit_id);
   try {
     await props.request(`isolation-notices/${row.id}/read/`, {});
@@ -57,9 +58,11 @@ onBeforeUnmount(() => {
       {{
         row.kind === 'not_held'
           ? 'Consulter mes rappels'
-          : ['booked', 'result_due'].includes(row.kind)
-            ? 'Ouvrir la visite'
-            : 'Marquer comme lu'
+          : row.kind === 'personal_followup'
+            ? 'Ouvrir mes relances'
+            : ['booked', 'result_due'].includes(row.kind)
+              ? 'Ouvrir la visite'
+              : 'Marquer comme lu'
       }}
     </button>
   </section>

@@ -516,9 +516,11 @@ onBeforeUnmount(() => {
               <span class="prospect-stage">{{
                 row.queue_reason === 'appointment_booked'
                   ? 'RDV pris'
-                  : row.queue_reason === 'unqualified'
-                    ? 'Rendez-vous non qualifié'
-                    : row.commercial_label || column.label
+                  : row.queue_reason === 'client_followup'
+                    ? 'Relance personnelle du client'
+                    : row.queue_reason === 'unqualified'
+                      ? 'Rendez-vous non qualifié'
+                      : row.commercial_label || column.label
               }}</span>
               <div>
                 <button

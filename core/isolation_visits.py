@@ -21,6 +21,7 @@ from .models import (
     IsolationVisitCalendar,
     IsolationVisitResult,
     IsolationUnqualified,
+    IsolationClientFollowUp,
     AuditEvent,
 )
 from .isolation_work import VisitAuthentication, Pager, Conflict, visible
@@ -57,6 +58,7 @@ class SlotInput(serializers.Serializer):
 
 
 class BookingInput(SlotInput):
+    client_followup_id = serializers.IntegerField(min_value=1, required=False)
     unqualified_id = serializers.IntegerField(min_value=1, required=False)
     previous_visit_id = serializers.IntegerField(min_value=1, required=False)
     publication = serializers.ChoiceField(choices=['internal', 'google'], default='internal')
@@ -85,17 +87,27 @@ def proof(data, user, prospect):
         raise ValidationError('Attestation de réservation invalide ou expirée')
     if prospect.assigned_setter_id is None or claims['setter']['id'] != prospect.assigned_setter_id:
         raise Conflict('Responsable du prospect modifié ou absent')
-    if user.role == 'client' and (
-        claims['client']['id'] != user.pk
-        or claims.get('reactivation') != data.get('unqualified_id')
-        or not data.get('unqualified_id')
-    ):
-        raise PermissionDenied('Attestation de reprise de cette fiche requise.')
+    if user.role == 'client':
+        scopes = int(bool(data.get('unqualified_id'))) + int(bool(data.get('client_followup_id')))
+        if (
+            claims['client']['id'] != user.pk
+            or scopes != 1
+            or claims.get('reactivation') != data.get('unqualified_id')
+            or claims.get('followup') != data.get('client_followup_id')
+        ):
+            raise PermissionDenied('Attestation de reprise de cette fiche requise.')
     return claims
 
 
-def booking_subject(user, pk, unqualified_id=None):
+def booking_subject(user, pk, unqualified_id=None, client_followup_id=None):
     if user.role == 'client':
+        if client_followup_id and not unqualified_id:
+            return get_object_or_404(
+                IsolationClientFollowUp.objects.select_related('visit__prospect'),
+                pk=client_followup_id,
+                visit__prospect_id=pk,
+                visit__client_id=user.pk,
+            ).visit.prospect
         if not unqualified_id:
             raise PermissionDenied('La réservation client requiert une fiche non qualifiée.')
         return get_object_or_404(
@@ -104,7 +116,7 @@ def booking_subject(user, pk, unqualified_id=None):
             prospect_id=pk,
             client_id=user.pk,
         ).prospect
-    if unqualified_id is not None:
+    if unqualified_id is not None or client_followup_id is not None:
         raise ValidationError('La reprise directe est réservée au client.')
     return get_object_or_404(visible(user), pk=pk)
 
@@ -276,6 +288,7 @@ class IsolationVisitViewSet(
             or (
                 set(params) != {'prospect_id', 'start', 'end', 'proof'}
                 and set(params) != {'prospect_id', 'start', 'end', 'proof', 'unqualified_id'}
+                and set(params) != {'prospect_id', 'start', 'end', 'proof', 'client_followup_id'}
             )
         ):
             raise ValidationError('Prospect, période et preuve de réservation requis.')
@@ -291,10 +304,21 @@ class IsolationVisitViewSet(
             if 'unqualified_id' in params
             else None
         )
-        prospect = booking_subject(request.user, int(prospect_id), unqualified_id)
-        if (
-            request.user.role == 'client'
-            and not IsolationUnqualified.objects.filter(pk=unqualified_id, active=True).exists()
+        client_followup_id = (
+            serializers.IntegerField(min_value=1).run_validation(params['client_followup_id'])
+            if 'client_followup_id' in params
+            else None
+        )
+        prospect = booking_subject(
+            request.user, int(prospect_id), unqualified_id, client_followup_id
+        )
+        if request.user.role == 'client' and not (
+            IsolationUnqualified.objects.filter(pk=unqualified_id, active=True).exists()
+            if unqualified_id
+            else IsolationClientFollowUp.objects.filter(
+                pk=client_followup_id,
+                closed_at__isnull=True,
+            ).exists()
         ):
             raise Conflict('Cette fiche a déjà été programmée.')
         try:
@@ -315,7 +339,13 @@ class IsolationVisitViewSet(
         external_busy = []
         if request.method == 'POST':
             claims = proof(
-                {'proof': params['proof'], 'unqualified_id': unqualified_id}, request.user, prospect
+                {
+                    'proof': params['proof'],
+                    'unqualified_id': unqualified_id,
+                    'client_followup_id': client_followup_id,
+                },
+                request.user,
+                prospect,
             )
             from packages.calendar_connectors.booking import check
 
@@ -359,7 +389,8 @@ class IsolationVisitViewSet(
 
     def create(self, request):
         if request.user.role == 'client' and (
-            not isinstance(request.data, dict) or not request.data.get('unqualified_id')
+            not isinstance(request.data, dict)
+            or not (request.data.get('unqualified_id') or request.data.get('client_followup_id'))
         ):
             raise PermissionDenied('La réservation client requiert une fiche non qualifiée.')
         serializer = BookingInput(data=request.data)
@@ -367,7 +398,12 @@ class IsolationVisitViewSet(
         data = serializer.validated_data
         if request.user.role == 'client' and data['publication'] != 'google':
             raise PermissionDenied('La reprise client doit être publiée dans son agenda Google.')
-        prospect = booking_subject(request.user, data['prospect_id'], data.get('unqualified_id'))
+        prospect = booking_subject(
+            request.user,
+            data['prospect_id'],
+            data.get('unqualified_id'),
+            data.get('client_followup_id'),
+        )
         claims = proof(data, request.user, prospect)
         canonical = {
             key: (data[key].isoformat() if key in ('starts_at', 'ends_at') else data[key])
@@ -382,6 +418,8 @@ class IsolationVisitViewSet(
             canonical['previous_visit_id'] = data['previous_visit_id']
         if 'unqualified_id' in data:
             canonical['unqualified_id'] = data['unqualified_id']
+        if 'client_followup_id' in data:
+            canonical['client_followup_id'] = data['client_followup_id']
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
         def replay(row):
@@ -407,7 +445,17 @@ class IsolationVisitViewSet(
             if prospect.assigned_setter_id != claims['setter']['id']:
                 raise Conflict('Responsable modifié : rechargez')
             pending = IsolationUnqualified.objects.filter(prospect=prospect, active=True).first()
-            if request.user.role == 'client' and (
+            personal = IsolationClientFollowUp.objects.filter(
+                pk=data.get('client_followup_id')
+            ).first()
+            if request.user.role == 'client' and data.get('client_followup_id'):
+                if (
+                    not personal
+                    or personal.closed_at
+                    or personal.visit.client_id != request.user.pk
+                ):
+                    raise Conflict('Cette relance personnelle a déjà été programmée ou modifiée.')
+            elif request.user.role == 'client' and (
                 not pending
                 or pending.pk != data.get('unqualified_id')
                 or pending.client_id != request.user.pk
@@ -435,6 +483,10 @@ class IsolationVisitViewSet(
             ):
                 raise Conflict(
                     'La visite précédente doit être la dernière visite non tenue de ce prospect et de ce client.'
+                )
+            if personal and (not previous or previous.pk != personal.visit_id):
+                raise Conflict(
+                    'La relance doit concerner la dernière visite non tenue de ce prospect.'
                 )
             c2_snapshot = captured(prospect)
             calendar(claims['client']['id'])
@@ -477,6 +529,11 @@ class IsolationVisitViewSet(
                 pending.active = False
                 pending.programmed_visit = row
                 pending.save(update_fields=['active', 'programmed_visit'])
+            IsolationClientFollowUp.objects.filter(
+                visit__prospect=prospect,
+                visit__client_id=row.client_id,
+                closed_at__isnull=True,
+            ).update(closed_at=timezone.now(), programmed_visit=row, revision=F('revision') + 1)
             from .isolation_followups import event
 
             event(

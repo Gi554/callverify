@@ -16,6 +16,7 @@ import PortalRecovery from './PortalRecovery.vue';
 import PortalInvitationAccept from './PortalInvitationAccept.vue';
 import IsolationWorkQueue from './IsolationWorkQueue.vue';
 import IsolationClient from './IsolationClient.vue';
+import IsolationClientFollowUps from './IsolationClientFollowUps.vue';
 import IsolationQualification from './IsolationQualification.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import AssuranceProspects from './AssuranceProspects.vue';
@@ -318,6 +319,7 @@ const navigation = computed(() => {
       { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
       { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'visit-history', label: 'Rendez-vous passés', icon: 'appointments' },
+      { id: 'personal-followups', label: 'À recontacter par moi-même', icon: 'followups' },
       { id: 'missing-updates', label: 'Rendez-vous sans mise à jour', icon: 'appointments' },
       { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
     ];
@@ -354,6 +356,12 @@ const navigation = computed(() => {
   } else {
     if (role.value === 'administrator')
       items.push({ id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' });
+    if (role.value === 'administrator')
+      items.push({
+        id: 'personal-followups',
+        label: 'Relances personnelles du client',
+        icon: 'followups',
+      });
     if (role.value === 'administrator')
       items.push({
         id: 'missing-updates',
@@ -556,6 +564,7 @@ onMounted(async () => {
           v-if="workspace === 'isolation' && role === 'client' && ready"
           :request="isolation"
           @open="openIsolationVisit"
+          @personal="selectModule('personal-followups')"
         />
         <p v-if="calendarNotice" role="status">{{ calendarNotice }}</p>
         <p v-if="!ready" class="subtle">Chargement de votre espace…</p>
@@ -834,6 +843,15 @@ onMounted(async () => {
                       :request="isolation"
                       :portal="portal"
                       :role="role"
+                    />
+                    <IsolationClientFollowUps
+                      v-else-if="
+                        isolationModule === 'personal-followups' &&
+                        ['client', 'administrator'].includes(role)
+                      "
+                      :role="role"
+                      :portal="portal"
+                      :request="isolation"
                     />
                     <IsolationVisits
                       v-else-if="

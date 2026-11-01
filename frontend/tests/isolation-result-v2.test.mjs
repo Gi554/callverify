@@ -133,7 +133,8 @@ test('attendance and sale require an explicit choice with optional notes', async
     assert.equal(f.writes.length, 0)
     const selects = all(f.root).filter((n) => n.tag === 'select')
     set(selects[0], 'yes')
-    set(selects[1], 'no')
+    await flush()
+    set(all(f.root).filter((n) => n.tag === 'select')[1], 'no')
     await flush()
     await submit(f)
     assert.deepEqual(f.writes[0].body, {
@@ -148,21 +149,32 @@ test('attendance and sale require an explicit choice with optional notes', async
   }
 })
 
-test('a sale requires attendance and a no-show cannot silently become a sale', async () => {
+test('no-show requires a follow-up owner and reason and hides the sale question', async () => {
   const f = fixture()
   try {
     await flush()
-    let selects = all(f.root).filter((n) => n.tag === 'select')
-    set(selects[0], 'no')
-    set(selects[1], 'yes')
+    const presence = all(f.root).find((n) => n.tag === 'select')
+    set(presence, 'no')
+    presence.props.onChange()
     await flush()
     await submit(f)
     assert.equal(f.writes.length, 0)
-    set(selects[1], 'no')
+    const selects = all(f.root).filter((n) => n.tag === 'select')
+    assert.equal(selects.length, 2)
+    set(selects[1], 'client')
+    await submit(f)
+    assert.equal(f.writes.length, 0)
+    set(
+      all(f.root).find((n) => n.tag === 'textarea'),
+      'Prospect indisponible',
+    )
     await flush()
     await submit(f)
     assert.equal(f.writes[0].body.performed, false)
     assert.equal(f.writes[0].body.closed, false)
+    assert.equal(f.writes[0].body.follow_up_owner, 'client')
+    assert.equal(f.writes[0].body.absence_reason, 'Prospect indisponible')
+    assert.equal(f.writes[0].body.follow_up_at, null)
   } finally {
     f.close()
   }

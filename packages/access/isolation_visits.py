@@ -30,7 +30,15 @@ def verify_closer(token, actor, visit):
 
 
 def issue_booking(
-    actor, prospect, setter, setter_name, client, client_name, reactivation=None, closer=None
+    actor,
+    prospect,
+    setter,
+    setter_name,
+    client,
+    client_name,
+    reactivation=None,
+    closer=None,
+    followup=None,
 ):
     return signing.dumps(
         {
@@ -40,6 +48,7 @@ def issue_booking(
             'setter': {'id': setter, 'name': setter_name},
             'client': {'id': client, 'name': client_name},
             **({'reactivation': reactivation} if reactivation is not None else {}),
+            **({'followup': followup} if followup is not None else {}),
             **({'closer': closer} if closer is not None else {}),
         },
         key=key_for('isolation'),
@@ -73,4 +82,11 @@ def verify_booking(token, actor, prospect):
         or claims['client']['id'] != actor
     ):
         raise signing.BadSignature('Invalid reactivation')
+    if 'followup' in claims and (
+        type(claims['followup']) is not int
+        or claims['followup'] <= 0
+        or claims['client']['id'] != actor
+        or 'reactivation' in claims
+    ):
+        raise signing.BadSignature('Invalid follow-up')
     return claims
