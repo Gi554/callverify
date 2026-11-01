@@ -1,3 +1,4 @@
+from packages import payroll_models
 from datetime import time
 from django.db import models
 
@@ -170,6 +171,7 @@ class SetterRate(models.Model):
 
 
 class AppointmentReport(models.Model):
+    payroll_term_id = models.PositiveBigIntegerField(null=True, blank=True)
     unit_rate_cad = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
     rate_revision = models.PositiveIntegerField(null=True, blank=True)
     valued_at = models.DateTimeField(null=True, blank=True)
@@ -480,3 +482,19 @@ class AgreementDocument(models.Model):
                 fields=['agreement', 'document'], name='unique_agreement_document'
             )
         ]
+
+
+class SetterPayrollAccount(payroll_models.Account):
+    pass
+
+
+class SetterPayrollTerms(payroll_models.Terms):
+    pass
+
+
+class SetterPayrollPayment(payroll_models.Payment):
+    pass
+
+
+class SetterPayrollAdjustment(payroll_models.Adjustment):
+    pass

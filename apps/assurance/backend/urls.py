@@ -102,3 +102,13 @@ urlpatterns += [
     path('api/assurance/compensation/<int:setter_id>/value/', compensation.value_missing),
     path('api/assurance/compensation/<int:setter_id>/details/', compensation.details),
 ]
+
+from .crm import payroll
+
+urlpatterns += [
+    path('api/assurance/payroll/', payroll.overview),
+    path('api/assurance/payroll/<int:agent>/', payroll.overview),
+    path('api/assurance/payroll/<int:agent>/terms/', payroll.terms),
+    path('api/assurance/payroll/<int:agent>/terms/<int:pk>/', payroll.terms),
+    path('api/assurance/payroll/<int:agent>/payments/', payroll.payment),
+]

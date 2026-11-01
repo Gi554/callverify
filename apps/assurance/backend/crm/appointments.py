@@ -506,6 +506,9 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
             row.status = 'cancelled'
             row.revision += 1
             row.save(update_fields=['status', 'revision', 'updated_at'])
+            from .payroll import reconcile
+
+            reconcile(row.setter_id, request.user.pk)
             audit(request.user, row, 'appointment.cancelled', before, data['reason'])
         return Response(output(row, request.user))
 

@@ -94,3 +94,13 @@ urlpatterns += [
         isolation_reminders.mail_eligible,
     ),
 ]
+
+from core import payroll as isolation_payroll
+
+urlpatterns += [
+    path('api/payroll/', isolation_payroll.overview),
+    path('api/payroll/<int:agent>/', isolation_payroll.overview),
+    path('api/payroll/<int:agent>/terms/', isolation_payroll.terms),
+    path('api/payroll/<int:agent>/terms/<int:pk>/', isolation_payroll.terms),
+    path('api/payroll/<int:agent>/payments/', isolation_payroll.payment),
+]

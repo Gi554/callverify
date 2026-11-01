@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — rémunération, objectifs et registre des règlements
+
+Dans chaque espace séparé, l’administrateur définit des conditions individuelles datées en CAD : objectif hebdomadaire ou mandat, tarif de présence et, en Isolation, prime de vente distincte. Les périodes ne se chevauchent pas ; seules les périodes futures sont modifiables avec contrôle de révision. La validation rémunérable fige le tarif applicable, sa provenance et sa révision sans recalcul rétroactif des unités déjà valorisées. Les tarifs historiques restent accessibles dans leur section dédiée.
+
+L’onglet setter « Mes gains et mon objectif » expose uniquement ses données en lecture : présences, ventes Isolation, progression, gains sur la période choisie et solde cumulé. L’administrateur enregistre des règlements effectués hors Orvia avec date, référence, auteur et note. Aucun virement bancaire. L’identifiant idempotent, la référence unique par setter, le contrôle de révision et le verrouillage du compte empêchent de dépenser deux fois un même solde. Toute correction conserve le règlement initial et rend visible un ajustement, y compris un montant à régulariser si les versements dépassent les gains corrigés. Les écritures et audits sont atomiques.
+
+Les historiques paiements/ajustements sont paginés par 25 ; les 100 dernières périodes contractuelles sont consultables. Les compteurs monétaires cumulés sont explicitement séparés des indicateurs de période, calculés selon la date du rendez-vous au Québec. Les montants sans tarif restent signalés et ne deviennent pas de faux gains. L’auteur est identifié par son identifiant de compte. Un maximum de 500 agents s’applique à l’annuaire administratif.
+
+Vérifications locales : 243 tests Isolation et 402 Assurance (tests PostgreSQL réservés à la CI), 213 tests frontend, types, lint, compilation et absence de migration manquante. Deux tests PostgreSQL supplémentaires contrôlent paiements simultanés et rejeu simultané. La recette visuelle reste à faire : l’outil navigateur refuse encore l’accès local. Les autres points du retour sont suivis dans `docs/CLIENT_REQUEST_NOV2026.md` et ne sont pas déclarés terminés par cette livraison.
+
 ## Fiche du prospect côté conseiller : « Fiche client » avant « Résultat »
 
 Dans le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance), l’onglet « Fiche client » passe avant « Résultat » et s’ouvre en premier : le conseiller relit les informations du client avant de déclarer le résultat du rendez-vous. Les autres onglets (Qualification reçue, Historique des rendez-vous) et leur contenu sont inchangés.

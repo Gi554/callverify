@@ -5,6 +5,7 @@ import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
 import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
+import PayrollLedger from './PayrollLedger.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
@@ -388,6 +389,8 @@ const navigation = computed(() => {
     items.splice(1, 0, { id: 'client-folders', label: 'Dossiers clients', icon: 'agreements' });
   if (['setter', 'administrator'].includes(role.value))
     items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
+  if (role.value === 'setter')
+    items.push({ id: 'earnings', label: 'Mes gains et mon objectif', icon: 'statistics' });
   return items;
 });
 // Prospect card to open on arrival in Prospects (from the calls module).
@@ -715,8 +718,15 @@ onMounted(async () => {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
+                  <PayrollLedger
+                    v-if="activeModule === 'earnings' && role === 'setter'"
+                    :workspace="workspace"
+                    :role="role"
+                    :request="workspace === 'assurance' ? assurance : isolation"
+                    :portal="portal"
+                  />
                   <ClientFolders
-                    v-if="activeModule === 'client-folders' && role === 'administrator'"
+                    v-else-if="activeModule === 'client-folders' && role === 'administrator'"
                     :workspace="workspace === 'assurance' ? 'assurance' : 'isolation'"
                     :request="workspace === 'assurance' ? assurance : isolation"
                     :portal="portal"

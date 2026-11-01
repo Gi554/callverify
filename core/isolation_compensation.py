@@ -155,8 +155,28 @@ def rates(request):
 
 
 def capture(visit, report, actor_id, rate=None):
+    result = _capture(visit, report, actor_id, rate)
+    from .payroll import reconcile
+
+    reconcile(visit.setter_id, actor_id, correction=not result)
+    return result
+
+
+def _capture(visit, report, actor_id, rate=None):
     if not report.performed or visit.status != 'scheduled' or visit.ends_at > timezone.now():
         return False
+    if rate is None:
+        from .payroll import active_terms
+        from types import SimpleNamespace
+
+        terms = active_terms(visit.setter_id)
+        if terms:
+            rate = SimpleNamespace(
+                attendance_cad=terms.attendance_cad,
+                sale_bonus_cad=terms.bonus_cad,
+                revision=terms.revision,
+                term_id=terms.pk,
+            )
     if rate is None:
         rate = IsolationSetterRate.objects.filter(
             setter_id=visit.setter_id, client_id=visit.client_id
@@ -172,14 +192,19 @@ def capture(visit, report, actor_id, rate=None):
             setattr(report, component + '_unit_cad', amount)
             setattr(report, component + '_rate_revision', rate.revision)
             setattr(report, component + '_valued_at', timezone.now())
-            changed[component] = {'unit_cad': money(amount), 'revision': rate.revision}
+            setattr(report, component + '_term_id', getattr(rate, 'term_id', None))
+            changed[component] = {
+                'unit_cad': money(amount),
+                'revision': rate.revision,
+                'term_id': getattr(rate, 'term_id', None),
+            }
     if not changed:
         return False
     report.save(
         update_fields=[
             component + suffix
             for component in changed
-            for suffix in ('_unit_cad', '_rate_revision', '_valued_at')
+            for suffix in ('_unit_cad', '_rate_revision', '_valued_at', '_term_id')
         ]
     )
     AuditEvent.objects.create(
