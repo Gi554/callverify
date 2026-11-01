@@ -16,6 +16,23 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Isolation — accès du client aux fiches et visites à venir
+
+Le menu du client affiche « Mes fiches clients » et « Mes visites à venir », en plus
+de l’historique et des rendez-vous non qualifiés. La liste des fiches présente les
+coordonnées et le total de dossiers ; « Ouvrir la fiche » affiche dans un panneau
+latéral la qualification transmise, les visites et leurs résultats. Le panneau ne
+charge les visites qu’à son ouverture. Les visites à venir et l’historique gardent
+leurs filtres distincts.
+
+Le périmètre existant est conservé : seuls les prospects associés à une visite du
+client sont accessibles. Les rendez-vous non qualifiés ont leur rubrique séparée.
+Cette livraison ne donne pas un droit de modification de la fiche prospect source.
+
+Vérifications : navigation client, séparation futur/historique, tests API des
+dossiers et visites autorisés (13 tests, 2 tests PostgreSQL ignorés localement),
+TypeScript, lint et compilation. La revue esthétique reste à réaliser.
+
 ## Isolation — dates d’activité et rapports cohérents avec le Québec
 
 Les dates de rappels, activités, observations partagées, compléments de visite, historique

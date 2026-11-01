@@ -2,12 +2,16 @@
 import { ref, onMounted } from 'vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationVisits from './IsolationVisits.vue';
+import SidePanel from './SidePanel.vue';
 const showStatistics = ref(false);
 const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
-const visitsOpen = ref(true);
+const visitsOpen = ref(false),
+  visitsBusy = ref(false),
+  visitsRef = ref<InstanceType<typeof IsolationVisits> | null>(null),
+  dossierName = ref('');
 const summary = ref<any>(null),
   rows = ref<any[]>([]),
   page = ref(1),
@@ -39,7 +43,8 @@ onMounted(load);
     <button class="secondary" @click="showStatistics = !showStatistics">
       {{ showStatistics ? 'Masquer les statistiques' : 'Voir les statistiques' }}</button
     ><IsolationStatistics v-if="showStatistics" role="client" :request="request" />
-    <h3>Mon espace client Isolation</h3>
+    <h3>Mes fiches clients</h3>
+    <p>Retrouvez les coordonnées, qualifications et résultats des visites de chaque client.</p>
     <p v-if="error" role="alert">{{ error }}</p>
     <template v-if="summary"
       ><p>
@@ -84,10 +89,11 @@ onMounted(load);
                 :disabled="busy"
                 @click="
                   prospect = row.id;
+                  dossierName = row.name || 'Prospect sans nom';
                   visitsOpen = true;
                 "
               >
-                Visites et résultats →
+                Ouvrir la fiche
               </button>
             </td>
           </tr>
@@ -124,15 +130,25 @@ onMounted(load);
       "
     >
       Toutes mes visites</button
-    ><IsolationVisits
-      v-if="visitsOpen"
-      :key="prospect || 0"
-      role="client"
-      :prospect-id="prospect"
-      :portal="portal"
-      :request="request"
-      @close="visitsOpen = false"
-      @changed="load"
-    />
+    ><SidePanel
+      :open="visitsOpen"
+      :title="prospect ? dossierName : 'Toutes mes visites'"
+      eyebrow="FICHE CLIENT · ISOLATION"
+      :close-disabled="visitsBusy"
+      @request-close="visitsRef?.close()"
+    >
+      <IsolationVisits
+        v-if="visitsOpen"
+        ref="visitsRef"
+        :key="prospect || 0"
+        role="client"
+        :prospect-id="prospect"
+        :portal="portal"
+        :request="request"
+        @busy="visitsBusy = $event"
+        @close="visitsOpen = false"
+        @changed="load"
+      />
+    </SidePanel>
   </section>
 </template>
