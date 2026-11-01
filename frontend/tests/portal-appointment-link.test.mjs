@@ -189,7 +189,14 @@ test('Isolation client reminder opens the exact authorised visit after login', a
       const visits = find(f, 'IsolationVisits')
       assert.deepEqual(
         find(f, 'CrmShell').props.items.map((item) => item.id),
-        ['overview', 'appointments', 'unqualified', 'visit-history', 'isolation-agenda'],
+        [
+          'overview',
+          'appointments',
+          'contacts',
+          'unqualified',
+          'visit-history',
+          'isolation-agenda',
+        ],
       )
       assert.equal(visits.props['visit-id'], 42)
       assert.equal(f.address.search, '')
@@ -203,6 +210,32 @@ test('Isolation visit hint does not grant a setter access to a client result pan
   const f = await fixture({ loggedIn: true, isolationRole: 'setter', isolationLink: true })
   try {
     assert.equal(find(f, 'IsolationVisits'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('Isolation client can open client files and a separate upcoming visits tab', async () => {
+  const f = await fixture({ loggedIn: true, isolationRole: 'client', isolationLink: true })
+  try {
+    const shell = find(f, 'CrmShell')
+    assert.equal(
+      shell.props.items.find((item) => item.id === 'contacts').label,
+      'Mes fiches clients',
+    )
+    assert.equal(
+      shell.props.items.find((item) => item.id === 'appointments').label,
+      'Mes visites à venir',
+    )
+    shell.props.onNavigate('contacts')
+    await flush()
+    assert.ok(find(f, 'IsolationClient'))
+    shell.props.onNavigate('appointments')
+    await flush()
+    assert.equal(find(f, 'IsolationVisits').props.period, 'upcoming')
+    shell.props.onNavigate('visit-history')
+    await flush()
+    assert.equal(find(f, 'IsolationVisits').props.period, 'history')
   } finally {
     f.close()
   }

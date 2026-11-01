@@ -314,7 +314,8 @@ const navigation = computed(() => {
   if (workspace.value === 'isolation' && role.value === 'client')
     return [
       { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
-      { id: 'appointments', label: 'Visites programmées', icon: 'appointments' },
+      { id: 'appointments', label: 'Mes visites à venir', icon: 'appointments' },
+      { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
       { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'visit-history', label: 'Historique des visites', icon: 'appointments' },
       { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
