@@ -317,10 +317,12 @@ class FollowUps(viewsets.GenericViewSet):
             rows = rows.filter(due_at__gte=timezone.now())
         # Alerts read the latest reminders first to spot new ones; the default stays by due date.
         order = self.request.query_params.get('order', '')
-        if order not in ('', 'recent'):
+        if order not in ('', 'recent', 'latest_due'):
             raise ValidationError('Ordre invalide.')
         if order == 'recent':
             rows = rows.order_by('-created_at', '-pk')
+        elif order == 'latest_due':
+            rows = rows.order_by('-due_at', '-pk')
         return rows
 
     def list(self, request):
