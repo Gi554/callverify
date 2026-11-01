@@ -179,6 +179,24 @@ test('every request path is relative to the API prefix, never starting with a sl
     f.close()
   }
 })
+test('the client file is the first tab and opens first, before the result', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    const tabs = all(f.root)
+      .filter((n) => n.tag === 'nav')
+      .flatMap((n) => n.children)
+      .filter((n) => n.tag === 'button')
+      .map((n) => text(n).trim())
+    assert.deepEqual(tabs.slice(0, 2), ['Fiche client', 'Résultat'])
+    const active = all(f.root).filter(
+      (n) => n.tag === 'button' && /active/.test(JSON.stringify(n.props.class || '')),
+    )
+    assert.equal(text(active[0]).trim(), 'Fiche client')
+  } finally {
+    f.close()
+  }
+})
 test('legacy report keeps a correction reason without making sale mandatory', async () => {
   const f = fixture({ legacy: true })
   try {

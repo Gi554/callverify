@@ -8,7 +8,7 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
 const emit = defineEmits<{ busy: [value: boolean]; updated: [row: any]; open: [id: number] }>();
-const tab = ref('result'),
+const tab = ref('client'),
   busy = ref(false),
   error = ref(''),
   success = ref('');
@@ -210,11 +210,11 @@ onMounted(load);
       </div>
     </div>
     <nav aria-label="Dossier du rendez-vous" class="advisor-tabs">
-      <button :class="{ active: tab === 'result' }" @click="tab = 'result'">
-        <Check :size="16" />Résultat
-      </button>
       <button :class="{ active: tab === 'client' }" @click="tab = 'client'">
         <UserRound :size="16" />Fiche client
+      </button>
+      <button :class="{ active: tab === 'result' }" @click="tab = 'result'">
+        <Check :size="16" />Résultat
       </button>
       <button :class="{ active: tab === 'snapshot' }" @click="tab = 'snapshot'">
         <FilePenLine :size="16" />Qualification reçue

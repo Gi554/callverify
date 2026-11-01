@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Fiche du prospect côté conseiller : « Fiche client » avant « Résultat »
+
+Dans le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance), l’onglet « Fiche client » passe avant « Résultat » et s’ouvre en premier : le conseiller relit les informations du client avant de déclarer le résultat du rendez-vous. Les autres onglets (Qualification reçue, Historique des rendez-vous) et leur contenu sont inchangés.
+
 ## « Mes prospects » du conseiller : cartes sur mobile
 
 Sur téléphone (écran de 760 px ou moins), la liste des prospects du conseiller n’est plus un tableau qui défile sur le côté : chaque prospect devient une carte (nom en tête, puis téléphone, courriel, rendez-vous tenus et le bouton « Ouvrir la fiche » pleine largeur). Les trois compteurs du haut sont plus compacts, les marges de la page réduites. Sur ordinateur, rien ne change.
