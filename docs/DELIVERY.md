@@ -297,18 +297,25 @@ Les libellés visibles « Formulaire C2 » deviennent « Qualification » ; les 
 historiques C2 restent compatibles. Ce lot ne livre pas les nouvelles disponibilités Google,
 notifications, non-qualifiés ou rémunérations de la V2.
 
-### Isolation V2 — lots restants
+### Isolation V2 — état consolidé après les lots 1 à 12
 
-1. Agenda Google du client et représentants : jours/heures, créneaux réels, contrôle final,
-   publication fiable et états d’erreur explicites ; qualification préremplie et âge facultatif.
-2. Visites programmées, historique par occurrence, tenue/vente et rappels setter sur non-tenue.
-3. Notifications et relance livrées au lot 6 ; recette réelle après connexion Google du client.
-4. Rendez-vous non qualifiés : motifs, recherche ville/code postal, tri et réactivation de la
-   même fiche sans perte d’historique.
-5. Statistiques hebdomadaires et rémunération CAD : visite tenue + prime de vente, versionnement
-   des règles et dédoublonnage du processus commercial lors d’une reprogrammation.
-6. Recette complète par rôle ; SMS conditionné à un service intégré. Revue esthétique finale
-   séparée. Assurance conserve son parcours de réservation externe.
+Livrés : résultats d’appel et qualification préremplie, agenda Google unique du client avec
+horaires et contrôle des créneaux, publication avec états explicites, représentant choisi à
+la programmation, visites programmées et historique, tenue/vente indépendantes, rappels et
+notifications client/setter, nouvelles occurrences liées après absence, base des non-qualifiés
+et reprise directe par le client, rapport hebdomadaire/personnalisé et tarifs CAD par setter.
+Le détail, les vérifications et les limites de chaque lot figurent en tête du document.
+
+Reste la recette réelle avec le client : connexion Google et publication activée, programmation,
+réception des courriels, retour de visite et tarifs réels à renseigner par l’administration.
+Les contrôles automatisés utilisent des fournisseurs simulés ; aucun appel ou courriel réel
+n’est lancé pour la recette automatique. Aucun SMS disponible tant qu’un service n’est intégré.
+La revue esthétique finale est séparée et non demandée dans cette tranche. Assurance conserve
+son parcours de réservation externe et ne demande pas de résultat de vente au conseiller.
+
+Correction de clôture : la commande principale du tableau de bord client ouvre les visites
+programmées, au lieu de l’ancien menu Contacts retiré. Les heures de la synthèse Isolation
+utilisent le Québec, y compris pour les anciennes visites enregistrées avec un autre fuseau.
 
 ## Statistiques Assurance : journées du Québec cohérentes
 

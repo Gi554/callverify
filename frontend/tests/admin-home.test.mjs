@@ -138,6 +138,20 @@ function fixture({
 }
 const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).includes(label))
 
+test('Isolation client home opens its scheduled visits instead of the removed contact menu', async () => {
+  const f = fixture({ workspace: 'isolation', role: 'client', summary: { upcoming: 3 } })
+  try {
+    await flush()
+    button(f, 'Consulter mes visites programmées').props.onClick()
+    assert.deepEqual(f.navigations, ['appointments'])
+    assert.ok(f.requests.includes('visits/?period=upcoming'))
+    assert.ok(!f.requests.includes('statistics/'))
+    assert.doesNotMatch(text(f.root), /Consulter mes dossiers/)
+  } finally {
+    f.close()
+  }
+})
+
 test('Assurance administrator home shows team counters, agenda and alerts without writing', async () => {
   const f = fixture()
   try {
