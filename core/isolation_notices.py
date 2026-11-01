@@ -135,6 +135,10 @@ class Notices(viewsets.GenericViewSet):
             recipient_id=self.request.user.pk, recipient_role=self.request.user.role
         )
         rows = rows.filter(
+            ~Q(recipient_role='setter')
+            | Q(visit__prospect__assigned_setter_id=self.request.user.pk)
+        )
+        rows = rows.filter(
             ~Q(kind__in=['booked', 'result_due']) | Q(pk__in=candidates().values('pk'))
         )
         from django.db.models import F
@@ -193,7 +197,12 @@ class Notices(viewsets.GenericViewSet):
                     'prospect_id': r.visit.prospect_id,
                     'prospect_name': r.visit.prospect.name,
                     'kind': r.kind,
-                    'label': labels.get(r.kind, r.kind),
+                    'label': (
+                        'Présenté — vente à préciser'
+                        if r.kind == 'held'
+                        and getattr(getattr(r.visit, 'result', None), 'closed', None) is None
+                        else labels.get(r.kind, r.kind)
+                    ),
                     'created_at': r.created_at,
                     'read_at': r.read_at,
                     'starts_at': r.visit.starts_at,

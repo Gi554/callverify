@@ -192,11 +192,11 @@ test('Isolation client reminder opens the exact authorised visit after login', a
         [
           'overview',
           'appointments',
-          'contacts',
-          'unqualified',
           'visit-history',
           'personal-followups',
           'missing-updates',
+          'contacts',
+          'unqualified',
           'isolation-agenda',
         ],
       )

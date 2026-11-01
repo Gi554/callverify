@@ -72,3 +72,45 @@ class ClientUnqualifiedTests(TestCase):
         self.assertIsNotNone(IsolationFollowUp.objects.get().closed_at)
         self.assertEqual(IsolationFollowUp.objects.count(), 1)
         self.assertEqual(IsolationVisitResult.objects.get().outcome, 'unqualified')
+
+    def test_public_history_keeps_reasons_and_notes_without_admin_or_financial_metadata(self):
+        self.assertEqual(self.report(closed=False, note='Premier retour').status_code, 201)
+        self.assertEqual(
+            self.unqualified(
+                revision=1, reason='Critères revérifiés', note='Retour non qualifié'
+            ).status_code,
+            201,
+        )
+        url = self.url + 'result-history/'
+        data = self.client.get(url).data
+        self.assertEqual(data['count'], 2)
+        first = data['results'][0]
+        self.assertEqual(first['before']['note'], 'Premier retour')
+        self.assertEqual(first['after']['note'], 'Retour non qualifié')
+        self.assertEqual(first['after']['absence_reason'], 'Ville non desservie')
+        self.assertEqual(first['reason'], 'Critères revérifiés')
+        self.assertNotIn('metadata', first)
+        self.assertNotIn('attendance_unit_cad', first['after'])
+        self.assertNotIn('actor_portal_id', str(data))
+        self.auth(73, 'client')
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.auth(22, 'setter')
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.auth(91, 'administrator')
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_notification_is_withdrawn_when_prospect_leaves_setter_scope(self):
+        self.assertEqual(self.unqualified().status_code, 201)
+        self.auth(21, 'setter')
+        feed = self.client.get('/api/isolation-notices/').data
+        self.assertEqual(feed['count'], 1)
+        notice_id = feed['results'][0]['id']
+        self.prospect.assigned_setter_id = 22
+        self.prospect.save(update_fields=['assigned_setter_id'])
+        self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
+        self.assertEqual(
+            self.client.post(
+                f'/api/isolation-notices/{notice_id}/read/', {}, format='json'
+            ).status_code,
+            404,
+        )

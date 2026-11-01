@@ -8,6 +8,7 @@ import AvailabilitySlots from './AvailabilitySlots.vue';
 import IsolationVisitResult from './IsolationVisitResult.vue';
 import IsolationSharedActivities from './IsolationSharedActivities.vue';
 import IsolationVisitSupplements from './IsolationVisitSupplements.vue';
+import IsolationVisitHistory from './IsolationVisitHistory.vue';
 import SidePanel from './SidePanel.vue';
 const nonqualified = ref(false),
   nonqualifiedReason = ref(''),
@@ -77,6 +78,7 @@ const outcomes: Record<string, string> = {
   not_performed: 'Non effectuée',
 };
 const publicationMessage = ref('');
+const resultHistory = ref<number | null>(null);
 const prospect = ref<any>(null),
   rows = ref<any[]>([]),
   page = ref(1),
@@ -475,7 +477,7 @@ onMounted(() => run(load));
         }}
       </p>
       <h4>
-        {{ row.prospect.name || row.prospect.phone }} ·
+        {{ row.c2_snapshot?.fields?.full_name || row.prospect.name || row.prospect.phone }} ·
         {{
           row.status === 'cancelled'
             ? row.next_visit_id
@@ -485,8 +487,12 @@ onMounted(() => run(load));
               ? 'Non qualifié — non validé'
               : row.result
                 ? row.result.performed
-                  ? 'Effectuée'
-                  : 'Non effectuée'
+                  ? row.result.closed === true
+                    ? 'Présenté — closé'
+                    : row.result.closed === false
+                      ? 'Présenté — non closé'
+                      : 'Présenté — vente à préciser'
+                  : 'Non présenté'
                 : 'Planifiée'
         }}
       </h4>
@@ -513,6 +519,14 @@ onMounted(() => run(load));
         Programmer une nouvelle visite après cette absence
       </button>
       <p>{{ visitDate(row.starts_at) }} → {{ visitDate(row.ends_at) }} · Heure du Québec</p>
+      <p>
+        Téléphone : {{ row.c2_snapshot?.fields?.phone || row.prospect.phone || 'Non renseigné' }}
+      </p>
+      <p>
+        Adresse : {{ row.c2_snapshot?.fields?.address || 'Non renseignée' }}<br />
+        {{ row.c2_snapshot?.fields?.city || 'Ville non renseignée' }} ·
+        {{ row.c2_snapshot?.fields?.postal_code || 'Code postal non renseigné' }}
+      </p>
       <IsolationC2Snapshot :snapshot="row.c2_snapshot" />
       <p>Closer : {{ row.closer?.name || 'Non attribué' }}</p>
       <button
@@ -595,6 +609,19 @@ onMounted(() => run(load));
             : 'Rappel par le setter'
         }}
       </p>
+      <button
+        class="secondary"
+        :disabled="busy"
+        @click="resultHistory = resultHistory === row.id ? null : row.id"
+      >
+        Historique du rendez-vous
+      </button>
+      <IsolationVisitHistory
+        v-if="resultHistory === row.id"
+        :key="`${row.id}-${row.revision}`"
+        :visit-id="row.id"
+        :request="request"
+      />
       <button v-if="row.result" class="secondary" :disabled="busy" @click="supplements = row">
         Consulter / compléter le résultat
       </button>

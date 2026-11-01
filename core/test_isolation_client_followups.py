@@ -69,6 +69,10 @@ class ClientFollowUpTests(TestCase):
         body = {'revision': 0, 'note': 'Rappeler en soirée', 'due_at': due.isoformat()}
         self.assertEqual(self.client.post(base, body, format='json').status_code, 200)
         self.assertEqual(self.client.post(base, body, format='json').status_code, 409)
+        history = self.client.get(f'/api/client-follow-ups/{row.pk}/history/').data
+        self.assertEqual(history['count'], 1)
+        self.assertEqual(history['results'][0]['note'], 'Rappeler en soirée')
+        self.assertEqual(set(history['results'][0]), {'id', 'created_at', 'note', 'due_at'})
         due_notices()
         self.assertFalse(IsolationNotice.objects.filter(kind='personal_followup').exists())
         with patch('django.utils.timezone.now', return_value=due):
@@ -76,8 +80,10 @@ class ClientFollowUpTests(TestCase):
             due_notices()
             self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 1)
             self.assertEqual(IsolationNotice.objects.filter(kind='personal_followup').count(), 1)
+            body.update(revision=1, note='Note complétée à l’échéance')
+            self.assertEqual(self.client.post(base, body, format='json').status_code, 200)
             later = due + timedelta(days=1)
-            body.update(revision=1, due_at=later.isoformat())
+            body.update(revision=2, due_at=later.isoformat())
             self.assertEqual(self.client.post(base, body, format='json').status_code, 200)
             self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
 

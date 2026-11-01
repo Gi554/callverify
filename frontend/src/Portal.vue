@@ -316,11 +316,11 @@ const navigation = computed(() => {
     return [
       { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
       { id: 'appointments', label: 'Rendez-vous à venir', icon: 'appointments' },
-      { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
-      { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'visit-history', label: 'Rendez-vous passés', icon: 'appointments' },
       { id: 'personal-followups', label: 'À recontacter par moi-même', icon: 'followups' },
       { id: 'missing-updates', label: 'Rendez-vous sans mise à jour', icon: 'appointments' },
+      { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
+      { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
     ];
   const items = [

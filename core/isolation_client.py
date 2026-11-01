@@ -57,7 +57,7 @@ class ResultInput(serializers.Serializer):
         if data.get('follow_up_at'):
             from .isolation_followups import explicit
 
-            explicit(data['follow_up_at'], self.initial_data['follow_up_at'])
+            explicit(data['follow_up_at'], self.initial_data['follow_up_at'], future=False)
         if (
             not data['performed']
             and 'follow_up_owner' in data
@@ -108,6 +108,57 @@ def supplement_output(row):
 
 
 class ResultMixin:
+    @action(detail=True, methods=['get'], url_path='result-history')
+    def result_history(self, request, pk=None):
+        visit = self.get_object()
+        rows = AuditEvent.objects.filter(
+            object_id=str(visit.pk),
+            action__in=[
+                'isolation.visit.booked',
+                'isolation.visit.rescheduled',
+                'isolation.visit.cancelled',
+                'isolation.visit.result_recorded',
+                'isolation.visit.closer_reported',
+                'isolation.visit.closer_assigned',
+            ],
+        ).order_by('-pk')
+        allowed = {
+            'performed',
+            'closed',
+            'outcome',
+            'note',
+            'absence_reason',
+            'follow_up_owner',
+            'follow_up_at',
+            'starts_at',
+            'ends_at',
+            'status',
+            'name',
+        }
+
+        def public(value):
+            return (
+                {key: val for key, val in value.items() if key in allowed}
+                if isinstance(value, dict)
+                else None
+            )
+
+        response = self.get_paginated_response(
+            [
+                {
+                    'id': row.pk,
+                    'action': row.action,
+                    'created_at': row.created_at,
+                    'reason': row.metadata.get('reason', ''),
+                    'before': public(row.metadata.get('before')),
+                    'after': public(row.metadata.get('after', row.metadata)),
+                }
+                for row in self.paginate_queryset(rows)
+            ]
+        )
+        response['Cache-Control'] = 'no-store'
+        return response
+
     @action(detail=True, methods=['get', 'post'])
     def supplements(self, request, pk=None):
         if request.method == 'POST' and request.user.role != 'client':
@@ -184,6 +235,13 @@ class ResultMixin:
             if visit.client_id != request.user.pk:
                 raise PermissionDenied('Visite non autorisée')
             existing = IsolationVisitResult.objects.filter(visit=visit).first()
+            if (
+                not data['performed']
+                and data.get('follow_up_at')
+                and data['follow_up_at'] <= timezone.now()
+                and (existing is None or data['follow_up_at'] != existing.follow_up_at)
+            ):
+                raise ValidationError('Une nouvelle date de rappel doit être dans le futur.')
             before = (
                 None
                 if existing is None
@@ -234,6 +292,10 @@ class ResultMixin:
                     'actor_portal_id': request.user.pk,
                     'result_id': row.pk,
                     'before': before,
+                    'after': {
+                        **fields,
+                        'follow_up_at': row.follow_up_at.isoformat() if row.follow_up_at else None,
+                    },
                     'closed': row.closed,
                     'reason': data['reason'],
                     'performed': row.performed,
