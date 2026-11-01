@@ -42,6 +42,12 @@ urlpatterns += [path('api/portal/isolation/setters/', isolation_setters)]
 urlpatterns += [path('api/portal/isolation/visit-proof/', visit_proof)]
 urlpatterns += [path('api/portal/isolation/lot-proof/', lot_proof)]
 urlpatterns += [path('api/portal/isolation/closers/', isolation_closers)]
+from .identity.isolation_compensation import rate_proof as isolation_rate_proof
+
+urlpatterns += [path('api/portal/isolation/compensation-proof/', isolation_rate_proof)]
+from .identity.isolation_call_statistics import statistics as isolation_call_statistics
+
+urlpatterns += [path('api/portal/internal/isolation/call-statistics/', isolation_call_statistics)]
 urlpatterns += [path('api/portal/password/change/', change_password)]
 urlpatterns += [path('api/portal/session/revoke-others/', revoke_others)]
 urlpatterns += [

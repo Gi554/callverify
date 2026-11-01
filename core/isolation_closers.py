@@ -222,6 +222,9 @@ class CloserVisits(viewsets.GenericViewSet):
             from .isolation_notices import result_changed
 
             result_changed(row, report, before, request.user)
+            from .isolation_compensation import capture
+
+            capture(row, report, request.user.pk)
             AuditEvent.objects.create(
                 action='isolation.visit.closer_reported',
                 object_id=str(row.pk),
