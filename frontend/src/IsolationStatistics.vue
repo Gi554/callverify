@@ -191,6 +191,25 @@ onMounted(() => load());
           Télécharger CSV
         </button>
       </div>
+      <section v-if="result.payable" aria-label="Rendez-vous payables">
+        <h3>Rendez-vous payables sur la période</h3>
+        <div class="statistics-kpis">
+          <StatKpi
+            label="Présentés — non closés"
+            :value="number(result.payable.presented_not_closed)"
+          />
+          <StatKpi label="Présentés — closés" :value="number(result.payable.presented_closed)" />
+          <StatKpi label="Total payable" :value="number(result.payable.payable)" />
+        </div>
+        <p>
+          Un seul crédit de présence par dossier commercial ; la présence est payable même sans
+          vente.
+        </p>
+        <p v-if="result.payable.sale_unknown">
+          {{ number(result.payable.sale_unknown) }} présence(s) payable(s) dont la vente reste à
+          préciser.
+        </p>
+      </section>
       <div class="statistics-kpis">
         <StatKpi
           label="Rendez-vous réservés"

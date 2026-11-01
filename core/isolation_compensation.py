@@ -284,6 +284,28 @@ def credited(component):
     return IsolationVisit.objects.annotate(_first=Subquery(first)).filter(pk=F('_first'))
 
 
+def setter_payable(setter_id, params=None):
+    """The same first-presence credit as admin payroll, without exposing any prices."""
+    start, end, lower, upper = span(params or {})
+    rows = credited('attendance').filter(
+        setter_id=setter_id,
+        prospect__assigned_setter_id=setter_id,
+        starts_at__gte=lower,
+        starts_at__lt=upper,
+    )
+    return {
+        'from': start.isoformat(),
+        'to': end.isoformat(),
+        'timezone': 'America/Toronto',
+        **rows.aggregate(
+            payable=Count('pk'),
+            presented_closed=Count('pk', filter=Q(result__closed=True)),
+            presented_not_closed=Count('pk', filter=Q(result__closed=False)),
+            sale_unknown=Count('pk', filter=Q(result__closed__isnull=True)),
+        ),
+    }
+
+
 METRICS = {
     'programmed': Count('pk'),
     'attended': Count('pk', filter=Q(status='scheduled', result__performed=True)),

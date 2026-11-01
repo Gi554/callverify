@@ -132,6 +132,10 @@ def statistics(request):
         'totals': finish(qs.aggregate(**metrics(now))),
         'definition': f'Période selon le début actuel de la visite, jours inclus dans le fuseau {zone}. Setter d’origine ; closer actuellement affecté. Une réattribution déplace donc les visites et leurs résultats courants dans le groupe du nouveau closer, sans modifier leur auteur historique. Client : ses visites uniquement. Setter : ses réservations dont il conserve le prospect. Closer : ses visites actuellement attribuées. Taux effectué (présence) = tenues / résultats de tenue renseignés. Taux de conclusion observé = ventes explicitement conclues / visites tenues, y compris celles dont la vente reste non renseignée ; ces inconnues sont affichées séparément, pas classées comme ventes perdues. Les annulations, rendez-vous futurs et résultats manquants ne deviennent pas des absences. Prospects distincts par groupe, non additionnables. Un report peut déplacer une visite de période.',
     }
+    if request.user.role == 'setter':
+        from .isolation_compensation import setter_payable
+
+        result['payable'] = setter_payable(request.user.pk, {'from': str(start), 'to': str(end)})
     if not kind:
         # Dashboard only: same-length previous period for trends, and one point per local day.
         local = ZoneInfo(zone)

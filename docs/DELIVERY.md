@@ -84,9 +84,25 @@ relances personnelles ouvrent la rubrique du client. Les horaires restent au Qu�
 Vérifications : seuil exact de fin, unicité, autre client, sortie après résultat,
 transition à 24 heures et réservation interne, parcours de navigation et CI complète.
 
-Reste à livrer pour la nouvelle demande : indicateurs
-hebdomadaires payables du setter. Le rappel après 24 heures et la rémunération
-distincte présence/vente existent déjà ; leurs adaptations devront être vérifiées.
+### Demande tableau de bord client — compteurs payables du setter
+
+L’accueil du setter Isolation affiche les présentés non closés, les présentés closés
+et le total payable de sa semaine au Québec (lundi à dimanche). Les statistiques
+affichent les mêmes compteurs pour la période choisie. Les anciennes présences dont
+la vente reste inconnue sont signalées sans être classées comme ventes perdues.
+
+Le calcul réutilise le premier crédit de présence du rapport financier administrateur,
+recherché sur tout l’historique avant application des dates : une occurrence répétée
+du même processus ne crée pas un second paiement. Une présence sans vente est payable,
+une absence ou un non-qualifié ne l’est pas. Les corrections recalculent l’éligibilité.
+Les tarifs et montants restent réservés à l’administration.
+
+Vérifications : dimanche au Québec alors que l’UTC est déjà lundi, présence sans
+vente, vente et vente inconnue, répétition d’un processus sur une autre semaine,
+correction, annulation et autre setter ; TypeScript et CI complète.
+
+Reste à finaliser pour la demande : conservation d’une nouvelle occurrence lors
+d’un report de rendez-vous futur et contrôle final de tous les parcours.
 
 Retouche demandée sur « Mes visites » du représentant : le texte devient
 « Consultez les fiches clients et renseignez le résultat des visites. ». Le bouton
