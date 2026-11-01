@@ -1,3 +1,4 @@
+from .crm.admin_alerts import alerts as admin_alerts
 from .crm.journal import events as journal_events
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -32,6 +33,7 @@ router.register('assignments', AssignmentViewSet, basename='assurance-assignment
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
 urlpatterns = [
+    path('api/assurance/admin-alerts/', admin_alerts),
     path('api/assurance/admin-journal/', journal_events),
     path('api/assurance/admin-journal/<int:pk>/', journal_events),
     path('api/assurance/pipeline/', configuration),
