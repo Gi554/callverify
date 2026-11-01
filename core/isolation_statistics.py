@@ -55,7 +55,12 @@ def metrics(now):
     return {
         'visits': Count('pk', distinct=True),
         'prospects': Count('prospect_id', distinct=True),
-        'cancelled': Count('pk', filter=Q(status='cancelled'), distinct=True),
+        'cancelled': Count(
+            'pk', filter=Q(status='cancelled', next_visit__isnull=True), distinct=True
+        ),
+        'rescheduled': Count(
+            'pk', filter=Q(status='cancelled', next_visit__isnull=False), distinct=True
+        ),
         'upcoming': Count('pk', filter=Q(status='scheduled', starts_at__gt=now), distinct=True),
         'reported': Count('pk', filter=Q(result__isnull=False), distinct=True),
         'performed': Count('pk', filter=Q(result__performed=True), distinct=True),

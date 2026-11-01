@@ -171,7 +171,9 @@ class IsolationC2Tests(TestCase):
         self.assertEqual(moved.status_code, 200, moved.data)
         self.assertEqual(moved.data['c2_snapshot'], snapshot)
         cancelled = self.client.post(
-            url + 'cancel/', {'revision': 1, 'reason': 'Annulation'}, format='json'
+            f"{self.url}{moved.data['id']}/cancel/",
+            {'revision': 0, 'reason': 'Annulation'},
+            format='json',
         )
         self.assertEqual(cancelled.status_code, 200, cancelled.data)
         self.assertEqual(cancelled.data['c2_snapshot'], snapshot)

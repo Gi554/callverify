@@ -101,8 +101,25 @@ Vérifications : dimanche au Québec alors que l’UTC est déjà lundi, présen
 vente, vente et vente inconnue, répétition d’un processus sur une autre semaine,
 correction, annulation et autre setter ; TypeScript et CI complète.
 
-Reste à finaliser pour la demande : conservation d’une nouvelle occurrence lors
-d’un report de rendez-vous futur et contrôle final de tous les parcours.
+### Demande tableau de bord client — occurrences conservées lors d’un report
+
+Reporter une visite future crée désormais une nouvelle occurrence liée à l’ancienne,
+au même prospect et au même processus, en conservant qualification, setter d’origine
+et représentant. L’ancienne garde son créneau et apparaît comme reprogrammée dans
+l’historique ; une vraie annulation reste distincte dans les statistiques.
+
+Les conflits CRM et Google sont contrôlés avant l’enregistrement atomique. Pour
+Google, deux intentions signées persistent : retrait de l’ancien événement, puis
+publication du nouveau. L’interface effectue ce retrait avant la nouvelle publication ;
+le worker reprend ensuite les intentions en ordre d’identifiant si une opération échoue.
+La confirmation Google reste distincte de la validation en base de données.
+
+Vérifications : ancien créneau inchangé, nouvelle occurrence, liens et qualification
+conservés, permissions après transfert, versions, annulation de la nouvelle occurrence,
+échec calendrier sans report partiel, intentions Google liées aux deux visites,
+concurrence report/réservation et compilation.
+
+Reste à finaliser : recette globale et contrôle des historiques client.
 
 Retouche demandée sur « Mes visites » du représentant : le texte devient
 « Consultez les fiches clients et renseignez le résultat des visites. ». Le bouton
