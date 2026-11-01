@@ -16,6 +16,43 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Isolation — confirmation du rendez-vous au client et au prospect
+
+Les nouvelles réservations Google demandent le courriel du prospect. Le champ est
+saisi dans la qualification C2 (brouillon facultatif, courriel nécessaire pour la
+confirmation Google), ou dans le formulaire de reprise d’une relance personnelle.
+Une adresse importée reconnue peut préremplir le brouillon. L’adresse est validée,
+conservée dans la fiche et figée dans la copie de qualification du rendez-vous.
+Les anciennes visites et les appels API internes historiques restent consultables.
+
+Après publication Google confirmée, le client reçoit sa confirmation Orvia avec
+le lien sécurisé vers la visite ; le prospect reçoit sa propre confirmation avec
+date, horaires du Québec et adresse, sans accès au CRM ni qualification interne.
+Les deux messages passent par la file SMTP chiffrée existante et disposent chacun
+d’un journal d’envoi, avec reprise indépendante en cas d’erreur. Avant envoi, le
+serveur revérifie la visite, son créneau, sa publication, le client actif et l’adresse
+figée du prospect : une annulation ou un ancien créneau ne déclenche pas une
+confirmation encore en attente. Les relances de résultats restent réservées au client.
+L’événement Isolation est créé avec un rappel agenda 30 minutes avant la visite.
+
+Vérifications locales : 229 tests Isolation (16 contrôles PostgreSQL ignorés),
+315 tests portail (14 contrôles PostgreSQL ignorés), 208 tests frontend, typage,
+compilation, Ruff, ESLint et formatage. Tests dédiés : deux destinataires distincts,
+chiffrement, rejeu sans nouvelle file, reprise SMTP indépendante, propriétaire
+inactif, adresse différente, absence de lien privé dans le mail prospect, courriel
+absent/invalide avant réservation et rappel agenda sans invitation externe.
+Migration nullable pour le second journal d’envoi. Les tests généraux des scripts
+Bash ne passent pas localement sous Windows ; validation de cette suite sous Linux
+par la CI obligatoire avant fusion.
+
+Limites : réception SMTP réelle à valider avec les adresses de recette ; une adresse
+absente, invalide ou de démonstration en .invalid ne reçoit pas de message. Les
+visites historiques sans courriel ne donnent pas lieu à un envoi prospect inventé.
+Le rappel dépend des notifications autorisées chez le fournisseur et sur l’appareil.
+Aucune invitation Google ni génération de lien Meet dans cette livraison. SMTP est
+au moins une fois : le journal évite les rejeux applicatifs, sans garantir qu’une
+réponse SMTP perdue ne produise jamais un doublon chez le destinataire.
+
 ## Agenda visuel — client Isolation et conseiller Assurance
 
 « Agenda et disponibilités » s’ouvre désormais sur « Mon calendrier » : grille

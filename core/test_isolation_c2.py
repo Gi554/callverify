@@ -25,6 +25,22 @@ class IsolationC2Tests(TestCase):
             self.draft_url, {'revision': 0, 'c2': {**fixtures.C2_DATA, **changes}}, format='json'
         )
 
+    def test_google_booking_requires_a_valid_prospect_email_and_freezes_it_in_the_snapshot(self):
+        values = fixtures.C2_DATA.copy()
+        values.pop('email')
+        self.prospect.c2 = values
+        self.prospect.save()
+        response = self.book(publication='google')
+        self.assertEqual(response.status_code, 400, response.data)
+        self.prospect.refresh_from_db()
+        self.assertEqual(self.prospect.assignment_revision, 0)
+        self.assertEqual(self.save(email='not-an-email').status_code, 400)
+        response = self.book(publication='google', prospect_email='prospect@example.test')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['c2_snapshot']['fields']['email'], 'prospect@example.test')
+        self.prospect.refresh_from_db()
+        self.assertEqual(self.prospect.c2['email'], 'prospect@example.test')
+
     def test_age_is_optional_for_booking_but_required_qualification_remains_checked(self):
         Prospect.objects.filter(pk=self.prospect.pk).update(c2={**fixtures.C2_DATA, 'age': None})
         response = self.book()
@@ -116,7 +132,7 @@ class IsolationC2Tests(TestCase):
 
     def test_every_required_field_blocks_new_booking_except_electricity_and_age(self):
         for key in fixtures.C2_DATA:
-            if key in ('monthly_electricity', 'age'):
+            if key in ('monthly_electricity', 'age', 'email'):
                 continue
             self.prospect.c2 = {k: v for k, v in fixtures.C2_DATA.items() if k != key}
             self.prospect.save()

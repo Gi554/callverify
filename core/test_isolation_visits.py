@@ -13,6 +13,7 @@ from .test_isolation_activity import assigned_fixture
 C2_DATA = {
     'full_name': 'Client test',
     'phone': '5145550100',
+    'email': 'prospect@example.test',
     'address': '12 rue Exemple',
     'city': 'Montréal',
     'postal_code': 'H2X 1Y4',

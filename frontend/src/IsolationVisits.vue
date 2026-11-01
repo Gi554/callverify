@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { CalendarDays, Clock3 } from 'lucide-vue-next';
+import { CalendarDays, Clock3, ArrowUpRight } from 'lucide-vue-next';
 import IsolationPageHeader from './IsolationPageHeader.vue';
 import IsolationVisitCard from './IsolationVisitCard.vue';
 import { visitName, initials, visitStatus, visitTone } from './isolation-visit-display';
@@ -47,6 +47,8 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
 const listView = computed(() => !props.visitId && !props.prospectId);
+const prospectEmail = ref('');
+const prospectEmailInitial = ref('');
 const selectedVisit = ref<any>(null),
   detailBusy = ref(false),
   detailRef = ref<any>(null);
@@ -93,7 +95,8 @@ function close() {
     (!c2Dirty.value &&
       !nonqualifiedReason.value &&
       !nonqualifiedNote.value &&
-      !resultDirty.value) ||
+      !resultDirty.value &&
+      prospectEmail.value === prospectEmailInitial.value) ||
     window.confirm('Quitter sans enregistrer les modifications ?')
   )
     emit('close');
@@ -176,6 +179,10 @@ async function load() {
           ? `isolation-unqualified/${props.reactivationId}/prospect/`
           : `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
     );
+  if (props.clientFollowupId && prospect.value) {
+    prospectEmail.value = prospect.value.email || '';
+    prospectEmailInitial.value = prospectEmail.value;
+  }
   if (prospect.value && (props.role !== 'client' || props.reactivationId || props.clientFollowupId))
     await loadRepresentatives();
   const data = await props.request(
@@ -243,6 +250,11 @@ async function save() {
       body.reason = reason.value;
       saved = await props.request(`visits/${record.id}/reschedule/`, body);
     } else {
+      body.prospect_email = props.clientFollowupId
+        ? prospectEmail.value.trim()
+        : c2.value.getEmail().trim();
+      if (!body.prospect_email)
+        throw new Error('Renseignez le courriel du prospect pour envoyer sa confirmation.');
       body.prospect_id = current.id;
       body.request_id = requestId;
       body.publication = 'google';
@@ -411,6 +423,16 @@ onMounted(() => run(load));
           <p>
             L’agenda et les créneaux sont ceux du client Isolation. Le représentant est affecté à la
             visite, sans agenda personnel connecté.
+          </p>
+          <label v-if="clientFollowupId"
+            >Courriel du prospect<input
+              v-model="prospectEmail"
+              type="email"
+              maxlength="254"
+              required
+          /></label>
+          <p>
+            Une confirmation sera envoyée au prospect et au client après publication de la visite.
           </p>
           <AvailabilitySlots
             v-if="prospect"

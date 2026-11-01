@@ -76,14 +76,22 @@ def body(provider, key, workspace, source):
             'description': 'Consultez Orvia pour les informations du dossier.',
             'start': {'dateTime': first, 'timeZone': 'UTC'},
             'end': {'dateTime': last, 'timeZone': 'UTC'},
-            'reminders': {'useDefault': False},
+            'reminders': {
+                'useDefault': False,
+                **(
+                    {'overrides': [{'method': 'popup', 'minutes': 30}]}
+                    if workspace == 'isolation'
+                    else {}
+                ),
+            },
             'extendedProperties': {'private': {'amxSync': str(key)}},
         }
     return {
         'subject': title,
         'sensitivity': 'private',
         'showAs': 'busy',
-        'isReminderOn': False,
+        'isReminderOn': workspace == 'isolation',
+        **({'reminderMinutesBeforeStart': 30} if workspace == 'isolation' else {}),
         'body': {
             'contentType': 'text',
             'content': 'Consultez Orvia pour les informations du dossier.',

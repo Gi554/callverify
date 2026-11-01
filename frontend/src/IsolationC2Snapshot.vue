@@ -3,6 +3,7 @@ defineProps<{ snapshot: any; unqualified?: boolean }>();
 const labels: Record<string, string> = {
   full_name: 'Nom et prénom',
   phone: 'Téléphone',
+  email: 'Courriel du prospect',
   address: 'Adresse complète',
   city: 'Ville',
   postal_code: 'Code postal',

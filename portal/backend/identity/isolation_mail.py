@@ -43,7 +43,7 @@ def fetch(path, operation, **claims):
     return response.json()
 
 
-def eligible(event, user):
+def eligible(event, user, recipient=None):
     data = fetch(
         f'/api/internal/isolation/mail-events/{event}/{user}/',
         'mail_eligible',
@@ -52,7 +52,7 @@ def eligible(event, user):
     )
     if type(data.get('eligible')) is not bool:
         raise ValueError('Invalid eligibility')
-    return data['eligible']
+    return data['eligible'] and (recipient is None or data.get('prospect_email') == recipient)
 
 
 def sync():
@@ -97,70 +97,130 @@ def sync():
             if value is None or timezone.is_naive(value):
                 raise ValueError('Invalid event date')
             stamps.append(value)
-        prepared.append((pk, user, visit, name, row['kind'], *stamps))
+        email = row.get('prospect_email', '')
+        address = row.get('visit_address', '')
+        if (
+            not isinstance(email, str)
+            or len(email) > 254
+            or not isinstance(address, str)
+            or len(address) > 750
+        ):
+            raise ValueError('Invalid prospect confirmation')
+        end = parse_datetime(row['ends_at']) if isinstance(row.get('ends_at'), str) else None
+        if email and (end is None or timezone.is_naive(end) or end <= stamps[1]):
+            raise ValueError('Invalid visit end')
+        prepared.append((pk, user, visit, name, row['kind'], *stamps, email, address, end))
         previous = pk
     counts = {'queued': 0, 'existing': 0, 'skipped': 0}
-    for pk, user_id, visit, name, kind, created, starts in prepared:
+
+    def valid_address(email):
+        try:
+            validate_email(email)
+            return not email.lower().endswith('.invalid')
+        except ValidationError:
+            return False
+
+    for pk, user_id, visit, name, kind, created, starts, prospect_email, address, ends in prepared:
         with transaction.atomic():
             user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
             if (
                 not user
-                or user.email.lower().endswith('.invalid')
                 or not Membership.objects.filter(
                     user=user, workspace='isolation', role='client', active=True
                 ).exists()
-                or get_user_model().objects.filter(email__iexact=user.email, is_active=True).count()
-                != 1
                 or not timezone.now() - timedelta(days=7)
                 < created
                 <= timezone.now() + timedelta(minutes=1)
             ):
                 counts['skipped'] += 1
                 continue
-            try:
-                validate_email(user.email)
-            except ValidationError:
+            client_valid = (
+                valid_address(user.email)
+                and get_user_model()
+                .objects.filter(email__iexact=user.email, is_active=True)
+                .count()
+                == 1
+            )
+            prospect_valid = kind == 'booked' and valid_address(prospect_email)
+            if not client_valid and not prospect_valid:
                 counts['skipped'] += 1
                 continue
-            relay, new = IsolationMailRelay.objects.get_or_create(
+            relay, _ = IsolationMailRelay.objects.get_or_create(
                 event_id=pk, defaults={'recipient_id': user_id}
             )
-            if not new:
-                counts['existing'] += 1
-                continue
+            # Serialize both recipient queues even when relay jobs overlap.
+            relay = IsolationMailRelay.objects.select_for_update().get(pk=relay.pk)
+            if relay.recipient_id != user_id:
+                raise ValueError('Event recipient changed')
             when = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
-            title = (
-                'Une nouvelle visite vous attend'
-                if kind == 'booked'
-                else 'Un petit retour sur votre visite ?'
-            )
-            intro = (
-                f'Une visite avec {name} est programmée le {when} (heure du Québec). Retrouvez la qualification et les informations utiles dans votre espace.'
-                if kind == 'booked'
-                else f'Le résultat de la visite avec {name}, prévue le {when} (heure du Québec), reste à renseigner. Merci de confirmer si elle a été tenue et si une vente a été conclue.'
-            )
-            url = f'{public_url()}/crm?workspace=isolation&visit={visit}'
-            notice = 'Ce lien ouvre votre espace sécurisé. La lecture de cet e-mail ne renseigne aucun résultat. Si vous venez de le compléter, vous pouvez ignorer ce rappel.'
-            relay.mail = enqueue(
-                user=user,
-                workspace='isolation',
-                subject='Orvia CRM · Isolation — ' + title,
-                body=f'Bonjour,\n\n{intro}\n\nConsulter la visite : {url}\n\n{notice}\n\nOrvia CRM',
-                html=layout(
-                    title=title,
-                    intro=intro,
-                    action='Consulter la visite',
-                    name=user.get_username(),
-                    url=url,
-                    notice=notice,
-                    details=(('Prospect', name), ('Date de visite', when + ' (Québec)')),
-                ),
-                recipient=user.email,
-                guard={'kind': 'isolation_notice', 'event': pk, 'user': user_id},
-                expires_at=created + timedelta(days=7),
-            )
-            relay.save(update_fields=['mail'])
-            counts['queued'] += 1
+            if client_valid:
+                if relay.mail_id:
+                    counts['existing'] += 1
+                else:
+                    title = (
+                        'Une nouvelle visite vous attend'
+                        if kind == 'booked'
+                        else 'Un petit retour sur votre visite ?'
+                    )
+                    intro = (
+                        f'Une visite avec {name} est programmée le {when} (heure du Québec). Retrouvez la qualification et les informations utiles dans votre espace.'
+                        if kind == 'booked'
+                        else f'Le résultat de la visite avec {name}, prévue le {when} (heure du Québec), reste à renseigner. Merci de confirmer si elle a été tenue et si une vente a été conclue.'
+                    )
+                    url = f'{public_url()}/crm?workspace=isolation&visit={visit}'
+                    notice = 'Ce lien ouvre votre espace sécurisé. La lecture de cet e-mail ne renseigne aucun résultat. Si vous venez de le compléter, vous pouvez ignorer ce rappel.'
+                    relay.mail = enqueue(
+                        user=user,
+                        workspace='isolation',
+                        subject='Orvia CRM · Isolation — ' + title,
+                        body=f'Bonjour,\n\n{intro}\n\nConsulter la visite : {url}\n\n{notice}\n\nOrvia CRM',
+                        html=layout(
+                            title=title,
+                            intro=intro,
+                            action='Consulter la visite',
+                            name=user.get_username(),
+                            url=url,
+                            notice=notice,
+                            details=(('Prospect', name), ('Date de visite', when + ' (Québec)')),
+                        ),
+                        recipient=user.email,
+                        guard={'kind': 'isolation_notice', 'event': pk, 'user': user_id},
+                        expires_at=created + timedelta(days=7),
+                    )
+                    relay.save(update_fields=['mail'])
+                    counts['queued'] += 1
+            if prospect_valid:
+                if relay.prospect_mail_id:
+                    counts['existing'] += 1
+                else:
+                    until = ends.astimezone(ZoneInfo('America/Toronto')).strftime('%H:%M')
+                    intro = f'Votre visite d’isolation est confirmée le {when}, jusqu’à {until} (heure du Québec).'
+                    notice = 'Pour modifier ou annuler votre rendez-vous, contactez la personne avec laquelle vous avez convenu de cette visite.'
+                    details = (
+                        ('Rendez-vous', when + ' (Québec)'),
+                        ('Fin', until),
+                        ('Adresse', address or 'Convenue lors de la réservation'),
+                    )
+                    relay.prospect_mail = enqueue(
+                        user=user,
+                        workspace='isolation',
+                        subject='Orvia CRM · Confirmation de votre visite',
+                        body=f'Bonjour {name},\n\n{intro}\nAdresse : {address or "Convenue lors de la réservation"}\n\n{notice}\n\nOrvia CRM',
+                        html=layout(
+                            title='Votre rendez-vous est confirmé',
+                            intro=intro,
+                            action='',
+                            url='',
+                            name=name,
+                            notice=notice,
+                            details=details,
+                        ),
+                        recipient=prospect_email,
+                        guard={'kind': 'isolation_prospect_notice', 'event': pk, 'user': user_id},
+                        expires_at=created + timedelta(days=7),
+                    )
+                    relay.save(update_fields=['prospect_mail'])
+                    counts['queued'] += 1
     IsolationMailCursor.objects.filter(pk=1, after_id=cursor.after_id).update(
         after_id=previous if len(rows) == 100 else 0
     )

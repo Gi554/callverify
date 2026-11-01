@@ -140,6 +140,7 @@ class ClientFollowUps(viewsets.GenericViewSet):
                 'id': row.pk,
                 'name': row.name,
                 'raw_phone': row.raw_phone,
+                'email': row.c2.get('email', ''),
                 'revision': row.assignment_revision,
                 'assigned_setter': None
                 if row.assigned_setter_id is None
