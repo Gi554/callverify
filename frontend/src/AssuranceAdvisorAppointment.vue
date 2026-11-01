@@ -50,7 +50,8 @@ const canReport = computed(
     appointment.value?.status === 'scheduled' &&
     new Date(appointment.value.ends_at).getTime() <= Date.now(),
 );
-const base = computed(() => `/appointments/${props.appointmentId}`);
+// No leading slash: the API prefix already ends with one, and `//` is a 404 behind the proxy.
+const base = computed(() => `appointments/${props.appointmentId}`);
 function working(value: boolean) {
   busy.value = value;
   emit('busy', value);
