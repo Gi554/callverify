@@ -1,5 +1,6 @@
 import hashlib
 import json
+from uuid import uuid4
 from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.core import signing
@@ -583,6 +584,7 @@ class IsolationVisitViewSet(
                 raise Conflict('Visite modifiée, annulée, renseignée ou déjà commencée')
             before = snapshot(row)
             external = None
+            replacement = None
             if cancel:
                 row.status = 'cancelled'
             else:
@@ -600,8 +602,34 @@ class IsolationVisitViewSet(
                 )
                 if data['starts_at'] <= timezone.now():
                     raise ValidationError('Créneau futur requis')
-                for key in ('starts_at', 'ends_at', 'timezone'):
-                    setattr(row, key, data[key])
+                replacement = IsolationVisit.objects.create(
+                    request_id=uuid4(),
+                    fingerprint=hashlib.sha256(
+                        json.dumps(
+                            {
+                                'previous': row.pk,
+                                'revision': row.revision,
+                                'start': str(data['starts_at']),
+                            },
+                            sort_keys=True,
+                        ).encode()
+                    ).hexdigest(),
+                    previous_visit=row,
+                    process_id=row.process_id,
+                    prospect=row.prospect,
+                    client_id=row.client_id,
+                    client_name=row.client_name,
+                    setter_id=row.setter_id,
+                    setter_name=row.setter_name,
+                    closer_id=row.closer_id,
+                    closer_name=row.closer_name,
+                    booked_by_id=request.user.pk,
+                    c2_snapshot=row.c2_snapshot,
+                    publication=row.publication,
+                    publication_status='pending' if row.publication == 'google' else 'internal',
+                    **{key: data[key] for key in ('starts_at', 'ends_at', 'timezone')},
+                )
+                row.status = 'cancelled'
             row.revision += 1
             if row.publication == 'google':
                 row.publication_status = 'pending'
@@ -626,9 +654,34 @@ class IsolationVisitViewSet(
                     'after': snapshot(row),
                     'reason': data['reason'],
                     **({'external_check': external} if external else {}),
+                    **({'replacement_visit_id': replacement.pk} if replacement else {}),
                 },
             )
+            if replacement:
+                AuditEvent.objects.create(
+                    action='isolation.visit.booked',
+                    object_id=str(replacement.pk),
+                    metadata={
+                        'actor_portal_id': request.user.pk,
+                        'previous_visit_id': row.pk,
+                        'reason': data['reason'],
+                        'after': snapshot(replacement),
+                    },
+                )
         row.refresh_from_db()
+        if replacement:
+            response = booking_response(replacement, request.user)
+            if row.publication == 'google':
+                from packages.access.isolation_events import issue
+
+                response.data['previous_publication_proof'] = issue(
+                    'publish_visit',
+                    actor=request.user.pk,
+                    role=request.user.role,
+                    owner=row.client_id,
+                    visit=row.pk,
+                )
+            return response
         return booking_response(row, request.user)
 
     @action(detail=True, methods=['post'])

@@ -230,7 +230,7 @@ class IsolationVisitTests(TestCase):
             ).status_code,
             200,
         )
-        self.assertEqual(IsolationVisit.objects.get().setter_id, 21)
+        self.assertEqual(set(IsolationVisit.objects.values_list('setter_id', flat=True)), {21})
 
     def test_reschedule_cancel_versions_and_history(self):
         row = self.book().data
@@ -243,9 +243,12 @@ class IsolationVisitTests(TestCase):
             'ends_at': (self.end + timedelta(days=1)).isoformat(),
             'timezone': 'UTC',
         }
-        self.assertEqual(
-            self.client.post(url + 'reschedule/', change, format='json').status_code, 200
-        )
+        moved = self.client.post(url + 'reschedule/', change, format='json')
+        self.assertEqual(moved.status_code, 200, moved.data)
+        moved_url = f"{self.url}{moved.data['id']}/"
+        self.assertNotEqual(moved.data['id'], row['id'])
+        self.assertEqual(moved.data['previous_visit_id'], row['id'])
+        self.assertEqual(self.client.get(url).data['starts_at'], self.start)
         self.assertEqual(
             self.client.post(url + 'reschedule/', change, format='json').status_code, 409
         )
@@ -257,16 +260,18 @@ class IsolationVisitTests(TestCase):
         )
         self.assertEqual(
             self.client.post(
-                url + 'cancel/', {'revision': 1, 'reason': 'Indisponible'}, format='json'
+                moved_url + 'cancel/', {'revision': 0, 'reason': 'Indisponible'}, format='json'
             ).status_code,
             200,
         )
         self.assertEqual(self.client.get(url + 'history/').status_code, 403)
         self.auth(91, 'administrator')
         entries = self.client.get(url + 'history/').data['results']
-        self.assertEqual(len(entries), 3)
-        self.assertEqual(entries[0]['action'], 'isolation.visit.cancelled')
-        self.assertEqual(entries[1]['metadata']['before']['starts_at'], self.start.isoformat())
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(entries[0]['action'], 'isolation.visit.rescheduled')
+        self.assertEqual(entries[0]['metadata']['before']['starts_at'], self.start.isoformat())
+        self.assertEqual(IsolationVisit.objects.filter(status='scheduled').count(), 0)
+        self.assertEqual(IsolationVisit.objects.get(pk=row['id']).starts_at, self.start)
 
     def test_cancel_keeps_history_even_if_prospect_unassigned(self):
         row = self.book().data
@@ -285,6 +290,36 @@ class IsolationVisitTests(TestCase):
             200,
         )
         self.assertEqual(IsolationVisit.objects.count(), 1)
+
+    def test_google_report_preserves_original_and_returns_two_scoped_publication_intents(self):
+        from packages.access.isolation_events import verify
+
+        old = self.book(publication='google').data
+        change = {
+            'revision': 0,
+            'proof': self.proof(),
+            'reason': 'Client indisponible',
+            'starts_at': (self.start + timedelta(days=1)).isoformat(),
+            'ends_at': (self.end + timedelta(days=1)).isoformat(),
+            'timezone': 'UTC',
+        }
+        response = self.client.post(f"{self.url}{old['id']}/reschedule/", change, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        new = response.data
+        first = IsolationVisit.objects.get(pk=old['id'])
+        self.assertEqual(first.starts_at, self.start)
+        self.assertEqual(first.status, 'cancelled')
+        self.assertEqual(new['previous_visit_id'], first.pk)
+        self.assertEqual(new['process_id'], old['process_id'])
+        self.assertEqual(new['c2_snapshot'], old['c2_snapshot'])
+        self.assertEqual(new['publication_status'], 'pending')
+        self.assertEqual(
+            verify(new['previous_publication_proof'], 'publish_visit')['visit'], first.pk
+        )
+        self.assertEqual(verify(new['publication_proof'], 'publish_visit')['visit'], new['id'])
+        self.assertEqual(self.client.get('/api/visits/?period=upcoming').data['count'], 1)
+        self.assertEqual(self.client.get('/api/visits/?period=history').data['count'], 1)
+        self.assertEqual(IsolationVisit.objects.count(), 2)
 
     def test_passed_visit_cannot_be_rewritten_or_marked_performed(self):
         row = self.book().data

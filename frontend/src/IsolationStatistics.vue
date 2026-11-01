@@ -44,6 +44,7 @@ const labels: Record<string, string> = {
   closure_unknown: 'Tenus : vente non renseignée',
   not_closed: 'Tenus : vente non conclue',
   cancelled: 'Annulés',
+  rescheduled: 'Anciennes occurrences reportées',
   upcoming: 'À venir',
   unassigned_closer: 'Sans closer attribué',
 };

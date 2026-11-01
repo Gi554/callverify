@@ -124,7 +124,9 @@ onMounted(() => run(load));
             <td data-label="Résultat">
               {{
                 row.status === 'cancelled'
-                  ? 'Annulée'
+                  ? row.next_visit_id
+                    ? 'Reprogrammé'
+                    : 'Annulée'
                   : row.result?.outcome === 'unqualified'
                     ? 'Non qualifié — non validé'
                     : !row.result

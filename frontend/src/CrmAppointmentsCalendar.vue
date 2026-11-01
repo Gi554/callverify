@@ -525,7 +525,7 @@ onBeforeUnmount(() => {
               ><small v-if="row.advisor">{{ row.advisor.name }}</small
               ><span><Clock3 :size="11" />{{ time(row.starts_at) }} – {{ time(row.ends_at) }}</span
               ><small v-if="assurance || row.status === 'cancelled'">{{
-                assurance ? appointmentStatus(row) : 'Annulé'
+                assurance ? appointmentStatus(row) : row.next_visit_id ? 'Reprogrammé' : 'Annulé'
               }}</small>
             </button>
             <button
@@ -558,7 +558,9 @@ onBeforeUnmount(() => {
           ? assurance
             ? appointmentStatus(selected)
             : selected.status === 'cancelled'
-              ? 'Annulé'
+              ? selected.next_visit_id
+                ? 'Reprogrammé'
+                : 'Annulé'
               : 'Planifié'
           : ''
       "
@@ -593,6 +595,10 @@ onBeforeUnmount(() => {
         @busy="detailBusy = $event"
         @updated="selected = $event"
         @close="closeDetail"
+        @changed="
+          load();
+          emit('changed');
+        "
     /></SidePanel>
     <SidePanel
       :open="!!selectedDay"
@@ -613,7 +619,13 @@ onBeforeUnmount(() => {
           <strong>{{ person(row) }}</strong
           ><span>{{ time(row.starts_at) }} – {{ time(row.ends_at) }} · {{ zone }}</span
           ><small>{{
-            assurance ? appointmentStatus(row) : row.status === 'cancelled' ? 'Annulé' : 'Planifié'
+            assurance
+              ? appointmentStatus(row)
+              : row.status === 'cancelled'
+                ? row.next_visit_id
+                  ? 'Reprogrammé'
+                  : 'Annulé'
+                : 'Planifié'
           }}</small>
         </button>
       </div></SidePanel

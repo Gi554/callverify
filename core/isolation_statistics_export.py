@@ -11,6 +11,7 @@ LABELS = {
     'visits': 'Visites réservées',
     'prospects': 'Prospects distincts',
     'cancelled': 'Annulées',
+    'rescheduled': 'Anciennes occurrences reportées',
     'upcoming': 'À venir',
     'reported': 'Résultats renseignés',
     'performed': 'Effectuées (Oui)',

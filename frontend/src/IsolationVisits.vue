@@ -254,6 +254,12 @@ async function publish(row: any) {
   publicationMessage.value = '';
   if (!row?.publication_proof) return;
   try {
+    if (row.previous_publication_proof) {
+      const removed = await props.portal('internal/isolation/publish-visit/', {
+        proof: row.previous_publication_proof,
+      });
+      if (removed.state !== 'removed') throw new Error('Ancien créneau Google encore à vérifier.');
+    }
     await props.portal('internal/isolation/publish-visit/', { proof: row.publication_proof });
   } catch {
     publicationMessage.value =
@@ -472,7 +478,9 @@ onMounted(() => run(load));
         {{ row.prospect.name || row.prospect.phone }} ·
         {{
           row.status === 'cancelled'
-            ? 'Annulée'
+            ? row.next_visit_id
+              ? 'Reprogrammé'
+              : 'Annulée'
             : row.result?.outcome === 'unqualified'
               ? 'Non qualifié — non validé'
               : row.result
