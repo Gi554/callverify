@@ -179,3 +179,29 @@ test('no-show requires a follow-up owner and reason and hides the sale question'
     f.close()
   }
 })
+
+test('nonqualified declaration requires a reason and does not declare attendance', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    set(
+      all(f.root).find((n) => n.tag === 'input' && n.props.type === 'checkbox'),
+      true,
+    )
+    await flush()
+    assert.equal(all(f.root).filter((n) => n.tag === 'select').length, 0)
+    await submit(f)
+    assert.equal(f.writes.length, 0)
+    set(
+      all(f.root).find((n) => n.tag === 'textarea'),
+      'Toiture récemment refaite',
+    )
+    await submit(f)
+    assert.equal(f.writes[0].body.outcome, 'unqualified')
+    assert.equal(f.writes[0].body.performed, false)
+    assert.equal(f.writes[0].body.closed, false)
+    assert.equal(f.writes[0].body.absence_reason, 'Toiture récemment refaite')
+  } finally {
+    f.close()
+  }
+})

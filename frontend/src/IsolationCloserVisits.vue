@@ -125,11 +125,13 @@ onMounted(() => run(load));
               {{
                 row.status === 'cancelled'
                   ? 'Annulée'
-                  : !row.result
-                    ? 'À renseigner'
-                    : row.result.performed
-                      ? 'Tenue'
-                      : 'Non tenue'
+                  : row.result?.outcome === 'unqualified'
+                    ? 'Non qualifié — non validé'
+                    : !row.result
+                      ? 'À renseigner'
+                      : row.result.performed
+                        ? 'Tenue'
+                        : 'Non tenue'
               }}<small v-if="row.result"
                 >Vente :
                 {{

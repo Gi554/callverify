@@ -287,7 +287,11 @@ def credited(component):
 METRICS = {
     'programmed': Count('pk'),
     'attended': Count('pk', filter=Q(status='scheduled', result__performed=True)),
-    'absent': Count('pk', filter=Q(status='scheduled', result__performed=False)),
+    'absent': Count(
+        'pk',
+        filter=Q(status='scheduled', result__performed=False) & ~Q(result__outcome='unqualified'),
+    ),
+    'unqualified_visits': Count('pk', filter=Q(result__outcome='unqualified')),
     'sales': Count('pk', filter=Q(status='scheduled', result__performed=True, result__closed=True)),
     'reprogrammed': Count('pk', filter=Q(previous_visit__isnull=False)),
     'cancelled': Count('pk', filter=Q(status='cancelled')),

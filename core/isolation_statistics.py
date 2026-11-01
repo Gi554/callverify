@@ -59,7 +59,12 @@ def metrics(now):
         'upcoming': Count('pk', filter=Q(status='scheduled', starts_at__gt=now), distinct=True),
         'reported': Count('pk', filter=Q(result__isnull=False), distinct=True),
         'performed': Count('pk', filter=Q(result__performed=True), distinct=True),
-        'not_performed': Count('pk', filter=Q(result__performed=False), distinct=True),
+        'not_performed': Count(
+            'pk',
+            filter=Q(result__performed=False) & ~Q(result__outcome='unqualified'),
+            distinct=True,
+        ),
+        'unqualified': Count('pk', filter=Q(result__outcome='unqualified'), distinct=True),
         'closed': Count('pk', filter=Q(result__performed=True, result__closed=True), distinct=True),
         'not_closed': Count(
             'pk', filter=Q(result__performed=True, result__closed=False), distinct=True
@@ -79,7 +84,9 @@ def metrics(now):
 
 def finish(row):
     row['performed_rate'] = (
-        round(100 * row['performed'] / row['reported'], 2) if row['reported'] else None
+        round(100 * row['performed'] / (row['reported'] - row['unqualified']), 2)
+        if row['reported'] > row['unqualified']
+        else None
     )
     row['interest_rate'] = (
         round(100 * row['interested'] / row['performed'], 2) if row['performed'] else None

@@ -19,27 +19,39 @@ const performed = ref(props.visit.result ? (props.visit.result.performed ? 'yes'
   busy = ref(false),
   error = ref('');
 const followUpOwner = ref(props.visit.result?.follow_up_owner || ''),
+  unqualified = ref(props.visit.result?.outcome === 'unqualified'),
   absenceReason = ref(props.visit.result?.absence_reason || ''),
   followUpAt = ref('');
 async function save() {
-  if (!performed.value || !closed.value || (closed.value === 'yes' && performed.value !== 'yes'))
+  if (unqualified.value && !absenceReason.value.trim()) return;
+  if (
+    !unqualified.value &&
+    (!performed.value || !closed.value || (closed.value === 'yes' && performed.value !== 'yes'))
+  )
     return;
-  if (performed.value === 'no' && (!followUpOwner.value || !absenceReason.value.trim())) return;
+  if (
+    !unqualified.value &&
+    performed.value === 'no' &&
+    (!followUpOwner.value || !absenceReason.value.trim())
+  )
+    return;
   busy.value = true;
   error.value = '';
   try {
     await props.request(`visits/${props.visit.id}/result/`, {
       revision: props.visit.revision,
-      performed: performed.value === 'yes',
-      closed: closed.value === 'yes',
-      outcome:
-        performed.value === 'no'
+      performed: !unqualified.value && performed.value === 'yes',
+      closed: !unqualified.value && closed.value === 'yes',
+      outcome: unqualified.value
+        ? 'unqualified'
+        : performed.value === 'no'
           ? 'not_performed'
           : closed.value === 'yes'
             ? 'closed'
             : 'completed',
       note: note.value,
-      ...(performed.value === 'no'
+      ...(unqualified.value ? { absence_reason: absenceReason.value } : {}),
+      ...(!unqualified.value && performed.value === 'no'
         ? {
             follow_up_owner: followUpOwner.value,
             absence_reason: absenceReason.value,
@@ -68,6 +80,16 @@ async function save() {
     <p v-if="error" role="alert">{{ error }}</p>
     <fieldset :disabled="busy">
       <label
+        ><input v-model="unqualified" type="checkbox" />Rendez-vous non qualifié — non validé</label
+      >
+      <label v-if="unqualified"
+        >Motif de non-qualification<textarea
+          v-model="absenceReason"
+          required
+          maxlength="1000"
+        ></textarea>
+      </label>
+      <label v-if="!unqualified"
         >Le prospect s’est-il présenté au rendez-vous ?<select
           v-model="performed"
           required
@@ -78,14 +100,14 @@ async function save() {
           <option value="no">Non</option>
         </select></label
       >
-      <label v-if="performed === 'yes'"
+      <label v-if="!unqualified && performed === 'yes'"
         >Le rendez-vous a-t-il été closé (vente réalisée) ?<select v-model="closed" required>
           <option value="">Choisir</option>
           <option value="yes" :disabled="performed !== 'yes'">Oui</option>
           <option value="no">Non</option>
         </select></label
       >
-      <template v-if="performed === 'no'">
+      <template v-if="!unqualified && performed === 'no'">
         <label
           >Motif de non-présentation<textarea
             v-model="absenceReason"
@@ -114,10 +136,13 @@ async function save() {
       <button
         class="primary"
         :disabled="
-          !performed ||
-          !closed ||
-          (!!visit.result && !reason.trim()) ||
-          (performed === 'no' && (!followUpOwner || !absenceReason.trim()))
+          (!unqualified &&
+            (!performed ||
+              !closed ||
+              (!!visit.result && !reason.trim()) ||
+              (performed === 'no' && (!followUpOwner || !absenceReason.trim())))) ||
+          (unqualified && !absenceReason.trim()) ||
+          (!!visit.result && !reason.trim())
         "
       >
         Enregistrer le résultat

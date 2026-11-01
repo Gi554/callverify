@@ -124,7 +124,11 @@ class ClientFollowUps(viewsets.GenericViewSet):
 
 
 def sync_client_followup(visit, report):
-    active = not report.performed and report.follow_up_owner == 'client'
+    active = (
+        not report.performed
+        and report.follow_up_owner == 'client'
+        and report.outcome != 'unqualified'
+    )
     row = IsolationClientFollowUp.objects.filter(visit=visit).first()
     if not active:
         if row and row.closed_at is None:
