@@ -1,5 +1,21 @@
 # Suivi des livraisons CRM AMX
 
+## Fiche du prospect côté conseiller : « Fiche client » avant « Résultat »
+
+Dans le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance), l’onglet « Fiche client » passe avant « Résultat » et s’ouvre en premier : le conseiller relit les informations du client avant de déclarer le résultat du rendez-vous. Les autres onglets (Qualification reçue, Historique des rendez-vous) et leur contenu sont inchangés.
+
+## « Mes prospects » du conseiller : cartes sur mobile
+
+Sur téléphone (écran de 760 px ou moins), la liste des prospects du conseiller n’est plus un tableau qui défile sur le côté : chaque prospect devient une carte (nom en tête, puis téléphone, courriel, rendez-vous tenus et le bouton « Ouvrir la fiche » pleine largeur). Les trois compteurs du haut sont plus compacts, les marges de la page réduites. Sur ordinateur, rien ne change.
+
+Limites : réglage visuel non vérifié à l’écran par moi ; les autres tableaux de l’application ne sont pas encore repris de la même façon ; revue esthétique à la revue finale.
+
+## Correctif : fiche d’un prospect côté conseiller (erreur « Service métier indisponible »)
+
+Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance) affichait « Service métier indisponible ». La cause : le chargement demandait l’adresse `/api/assurance//appointments/81/` avec une double barre, que le service répond par une erreur 404 sans message ; l’adresse était écrite avec une barre au début. Le composant écrit désormais des adresses relatives, et la fonction d’appel des services métier retire toute barre initiale, ce qui protège aussi les autres écrans. Un test vérifie qu’aucune adresse ne commence par une barre.
+
+Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
+
 ## Isolation — dates d’activité et rapports cohérents avec le Québec
 
 Les dates de rappels, activités, observations partagées, compléments de visite, historique
@@ -16,18 +32,6 @@ Vérifications : journée du changement d’heure de novembre (25 heures), visit
 dans la bonne journée du Québec, ancien filtre UTC explicite conservé, affichage closer avec
 une visite enregistrée sous un fuseau étranger, rappels et export ; lint, format, TypeScript
 et build. SMS en attente du contrat de réponse de la fonction NEWT 261, sans envoi activé.
-
-## « Mes prospects » du conseiller : cartes sur mobile
-
-Sur téléphone (écran de 760 px ou moins), la liste des prospects du conseiller n’est plus un tableau qui défile sur le côté : chaque prospect devient une carte (nom en tête, puis téléphone, courriel, rendez-vous tenus et le bouton « Ouvrir la fiche » pleine largeur). Les trois compteurs du haut sont plus compacts, les marges de la page réduites. Sur ordinateur, rien ne change.
-
-Limites : réglage visuel non vérifié à l’écran par moi ; les autres tableaux de l’application ne sont pas encore repris de la même façon ; revue esthétique à la revue finale.
-
-## Correctif : fiche d’un prospect côté conseiller (erreur « Service métier indisponible »)
-
-Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance) affichait « Service métier indisponible ». La cause : le chargement demandait l’adresse `/api/assurance//appointments/81/` avec une double barre, que le service répond par une erreur 404 sans message ; l’adresse était écrite avec une barre au début. Le composant écrit désormais des adresses relatives, et la fonction d’appel des services métier retire toute barre initiale, ce qui protège aussi les autres écrans. Un test vérifie qu’aucune adresse ne commence par une barre.
-
-Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
 ## Isolation V2 — alerte au passage à échéance (lot 12)
 
