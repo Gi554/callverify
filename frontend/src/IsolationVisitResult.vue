@@ -71,7 +71,7 @@ async function save() {
         >Le prospect s’est-il présenté au rendez-vous ?<select
           v-model="performed"
           required
-          @change="performed === 'no' && (closed = 'no')"
+          @change="closed = performed === 'no' ? 'no' : ''"
         >
           <option value="">Choisir</option>
           <option value="yes">Oui</option>

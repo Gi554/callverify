@@ -561,6 +561,17 @@ onMounted(() => run(load));
         {{ outcomes[row.result.outcome] }} · {{ visitDate(row.result.created_at) }} · Québec
       </p>
       <p v-if="row.result" style="white-space: pre-wrap">{{ row.result.note }}</p>
+      <p v-if="row.result?.absence_reason" style="white-space: pre-wrap">
+        Motif de non-présentation : {{ row.result.absence_reason }}
+      </p>
+      <p v-if="row.result && !row.result.performed">
+        Suivi :
+        {{
+          row.result.follow_up_owner === 'client'
+            ? 'Relance personnelle du client'
+            : 'Rappel par le setter'
+        }}
+      </p>
       <button v-if="row.result" class="secondary" :disabled="busy" @click="supplements = row">
         Consulter / compléter le résultat
       </button>

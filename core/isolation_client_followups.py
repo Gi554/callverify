@@ -93,7 +93,7 @@ class ClientFollowUps(viewsets.GenericViewSet):
             event(
                 original.visit.prospect,
                 request.user,
-                'client_followup_updated',
+                'client_followup',
                 data['note'],
                 {
                     'follow_up_id': original.pk,

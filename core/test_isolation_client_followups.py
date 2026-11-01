@@ -49,6 +49,11 @@ class ClientFollowUpTests(TestCase):
         self.assertEqual(self.client.get('/api/client-follow-ups/').data['count'], 0)
         self.assertEqual(self.client.get(base + 'prospect/').status_code, 404)
         self.auth(21, 'setter')
+        self.assertEqual(self.client.get('/api/work-queue/?queue=active').data['count'], 0)
+        self.assertEqual(
+            self.client.get('/api/work-queue/?queue=all').data['results'][0]['queue_reason'],
+            'client_followup',
+        )
         self.assertEqual(self.client.get('/api/client-follow-ups/').status_code, 403)
         self.auth(91, 'administrator')
         self.assertEqual(self.client.get('/api/client-follow-ups/').data['count'], 1)
@@ -120,6 +125,19 @@ class ClientFollowUpTests(TestCase):
             'ends_at': (start + timedelta(hours=1)).isoformat(),
             'timezone': 'UTC',
         }
+        with patch('packages.calendar_connectors.booking.check', return_value={'busy': []}):
+            availability = self.client.post(
+                '/api/visits/availability/',
+                {
+                    'prospect_id': str(self.prospect.pk),
+                    'client_followup_id': row.pk,
+                    'proof': body['proof'],
+                    'start': start.isoformat(),
+                    'end': (start + timedelta(days=1)).isoformat(),
+                },
+                format='json',
+            )
+            self.assertEqual(availability.status_code, 200, availability.data)
         with patch('core.isolation_visits.external_check', side_effect=Unavailable()):
             self.assertEqual(self.client.post('/api/visits/', body, format='json').status_code, 503)
         self.assertIsNone(IsolationClientFollowUp.objects.get().closed_at)
