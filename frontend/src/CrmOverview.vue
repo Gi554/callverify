@@ -74,7 +74,7 @@ async function loadUpcoming() {
 }
 function date(row: any) {
   return new Intl.DateTimeFormat('fr-FR', {
-    timeZone: row.timezone || 'America/Toronto',
+    timeZone: assurance.value ? row.timezone || 'America/Toronto' : 'America/Toronto',
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -558,11 +558,14 @@ onMounted(refreshHome);
           <h3>Votre activité</h3>
           <span>{{ workspace === 'assurance' ? 'Assurance' : 'Isolation' }}</span>
         </div>
-        <button class="overview-action" @click="$emit('navigate', 'contacts')">
+        <button
+          class="overview-action"
+          @click="$emit('navigate', role === 'client' && !assurance ? 'appointments' : 'contacts')"
+        >
           <span class="action-icon"><Users :size="20" /></span
           ><span
             ><strong>{{
-              role === 'client' ? 'Consulter mes dossiers' : 'Retrouver mes contacts'
+              role === 'client' ? 'Consulter mes visites programmées' : 'Retrouver mes contacts'
             }}</strong
             ><small>{{
               role === 'client'
