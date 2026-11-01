@@ -105,17 +105,25 @@ function fixture({
   publicationFail = false,
   absent = false,
   reactivation = false,
+  representatives = [],
+  directoryFail = false,
 } = {}) {
   const root = { children: [] },
     writes = [],
     events = [],
-    proofs = []
+    proofs = [],
+    changes = []
   globalThis.c2Booking = { fail, events }
   const app = renderer.createApp(component, {
     prospectId: 7,
     role: reactivation ? 'client' : 'setter',
     reactivationId: reactivation ? 99 : undefined,
+    onChanged: () => changes.push(true),
     portal: async (path, body) => {
+      if (path.startsWith('isolation/closers/')) {
+        if (directoryFail) throw new Error('Annuaire indisponible')
+        return { results: representatives, count: representatives.length }
+      }
       if (path === 'internal/isolation/publish-visit/') {
         events.push('publication')
         if (publicationFail) throw new Error('Indisponible')
@@ -131,6 +139,12 @@ function fixture({
         writes.push({ path, body })
         return { id: 42, ...(google ? { publication_proof: 'signed-publication' } : {}) }
       }
+      if (
+        reactivation &&
+        path === 'isolation-unqualified/99/prospect/' &&
+        writes.some((row) => row.path === 'visits/')
+      )
+        throw new Error('Fiche déjà programmée')
       if (path.startsWith('work-queue/') || path === 'isolation-unqualified/99/prospect/')
         return { id: 7, name: 'Client', revision: 3, assigned_setter: { id: 21 } }
       return {
@@ -159,7 +173,7 @@ function fixture({
     },
   })
   app.mount(root)
-  return { root, writes, events, app, proofs }
+  return { root, writes, events, app, proofs, changes }
 }
 async function submit(f) {
   const input = all(f.root).find((n) => n.tag === 'input' && n.props.type === 'datetime-local')
@@ -200,9 +214,53 @@ test('client requalification uses a bound entry proof and creates a Google visit
     assert.equal(f.writes[0].body.unqualified_id, 99)
     assert.equal(f.writes[0].body.prospect_id, 7)
     assert.equal(f.writes[0].body.publication, 'google')
+    assert.equal(f.changes.length, 1)
     assert.deepEqual(f.events, ['c2', 'proof', 'booking', 'publication'])
   } finally {
     f.app.unmount()
+  }
+})
+
+test('several representatives require a choice that is attested with the booking, using the common Québec calendar', async () => {
+  const f = fixture({
+    representatives: [
+      { id: 88, name: 'Représentant A' },
+      { id: 89, name: 'Représentant B' },
+    ],
+  })
+  try {
+    await flush()
+    await submit(f)
+    assert.equal(f.writes.length, 0)
+    const select = all(f.root).find(
+      (n) => n.tag === 'select' && all(n).some((child) => child.props?.value === '88'),
+    )
+    select.props['onUpdate:modelValue']('89')
+    await submit(f)
+    assert.equal(f.writes.length, 1)
+    assert.equal(f.proofs[0].closer_id, 89)
+    assert.equal(f.writes[0].body.timezone, 'America/Toronto')
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('a unique representative is selected and an unavailable directory prevents booking', async () => {
+  const f = fixture({ representatives: [{ id: 88, name: 'Représentant unique' }] })
+  try {
+    await flush()
+    await submit(f)
+    assert.equal(f.proofs[0].closer_id, 88)
+  } finally {
+    f.app.unmount()
+  }
+  const failed = fixture({ directoryFail: true })
+  try {
+    await flush()
+    await submit(failed)
+    assert.equal(failed.writes.length, 0)
+  } finally {
+    failed.app.unmount()
   }
 })
 

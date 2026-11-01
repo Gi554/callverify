@@ -12,6 +12,25 @@ import SidePanel from './SidePanel.vue';
 const nonqualified = ref(false),
   nonqualifiedReason = ref(''),
   nonqualifiedNote = ref('');
+const representatives = ref<any[]>([]),
+  representative = ref(''),
+  representativesReady = ref(false);
+async function loadRepresentatives() {
+  representativesReady.value = false;
+  const found: any[] = [];
+  for (let page = 1; page <= 20; page++) {
+    const data = await props.portal(`isolation/closers/?page=${page}`);
+    if (!Array.isArray(data.results) || !Number.isInteger(data.count) || data.count > 500)
+      throw new Error('Liste des représentants indisponible. Rechargez la fiche.');
+    found.push(...data.results);
+    if (found.length >= data.count) break;
+    if (page === 20) throw new Error('Liste des représentants incomplète.');
+  }
+  representatives.value = found;
+  if (found.length === 1) representative.value = String(found[0].id);
+  else if (!found.some((row) => String(row.id) === representative.value)) representative.value = '';
+  representativesReady.value = true;
+}
 const props = defineProps<{
   visitId?: number;
   period?: 'upcoming' | 'history';
@@ -21,9 +40,9 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
-function visitDate(value: string, zone: string) {
+function visitDate(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
-    timeZone: zone,
+    timeZone: 'America/Toronto',
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
@@ -112,6 +131,8 @@ async function load() {
         ? `isolation-unqualified/${props.reactivationId}/prospect/`
         : `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
     );
+  if (prospect.value && (props.role !== 'client' || props.reactivationId))
+    await loadRepresentatives();
   const data = await props.request(
     `visits/?page=${page.value}&result_due=${dueOnly.value}${props.period ? '&period=' + props.period : ''}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
   );
@@ -137,6 +158,9 @@ async function attest(row: any) {
       prospect_id: row.id,
       setter_id: row.assigned_setter.id,
       ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
+      ...(!editing.value && representative.value
+        ? { closer_id: Number(representative.value) }
+        : {}),
     })
   ).proof;
 }
@@ -150,6 +174,11 @@ async function save() {
   await run(async () => {
     const record = editing.value;
     if (!record) {
+      if (
+        !representativesReady.value ||
+        (representatives.value.length > 1 && !representative.value)
+      )
+        throw new Error('Choisissez un représentant avant de programmer la visite.');
       if (!c2.value) throw new Error('Chargez la qualification avant de réserver.');
       await c2.value.ensureSaved();
     }
@@ -159,7 +188,7 @@ async function save() {
     const proof = await attest(current);
     const interval = record
       ? { starts_at: start.value, ends_at: end.value, timezone: zone.value }
-      : bookingInterval(localStart.value, zone.value, Number(duration.value));
+      : bookingInterval(localStart.value, 'America/Toronto', Number(duration.value));
     const body: any = { ...interval, proof, revision: record ? record.revision : current.revision };
     let saved: any;
     if (record) {
@@ -180,7 +209,8 @@ async function save() {
     start.value = '';
     end.value = '';
     reason.value = '';
-    await load();
+    // Reactivation archives its source entry; it cannot be loaded for editing again.
+    if (!props.reactivationId) await load();
     emit('changed');
   });
 }
@@ -292,10 +322,25 @@ onMounted(() => run(load));
           son résultat sont conservés.
         </p>
         <template v-if="!editing"
-          ><AvailabilitySlots
+          ><label v-if="representatives.length"
+            >Représentant chargé de la visite<select v-model="representative" required>
+              <option value="">Choisir un représentant</option>
+              <option v-for="person in representatives" :key="person.id" :value="String(person.id)">
+                {{ person.name }}
+              </option>
+            </select></label
+          >
+          <p v-else-if="representativesReady">
+            Aucun représentant configuré. Le client pourra attribuer la visite ultérieurement.
+          </p>
+          <p>
+            L’agenda et les créneaux sont ceux du client Isolation. Le représentant est affecté à la
+            visite, sans agenda personnel connecté.
+          </p>
+          <AvailabilitySlots
             v-if="prospect"
             v-model="localStart"
-            :zone="zone"
+            zone="America/Toronto"
             :duration="Number(duration)"
             :disabled="busy || c2Busy"
             :load="loadBusy"
@@ -325,8 +370,10 @@ onMounted(() => run(load));
             >Fin ISO 8601 avec décalage<input
               v-model="end"
               placeholder="2026-12-01T11:00:00-05:00"
-              required /></label></template
-        ><label
+              required /></label
+        ></template>
+        <p v-if="!editing">Heure du Québec · Montréal / Toronto</p>
+        <label v-else
           >Heure du rendez-vous<select v-model="zone" required>
             <option value="America/Toronto">Toronto / Montréal</option>
             <option value="America/Vancouver">Vancouver</option>
@@ -335,7 +382,12 @@ onMounted(() => run(load));
           </select></label
         ><label v-if="editing"
           >Motif du report<textarea v-model="reason" required maxlength="1000"></textarea></label
-        ><button class="primary">
+        ><button
+          class="primary"
+          :disabled="
+            !editing && (!representativesReady || (representatives.length > 1 && !representative))
+          "
+        >
           {{ editing ? 'Confirmer le report' : 'Programmer la visite' }}</button
         ><button
           v-if="editing"
@@ -438,10 +490,7 @@ onMounted(() => run(load));
       >
         Programmer une nouvelle visite après cette absence
       </button>
-      <p>
-        {{ visitDate(row.starts_at, row.timezone) }} → {{ visitDate(row.ends_at, row.timezone) }} ·
-        {{ row.timezone }}
-      </p>
+      <p>{{ visitDate(row.starts_at) }} → {{ visitDate(row.ends_at) }} · Heure du Québec</p>
       <IsolationC2Snapshot :snapshot="row.c2_snapshot" />
       <p>Closer : {{ row.closer?.name || 'Non attribué' }}</p>
       <button
@@ -498,8 +547,7 @@ onMounted(() => run(load));
       >
       <p v-if="row.result">
         Résultat : {{ row.result.performed ? 'Oui, effectuée' : 'Non, non effectuée' }} ·
-        {{ outcomes[row.result.outcome] }} ·
-        {{ new Date(row.result.created_at).toLocaleString('fr-FR') }}
+        {{ outcomes[row.result.outcome] }} · {{ visitDate(row.result.created_at) }} · Québec
       </p>
       <p v-if="row.result" style="white-space: pre-wrap">{{ row.result.note }}</p>
       <button v-if="row.result" class="secondary" :disabled="busy" @click="supplements = row">
@@ -611,7 +659,7 @@ onMounted(() => run(load));
     <section v-if="history">
       <h4>Historique de la visite {{ history.id }}</h4>
       <article v-for="entry in historyRows" :key="entry.id">
-        <small>{{ entry.action }} · {{ new Date(entry.created_at).toLocaleString('fr-FR') }}</small>
+        <small>{{ entry.action }} · {{ visitDate(entry.created_at) }} · Québec</small>
         <pre>{{ JSON.stringify(entry.metadata, null, 2) }}</pre>
       </article>
       <button

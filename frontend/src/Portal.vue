@@ -6,6 +6,7 @@ import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
+import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
 import IsolationNotices from './IsolationNotices.vue';
 import IsolationUnqualified from './IsolationUnqualified.vue';
@@ -351,6 +352,8 @@ const navigation = computed(() => {
   } else {
     if (role.value === 'administrator')
       items.push({ id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' });
+    if (role.value === 'administrator')
+      items.push({ id: 'compensation', label: 'Suivi et rémunération', icon: 'statistics' });
     if (['client', 'administrator'].includes(role.value))
       items.push({
         id: 'isolation-agenda',
@@ -807,6 +810,11 @@ onMounted(async () => {
                       :request="isolation"
                       @navigate="selectModule"
                       @changed="refreshIsolation"
+                    />
+                    <IsolationCompensation
+                      v-else-if="isolationModule === 'compensation' && role === 'administrator'"
+                      :request="isolation"
+                      :portal="portal"
                     />
                     <IsolationUnqualified
                       v-else-if="isolationModule === 'unqualified'"

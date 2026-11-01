@@ -6,6 +6,72 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Isolation V2 — suivi des setters et rémunération CAD (lot 11)
+
+Le menu administrateur « Suivi et rémunération » réunit appels Orvia, visites programmées,
+à venir, tenues/non tenues déclarées, nouvelles occurrences après absence, ventes, entrées
+non qualifiées et résultats incomplets, par setter/agent et client. Semaine ou dates
+personnalisées, toujours au Québec. Les appels sont les commandes Orvia acceptées après
+décrochage du poste, sans présumer de la réponse du prospect ; tentatives et incertitudes
+sont conservées dans l’export. Les CDR composés hors Orvia ne sont pas ajoutés à ces compteurs.
+Le portail fournit uniquement des agrégats signés, sans numéros/extensions/identités de prospects.
+Une panne de cette source produit « indisponible », jamais un zéro inventé.
+
+Deux tarifs CAD facultatifs par setter/client : présence et prime de vente additionnelle.
+L’administration configure les setters actifs avec preuve centrale liée au client unique.
+Révision et motif obligatoires, audit avant/après. Aucun tarif réel n’est inventé ni préchargé.
+Zéro est un tarif explicite ; vide signifie non défini. Chaque composante est figée lors de
+sa première valorisation sur le résultat ; une vente confirmée plus tard conserve le prix
+de présence et capture sa propre prime au tarif alors applicable. Changer la règle ne
+réécrit jamais les prix déjà conservés. Aucun prix n’est exposé dans les réponses client/closer.
+
+Un crédit de présence et une prime au maximum par processus commercial prospect/client,
+en recherchant le premier résultat valide dans tout l’historique avant de filtrer la période.
+Une reprogrammation dans une semaine ultérieure ne crée donc pas un second crédit. Les
+occurrences réellement déclarées et les crédits uniques sont affichés séparément. Une
+correction retire un résultat devenu inéligible et recalcule le premier résultat valable,
+sans effacer son prix ni l’audit. Une absence, un résultat manquant, une visite future ou
+un prospect simplement non qualifié ne génèrent aucun crédit.
+
+Les résultats sans prix peuvent être valorisés explicitement par l’administrateur sur la
+période affichée, par lots de 200, avec révision du tarif et motif. Verrous ordonnés sur les
+prospects ; un rejeu ne valorise pas deux fois le même résultat. Montants connus, crédits
+sans tarif et retours manquants restent distincts. Pas d’exécution ni registre de paiement.
+Exports CSV/Excel des agrégats, protection des cellules, période et définition conservées,
+sans coordonnées ni notes de prospects. Périmètre strictement administrateur Isolation.
+
+Vérifications : tarifs indépendants et prix figés, zéro/non défini, valorisation idempotente
+et bornée, correction, absence/futur, dédoublonnage entre périodes, preuves/droits, source
+d’appels indisponible/incohérente, exports et semaine Québec ; régression Isolation, 308 tests
+portail, tests frontend de tarifs/conflit/valorisation. Capture concurrente PostgreSQL incluse
+en CI ; format/lint, migrations, TypeScript et build requis avant fusion.
+Limites : un seul processus par prospect/client sans remise à zéro de cycle ; appels ventilés
+sur le client unique actif. Recette fournisseur réelle et derniers contrôles des alertes de
+rappel restent à réaliser. La V2 n’est pas annoncée terminée par cette seule livraison.
+
+## Isolation V2 — représentant choisi à la programmation (lot 10)
+
+Le formulaire setter et la reprise client chargent les représentants Isolation actifs. Un seul
+est sélectionné automatiquement ; si plusieurs sont disponibles, le choix est obligatoire dans
+le nouveau formulaire. Sans représentant configuré, la visite peut être attribuée ultérieurement
+par le client ou l’administration. Une erreur d’annuaire bloque la programmation, pas le simple
+enregistrement d’une fiche non qualifiée. Le setter peut lire l’annuaire sans obtenir le droit
+de réattribuer librement les visites existantes.
+
+La centrale atteste le représentant choisi avec client, setter et prospect. Le serveur métier
+utilise uniquement cette identité signée ; un identifiant injecté dans le corps de réservation
+est refusé. Le représentant est affecté dès la création et peut consulter cette visite depuis
+son espace existant. L’agenda demeure celui du client unique : aucune connexion personnelle ni
+capacité parallèle par représentant n’est inventée. Les nouvelles réservations utilisent toujours
+l’heure du Québec ; les anciens reports gardent leur compatibilité de fuseau explicite.
+
+Le retour de programmation client ne recharge plus l’entrée non qualifiée archivée : il annonce
+la réussite au parent qui actualise la liste, sans transformer l’archivage attendu en erreur.
+Tests : représentant attesté, actif, rôle correct, rejeu/conflit, choix multiple obligatoire,
+sélection unique, annuaire indisponible, reprise client archivée et heures du Québec ; suites
+métier Isolation et portail ciblées, frontend, lint/format, TypeScript et build avant fusion.
+Statistiques et rémunération CAD demeurent à livrer ; recette fournisseur réelle ouverte.
+
 ## Isolation V2 — requalification et programmation par le client (lot 9)
 
 Le client peut ouvrir une fiche non qualifiée, choisir « Requalifier et programmer une visite »,

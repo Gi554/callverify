@@ -355,6 +355,14 @@ class IsolationVisitCalendar(models.Model):
 
 
 class IsolationVisitResult(models.Model):
+    attendance_unit_cad = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    sale_unit_cad = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    attendance_rate_revision = models.PositiveIntegerField(null=True, blank=True)
+    sale_rate_revision = models.PositiveIntegerField(null=True, blank=True)
+    attendance_valued_at = models.DateTimeField(null=True, blank=True)
+    sale_valued_at = models.DateTimeField(null=True, blank=True)
     visit = models.OneToOneField(IsolationVisit, on_delete=models.PROTECT, related_name='result')
     author_client_id = models.PositiveBigIntegerField(null=True, blank=True)
     author_closer_id = models.PositiveBigIntegerField(null=True, blank=True)
@@ -363,6 +371,44 @@ class IsolationVisitResult(models.Model):
     outcome = models.CharField(max_length=30)
     note = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(attendance_unit_cad__gte=0)
+                | models.Q(attendance_unit_cad__isnull=True),
+                name='isolation_attendance_unit_nonnegative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(sale_unit_cad__gte=0) | models.Q(sale_unit_cad__isnull=True),
+                name='isolation_sale_unit_nonnegative',
+            ),
+        ]
+
+
+class IsolationSetterRate(models.Model):
+    setter_id = models.PositiveBigIntegerField()
+    setter_name = models.CharField(max_length=150)
+    client_id = models.PositiveBigIntegerField()
+    client_name = models.CharField(max_length=150)
+    attendance_cad = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sale_bonus_cad = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['setter_id', 'client_id'], name='unique_isolation_setter_client_rate'
+            ),
+            models.CheckConstraint(
+                condition=models.Q(attendance_cad__gte=0) | models.Q(attendance_cad__isnull=True),
+                name='isolation_attendance_rate_nonnegative',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(sale_bonus_cad__gte=0) | models.Q(sale_bonus_cad__isnull=True),
+                name='isolation_sale_rate_nonnegative',
+            ),
+        ]
 
 
 class IsolationVisitSupplement(models.Model):

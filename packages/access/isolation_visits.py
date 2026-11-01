@@ -29,7 +29,9 @@ def verify_closer(token, actor, visit):
     return row
 
 
-def issue_booking(actor, prospect, setter, setter_name, client, client_name, reactivation=None):
+def issue_booking(
+    actor, prospect, setter, setter_name, client, client_name, reactivation=None, closer=None
+):
     return signing.dumps(
         {
             'aud': 'isolation',
@@ -38,6 +40,7 @@ def issue_booking(actor, prospect, setter, setter_name, client, client_name, rea
             'setter': {'id': setter, 'name': setter_name},
             'client': {'id': client, 'name': client_name},
             **({'reactivation': reactivation} if reactivation is not None else {}),
+            **({'closer': closer} if closer is not None else {}),
         },
         key=key_for('isolation'),
         salt=SALT,
@@ -51,7 +54,8 @@ def verify_booking(token, actor, prospect):
     for key, value in [('actor', actor), ('prospect', prospect)]:
         if type(claims.get(key)) is not int or claims[key] != value:
             raise signing.BadSignature('Wrong scope')
-    for role in ('setter', 'client'):
+    roles = ('setter', 'client') + (('closer',) if 'closer' in claims else ())
+    for role in roles:
         person = claims.get(role)
         if not isinstance(person, dict) or type(person.get('id')) is not int or person['id'] <= 0:
             raise signing.BadSignature('Invalid participant')
@@ -61,7 +65,7 @@ def verify_booking(token, actor, prospect):
             or len(person['name']) > 150
         ):
             raise signing.BadSignature('Invalid name')
-    if claims['setter']['id'] == claims['client']['id']:
+    if len({claims[role]['id'] for role in roles}) != len(roles):
         raise signing.BadSignature('Distinct roles required')
     if 'reactivation' in claims and (
         type(claims['reactivation']) is not int
