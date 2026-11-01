@@ -141,3 +141,17 @@ test('advisor list separates assigned prospects, attendance and remaining quota,
     f.close()
   }
 })
+
+test('each cell carries its label so a phone can show the rows as cards', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    const cells = all(f.root).filter((n) => n.tag === 'td' && n.props?.['data-label'])
+    assert.deepEqual(
+      cells.map((n) => n.props['data-label']),
+      ['Téléphone', 'Courriel', 'Rendez-vous tenus'],
+    )
+  } finally {
+    f.close()
+  }
+})
