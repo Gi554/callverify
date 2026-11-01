@@ -1,3 +1,4 @@
+from packages.alert_models import Review as AlertReviewBase
 from packages import payroll_models
 from datetime import time
 from django.db import models
@@ -497,4 +498,8 @@ class SetterPayrollPayment(payroll_models.Payment):
 
 
 class SetterPayrollAdjustment(payroll_models.Adjustment):
+    pass
+
+
+class SetterAlertReview(AlertReviewBase):
     pass

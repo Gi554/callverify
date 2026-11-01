@@ -7,6 +7,7 @@ import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
 import PayrollLedger from './PayrollLedger.vue';
 import AdminJournal from './AdminJournal.vue';
+import AdminAlerts from './AdminAlerts.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
@@ -391,6 +392,8 @@ const navigation = computed(() => {
   if (['setter', 'administrator'].includes(role.value))
     items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
   if (role.value === 'administrator')
+    items.push({ id: 'admin-alerts', label: 'Centre d’alertes', icon: 'followups' });
+  if (role.value === 'administrator')
     items.push({ id: 'admin-journal', label: 'Journal d’activité', icon: 'followups' });
   if (role.value === 'setter')
     items.push({ id: 'earnings', label: 'Mes gains et mon objectif', icon: 'statistics' });
@@ -721,8 +724,13 @@ onMounted(async () => {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
+                  <AdminAlerts
+                    v-if="activeModule === 'admin-alerts' && role === 'administrator'"
+                    :workspace="workspace"
+                    :request="workspace === 'assurance' ? assurance : isolation"
+                  />
                   <AdminJournal
-                    v-if="activeModule === 'admin-journal' && role === 'administrator'"
+                    v-else-if="activeModule === 'admin-journal' && role === 'administrator'"
                     :workspace="workspace"
                     :request="workspace === 'assurance' ? assurance : isolation"
                   />

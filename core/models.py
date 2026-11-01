@@ -1,3 +1,4 @@
+from packages.alert_models import Review as AlertReviewBase
 from packages import payroll_models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -465,4 +466,8 @@ class IsolationPayrollPayment(payroll_models.Payment):
 
 
 class IsolationPayrollAdjustment(payroll_models.Adjustment):
+    pass
+
+
+class IsolationAlertReview(AlertReviewBase):
     pass

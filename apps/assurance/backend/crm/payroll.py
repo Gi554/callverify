@@ -67,7 +67,14 @@ def terms(request, agent, pk=None):
 
 @api_view(['POST'])
 def payment(request, agent):
-    return service.record_payment(Store, request, agent)
+    try:
+        return service.record_payment(Store, request, agent)
+    except ValidationError as exc:
+        if request.user.role == 'administrator':
+            Store.audit(
+                request.user.pk, agent, 'payment_rejected', {'reason': str(exc.detail)[:1000]}
+            )
+        raise
 
 
 def reconcile(agent, actor=None, correction=False):

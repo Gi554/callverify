@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — centre d’alertes et contrôles de cohérence
+
+Un onglet administrateur commun aux layouts existants, séparé par base métier, affiche neuf catégories : résultats manquants ou vente inconnue après présence, rappels en retard, rappels dans les 24 h, rendez-vous créés dans les sept jours, doublons potentiels de rendez-vous, doublons potentiels de numéros, rendez-vous sans responsable, rémunérations à vérifier et enregistrements de paiement refusés dans les sept jours. Les listes sont paginées par 25, avec heure du Québec et actualisation manuelle. Les notifications individuelles existantes restent inchangées.
+
+L’administrateur consulte les détails dans le panneau latéral puis enregistre une note de prise en charge. Cette note est liée à l’état contrôlé, auditable et idempotente : aucune présence, tâche, visite ou somme n’est modifiée. Une nouvelle version contrôlée n’hérite pas d’une prise en charge ancienne. Une alerte prise en charge reste visible tant que sa cause subsiste. Les refus de validation d’un paiement sont audités après annulation de la transaction financière, sans contenu secret ni donnée de paiement saisie.
+
+Limites : doublons candidats selon le même identifiant de prospect et le même début, ou un numéro strictement identique après retrait des espaces extérieurs ; pas de fusion ni rapprochement phonétique. Les responsables absents correspondent à des identifiants nuls dans les instantanés de rendez-vous, pas aux prospects normalement encore non affectés. Les contrôles financiers reprennent les unités figées, les montants sans tarif, le solde négatif et le besoin de rapprochement du registre, avec annuaire maximum de 500 agents ; ils ne certifient pas les paiements bancaires réels. Les prises en charge identifient l’administrateur par numéro de compte. Les interfaces utilisent les panneaux et en-têtes existants ; recette visuelle toujours empêchée par le navigateur local désactivé.
+
+
 ## Retour novembre — journal administrateur par espace
 
 Un onglet « Journal d’activité » donne accès en lecture seule aux audits enregistrés dans la base de l’espace actif. Filtres combinés période au Québec (366 jours maximum), identifiant de compte auteur, action exacte et référence d’objet, pagination de 25 événements. Le panneau latéral affiche l’auteur, l’heure et les états avant/après lorsqu’ils existent, puis les métadonnées enregistrées. Les clés de secrets, preuves, jetons et empreintes sont masquées récursivement. Les rôles terrain et les tickets d’un autre espace sont refusés ; aucune route d’écriture ni suppression.
