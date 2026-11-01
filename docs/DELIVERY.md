@@ -119,7 +119,33 @@ conservés, permissions après transfert, versions, annulation de la nouvelle oc
 échec calendrier sans report partiel, intentions Google liées aux deux visites,
 concurrence report/réservation et compilation.
 
-Reste à finaliser : recette globale et contrôle des historiques client.
+### Demande tableau de bord client — historique et recette fonctionnelle
+
+Les quatre rubriques de suivi sont regroupées dans le menu client, avec les fiches,
+les non-qualifiés avant réservation et l’agenda en accès complémentaires. Chaque
+visite expose immédiatement nom, téléphone, adresse, ville et code postal conservés,
+ainsi que le créneau, le setter et le représentant. Les statuts affichent explicitement
+présenté closé/non closé, non présenté, non qualifié et reprogrammé.
+Le setter peut laisser le représentant à désigner par le client, même lorsque
+plusieurs représentants existent. Reprogrammer après une absence termine le rappel
+lié à cette absence, sans terminer les autres tâches manuelles du prospect.
+
+Le bouton « Historique du rendez-vous » présente au client les résultats successifs,
+motifs de correction et notes conservées, avec un endpoint filtré qui n’expose ni
+les métadonnées administratives ni les tarifs. Les anciennes modifications de relance
+personnelle présentent leurs dates et notes. Les observations privées du setter ne
+sont pas partagées automatiquement. Les nouvelles notes de résultat sont conservées
+dans l’audit ; les anciennes notes qui n’avaient pas été historisées ne sont pas inventées.
+
+Vérifications : refus des autres clients et setters, avant/après de notes, motif de
+non-qualification conservé, aucune donnée financière dans l’historique public,
+historique de relance, menu et parcours de formulaire ; suite Isolation complète,
+TypeScript et CI PostgreSQL. Les parcours externes réels Google et e-mail devront
+être validés avec les comptes et agendas opérationnels du client. Aucun appel réel
+ni rendez-vous externe de test n’est lancé pendant cette recette automatisée.
+
+Tous les points fonctionnels de la demande sont couverts par les livraisons ci-dessus.
+La revue esthétique finale reste séparée, conformément à la méthode de livraison.
 
 Retouche demandée sur « Mes visites » du représentant : le texte devient
 « Consultez les fiches clients et renseignez le résultat des visites. ». Le bouton

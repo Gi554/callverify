@@ -23,6 +23,7 @@ from .models import (
     IsolationVisitResult,
     IsolationUnqualified,
     IsolationClientFollowUp,
+    IsolationFollowUp,
     AuditEvent,
 )
 from .isolation_work import VisitAuthentication, Pager, Conflict, visible
@@ -535,6 +536,25 @@ class IsolationVisitViewSet(
                 visit__client_id=row.client_id,
                 closed_at__isnull=True,
             ).update(closed_at=timezone.now(), programmed_visit=row, revision=F('revision') + 1)
+            if previous:
+                closed_tasks = IsolationFollowUp.objects.filter(
+                    absence_visit=previous,
+                    closed_at__isnull=True,
+                ).update(
+                    closed_at=timezone.now(),
+                    closed_by_id=request.user.pk,
+                    resolution=f'Nouvelle visite programmée : {row.pk}.',
+                    revision=F('revision') + 1,
+                )
+                if closed_tasks:
+                    from .isolation_followups import sync
+
+                    sync(prospect)
+                    AuditEvent.objects.create(
+                        action='isolation.callback.rebooked',
+                        object_id=str(previous.pk),
+                        metadata={'actor_portal_id': request.user.pk, 'new_visit_id': row.pk},
+                    )
             from .isolation_followups import event
 
             event(

@@ -316,11 +316,11 @@ const navigation = computed(() => {
     return [
       { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
       { id: 'appointments', label: 'Rendez-vous à venir', icon: 'appointments' },
-      { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
-      { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'visit-history', label: 'Rendez-vous passés', icon: 'appointments' },
       { id: 'personal-followups', label: 'À recontacter par moi-même', icon: 'followups' },
       { id: 'missing-updates', label: 'Rendez-vous sans mise à jour', icon: 'appointments' },
+      { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
+      { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
       { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
     ];
   const items = [
@@ -561,10 +561,11 @@ onMounted(async () => {
       </template>
       <main class="amx-main">
         <IsolationNotices
-          v-if="workspace === 'isolation' && role === 'client' && ready"
+          v-if="workspace === 'isolation' && ['client', 'setter'].includes(role) && ready"
           :request="isolation"
           @open="openIsolationVisit"
           @personal="selectModule('personal-followups')"
+          @tasks="selectModule('followups')"
         />
         <p v-if="calendarNotice" role="status">{{ calendarNotice }}</p>
         <p v-if="!ready" class="subtle">Chargement de votre espace…</p>
@@ -684,12 +685,6 @@ onMounted(async () => {
                     :request="assurance"
                     @open="openAssuranceAppointment"
                 /></template>
-                <IsolationNotices
-                  v-else-if="workspace === 'isolation' && role === 'setter'"
-                  :request="isolation"
-                  @tasks="selectModule('followups')"
-                  @open="openIsolationVisit"
-                />
               </CrmOverview>
               <section
                 v-else

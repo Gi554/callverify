@@ -21,7 +21,24 @@ const performed = ref(props.visit.result ? (props.visit.result.performed ? 'yes'
 const followUpOwner = ref(props.visit.result?.follow_up_owner || ''),
   unqualified = ref(props.visit.result?.outcome === 'unqualified'),
   absenceReason = ref(props.visit.result?.absence_reason || ''),
-  followUpAt = ref('');
+  followUpAt = ref(local(props.visit.result?.follow_up_at));
+function local(value?: string) {
+  if (!value) return '';
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date(value))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
 async function save() {
   if (unqualified.value && !absenceReason.value.trim()) return;
   if (
@@ -56,7 +73,9 @@ async function save() {
             follow_up_owner: followUpOwner.value,
             absence_reason: absenceReason.value,
             follow_up_at: followUpAt.value
-              ? bookingInterval(followUpAt.value, 'America/Toronto', 30).starts_at
+              ? followUpAt.value === local(props.visit.result?.follow_up_at)
+                ? props.visit.result.follow_up_at
+                : bookingInterval(followUpAt.value, 'America/Toronto', 30).starts_at
               : null,
           }
         : {}),

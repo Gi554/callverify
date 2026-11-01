@@ -8,6 +8,7 @@ import AvailabilitySlots from './AvailabilitySlots.vue';
 import IsolationVisitResult from './IsolationVisitResult.vue';
 import IsolationSharedActivities from './IsolationSharedActivities.vue';
 import IsolationVisitSupplements from './IsolationVisitSupplements.vue';
+import IsolationVisitHistory from './IsolationVisitHistory.vue';
 import SidePanel from './SidePanel.vue';
 const nonqualified = ref(false),
   nonqualifiedReason = ref(''),
@@ -77,6 +78,7 @@ const outcomes: Record<string, string> = {
   not_performed: 'Non effectuée',
 };
 const publicationMessage = ref('');
+const resultHistory = ref<number | null>(null);
 const prospect = ref<any>(null),
   rows = ref<any[]>([]),
   page = ref(1),
@@ -182,7 +184,7 @@ async function save() {
     if (!record) {
       if (
         !representativesReady.value ||
-        (representatives.value.length > 1 && !representative.value)
+        (props.role === 'client' && representatives.value.length > 1 && !representative.value)
       )
         throw new Error('Choisissez un représentant avant de programmer la visite.');
       if (!c2.value && !props.clientFollowupId)
@@ -341,8 +343,13 @@ onMounted(() => run(load));
         </p>
         <template v-if="!editing"
           ><label v-if="representatives.length"
-            >Représentant chargé de la visite<select v-model="representative" required>
-              <option value="">Choisir un représentant</option>
+            >Représentant chargé de la visite<select
+              v-model="representative"
+              :required="role === 'client' && representatives.length > 1"
+            >
+              <option value="">
+                {{ role === 'client' ? 'Choisir un représentant' : 'À désigner par le client' }}
+              </option>
               <option v-for="person in representatives" :key="person.id" :value="String(person.id)">
                 {{ person.name }}
               </option>
@@ -403,7 +410,9 @@ onMounted(() => run(load));
         ><button
           class="primary"
           :disabled="
-            !editing && (!representativesReady || (representatives.length > 1 && !representative))
+            !editing &&
+            (!representativesReady ||
+              (role === 'client' && representatives.length > 1 && !representative))
           "
         >
           {{ editing ? 'Confirmer le report' : 'Programmer la visite' }}</button
@@ -475,7 +484,7 @@ onMounted(() => run(load));
         }}
       </p>
       <h4>
-        {{ row.prospect.name || row.prospect.phone }} ·
+        {{ row.c2_snapshot?.fields?.full_name || row.prospect.name || row.prospect.phone }} ·
         {{
           row.status === 'cancelled'
             ? row.next_visit_id
@@ -485,8 +494,12 @@ onMounted(() => run(load));
               ? 'Non qualifié — non validé'
               : row.result
                 ? row.result.performed
-                  ? 'Effectuée'
-                  : 'Non effectuée'
+                  ? row.result.closed === true
+                    ? 'Présenté — closé'
+                    : row.result.closed === false
+                      ? 'Présenté — non closé'
+                      : 'Présenté — vente à préciser'
+                  : 'Non présenté'
                 : 'Planifiée'
         }}
       </h4>
@@ -513,6 +526,14 @@ onMounted(() => run(load));
         Programmer une nouvelle visite après cette absence
       </button>
       <p>{{ visitDate(row.starts_at) }} → {{ visitDate(row.ends_at) }} · Heure du Québec</p>
+      <p>
+        Téléphone : {{ row.c2_snapshot?.fields?.phone || row.prospect.phone || 'Non renseigné' }}
+      </p>
+      <p>
+        Adresse : {{ row.c2_snapshot?.fields?.address || 'Non renseignée' }}<br />
+        {{ row.c2_snapshot?.fields?.city || 'Ville non renseignée' }} ·
+        {{ row.c2_snapshot?.fields?.postal_code || 'Code postal non renseigné' }}
+      </p>
       <IsolationC2Snapshot :snapshot="row.c2_snapshot" />
       <p>Closer : {{ row.closer?.name || 'Non attribué' }}</p>
       <button
@@ -595,6 +616,19 @@ onMounted(() => run(load));
             : 'Rappel par le setter'
         }}
       </p>
+      <button
+        class="secondary"
+        :disabled="busy"
+        @click="resultHistory = resultHistory === row.id ? null : row.id"
+      >
+        Historique du rendez-vous
+      </button>
+      <IsolationVisitHistory
+        v-if="resultHistory === row.id"
+        :key="`${row.id}-${row.revision}`"
+        :visit-id="row.id"
+        :request="request"
+      />
       <button v-if="row.result" class="secondary" :disabled="busy" @click="supplements = row">
         Consulter / compléter le résultat
       </button>

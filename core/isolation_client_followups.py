@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .isolation_work import VisitAuthentication, Pager, Conflict
 from .isolation_followups import explicit, event
-from .models import IsolationClientFollowUp, IsolationNotice, Prospect
+from .models import IsolationClientFollowUp, IsolationNotice, Prospect, ProspectActivity
 
 
 def output(row):
@@ -43,7 +43,7 @@ class Update(serializers.Serializer):
         if set(self.initial_data) - set(self.fields):
             raise ValidationError('Champs non autorisés.')
         if data['due_at']:
-            explicit(data['due_at'], self.initial_data['due_at'])
+            explicit(data['due_at'], self.initial_data['due_at'], future=False)
         return data
 
 
@@ -79,6 +79,12 @@ class ClientFollowUps(viewsets.GenericViewSet):
         serializer = Update(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if (
+            data['due_at']
+            and data['due_at'] <= timezone.now()
+            and data['due_at'] != original.due_at
+        ):
+            raise ValidationError('Une nouvelle date de rappel doit être dans le futur.')
         with transaction.atomic():
             Prospect.objects.filter(pk=original.visit.prospect_id).update(
                 assignment_revision=F('assignment_revision')
@@ -101,6 +107,30 @@ class ClientFollowUps(viewsets.GenericViewSet):
                 },
             )
         return self.retrieve(request, pk)
+
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        row = self.get_object()
+        rows = ProspectActivity.objects.filter(
+            prospect_id=row.visit.prospect_id,
+            author_role='client',
+            author_portal_id=row.visit.client_id,
+            kind='client_followup',
+            changes__follow_up_id=row.pk,
+        ).order_by('-pk')
+        response = self.get_paginated_response(
+            [
+                {
+                    'id': entry.pk,
+                    'created_at': entry.created_at,
+                    'note': entry.body,
+                    'due_at': entry.changes.get('due_at'),
+                }
+                for entry in self.paginate_queryset(rows)
+            ]
+        )
+        response['Cache-Control'] = 'no-store'
+        return response
 
     @action(detail=True, methods=['get'])
     def prospect(self, request, pk=None):

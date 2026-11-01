@@ -3,7 +3,7 @@ from uuid import uuid4
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from . import test_isolation_visits as fixtures
-from .models import IsolationVisit, IsolationVisitResult, Prospect
+from .models import IsolationVisit, IsolationVisitResult, Prospect, IsolationFollowUp
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
@@ -56,6 +56,34 @@ class RebookingTests(TestCase):
         new = IsolationVisit.objects.get(pk=response.data['id'])
         self.assertEqual(new.previous_visit_id, old.pk)
         self.assertEqual(new.process_id, old.process_id)
+
+    def test_rebooking_finishes_only_the_callback_linked_to_the_previous_absence(self):
+        old = self.absent()
+        task = IsolationFollowUp.objects.create(
+            prospect=self.prospect,
+            absence_visit=old,
+            request_id=uuid4(),
+            fingerprint='absence',
+            note='Rappeler',
+            due_at=timezone.now() + timedelta(hours=1),
+        )
+        manual = IsolationFollowUp.objects.create(
+            prospect=self.prospect,
+            request_id=uuid4(),
+            fingerprint='manual',
+            note='Autre suivi',
+            due_at=timezone.now() + timedelta(days=1),
+        )
+        self.request_id = uuid4()
+        response = self.book(previous_visit_id=old.pk, revision=1)
+        self.assertEqual(response.status_code, 201, response.data)
+        task.refresh_from_db()
+        manual.refresh_from_db()
+        self.prospect.refresh_from_db()
+        self.assertIsNotNone(task.closed_at)
+        self.assertIn(str(response.data['id']), task.resolution)
+        self.assertIsNone(manual.closed_at)
+        self.assertEqual(self.prospect.callback_at, manual.due_at)
 
     def test_stale_or_foreign_previous_is_rejected_and_old_cannot_be_overwritten(self):
         old = self.absent()

@@ -20,6 +20,26 @@ const selected = ref<any>(null),
   dirty = ref(false),
   visitBusy = ref(false);
 const visits = ref<InstanceType<typeof IsolationVisits> | null>(null);
+const historyRows = ref<any[]>([]),
+  historyPage = ref(1),
+  historyCount = ref(0),
+  historyBusy = ref(false);
+async function loadHistory() {
+  if (!selected.value || historyBusy.value) return;
+  const id = selected.value.id;
+  historyBusy.value = true;
+  try {
+    const data = await props.request(`client-follow-ups/${id}/history/?page=${historyPage.value}`);
+    if (selected.value?.id === id) {
+      historyRows.value = data.results;
+      historyCount.value = data.count;
+    }
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    historyBusy.value = false;
+  }
+}
 function date(value: string) {
   return new Date(value).toLocaleString('fr-CA', { timeZone: 'America/Toronto' });
 }
@@ -59,6 +79,10 @@ function open(row: any) {
   due.value = local(row.due_at);
   note.value = row.note;
   dirty.value = false;
+  historyRows.value = [];
+  historyPage.value = 1;
+  historyCount.value = 0;
+  loadHistory();
 }
 function close() {
   if (busy.value || visitBusy.value) return;
@@ -74,7 +98,11 @@ async function save() {
     selected.value = await props.request(`client-follow-ups/${selected.value.id}/update_plan/`, {
       revision: selected.value.revision,
       note: note.value,
-      due_at: due.value ? bookingInterval(due.value, 'America/Toronto', 30).starts_at : null,
+      due_at: due.value
+        ? due.value === local(selected.value.due_at)
+          ? selected.value.due_at
+          : bookingInterval(due.value, 'America/Toronto', 30).starts_at
+        : null,
     });
     dirty.value = false;
   } catch (e: any) {
@@ -83,6 +111,7 @@ async function save() {
     busy.value = false;
   }
   if (!dirty.value) await load();
+  if (!dirty.value) await loadHistory();
 }
 async function changed() {
   if (selected.value) {
@@ -184,6 +213,37 @@ onMounted(load);
           </fieldset>
         </form>
         <p v-else>{{ selected.note || 'Aucune note.' }}</p>
+        <details>
+          <summary>Historique des dates et notes de relance</summary>
+          <article v-for="entry in historyRows" :key="entry.id">
+            <small>{{ date(entry.created_at) }} · Québec</small>
+            <p>Rappel : {{ entry.due_at ? date(entry.due_at) : 'Date non définie' }}</p>
+            <p style="white-space: pre-wrap">{{ entry.note || 'Aucune note.' }}</p>
+          </article>
+          <p v-if="!historyRows.length">
+            {{ historyBusy ? 'Chargement…' : 'Aucune modification de relance enregistrée.' }}
+          </p>
+          <button
+            class="secondary"
+            :disabled="historyBusy || historyPage === 1"
+            @click="
+              historyPage--;
+              loadHistory();
+            "
+          >
+            Précédent
+          </button>
+          <button
+            class="secondary"
+            :disabled="historyBusy || historyPage * 25 >= historyCount"
+            @click="
+              historyPage++;
+              loadHistory();
+            "
+          >
+            Suivant
+          </button>
+        </details>
         <IsolationVisits
           ref="visits"
           :key="selected.id"
