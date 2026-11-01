@@ -16,6 +16,36 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Agenda visuel — client Isolation et conseiller Assurance
+
+« Agenda et disponibilités » s’ouvre désormais sur « Mon calendrier » : grille
+mensuelle avec visites/rendez-vous Orvia, navigation entre mois, retour à aujourd’hui,
+recherche et statuts. Un clic ouvre la fiche du rendez-vous ; un jour chargé ouvre
+la liste complète du jour. Les horaires et la connexion restent dans leurs onglets.
+L’heure affichée est Toronto / Montréal par défaut.
+
+Quand le propriétaire a connecté Google ou Microsoft, ses périodes occupées sont
+chargées via l’API free/busy existante et affichées en blocs hachurés « Occupé ·
+agenda personnel ». Aucun titre, participant ni identifiant externe éditable n’est
+conservé pour l’affichage. Ces périodes ne gonflent pas le compteur de rendez-vous
+Orvia. Sans connexion, les rendez-vous CRM restent visibles. Une erreur externe
+laisse les rendez-vous CRM consultables et indique que les espaces vides ne prouvent
+pas une disponibilité. Les réponses d’une ancienne navigation sont ignorées.
+
+Vérifications : 207 tests frontend, dont fenêtres de grille de 42 jours découpées
+sous la limite fournisseur de 31 jours, changement d’heure québécois, absence de
+connexion, erreur partielle, changement de mois, confidentialité des données,
+compteurs et ouverture des blocs privés en consultation. Typage, compilation,
+ESLint et Prettier. Revue locale sur données fictives : calendrier mensuel, ouverture
+d’une visite et rendu mobile 390 px sans élargissement de la page (seule la grille
+défile horizontalement).
+
+Limites : vue mensuelle ; les événements personnels sont consultables uniquement
+sous forme d’occupations, et leur titre n’est pas importé. Les rendez-vous Orvia
+publiés dans Google/Microsoft peuvent aussi apparaître comme périodes occupées.
+Aucune création/modification d’événement personnel ni changement des permissions
+OAuth ; la recette avec l’agenda réel du client reste à effectuer.
+
 ## Isolation — refonte des espaces client et représentant
 
 L’accueil du client affiche les compteurs réels, les prochaines visites et des accès

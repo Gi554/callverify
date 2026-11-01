@@ -14,8 +14,15 @@ const source = readFileSync(new URL('../src/calendar-grid.ts', import.meta.url),
   "'./booking-time'",
   JSON.stringify(booking),
 )
-const { monthGrid, gridWindow, dayKey, eventsForDay, loadCalendarRows, calendarCells } =
-  await import(moduleUrl(source))
+const {
+  monthGrid,
+  gridWindow,
+  dayKey,
+  eventsForDay,
+  loadCalendarRows,
+  calendarCells,
+  loadConnectedBusy,
+} = await import(moduleUrl(source))
 test('month grid starts Monday, ends Sunday, and covers leap days', () => {
   const days = monthGrid('2028-02')
   assert.equal(new Date(days[0]).getUTCDay(), 1)
@@ -114,4 +121,89 @@ test('page failures reject the load instead of presenting a partial calendar as 
     ),
     /indisponible/,
   )
+})
+
+test('connected calendar reads the 42-day grid in bounded windows and strips all private fields', async () => {
+  const calls = []
+  const window = gridWindow(monthGrid('2026-11'), 'America/Toronto')
+  const result = await loadConnectedBusy(
+    async (path, body) => {
+      calls.push({ path, body })
+      return body
+        ? {
+            busy: [
+              {
+                start: '2026-11-01T05:30:00Z',
+                end: '2026-11-01T07:00:00Z',
+                title: 'Private title',
+                attendees: ['secret@example.test'],
+              },
+            ],
+          }
+        : { connections: [{ workspace: 'isolation', connected: true }] }
+    },
+    'isolation',
+    window,
+    () => true,
+  )
+  assert.equal(result.connected, true)
+  assert.equal(calls.length, 3)
+  for (const { body } of calls.slice(1))
+    assert.ok(Date.parse(body.ends_at) - Date.parse(body.starts_at) <= 31 * 86400000)
+  assert.equal(result.periods.length, 1)
+  assert.deepEqual(Object.keys(result.periods[0]).sort(), [
+    'ends_at',
+    'external_busy',
+    'id',
+    'starts_at',
+  ])
+  assert.doesNotMatch(JSON.stringify(result), /Private title|secret@/)
+})
+test('disconnected calendar never requests external busy periods', async () => {
+  const calls = []
+  const result = await loadConnectedBusy(
+    async (path) => {
+      calls.push(path)
+      return { connections: [{ workspace: 'assurance', connected: false }] }
+    },
+    'assurance',
+    gridWindow(monthGrid('2026-11'), 'America/Toronto'),
+    () => true,
+  )
+  assert.deepEqual(calls, ['calendar/'])
+  assert.deepEqual(result, { connected: false, periods: [] })
+})
+test('partial external failure is reported, and obsolete navigation stops subsequent calls', async () => {
+  const window = gridWindow(monthGrid('2026-11'), 'America/Toronto')
+  let calls = 0
+  await assert.rejects(
+    loadConnectedBusy(
+      async (path, body) => {
+        if (!body) return { connections: [{ workspace: 'isolation', connected: true }] }
+        if (++calls === 2) throw new Error('Google indisponible')
+        return { busy: [] }
+      },
+      'isolation',
+      window,
+      () => true,
+    ),
+    /Google indisponible/,
+  )
+  let current = true
+  calls = 0
+  const result = await loadConnectedBusy(
+    async (path, body) => {
+      calls++
+      if (body) {
+        current = false
+        return { busy: [] }
+      }
+      return { connections: [{ workspace: 'isolation', connected: true }] }
+    },
+    'isolation',
+    window,
+    () => current,
+  )
+  assert.equal(result, null)
+  assert.equal(calls, 2)
 })

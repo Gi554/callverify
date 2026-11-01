@@ -109,6 +109,9 @@ function fixture(reject = false) {
 const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
 async function edit(f) {
   await flush()
+  assert.ok(button(f, 'Mon calendrier'))
+  button(f, 'Mes disponibilités').props.onClick()
+  await flush()
   button(f, 'Définir mes horaires').props.onClick()
   await flush()
   all(f.root)

@@ -80,3 +80,61 @@ export async function loadCalendarRows(
   }
   return current() ? [...new Map(collected.map((row) => [row.id, row])).values()] : null
 }
+
+// Free/busy only: no external titles, participants, or editable event IDs enter the UI.
+export async function loadConnectedBusy(
+  portal: (path: string, body?: any) => Promise<any>,
+  workspace: string,
+  window: { ends_after: string; starts_before: string },
+  current: () => boolean,
+) {
+  const data = await portal('calendar/')
+  if (!current()) return null
+  if (!Array.isArray(data.connections)) throw new Error('État de connexion indisponible.')
+  const connection = data.connections.find((row: any) => row.workspace === workspace)
+  if (!connection?.connected) return { connected: false, periods: [] }
+  const periods: any[] = []
+  let first = Date.parse(window.ends_after)
+  const last = Date.parse(window.starts_before)
+  while (first < last && current()) {
+    // A month grid can cover 42 days; each API call must stay under 31 days,
+    // including the extra hour when Québec switches back to winter time.
+    const end = Math.min(first + 30 * DAY, last)
+    const response = await portal(`calendar/${workspace}/busy/`, {
+      starts_at: new Date(first).toISOString(),
+      ends_at: new Date(end).toISOString(),
+    })
+    if (!current()) return null
+    if (!Array.isArray(response.busy)) throw new Error('Périodes occupées indisponibles.')
+    for (const period of response.busy) {
+      const start = Date.parse(period.start),
+        finish = Date.parse(period.end)
+      if (!Number.isFinite(start) || !Number.isFinite(finish) || finish <= start)
+        throw new Error('Une période occupée reçue est invalide.')
+      if (start < last && finish > Date.parse(window.ends_after))
+        periods.push({
+          start: Math.max(start, Date.parse(window.ends_after)),
+          end: Math.min(finish, last),
+        })
+    }
+    first = end
+  }
+  periods.sort((a, b) => a.start - b.start)
+  const merged: { start: number; end: number }[] = []
+  for (const period of periods) {
+    const previous = merged.at(-1)
+    if (previous && period.start <= previous.end) previous.end = Math.max(previous.end, period.end)
+    else merged.push({ ...period })
+  }
+  return current()
+    ? {
+        connected: true,
+        periods: merged.map((period, index) => ({
+          id: `external-${index}`,
+          external_busy: true,
+          starts_at: new Date(period.start).toISOString(),
+          ends_at: new Date(period.end).toISOString(),
+        })),
+      }
+    : null
+}

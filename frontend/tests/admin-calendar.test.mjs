@@ -142,6 +142,8 @@ function fixture({
   quota = null,
   appointmentId = null,
   denied = false,
+  connectedAgenda = false,
+  externalFail = false,
 } = {}) {
   const root = { children: [] },
     requests = []
@@ -149,6 +151,7 @@ function fixture({
   const app = renderer.createApp(component, {
     workspace,
     role,
+    connectedAgenda,
     appointmentId,
     username: 'chloe.conseil',
     request: async (path) => {
@@ -174,10 +177,16 @@ function fixture({
       )
       return { results, count: results.length, next: null }
     },
-    portal: async (path) =>
-      path === 'assurance/advisor-quotas/'
+    portal: async (path) => {
+      if (path === 'calendar/') return { connections: [{ workspace, connected: true }] }
+      if (path.endsWith('/busy/')) {
+        if (externalFail) throw new Error('Google indisponible')
+        return { busy: [{ start: at(16, 15), end: at(16, 16), title: 'Secret événement' }] }
+      }
+      return path === 'assurance/advisor-quotas/'
         ? { results: [{ id: 7, name: 'chloe.conseil', quota }] }
-        : {},
+        : {}
+    },
   })
   app.mount(root)
   return { root, requests, close: () => app.unmount() }
@@ -361,6 +370,42 @@ test('the advisor sees the countdown of prospects still owed to their client', a
   try {
     await flush()
     assert.ok(!all(f.root).some((n) => String(n.props?.class).includes('quota-countdown')))
+  } finally {
+    f.close()
+  }
+})
+
+test('visual owner calendar combines real CRM meetings with private busy blocks without adding them to meeting totals', async () => {
+  const f = fixture({ workspace: 'isolation', role: 'client', connectedAgenda: true })
+  try {
+    await flush()
+    assert.equal(count(f), '2')
+    assert.match(text(f.root), /Occupé · agenda personnel/)
+    assert.doesNotMatch(text(f.root), /Secret événement/)
+    assert.match(text(f.root), /Maison Gamma/)
+    all(f.root)
+      .find((n) => n.tag === 'button' && text(n).includes('Occupé · agenda personnel'))
+      .props.onClick()
+    await flush()
+    assert.ok(!all(f.root).some((n) => n.props?.['data-component'] === 'IsolationVisits'))
+    assert.match(text(f.root), /consultation uniquement/)
+  } finally {
+    f.close()
+  }
+})
+test('an external provider failure preserves the CRM meetings and explicitly warns about unknown availability', async () => {
+  const f = fixture({
+    workspace: 'isolation',
+    role: 'client',
+    connectedAgenda: true,
+    externalFail: true,
+  })
+  try {
+    await flush()
+    assert.equal(count(f), '2')
+    assert.match(text(f.root), /Maison Gamma/)
+    assert.match(text(f.root), /Google indisponible/)
+    assert.match(text(f.root), /ne garantissent pas une disponibilité/)
   } finally {
     f.close()
   }
