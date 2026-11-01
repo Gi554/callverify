@@ -106,7 +106,7 @@ function fixture({ fail = false, existing = false } = {}) {
     status: 'scheduled',
     starts_at: '2020-01-01T10:00:00Z',
     ends_at: '2020-01-01T11:00:00Z',
-    timezone: 'America/Toronto',
+    timezone: 'Asia/Tokyo',
     prospect: { name: 'Client', phone: '5145550100' },
     original_setter: { name: 'Setter' },
     closer: { name: 'Closer' },
@@ -159,6 +159,12 @@ test('closer explicitly declares held and sold with optional notes and the visit
   try {
     await flush()
     await open(f)
+    assert.match(
+      all(f.root)
+        .map((n) => n.text || '')
+        .join(' '),
+      /05:00/,
+    )
     const selects = all(f.root).filter((n) => n.tag === 'select')
     assert.equal(selects[0].model, '')
     assert.equal(selects[1].model, '')

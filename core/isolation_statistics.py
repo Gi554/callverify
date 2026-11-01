@@ -21,7 +21,7 @@ class StatisticsAuthentication(WorkAuthentication):
 
 
 def period(params, now):
-    name = params.get('timezone', 'UTC')
+    name = params.get('timezone', 'America/Toronto')
     try:
         zone = ZoneInfo(name)
     except (ValueError, ZoneInfoNotFoundError):

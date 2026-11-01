@@ -163,15 +163,10 @@ onMounted(() => load());
           >Un jour de la semaine<input v-model="weekOf" type="date" required /></label
         ><template v-else
           ><label>Du<input v-model="from" type="date" required /></label
-          ><label>Au inclus<input v-model="to" type="date" required /></label></template
-        ><label
-          >Fuseau<select v-model="zone">
-            <option value="America/Toronto">Toronto / Montréal</option>
-            <option value="America/Vancouver">Vancouver</option>
-            <option value="America/Halifax">Halifax</option>
-            <option value="UTC">UTC</option>
-          </select></label
-        ><label v-if="canCompare"
+          ><label>Au inclus<input v-model="to" type="date" required /></label
+        ></template>
+        <p>Heure du Québec · Montréal / Toronto</p>
+        <label v-if="canCompare"
           >Comparer par<select v-model="group">
             <option value="setter">Setter d’origine</option>
             <option value="closer">Closer actuellement attribué</option>
@@ -254,8 +249,9 @@ onMounted(() => load());
         <summary>Comprendre les calculs et les attributions</summary>
         <p>{{ result.definition }}</p>
         <small
-          >Calculé le {{ new Date(result.as_of).toLocaleString('fr-FR') }}. Aucun appel n’est
-          déclenché par ce rapport.</small
+          >Calculé le
+          {{ new Date(result.as_of).toLocaleString('fr-CA', { timeZone: 'America/Toronto' }) }}.
+          Aucun appel n’est déclenché par ce rapport.</small
         >
       </details>
       <div v-if="groups" class="statistics-groups">

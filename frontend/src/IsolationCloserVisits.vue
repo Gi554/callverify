@@ -24,7 +24,7 @@ function changed() {
 }
 function date(row: any) {
   return new Intl.DateTimeFormat('fr-FR', {
-    timeZone: row.timezone,
+    timeZone: 'America/Toronto',
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(row.starts_at));
@@ -232,8 +232,10 @@ onMounted(() => run(load));
         <h3>Historique des résultats closer</h3>
         <article v-for="entry in history" :key="entry.id">
           <small
-            >{{ new Date(entry.created_at).toLocaleString('fr-FR') }} · Closer
-            {{ entry.actor_id }}</small
+            >{{
+              new Date(entry.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+            }}
+            · Closer {{ entry.actor_id }}</small
           >
           <p>
             Tenue : {{ entry.after.performed ? 'Oui' : 'Non' }} · Vente :

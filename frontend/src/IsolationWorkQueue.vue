@@ -508,7 +508,9 @@ onBeforeUnmount(() => {
               :class="{ 'is-late': row.callback_due }"
             >
               {{ row.callback_due ? 'Rappel en retard' : 'Prochain rappel' }} ·
-              {{ new Date(row.callback_at).toLocaleString('fr-FR') }}
+              {{
+                new Date(row.callback_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+              }}
             </p>
             <footer class="isolation-card-footer">
               <span class="prospect-stage">{{
@@ -693,7 +695,9 @@ onBeforeUnmount(() => {
       ><section v-if="history">
         <h4>Historique d’affectation</h4>
         <article v-for="entry in historyRows" :key="entry.id">
-          <small>{{ new Date(entry.created_at).toLocaleString('fr-FR') }}</small>
+          <small>{{
+            new Date(entry.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+          }}</small>
           <p>
             {{ entry.metadata.before?.setter_name || 'Non affecté' }} →
             {{ entry.metadata.after?.setter_name || 'Non affecté' }}

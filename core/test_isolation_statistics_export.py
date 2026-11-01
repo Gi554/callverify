@@ -1,5 +1,6 @@
 import csv
 import io
+from zoneinfo import ZoneInfo
 from django.test import TestCase, override_settings
 from openpyxl import load_workbook
 from packages.access.tickets import issue
@@ -95,7 +96,7 @@ class IsolationStatisticsExportTests(TestCase):
 
     def test_dates_empty_rates_and_permissions(self):
         self.fixture.visit()
-        day = self.fixture.day.date().isoformat()
+        day = self.fixture.day.astimezone(ZoneInfo('America/Toronto')).date().isoformat()
         rows = self.rows(self.export(**{'from': day, 'to': day}))
         self.assertEqual(rows[1][3], '1')
         self.assertIn('Non calculable', rows[1])
