@@ -138,6 +138,27 @@ class Notices(viewsets.GenericViewSet):
             ~Q(kind__in=['booked', 'result_due']) | Q(pk__in=candidates().values('pk'))
         )
         from django.db.models import F
+        from .isolation_reminders import policy
+
+        rows = rows.filter(
+            ~Q(kind='result_ready')
+            | (
+                Q(
+                    visit__client_id=self.request.user.pk,
+                    recipient_role='client',
+                    visit__status='scheduled',
+                    anchor_at=F('visit__starts_at'),
+                    visit__ends_at__lte=timezone.now(),
+                    visit__ends_at__gt=timezone.now() - timedelta(hours=24),
+                    visit__ends_at__gte=policy().active_from,
+                )
+                & (Q(visit__result__isnull=True) | Q(visit__result__closed__isnull=True))
+                & (
+                    Q(visit__publication='internal')
+                    | Q(visit__publication='google', visit__publication_status='confirmed')
+                )
+            )
+        )
 
         rows = rows.filter(
             ~Q(kind='personal_followup')
@@ -150,16 +171,17 @@ class Notices(viewsets.GenericViewSet):
         )
         if self.request.query_params.get('unread') == 'true':
             rows = rows.filter(read_at__isnull=True)
-        return rows.select_related('visit__prospect').order_by('-pk')
+        return rows.select_related('visit__prospect', 'visit__result').order_by('-pk')
 
     def list(self, request):
         rows = self.paginate_queryset(self.get_queryset())
         labels = {
-            'held': 'Visite tenue',
+            'held': 'Présenté — non closé',
             'not_held': 'Visite non tenue : rappel à effectuer',
-            'closed': 'Vente conclue',
+            'closed': 'Présenté — closé',
             'booked': 'Nouvelle visite programmée',
-            'result_due': 'Résultat de visite à renseigner',
+            'result_due': 'Rappel : résultat de visite toujours à renseigner',
+            'result_ready': 'Visite terminée : renseignez le résultat',
             'personal_followup': 'Relance personnelle à effectuer',
             'unqualified': 'Rendez-vous non qualifié — non validé',
         }

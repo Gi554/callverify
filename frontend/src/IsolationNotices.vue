@@ -21,7 +21,10 @@ async function load() {
 async function open(row: any) {
   if (row.kind === 'not_held') emit('tasks');
   else if (row.kind === 'personal_followup') emit('personal');
-  else if (['booked', 'result_due'].includes(row.kind)) emit('open', row.visit_id);
+  else if (
+    ['booked', 'result_due', 'result_ready', 'held', 'closed', 'unqualified'].includes(row.kind)
+  )
+    emit('open', row.visit_id);
   try {
     await props.request(`isolation-notices/${row.id}/read/`, {});
     row.read_at = new Date().toISOString();
@@ -60,7 +63,9 @@ onBeforeUnmount(() => {
           ? 'Consulter mes rappels'
           : row.kind === 'personal_followup'
             ? 'Ouvrir mes relances'
-            : ['booked', 'result_due'].includes(row.kind)
+            : ['booked', 'result_due', 'result_ready', 'held', 'closed', 'unqualified'].includes(
+                  row.kind,
+                )
               ? 'Ouvrir la visite'
               : 'Marquer comme lu'
       }}

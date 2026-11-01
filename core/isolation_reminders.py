@@ -39,9 +39,10 @@ def candidates():
     available = Q(
         kind='booked',
         visit__starts_at__gt=now,
-        visit__publication='google',
-        visit__publication_status='confirmed',
         visit__created_at__gte=rules.active_from,
+    ) & (
+        Q(visit__publication='internal')
+        | Q(visit__publication='google', visit__publication_status='confirmed')
     )
     if rules.enabled:
         available |= (
@@ -65,8 +66,10 @@ def candidates():
 def booked(visit):
     if (
         visit.status != 'scheduled'
-        or visit.publication != 'google'
-        or visit.publication_status != 'confirmed'
+        or (
+            visit.publication != 'internal'
+            and not (visit.publication == 'google' and visit.publication_status == 'confirmed')
+        )
         or visit.created_at < policy().active_from
     ):
         return
@@ -82,14 +85,31 @@ def generate():
     due_notices()
     rules = policy()
     now = timezone.now()
-    for visit in IsolationVisit.objects.filter(
-        status='scheduled',
-        publication='google',
-        publication_status='confirmed',
-        starts_at__gt=now,
-        created_at__gte=rules.active_from,
-    ).iterator(chunk_size=200):
+    for visit in (
+        IsolationVisit.objects.filter(
+            status='scheduled',
+            starts_at__gt=now,
+            created_at__gte=rules.active_from,
+        )
+        .filter(Q(publication='internal') | Q(publication='google', publication_status='confirmed'))
+        .iterator(chunk_size=200)
+    ):
         booked(visit)
+    for visit in (
+        IsolationVisit.objects.filter(
+            status='scheduled',
+            ends_at__gte=rules.active_from,
+            ends_at__lte=now,
+            ends_at__gt=now - timedelta(hours=24),
+        )
+        .filter(Q(result__isnull=True) | Q(result__closed__isnull=True))
+        .filter(Q(publication='internal') | Q(publication='google', publication_status='confirmed'))
+        .iterator(chunk_size=200)
+    ):
+        key = hashlib.sha256(
+            f'ready:{visit.pk}:{visit.client_id}:{visit.starts_at.isoformat()}'.encode()
+        ).hexdigest()
+        notice(visit, visit.client_id, 'client', 'result_ready', key)
     if not rules.enabled:
         return {'created': 0}
     rows = (

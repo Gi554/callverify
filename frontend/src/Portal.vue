@@ -688,6 +688,7 @@ onMounted(async () => {
                   v-else-if="workspace === 'isolation' && role === 'setter'"
                   :request="isolation"
                   @tasks="selectModule('followups')"
+                  @open="openIsolationVisit"
                 />
               </CrmOverview>
               <section
@@ -824,6 +825,7 @@ onMounted(async () => {
                     <CrmAppointmentsCalendar
                       v-else-if="
                         isolationModule === 'appointments' &&
+                        !appointmentFocus &&
                         ['setter', 'administrator'].includes(role)
                       "
                       workspace="isolation"
