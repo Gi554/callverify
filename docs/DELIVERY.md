@@ -30,9 +30,30 @@ accessible et conserve les occurrences. Les droits existants restent appliqués.
 Vérifications : seuil exact de 24 heures, avant le seuil, autre client, visibilité
 administrateur, exclusion des annulations, sortie après réponse et navigation.
 
+### Demande tableau de bord client — responsabilité des relances après absence
+
+Le client répond d’abord à la présence, puis à la vente uniquement si le prospect
+s’est présenté. Une absence exige dans le formulaire un motif et le choix du suivi :
+rappel par le setter (coordonnées liées à la tâche, motif, note et échéance) ou
+relance personnelle du client (aucune tâche setter). Les appels API historiques
+qui ne transmettent pas le nouveau choix conservent le rappel setter par défaut.
+
+« À recontacter par moi-même » permet au client de consulter les fiches et visites,
+modifier date et note, recevoir une notification interne unique à l’échéance, puis
+programmer une nouvelle occurrence dans Google. Les heures sont celles du Québec.
+La nouvelle visite conserve le prospect, les qualifications et le processus initial ;
+la relance quitte la liste seulement après l’enregistrement de la nouvelle visite.
+La confirmation Google reste explicitement distincte de l’enregistrement Orvia.
+L’administration consulte les relances personnelles ; les setters n’y ont pas accès.
+Une correction de responsabilité ferme l’autre suivi et en conserve l’historique.
+
+Vérifications : isolation des clients et rôles, date versionnée, notification sans
+doublon et invalidée après changement d’échéance, transfert du suivi, présence corrigée,
+réservation avec attestation liée à la relance, même prospect/processus, rejeu et
+échec calendrier sans consommation du suivi ; tests portail et formulaire.
+
 Reste à livrer pour la nouvelle demande : notification dès la fin de visite,
-choix du responsable du rappel après absence, relances personnelles du client et
-reprogrammation associée, déclaration non qualifiée par le client, indicateurs
+déclaration non qualifiée par le client, indicateurs
 hebdomadaires payables du setter. Le rappel après 24 heures et la rémunération
 distincte présence/vente existent déjà ; leurs adaptations devront être vérifiées.
 

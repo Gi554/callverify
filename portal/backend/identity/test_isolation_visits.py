@@ -93,3 +93,13 @@ class IsolationVisitProofTests(TestCase):
         self.setter_access.active = False
         self.setter_access.save()
         self.assertEqual(self.post(unqualified_id=91).status_code, 400)
+
+    def test_personal_followup_proof_has_a_distinct_client_only_scope(self):
+        self.assertEqual(self.post(client_followup_id=15).status_code, 403)
+        self.client.force_authenticate(self.client_user)
+        response = self.post(client_followup_id=15)
+        self.assertEqual(response.status_code, 200, response.data)
+        claims = verify_booking(response.data['proof'], self.client_user.pk, 12)
+        self.assertEqual(claims['followup'], 15)
+        self.assertNotIn('reactivation', claims)
+        self.assertEqual(self.post(client_followup_id=15, unqualified_id=91).status_code, 403)

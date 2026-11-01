@@ -354,7 +354,29 @@ class IsolationVisitCalendar(models.Model):
     version = models.PositiveIntegerField(default=0)
 
 
+class IsolationClientFollowUp(models.Model):
+    visit = models.OneToOneField(
+        IsolationVisit, on_delete=models.PROTECT, related_name='client_followup'
+    )
+    due_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    note = models.TextField(blank=True)
+    reason = models.CharField(max_length=1000)
+    revision = models.PositiveIntegerField(default=0)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    programmed_visit = models.ForeignKey(
+        IsolationVisit,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='source_client_followups',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class IsolationVisitResult(models.Model):
+    follow_up_owner = models.CharField(max_length=10, default='setter')
+    absence_reason = models.CharField(max_length=1000, blank=True)
+    follow_up_at = models.DateTimeField(null=True, blank=True)
     attendance_unit_cad = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )

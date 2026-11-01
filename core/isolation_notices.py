@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .isolation_work import WorkAuthentication, Pager
-from .models import IsolationNotice, IsolationFollowUp, AuditEvent
+from .models import IsolationNotice, IsolationFollowUp
 
 
 class NoticeAuthentication(WorkAuthentication):
@@ -36,7 +36,21 @@ def result_changed(visit, report, previous, actor):
     # Task ownership follows the prospect's current setter, as for existing manual callbacks.
     prospect = visit.prospect
     owner = prospect.assigned_setter_id
-    if not report.performed:
+    from .isolation_client_followups import sync_client_followup
+
+    sync_client_followup(visit, report)
+    existing_task = IsolationFollowUp.objects.filter(absence_visit=visit).first()
+    if report.performed or report.follow_up_owner == 'client':
+        if existing_task and existing_task.closed_at is None:
+            existing_task.closed_at = timezone.now()
+            existing_task.closed_by_id = actor.pk
+            existing_task.resolution = 'Suivi repris par le client ou présence corrigée.'
+            existing_task.revision += 1
+            existing_task.save(
+                update_fields=['closed_at', 'closed_by_id', 'resolution', 'revision']
+            )
+            sync(prospect)
+    else:
         task, created = IsolationFollowUp.objects.get_or_create(
             absence_visit=visit,
             defaults={
@@ -45,33 +59,59 @@ def result_changed(visit, report, previous, actor):
                 'created_by_id': None,
                 'fingerprint': hashlib.sha256(f'absence:{visit.pk}'.encode()).hexdigest(),
                 'note': 'Visite non tenue : rappeler le prospect pour programmer une nouvelle visite.',
-                'due_at': timezone.now() + timedelta(hours=24),
+                'due_at': report.follow_up_at or timezone.now() + timedelta(hours=24),
             },
         )
-        if not created and task.closed_at and previous and previous.get('performed'):
-            before = {
-                'closed_at': task.closed_at.isoformat(),
-                'resolution': task.resolution,
-                'revision': task.revision,
-            }
+        reopen = (
+            not created
+            and task.closed_at
+            and previous
+            and (previous.get('performed') or previous.get('follow_up_owner') == 'client')
+        )
+        if (
+            created
+            or reopen
+            or (
+                previous
+                and previous.get('follow_up_at')
+                != (report.follow_up_at.isoformat() if report.follow_up_at else None)
+            )
+        ):
+            task.due_at = report.follow_up_at or timezone.now() + timedelta(hours=24)
+        if reopen:
             task.closed_at = None
             task.closed_by_id = None
             task.resolution = ''
-            task.due_at = timezone.now() + timedelta(hours=24)
-            task.revision += 1
-            task.save(
-                update_fields=['closed_at', 'closed_by_id', 'resolution', 'due_at', 'revision']
+        if created or not task.closed_at:
+            task.note = '\n'.join(
+                filter(
+                    None,
+                    [
+                        'Visite non tenue : rappeler le prospect pour programmer une nouvelle visite.',
+                        report.absence_reason,
+                        report.note,
+                    ],
+                )
             )
-            AuditEvent.objects.create(
-                action='isolation.callback.absence_reopened',
-                object_id=str(task.pk),
-                metadata={'actor_portal_id': actor.pk, 'visit_id': visit.pk, 'before': before},
+            task.revision += not created
+            task.save(
+                update_fields=[
+                    'closed_at',
+                    'closed_by_id',
+                    'resolution',
+                    'due_at',
+                    'note',
+                    'revision',
+                ]
             )
         sync(prospect)
+    if not report.performed and report.follow_up_owner == 'client':
+        return
     if (
         previous
         and previous['performed'] == report.performed
         and previous.get('closed') == report.closed
+        and previous.get('follow_up_owner', 'setter') == report.follow_up_owner
     ):
         return
     kind = 'closed' if report.closed else 'held' if report.performed else 'not_held'
@@ -93,6 +133,17 @@ class Notices(viewsets.GenericViewSet):
         rows = rows.filter(
             ~Q(kind__in=['booked', 'result_due']) | Q(pk__in=candidates().values('pk'))
         )
+        from django.db.models import F
+
+        rows = rows.filter(
+            ~Q(kind='personal_followup')
+            | Q(
+                kind='personal_followup',
+                visit__client_followup__closed_at__isnull=True,
+                visit__client_followup__due_at__lte=timezone.now(),
+                anchor_at=F('visit__client_followup__due_at'),
+            )
+        )
         if self.request.query_params.get('unread') == 'true':
             rows = rows.filter(read_at__isnull=True)
         return rows.select_related('visit__prospect').order_by('-pk')
@@ -105,6 +156,7 @@ class Notices(viewsets.GenericViewSet):
             'closed': 'Vente conclue',
             'booked': 'Nouvelle visite programmée',
             'result_due': 'Résultat de visite à renseigner',
+            'personal_followup': 'Relance personnelle à effectuer',
         }
         response = self.get_paginated_response(
             [

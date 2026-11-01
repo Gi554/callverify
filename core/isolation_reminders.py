@@ -77,6 +77,9 @@ def booked(visit):
 
 
 def generate():
+    from .isolation_client_followups import due_notices
+
+    due_notices()
     rules = policy()
     now = timezone.now()
     for visit in IsolationVisit.objects.filter(

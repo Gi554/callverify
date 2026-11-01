@@ -36,6 +36,7 @@ const props = defineProps<{
   period?: 'upcoming' | 'history' | 'missing_updates';
   prospectId?: number;
   reactivationId?: number;
+  clientFollowupId?: number;
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -127,11 +128,13 @@ async function load() {
   }
   if (props.prospectId)
     prospect.value = await props.request(
-      props.reactivationId
-        ? `isolation-unqualified/${props.reactivationId}/prospect/`
-        : `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
+      props.clientFollowupId
+        ? `client-follow-ups/${props.clientFollowupId}/prospect/`
+        : props.reactivationId
+          ? `isolation-unqualified/${props.reactivationId}/prospect/`
+          : `${props.role === 'client' ? 'client-prospects' : 'work-queue'}/${props.prospectId}/`,
     );
-  if (prospect.value && (props.role !== 'client' || props.reactivationId))
+  if (prospect.value && (props.role !== 'client' || props.reactivationId || props.clientFollowupId))
     await loadRepresentatives();
   const data = await props.request(
     `visits/?page=${page.value}&result_due=${dueOnly.value}${props.period ? '&period=' + props.period : ''}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
@@ -147,6 +150,7 @@ async function loadBusy(start: string, end: string) {
     end,
     proof,
     ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
+    ...(props.clientFollowupId ? { client_followup_id: props.clientFollowupId } : {}),
   });
   return data.busy;
 }
@@ -158,6 +162,7 @@ async function attest(row: any) {
       prospect_id: row.id,
       setter_id: row.assigned_setter.id,
       ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
+      ...(props.clientFollowupId ? { client_followup_id: props.clientFollowupId } : {}),
       ...(!editing.value && representative.value
         ? { closer_id: Number(representative.value) }
         : {}),
@@ -179,8 +184,9 @@ async function save() {
         (representatives.value.length > 1 && !representative.value)
       )
         throw new Error('Choisissez un représentant avant de programmer la visite.');
-      if (!c2.value) throw new Error('Chargez la qualification avant de réserver.');
-      await c2.value.ensureSaved();
+      if (!c2.value && !props.clientFollowupId)
+        throw new Error('Chargez la qualification avant de réserver.');
+      if (!props.clientFollowupId) await c2.value.ensureSaved();
     }
     const current = record
       ? await props.request(`work-queue/${record.prospect.id}/`)
@@ -199,6 +205,7 @@ async function save() {
       body.request_id = requestId;
       body.publication = 'google';
       if (props.reactivationId) body.unqualified_id = props.reactivationId;
+      if (props.clientFollowupId) body.client_followup_id = props.clientFollowupId;
       if (previousVisit.value) body.previous_visit_id = previousVisit.value.id;
       saved = await props.request('visits/', body);
     }
@@ -210,7 +217,7 @@ async function save() {
     end.value = '';
     reason.value = '';
     // Reactivation archives its source entry; it cannot be loaded for editing again.
-    if (!props.reactivationId) await load();
+    if (!props.reactivationId && !props.clientFollowupId) await load();
     emit('changed');
   });
 }
@@ -314,7 +321,7 @@ onMounted(() => run(load));
     />
     <form
       ref="bookingForm"
-      v-if="(role !== 'client' || reactivationId) && (prospect || editing)"
+      v-if="(role !== 'client' || reactivationId || clientFollowupId) && (prospect || editing)"
       @submit.prevent="save"
       @input="changed"
       @change="changed"

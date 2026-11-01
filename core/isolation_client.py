@@ -27,6 +27,9 @@ OUTCOMES = {
 
 
 class ResultInput(serializers.Serializer):
+    follow_up_owner = serializers.ChoiceField(choices=['setter', 'client'], required=False)
+    absence_reason = serializers.CharField(max_length=1000, allow_blank=True, required=False)
+    follow_up_at = serializers.DateTimeField(allow_null=True, required=False)
     revision = serializers.IntegerField(min_value=0)
     performed = serializers.BooleanField()
     outcome = serializers.ChoiceField(choices=list(OUTCOMES))
@@ -41,6 +44,16 @@ class ResultInput(serializers.Serializer):
             raise ValidationError('Résultat commercial incohérent avec la réalisation de la visite')
         if data.get('closed') and not data['performed']:
             raise ValidationError('Une vente conclue exige une visite tenue.')
+        if data.get('follow_up_at'):
+            from .isolation_followups import explicit
+
+            explicit(data['follow_up_at'], self.initial_data['follow_up_at'])
+        if (
+            not data['performed']
+            and 'follow_up_owner' in data
+            and not data.get('absence_reason', '').strip()
+        ):
+            raise ValidationError('Indiquez le motif de non-présentation.')
         if 'closed' in data:
             data['outcome'] = (
                 'closed'
@@ -54,6 +67,9 @@ class ResultInput(serializers.Serializer):
 
 def result_output(row):
     return {
+        'follow_up_owner': row.follow_up_owner,
+        'absence_reason': row.absence_reason,
+        'follow_up_at': row.follow_up_at.isoformat() if row.follow_up_at else None,
         'performed': row.performed,
         'closed': row.closed,
         'outcome': row.outcome,
@@ -168,6 +184,14 @@ class ResultMixin:
                 }
             )
             fields = {key: data[key] for key in ('performed', 'outcome', 'note')}
+            for key, default in [
+                ('follow_up_owner', 'setter'),
+                ('absence_reason', ''),
+                ('follow_up_at', None),
+            ]:
+                fields[key] = data.get(key, getattr(existing, key, default))
+            if data['performed']:
+                fields.update(follow_up_owner='setter', absence_reason='', follow_up_at=None)
             fields['closed'] = data.get('closed', existing.closed if existing else None)
             if not fields['performed'] and fields['closed']:
                 fields['closed'] = False

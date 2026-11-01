@@ -8,6 +8,7 @@ from core.isolation_visits import IsolationVisitViewSet
 from core.isolation_closers import CloserVisits
 from core.isolation_followups import FollowUps
 from core.isolation_client import ClientProspects, client_dashboard
+from core.isolation_client_followups import ClientFollowUps
 from core.isolation_statistics import statistics as isolation_statistics
 from core.isolation_qualification import QualificationViewSet
 
@@ -17,6 +18,7 @@ router.register('visits', IsolationVisitViewSet, basename='isolation-visit')
 router.register('closer-visits', CloserVisits, basename='isolation-closer-visit')
 router.register('follow-ups', FollowUps, basename='isolation-follow-up')
 router.register('client-prospects', ClientProspects, basename='isolation-client-prospect')
+router.register('client-follow-ups', ClientFollowUps, basename='isolation-client-followup')
 router.register('qualification', QualificationViewSet, basename='isolation-qualification')
 for prefix, view, name in [
     ('campaigns', views.CampaignViewSet, 'campaign'),

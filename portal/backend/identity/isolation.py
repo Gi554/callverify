@@ -20,6 +20,7 @@ class AssignmentInput(serializers.Serializer):
 
 
 class BookingProofInput(AssignmentInput):
+    client_followup_id = serializers.IntegerField(min_value=1, required=False)
     unqualified_id = serializers.IntegerField(min_value=1, required=False)
     closer_id = serializers.IntegerField(min_value=1, required=False)
 
@@ -77,7 +78,8 @@ def visit_proof(request):
     serializer = BookingProofInput(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
-    if (actor.role == 'client') != ('unqualified_id' in data):
+    scopes = int('unqualified_id' in data) + int('client_followup_id' in data)
+    if (actor.role == 'client' and scopes != 1) or (actor.role != 'client' and scopes):
         raise PermissionDenied('La reprise client requiert une fiche non qualifiée précise.')
     if actor.role == 'setter' and data['setter_id'] != request.user.pk:
         raise PermissionDenied('Réservation limitée à vos prospects')
@@ -115,6 +117,7 @@ def visit_proof(request):
                 client.user_id,
                 client.user.username,
                 reactivation=data.get('unqualified_id'),
+                followup=data.get('client_followup_id'),
                 closer=closer,
             ),
             'expires_in': 120,

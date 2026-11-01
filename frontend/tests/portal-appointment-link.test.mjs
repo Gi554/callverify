@@ -195,6 +195,7 @@ test('Isolation client reminder opens the exact authorised visit after login', a
           'contacts',
           'unqualified',
           'visit-history',
+          'personal-followups',
           'missing-updates',
           'isolation-agenda',
         ],
@@ -237,6 +238,9 @@ test('Isolation client can open client files and a separate upcoming visits tab'
     shell.props.onNavigate('visit-history')
     await flush()
     assert.equal(find(f, 'IsolationVisits').props.period, 'history')
+    shell.props.onNavigate('personal-followups')
+    await flush()
+    assert.ok(find(f, 'IsolationClientFollowUps'))
     shell.props.onNavigate('missing-updates')
     await flush()
     assert.equal(find(f, 'IsolationVisits').props.period, 'missing_updates')
