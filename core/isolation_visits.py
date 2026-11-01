@@ -218,13 +218,19 @@ class IsolationVisitViewSet(
         if self.request.user.role == 'client':
             qs = qs.filter(client_id=self.request.user.pk)
         period = self.request.query_params.get('period', '')
-        if period not in ('', 'upcoming', 'history'):
+        if period not in ('', 'upcoming', 'history', 'missing_updates'):
             raise ValidationError('Période invalide')
         if period == 'upcoming':
             qs = qs.filter(status='scheduled', ends_at__gt=timezone.now())
         elif period == 'history':
             qs = qs.filter(Q(ends_at__lte=timezone.now()) | Q(status='cancelled')).order_by(
                 '-starts_at', '-pk'
+            )
+        elif period == 'missing_updates':
+            qs = (
+                qs.filter(status='scheduled', ends_at__lte=timezone.now() - timedelta(hours=24))
+                .filter(Q(result__isnull=True) | Q(result__closed__isnull=True))
+                .order_by('ends_at', 'pk')
             )
         if self.request.query_params.get('result_due') == 'true':
             qs = qs.filter(status='scheduled', ends_at__lte=timezone.now()).filter(

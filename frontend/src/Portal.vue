@@ -314,10 +314,11 @@ const navigation = computed(() => {
   if (workspace.value === 'isolation' && role.value === 'client')
     return [
       { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },
-      { id: 'appointments', label: 'Mes visites à venir', icon: 'appointments' },
+      { id: 'appointments', label: 'Rendez-vous à venir', icon: 'appointments' },
       { id: 'contacts', label: 'Mes fiches clients', icon: 'contacts' },
       { id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' },
-      { id: 'visit-history', label: 'Historique des visites', icon: 'appointments' },
+      { id: 'visit-history', label: 'Rendez-vous passés', icon: 'appointments' },
+      { id: 'missing-updates', label: 'Rendez-vous sans mise à jour', icon: 'appointments' },
       { id: 'isolation-agenda', label: 'Agenda et disponibilités', icon: 'appointments' },
     ];
   const items = [
@@ -353,6 +354,12 @@ const navigation = computed(() => {
   } else {
     if (role.value === 'administrator')
       items.push({ id: 'unqualified', label: 'Rendez-vous non qualifiés', icon: 'contacts' });
+    if (role.value === 'administrator')
+      items.push({
+        id: 'missing-updates',
+        label: 'Rendez-vous sans mise à jour',
+        icon: 'appointments',
+      });
     if (role.value === 'administrator')
       items.push({ id: 'compensation', label: 'Suivi et rémunération', icon: 'statistics' });
     if (['client', 'administrator'].includes(role.value))
@@ -829,14 +836,20 @@ onMounted(async () => {
                       :role="role"
                     />
                     <IsolationVisits
-                      v-else-if="['appointments', 'visit-history'].includes(isolationModule)"
+                      v-else-if="
+                        ['appointments', 'visit-history', 'missing-updates'].includes(
+                          isolationModule,
+                        )
+                      "
                       :key="`${isolationModule}-${appointmentFocus || 0}`"
                       :period="
                         appointmentFocus
                           ? undefined
-                          : isolationModule === 'visit-history'
-                            ? 'history'
-                            : 'upcoming'
+                          : isolationModule === 'missing-updates'
+                            ? 'missing_updates'
+                            : isolationModule === 'visit-history'
+                              ? 'history'
+                              : 'upcoming'
                       "
                       :visit-id="appointmentFocus || undefined"
                       :role="role"

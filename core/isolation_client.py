@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.db import transaction
 from django.db.models import F, Exists, OuterRef, Q
 from django.utils import timezone
@@ -249,6 +250,11 @@ def client_dashboard(request):
             'visits': visits.count(),
             'upcoming': visits.filter(status='scheduled', starts_at__gt=now).count(),
             'results_due': visits.filter(status='scheduled', ends_at__lte=now)
+            .filter(Q(result__isnull=True) | Q(result__closed__isnull=True))
+            .count(),
+            'missing_updates': visits.filter(
+                status='scheduled', ends_at__lte=now - timedelta(hours=24)
+            )
             .filter(Q(result__isnull=True) | Q(result__closed__isnull=True))
             .count(),
             'reported': visits.filter(result__isnull=False).count(),
