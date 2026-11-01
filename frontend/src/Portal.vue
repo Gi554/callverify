@@ -111,7 +111,8 @@ async function portal(path: string, body?: any, method?: string) {
 }
 async function business(path: string, body?: any, method?: string, target = workspace.value) {
   const grant = await portal('access/' + target + '/', {});
-  const response = await fetch('/api/' + target + '/' + path, {
+  // A leading slash would give `/api/assurance//…`, which the services answer with a 404.
+  const response = await fetch('/api/' + target + '/' + path.replace(/^\/+/, ''), {
     method: method || (body !== undefined ? 'POST' : 'GET'),
     headers: {
       Authorization: 'Bearer ' + grant.token,

@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Correctif : fiche d’un prospect côté conseiller (erreur « Service métier indisponible »)
+
+Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assurance) affichait « Service métier indisponible ». La cause : le chargement demandait l’adresse `/api/assurance//appointments/81/` avec une double barre, que le service répond par une erreur 404 sans message ; l’adresse était écrite avec une barre au début. Le composant écrit désormais des adresses relatives, et la fonction d’appel des services métier retire toute barre initiale, ce qui protège aussi les autres écrans. Un test vérifie qu’aucune adresse ne commence par une barre.
+
+Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
+
 ## Isolation V2 — alerte au passage à échéance (lot 12)
 
 Un rappel déjà connu comme « à venir » déclenche désormais une alerte quand il arrive à

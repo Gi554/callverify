@@ -165,6 +165,20 @@ test('advisor explicitly records presence without a sale question or implicit de
     f.close()
   }
 })
+test('every request path is relative to the API prefix, never starting with a slash', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    assert.ok(f.calls.length >= 3)
+    for (const call of f.calls) assert.ok(!call.path.startsWith('/'), call.path)
+    assert.deepEqual(
+      f.calls.slice(0, 3).map((call) => call.path),
+      ['appointments/7/', 'appointments/7/advisor-result/', 'appointments/7/client-record/'],
+    )
+  } finally {
+    f.close()
+  }
+})
 test('legacy report keeps a correction reason without making sale mandatory', async () => {
   const f = fixture({ legacy: true })
   try {
