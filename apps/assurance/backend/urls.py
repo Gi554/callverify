@@ -1,3 +1,4 @@
+from .crm.journal import events as journal_events
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .crm.imports import imports
@@ -30,7 +31,11 @@ router.register('appointments', AppointmentViewSet, basename='assurance-appointm
 router.register('assignments', AssignmentViewSet, basename='assurance-assignment')
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
-urlpatterns = [path('api/assurance/pipeline/', configuration)]
+urlpatterns = [
+    path('api/assurance/admin-journal/', journal_events),
+    path('api/assurance/admin-journal/<int:pk>/', journal_events),
+    path('api/assurance/pipeline/', configuration),
+]
 urlpatterns += [path('api/assurance/advisor-booking-link/', own_booking_link)]
 urlpatterns += [path('api/assurance/internal/calendly/', calendly.internal)]
 urlpatterns += [path('api/assurance/calendly/pending/', calendly.pending)]

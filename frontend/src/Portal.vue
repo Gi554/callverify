@@ -6,6 +6,7 @@ import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
 import PayrollLedger from './PayrollLedger.vue';
+import AdminJournal from './AdminJournal.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
@@ -389,6 +390,8 @@ const navigation = computed(() => {
     items.splice(1, 0, { id: 'client-folders', label: 'Dossiers clients', icon: 'agreements' });
   if (['setter', 'administrator'].includes(role.value))
     items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
+  if (role.value === 'administrator')
+    items.push({ id: 'admin-journal', label: 'Journal d’activité', icon: 'followups' });
   if (role.value === 'setter')
     items.push({ id: 'earnings', label: 'Mes gains et mon objectif', icon: 'statistics' });
   return items;
@@ -718,8 +721,13 @@ onMounted(async () => {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
+                  <AdminJournal
+                    v-if="activeModule === 'admin-journal' && role === 'administrator'"
+                    :workspace="workspace"
+                    :request="workspace === 'assurance' ? assurance : isolation"
+                  />
                   <PayrollLedger
-                    v-if="activeModule === 'earnings' && role === 'setter'"
+                    v-else-if="activeModule === 'earnings' && role === 'setter'"
                     :workspace="workspace"
                     :role="role"
                     :request="workspace === 'assurance' ? assurance : isolation"
