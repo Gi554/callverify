@@ -35,6 +35,20 @@ class IsolationBookingCalendarTests(TestCase):
     def post(self, proof=None):
         return self.client.post(self.url, {'proof': proof or self.proof()}, format='json')
 
+    def test_client_service_proof_can_only_check_its_own_isolation_calendar(self):
+        own = issue(
+            self.owner.pk, 'client', self.owner.pk, self.start, self.end, workspace='isolation'
+        )
+        self.assertEqual(self.post(own).status_code, 200)
+        foreign = issue(
+            self.owner.pk, 'client', self.actor.pk, self.start, self.end, workspace='isolation'
+        )
+        self.assertEqual(self.post(foreign).status_code, 403)
+        assurance = issue(
+            self.owner.pk, 'client', self.owner.pk, self.start, self.end, workspace='assurance'
+        )
+        self.assertEqual(self.post(assurance).status_code, 403)
+
     def test_client_calendar_is_distinct_from_assurance_and_free_busy_explicit(self):
         self.assertEqual(self.post().data['result'], 'internal_only')
         row = CalendarConnection.objects.get()

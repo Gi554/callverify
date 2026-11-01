@@ -810,6 +810,8 @@ onMounted(async () => {
                     <IsolationUnqualified
                       v-else-if="isolationModule === 'unqualified'"
                       :request="isolation"
+                      :portal="portal"
+                      :role="role"
                     />
                     <IsolationVisits
                       v-else-if="['appointments', 'visit-history'].includes(isolationModule)"

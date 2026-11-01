@@ -64,3 +64,17 @@ class IsolationVisitProofTests(TestCase):
         self.client_user.is_active = False
         self.client_user.save()
         self.assertEqual(self.post().status_code, 400)
+
+    def test_client_proof_is_bound_to_a_reactivation_and_setter_cannot_request_that_scope(self):
+        self.assertEqual(self.post(unqualified_id=91).status_code, 403)
+        self.client.force_authenticate(self.client_user)
+        self.assertEqual(self.post().status_code, 403)
+        response = self.post(unqualified_id=91)
+        self.assertEqual(response.status_code, 200, response.data)
+        claims = verify_booking(response.data['proof'], self.client_user.pk, 12)
+        self.assertEqual(claims['reactivation'], 91)
+        self.assertEqual(claims['client']['id'], self.client_user.pk)
+        self.assertEqual(claims['setter']['id'], self.setter.pk)
+        self.setter_access.active = False
+        self.setter_access.save()
+        self.assertEqual(self.post(unqualified_id=91).status_code, 400)

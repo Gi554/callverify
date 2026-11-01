@@ -39,8 +39,15 @@ def verify(token, workspace='assurance'):
         'source_id',
     }:
         raise signing.BadSignature('Invalid fields')
-    if data['aud'] != workspace or data['role'] not in ('setter', 'administrator'):
+    roles = (
+        ('setter', 'administrator', 'client')
+        if workspace == 'isolation'
+        else ('setter', 'administrator')
+    )
+    if data['aud'] != workspace or data['role'] not in roles:
         raise signing.BadSignature('Invalid audience or role')
+    if data['role'] == 'client' and data['actor'] != data['owner']:
+        raise signing.BadSignature('A client can only consult their own calendar')
     if any(type(data[key]) is not int or data[key] <= 0 for key in ('actor', 'owner')):
         raise signing.BadSignature('Invalid identity')
     if data['source_id'] is not None and (

@@ -99,21 +99,30 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture({ fail = false, google = false, publicationFail = false, absent = false } = {}) {
+function fixture({
+  fail = false,
+  google = false,
+  publicationFail = false,
+  absent = false,
+  reactivation = false,
+} = {}) {
   const root = { children: [] },
     writes = [],
-    events = []
+    events = [],
+    proofs = []
   globalThis.c2Booking = { fail, events }
   const app = renderer.createApp(component, {
     prospectId: 7,
-    role: 'setter',
-    portal: async (path) => {
+    role: reactivation ? 'client' : 'setter',
+    reactivationId: reactivation ? 99 : undefined,
+    portal: async (path, body) => {
       if (path === 'internal/isolation/publish-visit/') {
         events.push('publication')
         if (publicationFail) throw new Error('Indisponible')
         return { state: 'synced' }
       }
       events.push('proof')
+      proofs.push(body)
       return { proof: 'signed-proof' }
     },
     request: async (path, body) => {
@@ -122,7 +131,7 @@ function fixture({ fail = false, google = false, publicationFail = false, absent
         writes.push({ path, body })
         return { id: 42, ...(google ? { publication_proof: 'signed-publication' } : {}) }
       }
-      if (path.startsWith('work-queue/'))
+      if (path.startsWith('work-queue/') || path === 'isolation-unqualified/99/prospect/')
         return { id: 7, name: 'Client', revision: 3, assigned_setter: { id: 21 } }
       return {
         results: absent
@@ -150,7 +159,7 @@ function fixture({ fail = false, google = false, publicationFail = false, absent
     },
   })
   app.mount(root)
-  return { root, writes, events, app }
+  return { root, writes, events, app, proofs }
 }
 async function submit(f) {
   const input = all(f.root).find((n) => n.tag === 'input' && n.props.type === 'datetime-local')
@@ -176,6 +185,22 @@ test('a no-show starts a new visit linked to the previous occurrence, without mo
     assert.equal(f.writes[0].path, 'visits/')
     assert.equal(f.writes[0].body.previous_visit_id, 12)
     assert.equal(f.writes[0].body.prospect_id, 7)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('client requalification uses a bound entry proof and creates a Google visit on the same prospect', async () => {
+  const f = fixture({ reactivation: true, google: true })
+  try {
+    await flush()
+    await submit(f)
+    assert.equal(f.writes.length, 1)
+    assert.deepEqual(f.proofs, [{ prospect_id: 7, setter_id: 21, unqualified_id: 99 }])
+    assert.equal(f.writes[0].body.unqualified_id, 99)
+    assert.equal(f.writes[0].body.prospect_id, 7)
+    assert.equal(f.writes[0].body.publication, 'google')
+    assert.deepEqual(f.events, ['c2', 'proof', 'booking', 'publication'])
   } finally {
     f.app.unmount()
   }

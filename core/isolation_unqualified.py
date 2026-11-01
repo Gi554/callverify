@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .isolation_work import VisitAuthentication, Pager, Conflict, visible
 from .isolation_visits import proof, lock_prospect
-from .isolation_c2 import defaults, C2Input
+from .isolation_c2 import defaults, C2Input, DraftInput
 from .isolation_followups import event, fingerprint
 from .isolation_activity import output as activity_output
 from .models import IsolationUnqualified, IsolationVisit, ProspectActivity, AuditEvent
@@ -118,6 +118,69 @@ class Unqualified(viewsets.GenericViewSet):
 
     def retrieve(self, request, pk=None):
         response = Response(output(self.get_object()))
+        response['Cache-Control'] = 'no-store'
+        return response
+
+    def requalification_entry(self):
+        if self.request.user.role != 'client':
+            raise PermissionDenied('Requalification directe réservée au client de la fiche.')
+        row = self.get_object()
+        if not row.active:
+            raise Conflict('Cette fiche a déjà été programmée.')
+        return row
+
+    @action(detail=True, methods=['get'])
+    def prospect(self, request, pk=None):
+        row = self.requalification_entry().prospect
+        response = Response(
+            {
+                'id': row.pk,
+                'name': row.name,
+                'raw_phone': row.raw_phone,
+                'revision': row.assignment_revision,
+                'assigned_setter': None
+                if row.assigned_setter_id is None
+                else {'id': row.assigned_setter_id, 'name': row.assigned_setter_name},
+            }
+        )
+        response['Cache-Control'] = 'no-store'
+        return response
+
+    @action(detail=True, methods=['get', 'post'])
+    def qualification(self, request, pk=None):
+        entry = self.requalification_entry()
+        prospect = entry.prospect
+        if request.method == 'POST':
+            serializer = DraftInput(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            with transaction.atomic():
+                prospect = lock_prospect(prospect, request.user, data['revision'])
+                if not IsolationUnqualified.objects.filter(
+                    pk=entry.pk, active=True, client_id=request.user.pk
+                ).exists():
+                    raise Conflict('Cette fiche a déjà été programmée.')
+                before = prospect.c2
+                prospect.c2 = data['c2']
+                prospect.save(update_fields=['c2'])
+                AuditEvent.objects.create(
+                    action='isolation.unqualified.qualification_saved',
+                    object_id=str(entry.pk),
+                    metadata={
+                        'actor_portal_id': request.user.pk,
+                        'prospect_id': prospect.pk,
+                        'before': before,
+                        'after': prospect.c2,
+                        'revision': prospect.assignment_revision,
+                    },
+                )
+        response = Response(
+            {
+                'c2': prospect.c2,
+                'defaults': defaults(prospect),
+                'revision': prospect.assignment_revision,
+            }
+        )
         response['Cache-Control'] = 'no-store'
         return response
 

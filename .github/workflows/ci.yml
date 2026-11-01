@@ -68,7 +68,7 @@ jobs:
           PORTAL_DB_NAME: amx_assurance
           PORTAL_DB_USER: amx_test
           PORTAL_DB_PASSWORD: local-ci-only
-      - run: python manage.py test core.test_isolation_work core.test_isolation_quick_call core.test_isolation_lots core.test_isolation_bulk core.test_isolation_activity core.test_isolation_visits core.test_isolation_client core.test_isolation_statistics core.test_isolation_statistics_export core.test_isolation_supplements core.test_isolation_sharing core.test_isolation_phone_calls core.test_isolation_export core.test_isolation_booking_calendars core.test_isolation_unqualified core.test_isolation_rebooking
+      - run: python manage.py test core.test_isolation_work core.test_isolation_quick_call core.test_isolation_lots core.test_isolation_bulk core.test_isolation_activity core.test_isolation_visits core.test_isolation_client core.test_isolation_statistics core.test_isolation_statistics_export core.test_isolation_supplements core.test_isolation_sharing core.test_isolation_phone_calls core.test_isolation_export core.test_isolation_booking_calendars core.test_isolation_unqualified core.test_isolation_rebooking core.test_isolation_requalification
         env:
           POSTGRES_HOST: localhost
           POSTGRES_DB: amx_assurance
