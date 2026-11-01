@@ -96,10 +96,12 @@ onMounted(() => run(load));
 </script>
 <template>
   <section>
-    <h2>Mes visites Isolation</h2>
-    <p>Consultez le C2 et renseignez les résultats des visites qui vous sont attribuées.</p>
+    <header class="visits-heading">
+      <h2>Mes visites Isolation</h2>
+      <button class="secondary" :disabled="busy" @click="run(load)">Actualiser</button>
+    </header>
+    <p>Consultez les fiches clients et renseignez le résultat des visites.</p>
     <p v-if="error && !selected" role="alert">{{ error }}</p>
-    <button class="secondary" :disabled="busy" @click="run(load)">Actualiser</button>
     <div class="table-scroll">
       <table>
         <thead>
@@ -281,3 +283,22 @@ onMounted(() => run(load));
     >
   </section>
 </template>
+<style scoped>
+.visits-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.visits-heading h2 {
+  margin: 0;
+}
+.visits-heading button {
+  white-space: nowrap;
+}
+@media (max-width: 650px) {
+  .visits-heading h2 {
+    font-size: 20px;
+  }
+}
+</style>

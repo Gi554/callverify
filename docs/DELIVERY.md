@@ -18,6 +18,13 @@ Limite : le correctif est vérifié par les tests et le code compilé, pas encor
 
 ## Isolation — accès du client aux fiches et visites à venir
 
+Retouche demandée sur « Mes visites » du représentant : le texte devient
+« Consultez les fiches clients et renseignez le résultat des visites. ». Le bouton
+Actualiser est aligné à droite du titre de la liste, y compris sur mobile ; le
+bouton global redondant est retiré uniquement de cet écran. Le bouton conservé
+recharge les visites et reste désactivé pendant les opérations. Vérifications :
+tests du parcours closer et de navigation, format, lint, TypeScript et compilation.
+
 Le menu du client affiche « Mes fiches clients » et « Mes visites à venir », en plus
 de l’historique et des rendez-vous non qualifiés. La liste des fiches présente les
 coordonnées et le total de dossiers ; « Ouvrir la fiche » affiche dans un panneau

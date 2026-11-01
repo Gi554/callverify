@@ -597,7 +597,12 @@ onMounted(async () => {
               </p>
             </div>
             <button
-              v-if="workspace && !passwordOpen && !managing"
+              v-if="
+                workspace &&
+                !passwordOpen &&
+                !managing &&
+                !(workspace === 'isolation' && role === 'closer' && activeModule === 'overview')
+              "
               class="secondary"
               :disabled="busy"
               @click="refreshWorkspace"
