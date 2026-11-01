@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import CrmAdminActivity from './CrmAdminActivity.vue';
 import {
   Users,
   ListTodo,
@@ -443,6 +444,7 @@ onMounted(refreshHome);
         <RefreshCw :size="15" />Actualiser
       </button>
     </div>
+    <CrmAdminActivity :workspace="workspace" :request="request" />
     <div class="home-hero">
       <div class="home-main-snapshot">
         <header class="home-welcome">

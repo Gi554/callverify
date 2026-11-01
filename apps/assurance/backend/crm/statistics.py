@@ -8,7 +8,8 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from .models import Appointment, BusinessAudit
+from .models import Appointment, BusinessAudit, FollowUpTask
+from packages.stat_filters import selections, options
 from .statistics_export import response as export_response
 from packages.stats_series import daily, previous
 from packages.quebec_period import ZONE
@@ -19,6 +20,18 @@ def metrics(now):
         'appointments': Count('pk', distinct=True),
         'cancelled': Count('pk', filter=Q(status='cancelled'), distinct=True),
         'upcoming': Count('pk', filter=Q(status='scheduled', ends_at__gt=now), distinct=True),
+        'scheduled': Count('pk', filter=Q(status='scheduled'), distinct=True),
+        'closed': Count(
+            'pk', filter=Q(report__performed=True, report__sale_concluded=True), distinct=True
+        ),
+        'not_closed': Count(
+            'pk', filter=Q(report__performed=True, report__sale_concluded=False), distinct=True
+        ),
+        'closure_unknown': Count(
+            'pk',
+            filter=Q(report__performed=True, report__sale_concluded__isnull=True),
+            distinct=True,
+        ),
         'reported': Count('pk', filter=Q(report__isnull=False), distinct=True),
         'performed': Count('pk', filter=Q(report__performed=True), distinct=True),
         'not_performed': Count('pk', filter=Q(report__performed=False), distinct=True),
@@ -30,6 +43,15 @@ def metrics(now):
         ),
         'reports_due': Count(
             'pk', filter=Q(status='scheduled', ends_at__lte=now, report__isnull=True), distinct=True
+        ),
+        'updates_due': Count(
+            'pk',
+            filter=Q(status='scheduled', ends_at__lte=now)
+            & (
+                Q(report__isnull=True)
+                | Q(report__performed=True, report__sale_concluded__isnull=True)
+            ),
+            distinct=True,
         ),
         'problem_reports': Count('pk', filter=Q(report__problem=True), distinct=True),
         'incidents': Count('incidents', distinct=True),
@@ -77,12 +99,25 @@ def statistics(request):
         raise ValidationError('Date de fin hors limites')
     now = timezone.now()
 
+    selected = selections(
+        request.query_params, request.user.role, ('setter_id', 'advisor_id', 'campaign_id')
+    )
+
+    def filtered(rows):
+        for key, value in selected.items():
+            rows = rows.filter(
+                **{('contact__import_batch_id' if key == 'campaign_id' else key): value}
+            )
+        return rows
+
     def scoped(first, upper):
         rows = Appointment.objects.filter(
             starts_at__gte=datetime.combine(first, time.min, ZONE),
             starts_at__lt=datetime.combine(upper, time.min, ZONE),
         )
-        return rows.filter(setter_id=request.user.pk) if request.user.role == 'setter' else rows
+        return filtered(
+            rows.filter(setter_id=request.user.pk) if request.user.role == 'setter' else rows
+        )
 
     qs = scoped(start, exclusive)
     totals = finish(qs.aggregate(**metrics(now)))
@@ -94,6 +129,35 @@ def statistics(request):
         'totals': totals,
         'definition': 'Période selon le début actuel du rendez-vous (heure du Québec). Attribution statistique au setter d’origine du rendez-vous, même si le suivi est réattribué. Tâches selon leur état actuel. Taux effectué = Oui / comptes rendus renseignés ; absence de compte rendu exclue. Absences uniquement selon la déclaration explicite du conseiller ; les anciens Non restent des non-effectués sans absence présumée.',
     }
+    if request.user.role == 'administrator' and not kind:
+        all_rows = Appointment.objects.all()
+        result['filter_options'] = {
+            'setter_id': options(all_rows, 'setter_id', 'setter_name'),
+            'advisor_id': options(all_rows, 'advisor_id', 'advisor_name'),
+            'campaign_id': options(
+                all_rows, 'contact__import_batch_id', 'contact__import_batch__filename'
+            ),
+        }
+        tasks = FollowUpTask.objects.filter(
+            closed_at__isnull=True,
+            due_at__gte=datetime.combine(start, time.min, ZONE),
+            due_at__lt=datetime.combine(exclusive, time.min, ZONE),
+        )
+        if selected.get('setter_id'):
+            tasks = tasks.filter(setter_id=selected['setter_id'])
+        if selected.get('advisor_id'):
+            tasks = tasks.filter(
+                Q(appointment__advisor_id=selected['advisor_id'])
+                | Q(contact__assigned_advisor_id=selected['advisor_id'])
+            )
+        if selected.get('campaign_id'):
+            tasks = tasks.filter(
+                Q(appointment__contact__import_batch_id=selected['campaign_id'])
+                | Q(contact__import_batch_id=selected['campaign_id'])
+            )
+        result['pending_callbacks'] = tasks.count()
+        result['overdue_callbacks'] = tasks.filter(due_at__lte=now).count()
+        result['applied_filters'] = selected
     if not kind:
         # Dashboard only: same-length previous period for trends, and one point per day.
         try:
@@ -151,7 +215,10 @@ def statistics(request):
                 'to': str(end),
                 'format': kind,
                 'scope': request.user.role,
+                'filters': selected,
             },
         )
         return export_response(result, groups, kind)
-    return Response(result)
+    response = Response(result)
+    response['Cache-Control'] = 'no-store'
+    return response

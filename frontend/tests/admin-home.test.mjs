@@ -31,6 +31,10 @@ code = code
       .join(';'),
   )
   .replace(/from ['"]vue['"]/g, `from '${pathToFileURL(require.resolve('vue')).href}'`)
+code = code.replace(
+  /import CrmAdminActivity from ['"]\.\/CrmAdminActivity\.vue['"]/g,
+  `const CrmAdminActivity={render:()=>null}`,
+)
 const component = (await import(url(code))).default
 const renderer = createRenderer({
   createElement: (tag) => ({
