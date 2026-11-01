@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import SidePanel from './SidePanel.vue';
+import PayrollLedger from './PayrollLedger.vue';
 const props = defineProps<{
   request: (path: string, body?: any) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -212,222 +213,237 @@ onMounted(() => {
 });
 </script>
 <template>
-  <section class="compensation">
-    <p>
-      Suivi administratif par setter et client. Montants en dollars canadiens, sans exécution de
-      paiement.
-    </p>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="message" role="status">{{ message }}</p>
-    <form class="toolbar" @submit.prevent="load()">
-      <fieldset :disabled="busy">
-        <label
-          >Période<select v-model="mode">
-            <option value="week">Une semaine</option>
-            <option value="custom">Dates personnalisées</option>
-          </select></label
-        >
-        <label v-if="mode === 'week'"
-          >Un jour de la semaine<input v-model="week" type="date" required
-        /></label>
-        <template v-else
-          ><label>Du<input v-model="from" type="date" required /></label
-          ><label>Au inclus<input v-model="to" type="date" required /></label
-        ></template>
-        <button class="primary">Afficher</button><span>Heure du Québec</span>
-      </fieldset>
-    </form>
-    <div class="toolbar">
-      <label
-        >Configurer un setter<select v-model="setter">
-          <option value="">Choisir</option>
-          <option v-for="person in setters" :key="person.id" :value="String(person.id)">
-            {{ person.name }}
-          </option>
-        </select></label
-      ><button class="secondary" :disabled="busy || !setter" @click="openRate(Number(setter))">
-        Régler les tarifs CAD
-      </button>
-    </div>
-    <p v-if="rosterError" role="alert">Annuaire : {{ rosterError }}</p>
-    <template v-if="result">
-      <p>Du {{ result.from }} au {{ result.to }} inclus · Québec</p>
-      <p v-if="changed" role="status">
-        Les filtres ont changé. Cliquez sur Afficher pour actualiser le rapport.
+  <PayrollLedger workspace="isolation" role="administrator" :request="request" :portal="portal" />
+  <details class="payroll-legacy">
+    <summary>Tarifs historiques et valorisation des anciennes présences</summary>
+
+    <section class="compensation">
+      <p>
+        Suivi administratif par setter et client. Montants en dollars canadiens, sans exécution de
+        paiement.
       </p>
-      <p v-if="!result.calls_available" role="alert">
-        Les compteurs d’appels sont momentanément indisponibles. Ils ne sont pas remplacés par zéro.
-      </p>
-      <div class="totals">
-        <article>
-          <small>Montant connu · CAD</small><strong>{{ cad(result.totals.amount_cad) }}</strong
-          ><span
-            >Présences : {{ cad(result.totals.attendance_amount) }} · Primes :
-            {{ cad(result.totals.sale_amount) }}</span
-          >
-        </article>
-        <article>
-          <small>Crédits uniques</small
-          ><strong
-            >{{ result.totals.attendance_credits }} présences ·
-            {{ result.totals.sale_credits }} ventes</strong
-          ><span
-            >{{ result.totals.attendance_unpriced }} présences et
-            {{ result.totals.sale_unpriced }} ventes sans tarif</span
-          >
-        </article>
-        <article>
-          <small>Présence / résultats renseignés</small
-          ><strong>{{ count(result.totals.presence_rate) }} %</strong
-          ><span>Ventes / tenues : {{ count(result.totals.closing_rate) }} %</span>
-        </article>
-      </div>
-      <p v-if="!result.totals.complete" role="status">
-        Le montant connu reste incomplet : des tarifs ou des résultats de visite restent à
-        renseigner.
-      </p>
-      <div class="toolbar">
-        <button class="secondary" :disabled="busy || changed" @click="download('csv')">
-          Exporter CSV</button
-        ><button class="secondary" :disabled="busy || changed" @click="download('xlsx')">
-          Exporter Excel
-        </button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Setter / client</th>
-              <th v-for="(label, key) in columns" :key="key">{{ label }}</th>
-              <th>Présences CAD</th>
-              <th>Primes CAD</th>
-              <th>Montant connu CAD</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th>Total</th>
-              <td v-for="(_, key) in columns" :key="key">{{ count(result.totals[key]) }}</td>
-              <td>{{ cad(result.totals.attendance_amount) }}</td>
-              <td>{{ cad(result.totals.sale_amount) }}</td>
-              <td>{{ cad(result.totals.amount_cad) }}</td>
-              <td></td>
-            </tr>
-            <tr v-for="row in result.groups.results" :key="`${row.client_id}-${row.setter_id}`">
-              <th>
-                {{ row.setter_name }}<br /><small>{{ row.client_name }}</small>
-              </th>
-              <td v-for="(_, key) in columns" :key="key">{{ count(row[key]) }}</td>
-              <td>{{ cad(row.attendance_amount) }}</td>
-              <td>{{ cad(row.sale_amount) }}</td>
-              <td>
-                {{ cad(row.amount_cad) }}<br /><small v-if="!row.complete">À compléter</small>
-              </td>
-              <td>
-                <button
-                  v-if="row.client_id && setters.some((person) => person.id === row.setter_id)"
-                  class="secondary"
-                  :disabled="busy"
-                  @click="openRate(row.setter_id, 'rate', row.client_id)"
-                >
-                  Tarifs</button
-                ><button
-                  v-if="
-                    row.client_id && result && setters.some((person) => person.id === row.setter_id)
-                  "
-                  class="secondary"
-                  :disabled="busy || changed"
-                  @click="openRate(row.setter_id, 'value', row.client_id)"
-                >
-                  Valoriser les résultats sans tarif
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="toolbar">
-        <button class="secondary" :disabled="busy || page === 1 || changed" @click="load(page - 1)">
-          Précédent</button
-        ><span>{{ result.groups.count }} groupe(s) · page {{ page }}</span
-        ><button
-          class="secondary"
-          :disabled="busy || page * 25 >= result.groups.count || changed"
-          @click="load(page + 1)"
-        >
-          Suivant
-        </button>
-      </div>
-      <details>
-        <summary>Définition du rapport</summary>
-        <p>{{ result.definition }}</p>
-      </details>
-    </template>
-    <SidePanel
-      :open="!!selected"
-      :title="
-        panelMode === 'rate' ? 'Tarifs du setter · CAD' : 'Valoriser les résultats sans tarif'
-      "
-      :close-disabled="busy"
-      @request-close="close"
-    >
-      <form v-if="selected" @submit.prevent="panelMode === 'rate' ? saveRate() : valueMissing()">
-        <h3>{{ selected.setter_name }} · {{ selected.client_name }}</h3>
-        <p v-if="error" role="alert">{{ error }}</p>
+      <p v-if="error" role="alert">{{ error }}</p>
+      <p v-if="message" role="status">{{ message }}</p>
+      <form class="toolbar" @submit.prevent="load()">
         <fieldset :disabled="busy">
-          <template v-if="panelMode === 'rate'"
-            ><label
-              >Montant par visite tenue · CAD<input
-                v-model="attendance"
-                type="number"
-                min="0"
-                step="0.01" /></label
-            ><label
-              >Prime supplémentaire par vente · CAD<input
-                v-model="bonus"
-                type="number"
-                min="0"
-                step="0.01"
-            /></label>
-            <p>
-              Laissez vide pour un tarif non défini. Zéro signifie un tarif explicitement nul. Les
-              prix déjà conservés sur les résultats ne changent pas.
-            </p></template
-          >
-          <template v-else
-            ><p>Période du {{ result?.from }} au {{ result?.to }} (Québec).</p>
-            <p>
-              Présence : {{ cad(selected.attendance_cad) }} · Prime de vente :
-              {{ cad(selected.sale_bonus_cad) }}
-            </p>
-            <p>
-              Applique ces tarifs uniquement aux résultats sans prix, par lots de 200. Les anciens
-              prix sont conservés. Une reprogrammation ne génère pas un second crédit pour le même
-              processus.
-            </p></template
-          >
           <label
-            >Motif obligatoire<textarea v-model="reason" required maxlength="1000"></textarea>
-          </label>
-          <button
-            class="primary"
-            :disabled="
-              !reason.trim() ||
-              (panelMode === 'value' &&
-                selected.attendance_cad === null &&
-                selected.sale_bonus_cad === null)
-            "
+            >Période<select v-model="mode">
+              <option value="week">Une semaine</option>
+              <option value="custom">Dates personnalisées</option>
+            </select></label
           >
-            {{
-              panelMode === 'rate' ? 'Enregistrer les tarifs' : 'Valoriser les résultats sans tarif'
-            }}
-          </button>
+          <label v-if="mode === 'week'"
+            >Un jour de la semaine<input v-model="week" type="date" required
+          /></label>
+          <template v-else
+            ><label>Du<input v-model="from" type="date" required /></label
+            ><label>Au inclus<input v-model="to" type="date" required /></label
+          ></template>
+          <button class="primary">Afficher</button><span>Heure du Québec</span>
         </fieldset>
       </form>
-    </SidePanel>
-  </section>
+      <div class="toolbar">
+        <label
+          >Configurer un setter<select v-model="setter">
+            <option value="">Choisir</option>
+            <option v-for="person in setters" :key="person.id" :value="String(person.id)">
+              {{ person.name }}
+            </option>
+          </select></label
+        ><button class="secondary" :disabled="busy || !setter" @click="openRate(Number(setter))">
+          Régler les tarifs CAD
+        </button>
+      </div>
+      <p v-if="rosterError" role="alert">Annuaire : {{ rosterError }}</p>
+      <template v-if="result">
+        <p>Du {{ result.from }} au {{ result.to }} inclus · Québec</p>
+        <p v-if="changed" role="status">
+          Les filtres ont changé. Cliquez sur Afficher pour actualiser le rapport.
+        </p>
+        <p v-if="!result.calls_available" role="alert">
+          Les compteurs d’appels sont momentanément indisponibles. Ils ne sont pas remplacés par
+          zéro.
+        </p>
+        <div class="totals">
+          <article>
+            <small>Montant connu · CAD</small><strong>{{ cad(result.totals.amount_cad) }}</strong
+            ><span
+              >Présences : {{ cad(result.totals.attendance_amount) }} · Primes :
+              {{ cad(result.totals.sale_amount) }}</span
+            >
+          </article>
+          <article>
+            <small>Crédits uniques</small
+            ><strong
+              >{{ result.totals.attendance_credits }} présences ·
+              {{ result.totals.sale_credits }} ventes</strong
+            ><span
+              >{{ result.totals.attendance_unpriced }} présences et
+              {{ result.totals.sale_unpriced }} ventes sans tarif</span
+            >
+          </article>
+          <article>
+            <small>Présence / résultats renseignés</small
+            ><strong>{{ count(result.totals.presence_rate) }} %</strong
+            ><span>Ventes / tenues : {{ count(result.totals.closing_rate) }} %</span>
+          </article>
+        </div>
+        <p v-if="!result.totals.complete" role="status">
+          Le montant connu reste incomplet : des tarifs ou des résultats de visite restent à
+          renseigner.
+        </p>
+        <div class="toolbar">
+          <button class="secondary" :disabled="busy || changed" @click="download('csv')">
+            Exporter CSV</button
+          ><button class="secondary" :disabled="busy || changed" @click="download('xlsx')">
+            Exporter Excel
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Setter / client</th>
+                <th v-for="(label, key) in columns" :key="key">{{ label }}</th>
+                <th>Présences CAD</th>
+                <th>Primes CAD</th>
+                <th>Montant connu CAD</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Total</th>
+                <td v-for="(_, key) in columns" :key="key">{{ count(result.totals[key]) }}</td>
+                <td>{{ cad(result.totals.attendance_amount) }}</td>
+                <td>{{ cad(result.totals.sale_amount) }}</td>
+                <td>{{ cad(result.totals.amount_cad) }}</td>
+                <td></td>
+              </tr>
+              <tr v-for="row in result.groups.results" :key="`${row.client_id}-${row.setter_id}`">
+                <th>
+                  {{ row.setter_name }}<br /><small>{{ row.client_name }}</small>
+                </th>
+                <td v-for="(_, key) in columns" :key="key">{{ count(row[key]) }}</td>
+                <td>{{ cad(row.attendance_amount) }}</td>
+                <td>{{ cad(row.sale_amount) }}</td>
+                <td>
+                  {{ cad(row.amount_cad) }}<br /><small v-if="!row.complete">À compléter</small>
+                </td>
+                <td>
+                  <button
+                    v-if="row.client_id && setters.some((person) => person.id === row.setter_id)"
+                    class="secondary"
+                    :disabled="busy"
+                    @click="openRate(row.setter_id, 'rate', row.client_id)"
+                  >
+                    Tarifs</button
+                  ><button
+                    v-if="
+                      row.client_id &&
+                      result &&
+                      setters.some((person) => person.id === row.setter_id)
+                    "
+                    class="secondary"
+                    :disabled="busy || changed"
+                    @click="openRate(row.setter_id, 'value', row.client_id)"
+                  >
+                    Valoriser les résultats sans tarif
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="toolbar">
+          <button
+            class="secondary"
+            :disabled="busy || page === 1 || changed"
+            @click="load(page - 1)"
+          >
+            Précédent</button
+          ><span>{{ result.groups.count }} groupe(s) · page {{ page }}</span
+          ><button
+            class="secondary"
+            :disabled="busy || page * 25 >= result.groups.count || changed"
+            @click="load(page + 1)"
+          >
+            Suivant
+          </button>
+        </div>
+        <details>
+          <summary>Définition du rapport</summary>
+          <p>{{ result.definition }}</p>
+        </details>
+      </template>
+      <SidePanel
+        :open="!!selected"
+        :title="
+          panelMode === 'rate' ? 'Tarifs du setter · CAD' : 'Valoriser les résultats sans tarif'
+        "
+        :close-disabled="busy"
+        @request-close="close"
+      >
+        <form v-if="selected" @submit.prevent="panelMode === 'rate' ? saveRate() : valueMissing()">
+          <h3>{{ selected.setter_name }} · {{ selected.client_name }}</h3>
+          <p v-if="error" role="alert">{{ error }}</p>
+          <fieldset :disabled="busy">
+            <template v-if="panelMode === 'rate'"
+              ><label
+                >Montant par visite tenue · CAD<input
+                  v-model="attendance"
+                  type="number"
+                  min="0"
+                  step="0.01" /></label
+              ><label
+                >Prime supplémentaire par vente · CAD<input
+                  v-model="bonus"
+                  type="number"
+                  min="0"
+                  step="0.01"
+              /></label>
+              <p>
+                Laissez vide pour un tarif non défini. Zéro signifie un tarif explicitement nul. Les
+                prix déjà conservés sur les résultats ne changent pas.
+              </p></template
+            >
+            <template v-else
+              ><p>Période du {{ result?.from }} au {{ result?.to }} (Québec).</p>
+              <p>
+                Présence : {{ cad(selected.attendance_cad) }} · Prime de vente :
+                {{ cad(selected.sale_bonus_cad) }}
+              </p>
+              <p>
+                Applique ces tarifs uniquement aux résultats sans prix, par lots de 200. Les anciens
+                prix sont conservés. Une reprogrammation ne génère pas un second crédit pour le même
+                processus.
+              </p></template
+            >
+            <label
+              >Motif obligatoire<textarea v-model="reason" required maxlength="1000"></textarea>
+            </label>
+            <button
+              class="primary"
+              :disabled="
+                !reason.trim() ||
+                (panelMode === 'value' &&
+                  selected.attendance_cad === null &&
+                  selected.sale_bonus_cad === null)
+              "
+            >
+              {{
+                panelMode === 'rate'
+                  ? 'Enregistrer les tarifs'
+                  : 'Valoriser les résultats sans tarif'
+              }}
+            </button>
+          </fieldset>
+        </form>
+      </SidePanel>
+    </section>
+  </details>
 </template>
+
 <style scoped>
 .compensation {
   display: grid;

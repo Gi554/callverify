@@ -8,10 +8,10 @@ Une correction après paiement doit produire un ajustement, en conservant le pai
 
 | Demande | État et contrôle restant |
 | --- | --- |
-| 1. Pilotage administrateur | Bloc dans le layout existant, sept indicateurs, filtres serveur et actualisation à une minute implémentés. Validation CI et livraison en cours. |
-| 2A. Isolation : objectifs, présence et prime | Tarifs individuels CAD et taux figés par composant déjà présents ; objectifs hebdomadaires et suivi complet agent à compléter. |
-| 2B. Assurance : mandat et tarif | Tarif individuel et présence valorisée existants ; mandat/période/conditions et objectifs à compléter. |
-| 2C–D. Montants générés et paiements | Ajouter la consultation personnelle, le registre de paiements administrateur, la prévention des doublons et les ajustements après correction. Aucun transfert bancaire. |
+| 1. Pilotage administrateur | Bloc dans le layout existant, sept indicateurs, filtres serveur et actualisation à une minute implémentés. Livré par PR #244, CI et déploiement réussis. |
+| 2A. Isolation : objectifs, présence et prime | Objectifs hebdomadaires, périodes de conditions, présence et prime CAD séparées, taux figés et lecture personnelle implémentés ; livraison du registre en cours. |
+| 2B. Assurance : mandat et tarif | Mandat ou objectif hebdomadaire, dates, conditions et tarif de présence individuels implémentés ; livraison du registre en cours. |
+| 2C–D. Montants générés et paiements | Consultation personnelle, registre administrateur, contrôle de solde/révision, idempotence et ajustements après correction implémentés ; validation CI en cours. Aucun transfert bancaire. |
 | 3. Historique complet | Audits et historiques métier existants ; compléter les nouveaux objectifs, mandats, paiements et ajustements, avec auteur/avant/après. |
 | 4. Centre d’alertes | Notifications de rendez-vous et rappels existantes ; compléter la rubrique administrateur et les anomalies. |
 | 5. Anomalies | Ajouter les contrôles de cohérence et leur état de traitement, sans corriger les données automatiquement. |

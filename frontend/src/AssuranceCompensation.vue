@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import SidePanel from './SidePanel.vue';
+import PayrollLedger from './PayrollLedger.vue';
 const props = defineProps<{
   request: (path: string, body?: any) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -226,259 +227,268 @@ async function exportCsv() {
 onMounted(load);
 </script>
 <template>
-  <section class="compensation">
-    <header>
-      <div>
-        <h2>Suivi et rémunération des setters</h2>
-        <p>Présences validées · Dollar canadien · Heure du Québec</p>
-      </div>
-      <button class="secondary" :disabled="busy || !result" @click="exportCsv">Exporter CSV</button>
-    </header>
-    <form
-      class="period"
-      @submit.prevent="
-        page = 1;
-        load();
-      "
-    >
-      <button type="button" class="secondary" :disabled="busy || !result" @click="moveWeek(-1)">
-        ← 7 jours
-      </button>
-      <label>Du<input v-model="from" type="date" required :disabled="busy || !!selected" /></label
-      ><label
-        >Au inclus<input v-model="to" type="date" required :disabled="busy || !!selected"
-      /></label>
-      <button class="primary" :disabled="busy">Afficher</button
-      ><button
-        type="button"
-        class="secondary"
-        :disabled="busy"
-        @click="
-          from = '';
-          to = '';
+  <PayrollLedger workspace="assurance" role="administrator" :request="request" :portal="portal" />
+  <details class="payroll-legacy">
+    <summary>Tarifs historiques et valorisation des anciennes présences</summary>
+
+    <section class="compensation">
+      <header>
+        <div>
+          <h2>Suivi et rémunération des setters</h2>
+          <p>Présences validées · Dollar canadien · Heure du Québec</p>
+        </div>
+        <button class="secondary" :disabled="busy || !result" @click="exportCsv">
+          Exporter CSV
+        </button>
+      </header>
+      <form
+        class="period"
+        @submit.prevent="
           page = 1;
           load();
         "
       >
-        Cette semaine</button
-      ><button type="button" class="secondary" :disabled="busy || !result" @click="moveWeek(1)">
-        7 jours →
-      </button>
-    </form>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="message" role="status">{{ message }}</p>
-    <p v-if="callError" role="alert">
-      {{ callError }}. Aucun zéro n’est déduit de cette indisponibilité.
-    </p>
-    <template v-if="result">
-      <div class="totals">
-        <article>
-          <strong>{{ calls?.totals.calls ?? '—' }}</strong
-          ><span>Appels Orvia · poste joint</span>
-        </article>
-        <article>
-          <strong>{{ result.totals.payable }}</strong
-          ><span>Présences validées</span>
-        </article>
-        <article>
-          <strong>{{ cad(result.totals.amount_cad) }}</strong
-          ><span>Montant valorisé</span>
-        </article>
-        <article>
-          <strong>{{ result.totals.unpriced }}</strong
-          ><span>Présences à valoriser</span>
-        </article>
-      </div>
-      <p class="definition">{{ result.definition }}</p>
-      <p class="definition">
-        {{ calls?.definition }} Les appels totaux incluent les administrateurs ; le tableau détaille
-        les setters connus du métier.
-      </p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Setter</th>
-              <th>Appels Orvia</th>
-              <th>Pris</th>
-              <th>Transmis</th>
-              <th>À venir</th>
-              <th>Honorés</th>
-              <th>Non honorés</th>
-              <th>Validés rémunération</th>
-              <th>Sans tarif</th>
-              <th>Montant CAD</th>
-              <th>Tarif actuel</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in result.results" :key="row.setter_id">
-              <td>
-                {{ row.setter_name }}<small>#{{ row.setter_id }}</small>
-              </td>
-              <td>{{ callCount(row.setter_id) }}</td>
-              <td>{{ row.booked }}</td>
-              <td>{{ row.transmitted }}</td>
-              <td>{{ row.upcoming }}</td>
-              <td>{{ row.attended }}</td>
-              <td>{{ row.absent }}</td>
-              <td>{{ row.payable }}</td>
-              <td>{{ row.unpriced }}</td>
-              <td>{{ cad(row.amount_cad) }}</td>
-              <td>{{ cad(row.rate_cad) }}</td>
-              <td>
-                <button class="secondary" :disabled="busy" @click="openDetails(row)">Détail</button
-                ><button class="secondary" :disabled="busy" @click="openRate(row)">
-                  Tarif / valoriser
-                </button>
-              </td>
-            </tr>
-            <tr v-if="!result.results.length">
-              <td colspan="12">Aucun setter affecté ou rendez-vous enregistré.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <nav aria-label="Pages setters">
-        <span>{{ result.count }} setter(s) · page {{ page }}</span
-        ><button
-          class="secondary"
-          :disabled="busy || !result.previous"
-          @click="
-            page--;
-            load();
-          "
-        >
-          Précédent</button
-        ><button
-          class="secondary"
-          :disabled="busy || !result.next"
-          @click="
-            page++;
-            load();
-          "
-        >
-          Suivant
+        <button type="button" class="secondary" :disabled="busy || !result" @click="moveWeek(-1)">
+          ← 7 jours
         </button>
-      </nav>
-    </template>
-    <SidePanel
-      :open="!!selected"
-      :title="selected?.setter_name || 'Setter'"
-      eyebrow="ASSURANCE · RÉMUNÉRATION"
-      :close-disabled="busy"
-      @request-close="close"
-    >
-      <p v-if="error" role="alert">{{ error }}</p>
-      <form v-if="selected && mode === 'rate'" class="rate-form" @submit.prevent="saveRate">
-        <h3>Tarif par rendez-vous validé</h3>
-        <p>
-          Les présences futures utilisent ce tarif. Les montants déjà enregistrés restent conservés.
-          Une absence ne génère aucune rémunération.
-        </p>
-        <label
-          >Montant CAD (vide = non défini)<input
-            v-model="amount"
-            type="number"
-            step="0.01"
-            min="0"
-            max="9999999.99"
-            :disabled="busy" /></label
+        <label>Du<input v-model="from" type="date" required :disabled="busy || !!selected" /></label
         ><label
-          >Motif obligatoire<textarea
-            v-model="reason"
-            maxlength="1000"
-            required
-            :disabled="busy"
-          ></textarea></label
-        ><button class="primary" :disabled="busy || !reason.trim()">Enregistrer le tarif</button>
-        <hr />
-        <h3>Présences antérieures sans tarif</h3>
-        <p>
-          {{ selected.unpriced }} présence(s) sur la période {{ day(result.from) }} →
-          {{ day(result.to) }}. Tarif actuellement enregistré : {{ cad(selected.rate_cad) }}. Cette
-          action applique ce tarif, sans remplacer un ancien montant.
-        </p>
-        <button
+          >Au inclus<input v-model="to" type="date" required :disabled="busy || !!selected"
+        /></label>
+        <button class="primary" :disabled="busy">Afficher</button
+        ><button
           type="button"
           class="secondary"
-          :disabled="
-            busy ||
-            !reason.trim() ||
-            !selected.unpriced ||
-            selected.rate_cad === null ||
-            rateChanged()
+          :disabled="busy"
+          @click="
+            from = '';
+            to = '';
+            page = 1;
+            load();
           "
-          @click="valueMissing"
         >
-          Valoriser au tarif enregistré
+          Cette semaine</button
+        ><button type="button" class="secondary" :disabled="busy || !result" @click="moveWeek(1)">
+          7 jours →
         </button>
       </form>
-      <template v-if="mode === 'details' && detail"
-        ><p>
-          Du {{ day(result.from) }} au {{ day(result.to) }} · heures du Québec. Aucun paiement n’est
-          déclenché.
+      <p v-if="error" role="alert">{{ error }}</p>
+      <p v-if="message" role="status">{{ message }}</p>
+      <p v-if="callError" role="alert">
+        {{ callError }}. Aucun zéro n’est déduit de cette indisponibilité.
+      </p>
+      <template v-if="result">
+        <div class="totals">
+          <article>
+            <strong>{{ calls?.totals.calls ?? '—' }}</strong
+            ><span>Appels Orvia · poste joint</span>
+          </article>
+          <article>
+            <strong>{{ result.totals.payable }}</strong
+            ><span>Présences validées</span>
+          </article>
+          <article>
+            <strong>{{ cad(result.totals.amount_cad) }}</strong
+            ><span>Montant valorisé</span>
+          </article>
+          <article>
+            <strong>{{ result.totals.unpriced }}</strong
+            ><span>Présences à valoriser</span>
+          </article>
+        </div>
+        <p class="definition">{{ result.definition }}</p>
+        <p class="definition">
+          {{ calls?.definition }} Les appels totaux incluent les administrateurs ; le tableau
+          détaille les setters connus du métier.
         </p>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>Rendez-vous</th>
-                <th>Conseiller</th>
-                <th>Présence</th>
-                <th>Tarif conservé CAD</th>
-                <th>Montant retenu CAD</th>
+                <th>Setter</th>
+                <th>Appels Orvia</th>
+                <th>Pris</th>
+                <th>Transmis</th>
+                <th>À venir</th>
+                <th>Honorés</th>
+                <th>Non honorés</th>
+                <th>Validés rémunération</th>
+                <th>Sans tarif</th>
+                <th>Montant CAD</th>
+                <th>Tarif actuel</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in detail.results" :key="row.id">
+              <tr v-for="row in result.results" :key="row.setter_id">
                 <td>
-                  #{{ row.id }}<small>{{ when(row.starts_at) }}</small>
+                  {{ row.setter_name }}<small>#{{ row.setter_id }}</small>
                 </td>
-                <td>{{ row.advisor_name }}</td>
+                <td>{{ callCount(row.setter_id) }}</td>
+                <td>{{ row.booked }}</td>
+                <td>{{ row.transmitted }}</td>
+                <td>{{ row.upcoming }}</td>
+                <td>{{ row.attended }}</td>
+                <td>{{ row.absent }}</td>
+                <td>{{ row.payable }}</td>
+                <td>{{ row.unpriced }}</td>
+                <td>{{ cad(row.amount_cad) }}</td>
+                <td>{{ cad(row.rate_cad) }}</td>
                 <td>
-                  {{
-                    row.status === 'cancelled'
-                      ? 'Annulé'
-                      : row.performed === true
-                        ? 'Validé'
-                        : row.performed === false
-                          ? 'Non honoré / non effectué'
-                          : 'En attente'
-                  }}
+                  <button class="secondary" :disabled="busy" @click="openDetails(row)">
+                    Détail</button
+                  ><button class="secondary" :disabled="busy" @click="openRate(row)">
+                    Tarif / valoriser
+                  </button>
                 </td>
-                <td>
-                  {{ cad(row.unit_rate_cad)
-                  }}<small v-if="row.valued_at"
-                    >Valorisé le {{ when(row.valued_at) }} · tarif v{{ row.rate_revision }}</small
-                  >
-                </td>
-                <td>{{ row.payable ? cad(row.amount_cad) : 'Non rémunérable' }}</td>
+              </tr>
+              <tr v-if="!result.results.length">
+                <td colspan="12">Aucun setter affecté ou rendez-vous enregistré.</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <nav>
-          <button
-            class="secondary"
-            :disabled="busy || !detail.previous"
-            @click="openDetails(selected, detailPage - 1)"
-          >
-            Précédent</button
-          ><span>{{ detail.count }} rendez-vous · page {{ detailPage }}</span
+        <nav aria-label="Pages setters">
+          <span>{{ result.count }} setter(s) · page {{ page }}</span
           ><button
             class="secondary"
-            :disabled="busy || !detail.next"
-            @click="openDetails(selected, detailPage + 1)"
+            :disabled="busy || !result.previous"
+            @click="
+              page--;
+              load();
+            "
+          >
+            Précédent</button
+          ><button
+            class="secondary"
+            :disabled="busy || !result.next"
+            @click="
+              page++;
+              load();
+            "
           >
             Suivant
           </button>
-        </nav></template
+        </nav>
+      </template>
+      <SidePanel
+        :open="!!selected"
+        :title="selected?.setter_name || 'Setter'"
+        eyebrow="ASSURANCE · RÉMUNÉRATION"
+        :close-disabled="busy"
+        @request-close="close"
       >
-    </SidePanel>
-  </section>
+        <p v-if="error" role="alert">{{ error }}</p>
+        <form v-if="selected && mode === 'rate'" class="rate-form" @submit.prevent="saveRate">
+          <h3>Tarif par rendez-vous validé</h3>
+          <p>
+            Les présences futures utilisent ce tarif. Les montants déjà enregistrés restent
+            conservés. Une absence ne génère aucune rémunération.
+          </p>
+          <label
+            >Montant CAD (vide = non défini)<input
+              v-model="amount"
+              type="number"
+              step="0.01"
+              min="0"
+              max="9999999.99"
+              :disabled="busy" /></label
+          ><label
+            >Motif obligatoire<textarea
+              v-model="reason"
+              maxlength="1000"
+              required
+              :disabled="busy"
+            ></textarea></label
+          ><button class="primary" :disabled="busy || !reason.trim()">Enregistrer le tarif</button>
+          <hr />
+          <h3>Présences antérieures sans tarif</h3>
+          <p>
+            {{ selected.unpriced }} présence(s) sur la période {{ day(result.from) }} →
+            {{ day(result.to) }}. Tarif actuellement enregistré : {{ cad(selected.rate_cad) }}.
+            Cette action applique ce tarif, sans remplacer un ancien montant.
+          </p>
+          <button
+            type="button"
+            class="secondary"
+            :disabled="
+              busy ||
+              !reason.trim() ||
+              !selected.unpriced ||
+              selected.rate_cad === null ||
+              rateChanged()
+            "
+            @click="valueMissing"
+          >
+            Valoriser au tarif enregistré
+          </button>
+        </form>
+        <template v-if="mode === 'details' && detail"
+          ><p>
+            Du {{ day(result.from) }} au {{ day(result.to) }} · heures du Québec. Aucun paiement
+            n’est déclenché.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rendez-vous</th>
+                  <th>Conseiller</th>
+                  <th>Présence</th>
+                  <th>Tarif conservé CAD</th>
+                  <th>Montant retenu CAD</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in detail.results" :key="row.id">
+                  <td>
+                    #{{ row.id }}<small>{{ when(row.starts_at) }}</small>
+                  </td>
+                  <td>{{ row.advisor_name }}</td>
+                  <td>
+                    {{
+                      row.status === 'cancelled'
+                        ? 'Annulé'
+                        : row.performed === true
+                          ? 'Validé'
+                          : row.performed === false
+                            ? 'Non honoré / non effectué'
+                            : 'En attente'
+                    }}
+                  </td>
+                  <td>
+                    {{ cad(row.unit_rate_cad)
+                    }}<small v-if="row.valued_at"
+                      >Valorisé le {{ when(row.valued_at) }} · tarif v{{ row.rate_revision }}</small
+                    >
+                  </td>
+                  <td>{{ row.payable ? cad(row.amount_cad) : 'Non rémunérable' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <nav>
+            <button
+              class="secondary"
+              :disabled="busy || !detail.previous"
+              @click="openDetails(selected, detailPage - 1)"
+            >
+              Précédent</button
+            ><span>{{ detail.count }} rendez-vous · page {{ detailPage }}</span
+            ><button
+              class="secondary"
+              :disabled="busy || !detail.next"
+              @click="openDetails(selected, detailPage + 1)"
+            >
+              Suivant
+            </button>
+          </nav></template
+        >
+      </SidePanel>
+    </section>
+  </details>
 </template>
+
 <style scoped>
 .compensation {
   display: grid;

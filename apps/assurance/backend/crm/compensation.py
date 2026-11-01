@@ -20,13 +20,32 @@ def administrator(request):
 
 
 def capture(report, appointment, actor_id):
+    result = _capture(report, appointment, actor_id)
+    from .payroll import reconcile
+
+    reconcile(appointment.setter_id, actor_id, correction=not result)
+    return result
+
+
+def _capture(report, appointment, actor_id):
     if not report.performed or report.unit_rate_cad is not None:
         return False
-    rate = SetterRate.objects.filter(pk=appointment.setter_id, amount__isnull=False).first()
+    from .payroll import active_terms
+    from types import SimpleNamespace
+
+    terms = active_terms(appointment.setter_id)
+    rate = (
+        SimpleNamespace(amount=terms.attendance_cad, revision=terms.revision)
+        if terms
+        else SetterRate.objects.filter(pk=appointment.setter_id, amount__isnull=False).first()
+    )
     if not rate:
         return False
     changed = AppointmentReport.objects.filter(pk=report.pk, unit_rate_cad__isnull=True).update(
-        unit_rate_cad=rate.amount, rate_revision=rate.revision, valued_at=timezone.now()
+        unit_rate_cad=rate.amount,
+        rate_revision=rate.revision,
+        valued_at=timezone.now(),
+        payroll_term_id=terms.pk if terms else None,
     )
     if changed:
         BusinessAudit.objects.create(
@@ -37,6 +56,7 @@ def capture(report, appointment, actor_id):
                 'setter_id': appointment.setter_id,
                 'unit_rate_cad': str(rate.amount),
                 'rate_revision': rate.revision,
+                'term_id': terms.pk if terms else None,
             },
         )
     return bool(changed)
@@ -204,7 +224,10 @@ def value_missing(request, setter_id):
             appointment_id__in=ids, performed=True, unit_rate_cad__isnull=True
         )
         count = reports.update(
-            unit_rate_cad=rate.amount, rate_revision=rate.revision, valued_at=timezone.now()
+            unit_rate_cad=rate.amount,
+            rate_revision=rate.revision,
+            valued_at=timezone.now(),
+            payroll_term_id=None,
         )
         BusinessAudit.objects.create(
             actor_id=request.user.pk,

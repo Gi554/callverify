@@ -1,3 +1,4 @@
+from packages import payroll_models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -374,6 +375,8 @@ class IsolationClientFollowUp(models.Model):
 
 
 class IsolationVisitResult(models.Model):
+    attendance_term_id = models.PositiveBigIntegerField(null=True, blank=True)
+    sale_term_id = models.PositiveBigIntegerField(null=True, blank=True)
     follow_up_owner = models.CharField(max_length=10, default='setter')
     absence_reason = models.CharField(max_length=1000, blank=True)
     follow_up_at = models.DateTimeField(null=True, blank=True)
@@ -447,3 +450,19 @@ class IsolationAssignmentBatch(models.Model):
     fingerprint = models.CharField(max_length=64)
     result = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class IsolationPayrollAccount(payroll_models.Account):
+    pass
+
+
+class IsolationPayrollTerms(payroll_models.Terms):
+    pass
+
+
+class IsolationPayrollPayment(payroll_models.Payment):
+    pass
+
+
+class IsolationPayrollAdjustment(payroll_models.Adjustment):
+    pass
