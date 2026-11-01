@@ -285,9 +285,16 @@ class WorkViewSet(
 @permission_classes([IsAuthenticated])
 def dashboard(request):
     qs = visible(request.user)
+    from .isolation_compensation import setter_payable
+
     return Response(
         {
             'role': request.user.role,
+            **(
+                {'weekly_payable': setter_payable(request.user.pk)}
+                if request.user.role == 'setter'
+                else {}
+            ),
             'prospects': qs.count(),
             'unassigned': qs.filter(assigned_setter_id__isnull=True).count(),
             'callbacks_due': qs.filter(

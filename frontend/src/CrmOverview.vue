@@ -244,6 +244,36 @@ onMounted(refreshHome);
     </div>
     <div class="home-body">
       <div class="home-left">
+        <section v-if="!assurance && summary.weekly_payable" class="home-panel">
+          <header class="panel-heading">
+            <div>
+              <h2>Mes rendez-vous payables de la semaine</h2>
+              <p>{{ summary.weekly_payable.from }} → {{ summary.weekly_payable.to }} · Québec</p>
+            </div>
+          </header>
+          <div class="home-highlights">
+            <button class="home-highlight peach" @click="$emit('navigate', 'statistics')">
+              <span class="highlight-label">Présentés — non closés</span
+              ><strong>{{ summary.weekly_payable.presented_not_closed }}</strong>
+            </button>
+            <button class="home-highlight blue" @click="$emit('navigate', 'statistics')">
+              <span class="highlight-label">Présentés — closés</span
+              ><strong>{{ summary.weekly_payable.presented_closed }}</strong>
+            </button>
+            <button class="home-highlight lilac" @click="$emit('navigate', 'statistics')">
+              <span class="highlight-label">Total payable</span
+              ><strong>{{ summary.weekly_payable.payable }}</strong>
+            </button>
+          </div>
+          <p>
+            Une présence validée est payable même sans vente. Un seul crédit de présence par dossier
+            commercial.
+          </p>
+          <p v-if="summary.weekly_payable.sale_unknown">
+            {{ summary.weekly_payable.sale_unknown }} présence(s) payable(s) dont la vente reste à
+            préciser.
+          </p>
+        </section>
         <section v-if="assurance" class="home-panel home-performance">
           <header class="panel-heading">
             <div>
