@@ -221,8 +221,9 @@ test('client requalification uses a bound entry proof and creates a Google visit
   }
 })
 
-test('several representatives require a choice that is attested with the booking, using the common Québec calendar', async () => {
+test('a client booking requires a representative choice that is attested using the common Québec calendar', async () => {
   const f = fixture({
+    reactivation: true,
     representatives: [
       { id: 88, name: 'Représentant A' },
       { id: 89, name: 'Représentant B' },
@@ -239,6 +240,24 @@ test('several representatives require a choice that is attested with the booking
     await submit(f)
     assert.equal(f.writes.length, 1)
     assert.equal(f.proofs[0].closer_id, 89)
+    assert.equal(f.writes[0].body.timezone, 'America/Toronto')
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('a setter may leave the representative for the client to designate later', async () => {
+  const f = fixture({
+    representatives: [
+      { id: 88, name: 'A' },
+      { id: 89, name: 'B' },
+    ],
+  })
+  try {
+    await flush()
+    await submit(f)
+    assert.equal(f.writes.length, 1)
+    assert.equal(f.proofs[0].closer_id, undefined)
     assert.equal(f.writes[0].body.timezone, 'America/Toronto')
   } finally {
     f.app.unmount()

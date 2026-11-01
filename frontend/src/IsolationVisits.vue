@@ -184,7 +184,7 @@ async function save() {
     if (!record) {
       if (
         !representativesReady.value ||
-        (representatives.value.length > 1 && !representative.value)
+        (props.role === 'client' && representatives.value.length > 1 && !representative.value)
       )
         throw new Error('Choisissez un représentant avant de programmer la visite.');
       if (!c2.value && !props.clientFollowupId)
@@ -343,8 +343,13 @@ onMounted(() => run(load));
         </p>
         <template v-if="!editing"
           ><label v-if="representatives.length"
-            >Représentant chargé de la visite<select v-model="representative" required>
-              <option value="">Choisir un représentant</option>
+            >Représentant chargé de la visite<select
+              v-model="representative"
+              :required="role === 'client' && representatives.length > 1"
+            >
+              <option value="">
+                {{ role === 'client' ? 'Choisir un représentant' : 'À désigner par le client' }}
+              </option>
               <option v-for="person in representatives" :key="person.id" :value="String(person.id)">
                 {{ person.name }}
               </option>
@@ -405,7 +410,9 @@ onMounted(() => run(load));
         ><button
           class="primary"
           :disabled="
-            !editing && (!representativesReady || (representatives.length > 1 && !representative))
+            !editing &&
+            (!representativesReady ||
+              (role === 'client' && representatives.length > 1 && !representative))
           "
         >
           {{ editing ? 'Confirmer le report' : 'Programmer la visite' }}</button

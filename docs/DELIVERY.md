@@ -126,6 +126,9 @@ les non-qualifiés avant réservation et l’agenda en accès complémentaires. 
 visite expose immédiatement nom, téléphone, adresse, ville et code postal conservés,
 ainsi que le créneau, le setter et le représentant. Les statuts affichent explicitement
 présenté closé/non closé, non présenté, non qualifié et reprogrammé.
+Le setter peut laisser le représentant à désigner par le client, même lorsque
+plusieurs représentants existent. Reprogrammer après une absence termine le rappel
+lié à cette absence, sans terminer les autres tâches manuelles du prospect.
 
 Le bouton « Historique du rendez-vous » présente au client les résultats successifs,
 motifs de correction et notes conservées, avec un endpoint filtré qui n’expose ni

@@ -217,6 +217,23 @@ test('Isolation visit hint does not grant a setter access to a client result pan
   }
 })
 
+test('Isolation setter notices remain available on every page and open the exact visit', async () => {
+  const f = await fixture({ loggedIn: true, isolationRole: 'setter', isolationLink: true })
+  try {
+    find(f, 'CrmShell').props.onNavigate('contacts')
+    await flush()
+    const notices = find(f, 'IsolationNotices')
+    assert.ok(notices)
+    notices.props.onOpen(57)
+    await flush()
+    assert.equal(find(f, 'IsolationVisits').props['visit-id'], 57)
+    assert.equal(find(f, 'IsolationVisits').props.role, 'setter')
+    assert.ok(find(f, 'IsolationNotices'))
+  } finally {
+    f.close()
+  }
+})
+
 test('Isolation client can open client files and a separate upcoming visits tab', async () => {
   const f = await fixture({ loggedIn: true, isolationRole: 'client', isolationLink: true })
   try {
