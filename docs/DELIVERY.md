@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — journal administrateur par espace
+
+Un onglet « Journal d’activité » donne accès en lecture seule aux audits enregistrés dans la base de l’espace actif. Filtres combinés période au Québec (366 jours maximum), identifiant de compte auteur, action exacte et référence d’objet, pagination de 25 événements. Le panneau latéral affiche l’auteur, l’heure et les états avant/après lorsqu’ils existent, puis les métadonnées enregistrées. Les clés de secrets, preuves, jetons et empreintes sont masquées récursivement. Les rôles terrain et les tickets d’un autre espace sont refusés ; aucune route d’écriture ni suppression.
+
+Limites explicites : les comptes sont identifiés par numéro ; les références sont des identifiants d’objets dont le type est précisé par l’action. Les anciens audits sans auteur ou avant/après sont affichés comme incomplets et ne sont pas reconstitués. Le journal expose la traçabilité existante et les nouveaux audits financiers ; cette livraison ne prétend pas ajouter une couverture exhaustive à tous les anciens parcours. Tests serveur des permissions, masquage, filtres et pagination, tests du panneau et des erreurs frontend. Recette visuelle encore bloquée par l’accès navigateur local.
+
+
 ## Retour novembre — rémunération, objectifs et registre des règlements
 
 Dans chaque espace séparé, l’administrateur définit des conditions individuelles datées en CAD : objectif hebdomadaire ou mandat, tarif de présence et, en Isolation, prime de vente distincte. Les périodes ne se chevauchent pas ; seules les périodes futures sont modifiables avec contrôle de révision. La validation rémunérable fige le tarif applicable, sa provenance et sa révision sans recalcul rétroactif des unités déjà valorisées. Les tarifs historiques restent accessibles dans leur section dédiée.

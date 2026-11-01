@@ -9,10 +9,10 @@ Une correction après paiement doit produire un ajustement, en conservant le pai
 | Demande | État et contrôle restant |
 | --- | --- |
 | 1. Pilotage administrateur | Bloc dans le layout existant, sept indicateurs, filtres serveur et actualisation à une minute implémentés. Livré par PR #244, CI et déploiement réussis. |
-| 2A. Isolation : objectifs, présence et prime | Objectifs hebdomadaires, périodes de conditions, présence et prime CAD séparées, taux figés et lecture personnelle implémentés ; livraison du registre en cours. |
-| 2B. Assurance : mandat et tarif | Mandat ou objectif hebdomadaire, dates, conditions et tarif de présence individuels implémentés ; livraison du registre en cours. |
-| 2C–D. Montants générés et paiements | Consultation personnelle, registre administrateur, contrôle de solde/révision, idempotence et ajustements après correction implémentés ; validation CI en cours. Aucun transfert bancaire. |
-| 3. Historique complet | Audits et historiques métier existants ; compléter les nouveaux objectifs, mandats, paiements et ajustements, avec auteur/avant/après. |
+| 2A. Isolation : objectifs, présence et prime | Objectifs hebdomadaires, périodes de conditions, présence et prime CAD séparées, taux figés et lecture personnelle implémentés ; livré par PR #245. |
+| 2B. Assurance : mandat et tarif | Mandat ou objectif hebdomadaire, dates, conditions et tarif de présence individuels implémentés ; livré par PR #245. |
+| 2C–D. Montants générés et paiements | Consultation personnelle, registre administrateur, contrôle de solde/révision, idempotence et ajustements après correction livrés par PR #245, contrôles PostgreSQL réussis. Aucun transfert bancaire. |
+| 3. Historique complet | Journal administrateur consultable, filtres période/auteur/type/référence et détail avant/après des audits enregistrés implémentés. Objectifs et paiements audités en PR #245. Les anciens événements incomplets ne sont pas reconstitués ; audit exhaustif des anciens parcours à contrôler. |
 | 4. Centre d’alertes | Notifications de rendez-vous et rappels existantes ; compléter la rubrique administrateur et les anomalies. |
 | 5. Anomalies | Ajouter les contrôles de cohérence et leur état de traitement, sans corriger les données automatiquement. |
 | 6. Performance individuelle setter | Statistiques et appels disponibles dans leurs périmètres ; réunir prospects/appels/qualification/rendez-vous/rémunération et séries jour/semaine/mois. |

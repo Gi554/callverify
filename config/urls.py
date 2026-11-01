@@ -1,3 +1,4 @@
+from core.isolation_journal import events as journal_events
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from core import views
@@ -41,6 +42,8 @@ router.register('isolation-unqualified', Unqualified, basename='isolation-unqual
 from core import isolation_compensation
 
 urlpatterns = [
+    path('api/admin-journal/', journal_events),
+    path('api/admin-journal/<int:pk>/', journal_events),
     path('api/', include(router.urls)),
     path('api/auth/csrf/', views.csrf),
     path('api/auth/login/', views.login_view),
