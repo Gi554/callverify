@@ -126,9 +126,9 @@ onMounted(load);
             <td>
               <strong>{{ row.name }}</strong>
             </td>
-            <td>{{ row.phone }}</td>
-            <td>{{ row.email || 'Non renseigné' }}</td>
-            <td>
+            <td data-label="Téléphone">{{ row.phone }}</td>
+            <td data-label="Courriel">{{ row.email || 'Non renseigné' }}</td>
+            <td data-label="Rendez-vous tenus">
               <span :class="['attendance', { done: row.attended > 0 }]">{{ row.attended }}</span>
             </td>
             <td>
@@ -313,8 +313,74 @@ onMounted(load);
   color: #718099;
 }
 @media (max-width: 760px) {
+  .advisor-prospects {
+    padding: 14px;
+  }
   .prospect-counters {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .prospect-counters article {
+    padding: 14px 16px;
+    gap: 4px;
+  }
+  .prospect-counters strong {
+    font-size: 26px;
+  }
+  /* Phones: one card per prospect instead of a table that scrolls sideways. */
+  .prospect-table {
+    overflow: visible;
+    border: 0;
+    background: none;
+  }
+  .prospect-table table,
+  .prospect-table tbody,
+  .prospect-table tr,
+  .prospect-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .prospect-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .prospect-table tr {
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f1;
+    border-radius: 12px;
+    background: white;
+  }
+  .prospect-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 0;
+    border: 0;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+  .prospect-table td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: #6c7d92;
+    font-size: 12px;
+  }
+  .prospect-table td:first-child {
+    font-size: 15px;
+    padding-bottom: 6px;
+  }
+  .prospect-table td:last-child button {
+    width: 100%;
+    margin-top: 6px;
+  }
+  .advisor-prospects footer {
+    flex-wrap: wrap;
   }
   .advisor-prospects .prospect-search {
     flex-wrap: wrap;
