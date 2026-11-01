@@ -165,6 +165,8 @@ test('closer explicitly declares held and sold with optional notes and the visit
         .join(' '),
       /05:00/,
     )
+    assert.ok(all(f.root).some((n) => n.text?.includes('Heure du Québec')))
+    assert.ok(!all(f.root).some((n) => n.text?.includes('Asia/Tokyo')))
     const selects = all(f.root).filter((n) => n.tag === 'select')
     assert.equal(selects[0].model, '')
     assert.equal(selects[1].model, '')

@@ -118,7 +118,7 @@ onMounted(() => run(load));
               }}<small>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone }}</small>
             </td>
             <td data-label="Rendez-vous">
-              {{ date(row) }}<small>{{ row.timezone }}</small>
+              {{ date(row) }}<small>Heure du Québec</small>
             </td>
             <td data-label="Setter">{{ row.original_setter.name }}</td>
             <td data-label="Résultat">
@@ -184,7 +184,7 @@ onMounted(() => run(load));
       @request-close="close"
       ><template v-if="selected"
         ><p v-if="error" role="alert">{{ error }}</p>
-        <p>{{ date(selected) }} · {{ selected.timezone }}</p>
+        <p>{{ date(selected) }} · Heure du Québec</p>
         <p>Closer : {{ selected.closer?.name }} · Setter : {{ selected.original_setter.name }}</p>
         <IsolationC2Snapshot :snapshot="selected.c2_snapshot" />
         <form
