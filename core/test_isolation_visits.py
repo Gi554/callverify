@@ -75,6 +75,19 @@ class IsolationVisitTests(TestCase):
         self.assertEqual(events.get().changes['appointment_id'], response.data['id'])
         self.assertEqual(events.get().author_portal_id, 21)
 
+    def test_representative_is_taken_only_from_the_signed_booking_proof(self):
+        def attested(closer):
+            return issue_booking(21, self.prospect.pk, 21, 'Setter', 72, 'Client', closer=closer)
+
+        proof = attested({'id': 88, 'name': 'Représentant'})
+        result = self.book(proof=proof)
+        self.assertEqual(result.status_code, 201, result.data)
+        self.assertEqual(result.data['closer'], {'id': 88, 'name': 'Représentant'})
+        self.assertEqual(self.book(proof=proof).status_code, 200)
+        self.assertEqual(self.book(proof=attested({'id': 89, 'name': 'Autre'})).status_code, 409)
+        self.assertEqual(self.book(closer_id=89).status_code, 400)
+        self.assertEqual(self.book(proof=attested({'id': 21, 'name': 'Setter'})).status_code, 400)
+
     def test_calendar_window_overlap_boundaries_and_visibility(self):
         row = self.book()
         self.assertEqual(row.status_code, 201, row.data)
