@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone as utc
 from uuid import uuid4
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -122,7 +122,10 @@ class IsolationStatisticsTests(TestCase):
         self.visit()
         day = self.day.date().isoformat()
         self.assertEqual(
-            self.client.get(self.url, {'from': day, 'to': day}).data['totals']['visits'], 1
+            self.client.get(self.url, {'from': day, 'to': day, 'timezone': 'UTC'}).data['totals'][
+                'visits'
+            ],
+            1,
         )
         tomorrow = (self.day.date() + timedelta(days=1)).isoformat()
         self.assertEqual(
@@ -138,6 +141,26 @@ class IsolationStatisticsTests(TestCase):
             {'export': 'pdf'},
         ):
             self.assertEqual(self.client.get(self.url, args).status_code, 400, args)
+
+    def test_default_quebec_day_includes_late_evening_and_handles_25_hour_day(self):
+        from .isolation_statistics import period
+
+        now = datetime(2026, 11, 1, 18, tzinfo=utc.utc)
+        _, _, lower, upper, zone = period({'from': '2026-11-01', 'to': '2026-11-01'}, now)
+        self.assertEqual(zone, 'America/Toronto')
+        self.assertEqual(upper - lower, timedelta(hours=25))
+        row = self.visit()
+        IsolationVisit.objects.filter(pk=row.pk).update(
+            starts_at=datetime(2026, 11, 2, 4, 30, tzinfo=utc.utc),
+            ends_at=datetime(2026, 11, 2, 4, 45, tzinfo=utc.utc),
+        )
+        data = self.client.get(self.url, {'from': '2026-11-01', 'to': '2026-11-01'}).data
+        self.assertEqual(data['timezone'], 'America/Toronto')
+        self.assertEqual(data['totals']['visits'], 1)
+        legacy = self.client.get(
+            self.url, {'from': '2026-11-01', 'to': '2026-11-01', 'timezone': 'UTC'}
+        ).data
+        self.assertEqual(legacy['totals']['visits'], 0)
 
     def test_group_pagination_keeps_complete_totals(self):
         for index in range(27):

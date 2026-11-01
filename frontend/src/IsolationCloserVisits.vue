@@ -24,7 +24,7 @@ function changed() {
 }
 function date(row: any) {
   return new Intl.DateTimeFormat('fr-FR', {
-    timeZone: row.timezone,
+    timeZone: 'America/Toronto',
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(row.starts_at));
@@ -117,9 +117,7 @@ onMounted(() => run(load));
               {{ row.c2_snapshot?.fields?.full_name || row.prospect.name
               }}<small>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone }}</small>
             </td>
-            <td data-label="Rendez-vous">
-              {{ date(row) }}<small>{{ row.timezone }}</small>
-            </td>
+            <td data-label="Rendez-vous">{{ date(row) }}<small>Heure du Québec</small></td>
             <td data-label="Setter">{{ row.original_setter.name }}</td>
             <td data-label="Résultat">
               {{
@@ -184,7 +182,7 @@ onMounted(() => run(load));
       @request-close="close"
       ><template v-if="selected"
         ><p v-if="error" role="alert">{{ error }}</p>
-        <p>{{ date(selected) }} · {{ selected.timezone }}</p>
+        <p>{{ date(selected) }} · Heure du Québec</p>
         <p>Closer : {{ selected.closer?.name }} · Setter : {{ selected.original_setter.name }}</p>
         <IsolationC2Snapshot :snapshot="selected.c2_snapshot" />
         <form
@@ -232,8 +230,10 @@ onMounted(() => run(load));
         <h3>Historique des résultats closer</h3>
         <article v-for="entry in history" :key="entry.id">
           <small
-            >{{ new Date(entry.created_at).toLocaleString('fr-FR') }} · Closer
-            {{ entry.actor_id }}</small
+            >{{
+              new Date(entry.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+            }}
+            · Closer {{ entry.actor_id }}</small
           >
           <p>
             Tenue : {{ entry.after.performed ? 'Oui' : 'Non' }} · Vente :

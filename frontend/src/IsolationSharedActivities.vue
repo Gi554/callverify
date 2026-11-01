@@ -72,7 +72,7 @@ onMounted(() => run(load));
     <button class="secondary" :disabled="busy" @click="run(load)">Actualiser</button>
     <article v-for="row in rows" :key="row.id">
       <small
-        >{{ new Date(row.created_at).toLocaleString('fr-FR') }} ·
+        >{{ new Date(row.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' }) }} ·
         {{ row.author_role === 'setter' ? 'Setter' : 'Administrateur' }} central n°
         {{ row.author_portal_id }} · {{ row.kind === 'note' ? 'Note' : 'Qualification' }}</small
       >
@@ -82,12 +82,19 @@ onMounted(() => run(load));
         {{ statuses[row.changes.after.status] || row.changes.after.status }} · Rappel :
         {{
           row.changes.after.callback_at
-            ? new Date(row.changes.after.callback_at).toLocaleString('fr-FR')
+            ? new Date(row.changes.after.callback_at).toLocaleString('fr-CA', {
+                timeZone: 'America/Toronto',
+              })
             : 'Aucun'
         }}
       </p>
       <p v-if="row.changes.before?.callback_at">
-        Ancien rappel : {{ new Date(row.changes.before.callback_at).toLocaleString('fr-FR') }}
+        Ancien rappel :
+        {{
+          new Date(row.changes.before.callback_at).toLocaleString('fr-CA', {
+            timeZone: 'America/Toronto',
+          })
+        }}
       </p>
       <template v-if="role !== 'client'"
         ><p>{{ row.shared ? 'Publié pour ce client' : 'Interne' }}</p>

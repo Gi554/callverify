@@ -384,7 +384,15 @@ onMounted(load);
             <td>
               <span class="crm-badge neutral">{{ job.status }}</span>
             </td>
-            <td>{{ job.expires_at ? new Date(job.expires_at).toLocaleString('fr-FR') : '—' }}</td>
+            <td>
+              {{
+                job.expires_at
+                  ? new Date(job.expires_at).toLocaleString('fr-CA', {
+                      timeZone: 'America/Toronto',
+                    })
+                  : '—'
+              }}
+            </td>
             <td>
               <button
                 v-if="job.status === 'completed'"

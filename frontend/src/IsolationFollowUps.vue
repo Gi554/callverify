@@ -172,14 +172,9 @@ onMounted(() => {
           ><p v-if="editing">
             Échéance actuelle : {{ date(editing.due_at) }}. Choisissez le nouveau créneau.
           </p>
-          <label>Date et heure<input v-model="local" type="datetime-local" required /></label
-          ><label
-            >Heure locale<select v-model="zone">
-              <option value="America/Toronto">Toronto / Montréal</option>
-              <option value="America/Vancouver">Vancouver</option>
-              <option value="America/Halifax">Halifax</option>
-            </select></label
-          ><label
+          <label>Date et heure<input v-model="local" type="datetime-local" required /></label>
+          <p>Heure du Québec · Montréal / Toronto</p>
+          <label
             >Note facultative<textarea v-model="note" maxlength="3000"></textarea></label></template
         ><label v-else
           >Résolution obligatoire<textarea

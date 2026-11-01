@@ -16,6 +16,23 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Isolation — dates d’activité et rapports cohérents avec le Québec
+
+Les dates de rappels, activités, observations partagées, compléments de visite, historique
+closer et vérifications de numéros utilisent désormais explicitement America/Toronto, sans
+dépendre du fuseau du navigateur. Le formulaire de rappel et le rapport statistique présentent
+uniquement le fuseau du Québec. Les nouvelles réservations utilisaient déjà ce fuseau.
+
+L’API de statistiques utilise America/Toronto quand aucun fuseau n’est fourni ; les appels
+historiques qui transmettent explicitement un autre fuseau restent compatibles. CSV et Excel
+appliquent les mêmes limites de journée. Aucun rendez-vous ni rappel existant n’est déplacé.
+Les formulaires historiques de report ISO conservent leur fuseau explicite pour compatibilité.
+
+Vérifications : journée du changement d’heure de novembre (25 heures), visite tardive incluse
+dans la bonne journée du Québec, ancien filtre UTC explicite conservé, affichage closer avec
+une visite enregistrée sous un fuseau étranger, rappels et export ; lint, format, TypeScript
+et build. SMS en attente du contrat de réponse de la fonction NEWT 261, sans envoi activé.
+
 ## Isolation V2 — alerte au passage à échéance (lot 12)
 
 Un rappel déjà connu comme « à venir » déclenche désormais une alerte quand il arrive à

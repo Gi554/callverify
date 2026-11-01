@@ -165,6 +165,13 @@ test('weekly Canadian report exports the applied grouping even when draft filter
     const first = new URL(f.requests[0], 'http://test').searchParams
     assert.ok(first.has('week_of'))
     assert.equal(first.get('timezone'), 'America/Toronto')
+    assert.ok(
+      !all(f.root).some(
+        (n) =>
+          n.tag === 'option' &&
+          ['UTC', 'America/Vancouver', 'America/Halifax'].includes(n.props?.value),
+      ),
+    )
     const selects = all(f.root).filter((n) => n.tag === 'select')
     set(selects.at(-1), 'closer')
     await flush()

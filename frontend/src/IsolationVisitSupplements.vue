@@ -69,8 +69,8 @@ onMounted(load);
     </form>
     <article v-for="row in rows" :key="row.id">
       <small
-        >{{ new Date(row.created_at).toLocaleString('fr-FR') }} · client
-        {{ row.author_client_id }}</small
+        >{{ new Date(row.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' }) }} ·
+        client {{ row.author_client_id }}</small
       >
       <p style="white-space: pre-wrap">{{ row.note }}</p>
     </article>

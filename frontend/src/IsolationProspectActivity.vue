@@ -139,7 +139,8 @@ const resultLabels: Record<string, string> = {
       <span>{{ prospect.commercial_label }}</span
       ><small>{{
         prospect.callback_at
-          ? 'Rappel : ' + new Date(prospect.callback_at).toLocaleString('fr-FR')
+          ? 'Rappel : ' +
+            new Date(prospect.callback_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
           : 'Aucun rappel programmé'
       }}</small>
     </div>
@@ -233,9 +234,9 @@ const resultLabels: Record<string, string> = {
       <h4>Historique des observations</h4>
       <article v-for="row in rows" :key="row.id">
         <small
-          >{{ new Date(row.created_at).toLocaleString('fr-FR') }} · {{ row.author_role }}
-          {{ names[row.author_portal_id] || 'Compte' }} (n° {{ row.author_portal_id }}) ·
-          {{ activityLabels[row.kind] || row.kind }}</small
+          >{{ new Date(row.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' }) }} ·
+          {{ row.author_role }} {{ names[row.author_portal_id] || 'Compte' }} (n°
+          {{ row.author_portal_id }}) · {{ activityLabels[row.kind] || row.kind }}</small
         >
         <p style="white-space: pre-wrap">{{ row.body }}</p>
         <p v-if="row.kind === 'call_result'">
@@ -251,12 +252,19 @@ const resultLabels: Record<string, string> = {
           {{ statuses[row.changes.after.status] || row.changes.after.status }} · Rappel :
           {{
             row.changes.after.callback_at
-              ? new Date(row.changes.after.callback_at).toLocaleString('fr-FR')
+              ? new Date(row.changes.after.callback_at).toLocaleString('fr-CA', {
+                  timeZone: 'America/Toronto',
+                })
               : 'Aucun'
           }}
         </p>
         <p v-if="row.kind === 'qualification' && row.changes.before?.callback_at">
-          Ancien rappel : {{ new Date(row.changes.before.callback_at).toLocaleString('fr-FR') }}
+          Ancien rappel :
+          {{
+            new Date(row.changes.before.callback_at).toLocaleString('fr-CA', {
+              timeZone: 'America/Toronto',
+            })
+          }}
         </p>
       </article>
       <p>{{ count }} observation(s) · page {{ page }}</p>
