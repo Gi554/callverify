@@ -117,9 +117,7 @@ onMounted(() => run(load));
               {{ row.c2_snapshot?.fields?.full_name || row.prospect.name
               }}<small>{{ row.c2_snapshot?.fields?.phone || row.prospect.phone }}</small>
             </td>
-            <td data-label="Rendez-vous">
-              {{ date(row) }}<small>Heure du Québec</small>
-            </td>
+            <td data-label="Rendez-vous">{{ date(row) }}<small>Heure du Québec</small></td>
             <td data-label="Setter">{{ row.original_setter.name }}</td>
             <td data-label="Résultat">
               {{
