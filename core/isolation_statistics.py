@@ -11,7 +11,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .isolation_work import WorkAuthentication
-from .models import IsolationVisit, AuditEvent
+from .models import IsolationVisit, AuditEvent, IsolationFollowUp
+from packages.stat_filters import selections, options
 from .isolation_statistics_export import response as export_response
 from packages.stats_series import daily, previous
 
@@ -78,8 +79,15 @@ def metrics(now):
             'pk', filter=Q(result__performed=True, result__closed__isnull=True), distinct=True
         ),
         'unassigned_closer': Count('pk', filter=Q(closer_id__isnull=True), distinct=True),
+        'scheduled': Count('pk', filter=Q(status='scheduled'), distinct=True),
         'results_due': Count(
             'pk', filter=Q(status='scheduled', ends_at__lte=now, result__isnull=True), distinct=True
+        ),
+        'updates_due': Count(
+            'pk',
+            filter=Q(status='scheduled', ends_at__lte=now)
+            & (Q(result__isnull=True) | Q(result__performed=True, result__closed__isnull=True)),
+            distinct=True,
         ),
         'interested': Count('pk', filter=Q(result__outcome='interested'), distinct=True),
         'not_interested': Count('pk', filter=Q(result__outcome='not_interested'), distinct=True),
@@ -115,6 +123,19 @@ def statistics(request):
     if group not in ('setter', 'closer'):
         raise ValidationError('Regroupement setter ou closer requis.')
 
+    selected = selections(
+        request.query_params,
+        request.user.role,
+        ('setter_id', 'client_id', 'closer_id', 'campaign_id'),
+    )
+
+    def filtered(rows):
+        for key, value in selected.items():
+            rows = rows.filter(
+                **{('prospect__campaign_id' if key == 'campaign_id' else key): value}
+            )
+        return rows
+
     def scoped(first, last):
         rows = IsolationVisit.objects.filter(starts_at__gte=first, starts_at__lt=last)
         if request.user.role == 'client':
@@ -125,7 +146,7 @@ def statistics(request):
             )
         if request.user.role == 'closer':
             rows = rows.filter(closer_id=request.user.pk)
-        return rows
+        return filtered(rows)
 
     qs = scoped(lower, upper)
     result = {
@@ -137,6 +158,31 @@ def statistics(request):
         'totals': finish(qs.aggregate(**metrics(now))),
         'definition': f'Période selon le début actuel de la visite, jours inclus dans le fuseau {zone}. Setter d’origine ; closer actuellement affecté. Une réattribution déplace donc les visites et leurs résultats courants dans le groupe du nouveau closer, sans modifier leur auteur historique. Client : ses visites uniquement. Setter : ses réservations dont il conserve le prospect. Closer : ses visites actuellement attribuées. Taux effectué (présence) = tenues / résultats de tenue renseignés. Taux de conclusion observé = ventes explicitement conclues / visites tenues, y compris celles dont la vente reste non renseignée ; ces inconnues sont affichées séparément, pas classées comme ventes perdues. Les annulations, rendez-vous futurs et résultats manquants ne deviennent pas des absences. Prospects distincts par groupe, non additionnables. Un report peut déplacer une visite de période.',
     }
+    if request.user.role == 'administrator' and not kind:
+        all_rows = IsolationVisit.objects.all()
+        result['filter_options'] = {
+            'setter_id': options(all_rows, 'setter_id', 'setter_name'),
+            'client_id': options(all_rows, 'client_id', 'client_name'),
+            'closer_id': options(all_rows, 'closer_id', 'closer_name'),
+            'campaign_id': options(all_rows, 'prospect__campaign_id', 'prospect__campaign__name'),
+        }
+        tasks = IsolationFollowUp.objects.filter(
+            closed_at__isnull=True, due_at__gte=lower, due_at__lt=upper
+        )
+        if selected.get('setter_id'):
+            tasks = tasks.filter(prospect__assigned_setter_id=selected['setter_id'])
+        if selected.get('campaign_id'):
+            tasks = tasks.filter(prospect__campaign_id=selected['campaign_id'])
+        linked = {
+            key: value for key, value in selected.items() if key in ('client_id', 'closer_id')
+        }
+        if linked:
+            tasks = tasks.filter(
+                prospect_id__in=IsolationVisit.objects.filter(**linked).values('prospect_id')
+            )
+        result['pending_callbacks'] = tasks.count()
+        result['overdue_callbacks'] = tasks.filter(due_at__lte=now).count()
+        result['applied_filters'] = selected
     if request.user.role == 'setter':
         from .isolation_compensation import setter_payable
 
@@ -215,6 +261,7 @@ def statistics(request):
                 'to': str(end),
                 'timezone': zone,
                 'group': group,
+                'filters': selected,
                 'format': kind,
             },
         )

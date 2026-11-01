@@ -16,6 +16,36 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Retour novembre — pilotage administrateur dans les layouts existants
+
+Les accueils administrateur Assurance et Isolation conservent leur layout Orvia et
+reçoivent un bloc de pilotage commun fondé sur StatKpi. Sept indicateurs : programmés,
+présentés, closés, non closés, non présentés, mises à jour attendues et rappels ouverts.
+Les filtres période/setter/client ou conseiller/représentant/campagne s’appliquent
+côté serveur aux totaux, tendances, séries et groupes ; ils ne fusionnent aucune base
+ni identité entre espaces. En Assurance, « campagne » désigne le lot d’import existant.
+Les rappels sont comptés selon leur échéance sur la période ; les visites selon leur
+début. Les ventes inconnues restent distinctes des ventes négatives. Un indicateur
+`updates_due` inclut les présences dont la vente reste inconnue et conserve les
+indicateurs historiques de compte rendu manquant. Les filtres d’équipe sont refusés
+aux rôles terrain ; leurs listes de profils ne sont pas exposées hors administration.
+
+Actualisation automatique à une minute lorsque l’onglet est visible, changement de
+filtre immédiat, réponses dépassées ignorées et timer libéré au départ de la page.
+Un service indisponible affiche une erreur et des tirets, sans faux compteurs à zéro.
+Les noms des filtres proviennent des rendez-vous existants, à raison de 500 options
+par type ; pas d’annuaire d’utilisateurs sans activité. Les critères d’exports sont
+aussi appliqués et tracés. Le reste du retour est suivi dans
+`docs/CLIENT_REQUEST_NOV2026.md` : aucun module de paiement/rapport/anomalie n’est
+annoncé terminé par cette livraison du tableau de bord.
+
+Vérifications : tests API des filtres combinés, du cloisonnement, des callbacks, des
+ventes inconnues et dates ; 211 tests frontend, dont changement des filtres,
+actualisation/onglet masqué et erreur serveur ; typage, ESLint, Ruff et compilation.
+Le contrôle visuel local est bloqué par l’accès navigateur désactivé dans Work ;
+les composants et styles existants sont réutilisés, sans déclarer la recette graphique
+terminée. CI complète obligatoire avant fusion.
+
 ## Isolation — confirmation du rendez-vous au client et au prospect
 
 Les nouvelles réservations Google demandent le courriel du prospect. Le champ est
