@@ -6,6 +6,21 @@ Le panneau d’une fiche ouverte depuis « Mes prospects » (conseiller Assuranc
 
 Limite : le correctif est vérifié par les tests et le code compilé, pas encore par l’ouverture d’une fiche sur le site réel.
 
+## Isolation V2 — alerte au passage à échéance (lot 12)
+
+Un rappel déjà connu comme « à venir » déclenche désormais une alerte quand il arrive à
+échéance, même s’il ne figure plus parmi les dernières tâches créées. Le panneau combine
+les rappels récents et les dernières échéances dépassées, dans le périmètre autorisé.
+Une même échéance ne déclenche qu’une alerte par session ; une nouvelle échéance après
+report peut en déclencher une nouvelle. Le chargement initial conserve le rappel global
+des tâches en retard, sans multiplier les notifications individuelles historiques.
+Les heures affichées utilisent le Québec. Assurance conserve son fonctionnement existant.
+
+Vérifications : 15 tests de suivis Isolation, cinq tests frontend des alertes, transition
+à échéance, répétition, nouvelle échéance, ancienne tâche et exclusion des tâches fermées
+ou d’un autre setter ; lint/format et TypeScript. Notifications navigateur uniquement avec
+permission déjà accordée ; le bandeau CRM reste disponible sinon. CI complète avant fusion.
+
 ## Isolation V2 — suivi des setters et rémunération CAD (lot 11)
 
 Le menu administrateur « Suivi et rémunération » réunit appels Orvia, visites programmées,

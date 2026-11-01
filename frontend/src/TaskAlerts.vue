@@ -21,21 +21,24 @@ const unread = ref(0),
 let known: Set<number> | null = null,
   timer: ReturnType<typeof setInterval> | undefined,
   disposed = false;
+const knownDeadlines = new Set<string>();
 const promptKey = computed(() => `amx-overdue-prompt:${props.workspace}:${props.username}`);
 const badge = computed(() => (unread.value > 99 ? '99+' : String(unread.value)));
 const teamWord = computed(() => (props.role === 'administrator' ? 'de l’équipe' : ''));
 function due(row: any) {
   return row.due_at
-    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(
-        new Date(row.due_at),
-      )
+    ? new Intl.DateTimeFormat('fr-FR', {
+        timeZone: 'America/Toronto',
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(new Date(row.due_at))
     : '';
 }
 function prospect(row: any) {
   return row.contact_name || 'Prospect sans nom';
 }
 function announce(row: any) {
-  banners.value = [...banners.value.slice(-2), row];
+  banners.value = [...banners.value.filter((item) => item.id !== row.id).slice(-2), row];
   if (permission.value === 'granted' && document.hidden) {
     try {
       new Notification(`Orvia · ${row.label}`, { body: prospect(row), tag: `amx-task-${row.id}` });
@@ -66,15 +69,18 @@ async function loadAssurance() {
 // badge counts overdue reminders.
 async function loadIsolation() {
   const [late, list] = await Promise.all([
-    props.request('follow-ups/?state=overdue'),
+    props.request('follow-ups/?state=overdue&order=latest_due'),
     props.request('follow-ups/?state=open&order=recent'),
   ]);
   overdue.value = late.count;
   unread.value = late.count;
+  const rows = new Map<number, any>();
+  for (const row of [...late.results, ...list.results])
+    if (!rows.has(row.id)) rows.set(row.id, row);
   return {
-    results: list.results.map((row: any) => ({
+    results: [...rows.values()].map((row: any) => ({
       id: row.id,
-      label: 'Rappel à effectuer',
+      label: row.overdue ? 'Rappel arrivé à échéance' : 'Rappel à effectuer',
       contact_name: row.prospect_name,
       priority: '',
       late: row.overdue,
@@ -91,9 +97,19 @@ async function refresh() {
   try {
     const list = isolation.value ? await loadIsolation() : await loadAssurance();
     if (disposed) return;
+    const firstLoad = known === null;
     recent.value = list.results.slice(0, 6);
     // The first load only remembers what exists: banners are for notifications arriving later.
-    if (known) for (const row of list.results) if (!known.has(row.id)) announce(row);
+    if (known)
+      for (const row of list.results) {
+        if (
+          !known.has(row.id) ||
+          (isolation.value && row.late && !knownDeadlines.has(`${row.id}:${row.due_at}`))
+        )
+          announce(row);
+      }
+    if (isolation.value)
+      for (const row of list.results) if (row.late) knownDeadlines.add(`${row.id}:${row.due_at}`);
     known = new Set([...(known || []), ...list.results.map((row: any) => row.id)]);
     let prompted = false;
     try {
@@ -102,7 +118,7 @@ async function refresh() {
       prompted = false;
     }
     if (overdue.value > 0 && !prompted) {
-      overduePrompt.value = true;
+      if (!isolation.value || firstLoad) overduePrompt.value = true;
       try {
         sessionStorage.setItem(promptKey.value, '1');
       } catch {
@@ -212,7 +228,7 @@ onBeforeUnmount(() => {
       <article v-for="row in banners" :key="row.id" class="alerts-banner" role="status">
         <span class="banner-icon"><Bell :size="16" /></span>
         <div>
-          <strong>Nouvelle tâche · {{ row.label }}</strong>
+          <strong>{{ isolation && row.late ? row.label : 'Nouvelle tâche · ' + row.label }}</strong>
           <span>{{ prospect(row) }} · échéance {{ due(row) }}</span>
         </div>
         <button type="button" class="primary" @click="openTask(row)">Ouvrir</button>

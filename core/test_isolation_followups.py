@@ -53,6 +53,36 @@ class FollowUpTests(TestCase):
             self.base + 'follow-ups/', self.task_payload(**changes), format='json'
         )
 
+    def test_latest_due_order_detects_crossed_deadlines_without_exposing_foreign_or_closed_tasks(
+        self,
+    ):
+        now = timezone.now()
+
+        def task(prospect, due, closed=None):
+            return IsolationFollowUp.objects.create(
+                prospect=prospect,
+                request_id=uuid4(),
+                fingerprint='due',
+                note='',
+                due_at=due,
+                closed_at=closed,
+            )
+
+        recent = task(self.prospect, now - timedelta(minutes=10))
+        old = task(self.prospect, now - timedelta(days=2))
+        task(self.prospect, now - timedelta(minutes=1), now)
+        foreign = Prospect.objects.create(
+            campaign=self.prospect.campaign,
+            name='Autre dossier',
+            raw_phone='5145550199',
+            assigned_setter_id=22,
+        )
+        task(foreign, now - timedelta(seconds=1))
+        data = self.client.get('/api/follow-ups/?state=overdue&order=latest_due').data
+        self.assertEqual(data['count'], 2)
+        self.assertEqual([row['id'] for row in data['results']], [recent.pk, old.pk])
+        self.assertTrue(all(row['overdue'] for row in data['results']))
+
     def test_search_filters_before_pagination_without_widening_setter_scope(self):
         own = IsolationFollowUp.objects.create(
             prospect=self.prospect,
