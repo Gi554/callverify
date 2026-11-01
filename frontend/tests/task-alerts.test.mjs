@@ -118,7 +118,8 @@ function fixture(state, options, workspace = 'assurance') {
       if (path === 'notifications/summary/') return { unread_open: state.unread.length }
       if (path === 'follow-ups/summary/') return { overdue: state.overdue }
       if (path.startsWith('notifications/?')) return { results: state.unread }
-      if (path === 'follow-ups/?state=overdue') return { count: state.overdue, results: [] }
+      if (path.startsWith('follow-ups/?state=overdue'))
+        return { count: state.overdue, results: state.late || [] }
       if (path === 'follow-ups/?state=open&order=recent') return { results: state.reminders }
       return {}
     },
@@ -216,6 +217,44 @@ test('Isolation alerts come from reminders without read receipts', async () => {
     await flush()
     assert.ok(!f.requests.some(([path]) => path.includes('/read/')))
     assert.deepEqual(f.navigations, ['followups'])
+  } finally {
+    f.close()
+  }
+})
+
+test('an existing Isolation reminder announces its deadline once, including an old task absent from the recent list', async () => {
+  const reminder = {
+    id: 7,
+    prospect_name: 'Maison à rappeler',
+    due_at: '2026-10-24T14:00:00Z',
+    overdue: false,
+  }
+  const state = { unread: [], overdue: 0, reminders: [reminder], late: [] }
+  const f = fixture(state, { permission: 'granted', hidden: true }, 'isolation')
+  try {
+    await flush()
+    assert.equal(f.shown.length, 0)
+    state.overdue = 1
+    state.reminders = []
+    state.late = [{ ...reminder, overdue: true }]
+    await f.tick()
+    assert.deepEqual(f.shown, [['Orvia · Rappel arrivé à échéance', 'Maison à rappeler']])
+    assert.equal(button(f, /Traiter maintenant/), undefined)
+    await f.tick()
+    assert.equal(f.shown.length, 1)
+    state.late = []
+    state.overdue = 0
+    state.reminders = [{ ...reminder, due_at: '2026-10-25T14:00:00Z' }]
+    await f.tick()
+    assert.equal(f.shown.length, 1)
+    state.overdue = 1
+    state.late = [{ ...state.reminders[0], overdue: true }]
+    state.reminders = []
+    await f.tick()
+    assert.equal(f.shown.length, 2)
+    await f.tick()
+    assert.equal(f.shown.length, 2)
+    assert.ok(f.requests.some(([path]) => path.includes('order=latest_due')))
   } finally {
     f.close()
   }
