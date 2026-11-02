@@ -1,3 +1,4 @@
+from core.isolation_performance import own as setter_performance
 from core.isolation_alerts import alerts as admin_alerts
 from core.isolation_journal import events as journal_events
 from django.urls import path, include
@@ -43,6 +44,8 @@ router.register('isolation-unqualified', Unqualified, basename='isolation-unqual
 from core import isolation_compensation
 
 urlpatterns = [
+    path('api/setter-performance/', setter_performance),
+    path('api/setter-performance/<int:agent>/', setter_performance),
     path('api/admin-alerts/', admin_alerts),
     path('api/admin-journal/', journal_events),
     path('api/admin-journal/<int:pk>/', journal_events),

@@ -8,6 +8,7 @@ import CrmOverview from './CrmOverview.vue';
 import PayrollLedger from './PayrollLedger.vue';
 import AdminJournal from './AdminJournal.vue';
 import AdminAlerts from './AdminAlerts.vue';
+import SetterPerformance from './SetterPerformance.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
@@ -391,6 +392,12 @@ const navigation = computed(() => {
     items.splice(1, 0, { id: 'client-folders', label: 'Dossiers clients', icon: 'agreements' });
   if (['setter', 'administrator'].includes(role.value))
     items.push({ id: 'calls', label: 'Appels', icon: 'calls' });
+  if (['administrator', 'setter'].includes(role.value))
+    items.push({
+      id: 'setter-performance',
+      label: role.value === 'setter' ? 'Ma performance' : 'Performance des setters',
+      icon: 'statistics',
+    });
   if (role.value === 'administrator')
     items.push({ id: 'admin-alerts', label: 'Centre d’alertes', icon: 'followups' });
   if (role.value === 'administrator')
@@ -724,8 +731,18 @@ onMounted(async () => {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
+                  <SetterPerformance
+                    v-if="
+                      activeModule === 'setter-performance' &&
+                      ['administrator', 'setter'].includes(role)
+                    "
+                    :workspace="workspace"
+                    :role="role"
+                    :request="workspace === 'assurance' ? assurance : isolation"
+                    :portal="portal"
+                  />
                   <AdminAlerts
-                    v-if="activeModule === 'admin-alerts' && role === 'administrator'"
+                    v-else-if="activeModule === 'admin-alerts' && role === 'administrator'"
                     :workspace="workspace"
                     :request="workspace === 'assurance' ? assurance : isolation"
                   />
