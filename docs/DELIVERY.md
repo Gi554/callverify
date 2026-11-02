@@ -1,10 +1,21 @@
 # Suivi des livraisons CRM AMX
 
+## Recette finale du retour de novembre — 2 novembre 2026
+
+PR #244 à #252 fusionnées et déployées : pilotage administrateur, objectifs/rémunération/paiements/ajustements, journal, alertes/anomalies, performance setter, PDF, rapports planifiés et recherche filtrée. Les six rapports réels de contrôle sont terminés dans le CRM et téléchargeables dans les deux formats ; planifications actives à 19 h au Québec. Les nouvelles routes ont été vérifiées en production pour les rôles autorisés et refusées aux autres. Sessions HTTPS/HttpOnly/SameSite Strict, CSRF HTTPS, DEBUG désactivé, durée maximale de huit heures vérifiés.
+
+Sauvegarde chiffrée réelle du 2 novembre : restauration isolée réussie des trois bases (44/34/37 tables, migrations et lecture des tables contrôlées), médias et configuration vérifiés, aucun réseau ni volume de production dans le conteneur de contrôle, aucune application démarrée. Le conteneur de recette est supprimé ; production inchangée. Cron quotidien à 04:15 heure serveur installé avec restauration de contrôle, clé 600 et dossier 700. Les archives restent locales au VPS ; pas de copie hors site ni purge automatique.
+
+Dernière retouche du journal : les noms d’auteurs sont résolus depuis l’annuaire du même espace en conservant l’identifiant ; si l’identité historique n’existe plus ou si l’annuaire est indisponible, la référence enregistrée reste lisible. Les états avant/après imbriqués dans les changements de tâches sont affichés comme les états directs. Aucun audit ancien n’est réécrit ou inventé.
+
+Validation : suites CI SQLite/PostgreSQL, 221 tests frontend, types/lint/build, tests de sessions et de contrôle d’accès, ainsi que contrôles réels décrits ci-dessus. Limite de recette persistante : l’outil navigateur retourne « Local browser use is disabled in Work settings » ; aucune revue visuelle ordinateur/mobile des nouveaux écrans n’est déclarée effectuée. Les PDF ont été réellement rendus et inspectés. Les limites spécifiques (volumes, instantanés successifs, appels non assimilés à un prospect joint, suivi de paiements sans transfert) restent documentées dans les sections de livraison.
+
+
 ## Retour novembre — sauvegarde quotidienne chiffrée et contrôle isolé
 
 Nouvel opérateur Linux `scripts/daily_crm_backup.py` : captures PostgreSQL des trois services, médias et configuration chiffrés avant écriture, manifeste authentifié, permissions privées, verrou partagé avec CD, marqueur de capture complète. Installation idempotente d’un cron quotidien à 04:15 heure du serveur en conservant les autres tâches. La clé n’est ni dans Git ni dans les archives ; les dumps clairs ne sont pas écrits sur le disque hôte.
 
-Le contrôle restaure les trois bases dans un conteneur temporaire sans réseau, sans port ni volume de production ; tables, migrations et lecture de chaque table sont vérifiées. Les médias et la configuration sont vérifiés sans extraction ni exécution. Aucun worker du CRM n’est démarré dans la recette. Seul le conteneur nouvellement généré est supprimé. Tests du chiffrement/intégrité, capture partielle, isolement de la restauration et conservation du crontab. Recette VPS à exécuter après déploiement ; résultats à consigner avant de déclarer la sauvegarde planifiée et restaurée.
+Le contrôle restaure les trois bases dans un conteneur temporaire sans réseau, sans port ni volume de production ; tables, migrations et lecture de chaque table sont vérifiées. Les médias et la configuration sont vérifiés sans extraction ni exécution. Aucun worker du CRM n’est démarré dans la recette. Seul le conteneur nouvellement généré est supprimé. Tests du chiffrement/intégrité, capture partielle, isolement de la restauration et conservation du crontab. Recette VPS réussie le 2 novembre : trois bases restaurées dans le conteneur sans réseau et cron quotidien installé, voir le compte rendu de recette en tête.
 
 Limites : capture en ligne indépendante par base et composants successifs, 256 Mio par composant, mémoire bornée ; pas de transaction distribuée, pas de copie hors site/purge automatique, pas de restauration de production. Redis, rôles globaux, stockages externes et reprise contractuelle ne sont pas couverts. Détails et commandes dans `docs/DAILY_BACKUP.md`.
 
