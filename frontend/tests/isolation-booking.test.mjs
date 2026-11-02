@@ -42,8 +42,10 @@ code = code
     name === 'IsolationC2'
       ? `const IsolationC2={setup(props,{expose,emit}){expose({getEmail(){return globalThis.c2Booking.email},async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`
       : name === 'SidePanel'
-        ? `const ${name}={inheritAttrs:false,setup(props,{slots}){return ()=>slots.default?.()}}`
-        : `const ${name}={render:()=>null}`,
+        ? `const ${name}={inheritAttrs:false,props:['open','title'],setup(props,{slots,emit}){return ()=>{if(props.title==='Renseigner le résultat de la visite'){globalThis.resultPanel={open:props.open,close:()=>emit('request-close')};return props.open?slots.default?.():null}return slots.default?.()}}}`
+        : name === 'IsolationVisitResult'
+          ? `const ${name}={props:['visit'],setup(props,{emit}){globalThis.resultForm={visit:props.visit,emit};return ()=>null}}`
+          : `const ${name}={render:()=>null}`,
   )
   .replace(/vShow as _vShow,?/g, '')
 code =
@@ -87,7 +89,7 @@ const renderer = createRenderer({
     }
   },
   parentNode: (n) => n.parent,
-  nextSibling: () => null,
+  nextSibling: (n) => n.parent?.children[n.parent.children.indexOf(n) + 1] || null,
   insert(n, p, a) {
     n.parent = p
     const i = p.children.indexOf(a)
@@ -114,6 +116,7 @@ function fixture({
   reactivation = false,
   representatives = [],
   directoryFail = false,
+  clientResults = false,
 } = {}) {
   const root = { children: [] },
     writes = [],
@@ -123,7 +126,7 @@ function fixture({
   globalThis.c2Booking = { fail, events, email }
   const app = renderer.createApp(component, {
     prospectId: 7,
-    role: reactivation ? 'client' : 'setter',
+    role: clientResults ? 'client' : reactivation ? 'client' : 'setter',
     reactivationId: reactivation ? 99 : undefined,
     onChanged: () => changes.push(true),
     portal: async (path, body) => {
@@ -152,8 +155,29 @@ function fixture({
         writes.some((row) => row.path === 'visits/')
       )
         throw new Error('Fiche déjà programmée')
-      if (path.startsWith('work-queue/') || path === 'isolation-unqualified/99/prospect/')
+      if (
+        path.startsWith('client-prospects/') ||
+        path.startsWith('work-queue/') ||
+        path === 'isolation-unqualified/99/prospect/'
+      )
         return { id: 7, name: 'Client', revision: 3, assigned_setter: { id: 21 } }
+      if (clientResults)
+        return {
+          results: [
+            {
+              id: 19,
+              client: { id: 72, name: 'Client Isolation' },
+              original_setter: { id: 21, name: 'Agent' },
+              prospect: { id: 7, name: 'Client attendu' },
+              status: 'scheduled',
+              result_due: true,
+              starts_at: '2026-01-01T10:00:00Z',
+              ends_at: '2026-01-01T11:00:00Z',
+              timezone: 'America/Toronto',
+            },
+          ],
+          count: 1,
+        }
       return {
         results: absent
           ? [
@@ -396,5 +420,41 @@ test('a new Google booking requires the prospect email and sends the explicit co
     assert.equal(valid.writes[0].body.prospect_email, 'prospect@example.test')
   } finally {
     valid.app.unmount()
+  }
+})
+
+test('client result action opens a side panel and preserves unsaved edits on rejected close', async () => {
+  const f = fixture({ clientResults: true })
+  try {
+    await flush()
+    assert.equal(globalThis.resultPanel.open, false)
+    const action = all(f.root).find(
+      (n) =>
+        n.tag === 'button' &&
+        all(n).some((child) => child.text?.includes('Renseigner le résultat')),
+    )
+    assert.ok(
+      action,
+      JSON.stringify(
+        all(f.root)
+          .filter((n) => n.tag === 'button' || n.props?.role === 'alert')
+          .map((n) => ({ tag: n.tag, text: n.text, children: n.children?.map((c) => c.text) })),
+      ),
+    )
+    action.props.onClick()
+    await flush()
+    assert.equal(globalThis.resultPanel.open, true)
+    assert.equal(globalThis.resultForm.visit.id, 19)
+    globalThis.resultForm.emit('dirty', true)
+    await flush()
+    globalThis.resultPanel.close()
+    await flush()
+    assert.equal(globalThis.resultPanel.open, true)
+    globalThis.resultForm.emit('saved')
+    await flush()
+    assert.equal(globalThis.resultPanel.open, false)
+    assert.equal(f.changes.length, 1)
+  } finally {
+    f.app.unmount()
   }
 })

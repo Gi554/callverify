@@ -875,24 +875,33 @@ onMounted(() => run(load));
         :request="request"
       /><button class="secondary" @click="supplements = null">Fermer les compléments</button>
     </section>
-    <IsolationVisitResult
-      v-if="reporting && role === 'client'"
-      :key="reporting.id"
-      :visit="reporting"
-      :request="request"
-      @busy="resultBusy = $event"
-      @dirty="resultDirty = $event"
-      @cancel="cancelReport"
-      @saved="
-        run(async () => {
-          reporting = null;
-          resultDirty = false;
-          page = 1;
-          await load();
-          emit('changed');
-        })
-      "
-    />
+    <SidePanel
+      :open="!!reporting"
+      title="Renseigner le résultat de la visite"
+      :subtitle="reporting?.prospect?.name || ''"
+      eyebrow="ISOLATION · COMPTE RENDU"
+      :close-disabled="resultBusy"
+      @request-close="cancelReport"
+    >
+      <IsolationVisitResult
+        v-if="reporting && role === 'client'"
+        :key="reporting.id"
+        :visit="reporting"
+        :request="request"
+        @busy="resultBusy = $event"
+        @dirty="resultDirty = $event"
+        @cancel="cancelReport"
+        @saved="
+          run(async () => {
+            reporting = null;
+            resultDirty = false;
+            page = 1;
+            await load();
+            emit('changed');
+          })
+        "
+      />
+    </SidePanel>
     <form v-if="cancelling" @submit.prevent="cancel">
       <label
         >Motif d’annulation<textarea v-model="reason" required maxlength="1000"></textarea></label

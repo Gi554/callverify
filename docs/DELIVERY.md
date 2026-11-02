@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Correction client — saisie du résultat Isolation dans un panneau
+
+Le bouton « Renseigner le résultat » ouvre le formulaire dans le panneau latéral commun au lieu de le rendre sous toute la liste des visites. Le prospect sélectionné reste identifié dans l’en-tête. Une saisie modifiée demande confirmation avant fermeture ; un enregistrement en cours bloque la fermeture. Après enregistrement, le panneau se ferme et la liste ainsi que les compteurs sont rechargés. Droits client et règles de résultat inchangés.
+
+Vérification : 224 tests frontend réussis, dont une régression sur ouverture, conservation des modifications après fermeture refusée et rechargement après enregistrement. Types, lint et build vérifiés avant fusion. Pas de modification de résultat réel ni d’envoi de notification pendant les tests. La vérification visuelle du navigateur reste à effectuer.
+
+
 ## Suppression de comptes par l’administrateur
 
 Dans Administration → Utilisateurs, le bouton « Supprimer » complète Suspendre/Réactiver pour les comptes non administrateurs. Le panneau de confirmation exige l’identifiant exact et un motif. La suppression retire définitivement l’association à l’espace administré : le compte disparaît de cette liste et ne peut plus recevoir d’accès pour cet espace. Les fiches, visites, appels, paiements et audits ne sont pas effacés. L’identité historique reste archivée en base pour conserver les références.
