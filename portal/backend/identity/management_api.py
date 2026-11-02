@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction, IntegrityError
-from django.db.models import Q
+from django.db.models import Q, F, Exists, OuterRef
 from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -38,11 +38,30 @@ def lock_admin(user, workspace):
 class MembershipOutput(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    can_delete = serializers.SerializerMethodField()
+
+    def get_can_delete(self, row):
+        protected = getattr(row, '_protected_account', None)
+        if protected is None:
+            protected = Membership.objects.filter(
+                user_id=row.user_id, role='administrator'
+            ).exists()
+        return not (protected or row.user.is_staff or row.user.is_superuser)
+
     account_active = serializers.BooleanField(source='user.is_active', read_only=True)
 
     class Meta:
         model = Membership
-        fields = ['id', 'username', 'email', 'role', 'active', 'account_active', 'prospect_quota']
+        fields = [
+            'id',
+            'username',
+            'email',
+            'role',
+            'active',
+            'account_active',
+            'prospect_quota',
+            'can_delete',
+        ]
 
 
 class AccessInput(serializers.Serializer):
@@ -108,6 +127,11 @@ def users(request, workspace):
     if request.method == 'GET':
         qs = (
             Membership.objects.filter(workspace=workspace)
+            .annotate(
+                _protected_account=Exists(
+                    Membership.objects.filter(user_id=OuterRef('user_id'), role='administrator')
+                )
+            )
             .select_related('user')
             .order_by('user__username', 'pk')
         )
@@ -128,7 +152,8 @@ def users(request, workspace):
             if values['existing']:
                 user = (
                     get_user_model()
-                    .objects.filter(username=values['username'], is_active=True)
+                    .objects.select_for_update()
+                    .filter(username=values['username'], is_active=True)
                     .first()
                 )
                 if not user:
@@ -165,9 +190,11 @@ def users(request, workspace):
     return Response(MembershipOutput(row).data, status=201)
 
 
-@api_view(['PATCH'])
+@api_view(['PATCH', 'DELETE'])
 def update_access(request, workspace, pk):
     require_admin(request.user, workspace)
+    if request.method == 'DELETE':
+        return remove_access(request, workspace, pk)
     serializer = GrantUpdate(data=request.data, context={'workspace': workspace})
     serializer.is_valid(raise_exception=True)
     with transaction.atomic():
@@ -177,6 +204,7 @@ def update_access(request, workspace, pk):
             return Response({'detail': 'Accès introuvable dans cet espace'}, status=404)
         if row.user_id == request.user.pk:
             raise ValidationError('Modification de votre propre accès interdite')
+        get_user_model().objects.select_for_update().get(pk=row.user_id)
         before = {'role': row.role, 'active': row.active, 'prospect_quota': row.prospect_quota}
         changes = dict(serializer.validated_data)
         role = changes.get('role', row.role)
@@ -204,3 +232,87 @@ def update_access(request, workspace, pk):
             },
         )
     return Response(MembershipOutput(row).data)
+
+
+class DeleteInput(serializers.Serializer):
+    confirm_username = serializers.CharField(max_length=150, trim_whitespace=False)
+    reason = serializers.CharField(max_length=1000)
+
+    def validate(self, data):
+        if set(self.initial_data) - set(self.fields):
+            raise serializers.ValidationError('Champs non autorisés.')
+        return data
+
+
+def remove_access(request, workspace, pk):
+    data = DeleteInput(data=request.data)
+    data.is_valid(raise_exception=True)
+    from .models import (
+        CalendarConnection,
+        CalendarAuthorization,
+        CalendlyConnection,
+        PhoneExtension,
+        SessionGeneration,
+    )
+
+    with transaction.atomic():
+        rows = lock_admin(request.user, workspace)
+        row = next((item for item in rows if item.pk == pk), None)
+        if row is None:
+            return Response({'detail': 'Accès introuvable dans cet espace.'}, status=404)
+        subject = get_user_model().objects.select_for_update().get(pk=row.user_id)
+        if (
+            subject.pk == request.user.pk
+            or subject.is_staff
+            or subject.is_superuser
+            or Membership.objects.filter(user=subject, role='administrator').exists()
+        ):
+            raise PermissionDenied(
+                'Un administrateur ne peut pas supprimer un compte administrateur.'
+            )
+        if subject.username != data.validated_data['confirm_username']:
+            raise ValidationError('Saisissez exactement l’identifiant du compte à supprimer.')
+        before = {'role': row.role, 'active': row.active, 'prospect_quota': row.prospect_quota}
+        row.delete()
+        remaining = Membership.objects.filter(user=subject).exists()
+        CalendarConnection.objects.filter(user=subject, workspace=workspace).update(
+            connected=False,
+            auto_sync=False,
+            payload='',
+            expires_at=None,
+            revision=F('revision') + 1,
+        )
+        CalendarAuthorization.objects.filter(user=subject, workspace=workspace).update(
+            used=True, verifier=''
+        )
+        if workspace == 'assurance':
+            CalendlyConnection.objects.filter(user=subject).update(
+                connected=False, payload='', expires_at=None, revision=F('revision') + 1
+            )
+        if not remaining:
+            # Keep the historical identity because calls, audit and financial records reference it.
+            subject.is_active = False
+            subject.save(update_fields=['is_active'])
+            SessionGeneration.objects.get_or_create(user=subject)
+            SessionGeneration.objects.filter(user=subject).update(generation=F('generation') + 1)
+            PhoneExtension.objects.filter(user=subject).update(
+                extension=None, revision=F('revision') + 1
+            )
+        AccessAudit.objects.create(
+            user=request.user,
+            workspace=workspace,
+            action='membership.deleted',
+            metadata={
+                'subject': subject.pk,
+                'subject_username': subject.username,
+                'before': before,
+                'after': {'deleted': True, 'active': False},
+                'account_disabled': not remaining,
+                'reason': data.validated_data['reason'],
+            },
+        )
+    result = Response(
+        {'deleted': True, 'account_disabled': not remaining, 'history_preserved': True}
+    )
+    result['Cache-Control'] = 'no-store'
+    return result
