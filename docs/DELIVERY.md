@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — recherche administrative combinée et exports exacts
+
+Un onglet administrateur « Recherche avancée » distinct dans chaque espace combine nom, téléphone, setter actuellement affecté, setter à la réservation, conseiller/client du rendez-vous, campagne (lot importé Assurance), identifiant de rendez-vous, période au Québec et statuts de fiche/rendez-vous. Les critères de rendez-vous doivent être satisfaits par la même rencontre ; une fiche ne correspond donc pas en mélangeant le setter d’une ancienne rencontre et le conseiller d’une autre. La dernière rencontre qui correspond aux critères est affichée. Sans critère de rendez-vous, les fiches sans rencontre restent consultables. Le bouton « Ouvrir la fiche » reprend le panneau métier existant.
+
+Les exports CSV, Excel et PDF portent sur toutes les pages de la recherche appliquée ; modifier les champs sans valider ne modifie pas l’export. Les filtres appliqués côté serveur sont réutilisés et audités sans recopier la recherche nominative ni le téléphone dans l’audit. Le numéro est recherché tel que saisi ou en retirant les séparateurs courants, sans réécrire la fiche. La période exige les deux dates et reste limitée à 366 jours. Pagination 25, listes de filtres 500 profils maximum ; limites habituelles CSV 50 000, Excel 20 000, PDF 500 lignes, sans troncature silencieuse.
+
+Permissions : administration uniquement avec refus des tickets d’un autre espace. Les fiches ne changent ni d’affectation ni de statut pendant une recherche. L’interface reprend en-tête/panneau et export partagés, avec cartes sur mobile. Tests des critères sur une même rencontre, de la normalisation de recherche, des autorisations, de la cohérence des exports et de l’application explicite des filtres. La recette visuelle des pages reste bloquée par le navigateur local.
+
+
 ## Retour novembre — rapports planifiés et historique d’exécution
 
 Un onglet administrateur « Rapports » permet d’activer la planification séparément par espace, de choisir l’heure au Québec (19 h proposée), de demander une période personnalisée et de télécharger PDF/Excel. Chaque jour produit la veille ; chaque lundi la semaine précédente ; chaque premier du mois le mois précédent. Trois rapports sont préparés : performance des agents, campagnes/lots et rémunérations/soldes. La planification est désactivée avant sa première activation explicite par un administrateur ; aucun courriel n’est envoyé.

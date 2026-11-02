@@ -1,3 +1,4 @@
+from .crm.admin_search import results as admin_search
 from .crm.setter_performance import own as setter_performance
 from .crm.admin_alerts import alerts as admin_alerts
 from .crm.journal import events as journal_events
@@ -34,6 +35,7 @@ router.register('assignments', AssignmentViewSet, basename='assurance-assignment
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
 urlpatterns = [
+    path('api/assurance/admin-search/', admin_search),
     path('api/assurance/setter-performance/', setter_performance),
     path('api/assurance/setter-performance/<int:agent>/', setter_performance),
     path('api/assurance/admin-alerts/', admin_alerts),
