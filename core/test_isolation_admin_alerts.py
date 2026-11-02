@@ -2,7 +2,7 @@ from copy import copy
 from uuid import uuid4
 from django.test import TestCase, override_settings
 from .test_isolation_payroll import PayrollTests as Fixtures
-from .models import IsolationVisit, IsolationAlertReview, AuditEvent
+from .models import IsolationVisit, IsolationAlertReview
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
@@ -55,16 +55,12 @@ class AdminAlertsTests(TestCase):
             self.auth(21, role)
             self.assertEqual(self.client.get('/api/admin-alerts/').status_code, 403)
 
-    def test_invalid_filters_and_rejected_payment_alert(self):
+    def test_invalid_filters_and_removed_payment_alerts(self):
         self.assertEqual(self.get('other').status_code, 400)
         self.auth(90, 'administrator')
         self.assertEqual(self.client.get('/api/admin-alerts/?page=0').status_code, 400)
-        AuditEvent.objects.create(
-            action='isolation.payroll.payment_rejected',
-            object_id='21',
-            metadata={'reason': 'Référence déjà enregistrée', 'actor_portal_id': 90},
-        )
-        self.assertEqual(self.get('payment_rejected').data['count'], 1)
+        self.assertEqual(self.get('payment_rejected').status_code, 400)
+        self.assertEqual(self.get('payroll_issues').status_code, 400)
         bad = self.client.post(
             '/api/admin-alerts/',
             {'kind': 'duplicate_meetings', 'id': 'bad', 'signature': 'a' * 64, 'note': 'Note'},

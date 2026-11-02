@@ -1,13 +1,11 @@
 """A single setter's live assigned inventory and appointment-start cohort."""
 
-from django.db.models import Count, Q, Sum, Max
-from django.db.models.functions import TruncDate
+from django.db.models import Count, Q, Max
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from .quebec_period import ZONE, period
 from .stats_series import daily
-from .payroll_service import money
 
 
 def performance(store, request, agent=None):
@@ -77,23 +75,7 @@ def performance(store, request, agent=None):
         .distinct()
         .count()
     )
-    earnings = store.Payroll.earned(agent, lower, upper)
-    totals['generated_cad'] = money(earnings['amount'])
-    totals['unpriced'] = earnings['unpriced']
     series = daily(meetings, start, end, ZONE, **metrics)
-    amounts = {}
-    for source, field in store.money_sources(agent):
-        groups = (
-            source.filter(starts_at__gte=lower, starts_at__lt=upper)
-            .order_by()
-            .annotate(day=TruncDate('starts_at', tzinfo=ZONE))
-            .values('day')
-            .annotate(amount=Sum(field))
-        )
-        for group in groups:
-            amounts[group['day']] = amounts.get(group['day'], 0) + (group['amount'] or 0)
-    for row in series:
-        row['generated_cad'] = money(amounts.get(row['day'], 0))
     result = Response(
         {
             'agent_id': agent,
@@ -101,10 +83,9 @@ def performance(store, request, agent=None):
             'from': start,
             'to': end,
             'timezone': 'America/Toronto',
-            'currency': 'CAD',
             'totals': totals,
             'daily': series,
-            'definition': 'Rendez-vous selon leur début au Québec et leur setter à la réservation. Présences et ventes selon les résultats déclarés, uniquement après la fin d’un rendez-vous encore planifié. Inventaire affecté : état actuel, sans reconstitution des anciennes affectations. Qualifiés : fiches distinctes avec qualification capturée dans un rendez-vous de la période. Gains : unités rémunérables figées, sans remplacer les tarifs manquants par des gains présumés.',
+            'definition': 'Rendez-vous selon leur début au Québec et leur setter à la réservation. Présences et ventes selon les résultats déclarés, uniquement après la fin d’un rendez-vous encore planifié. Inventaire affecté : état actuel, sans reconstitution des anciennes affectations. Qualifiés : fiches distinctes avec qualification capturée dans un rendez-vous de la période.',
         }
     )
     result['Cache-Control'] = 'no-store'

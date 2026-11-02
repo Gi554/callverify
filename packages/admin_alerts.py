@@ -19,8 +19,6 @@ KINDS = {
     'duplicate_meetings': 'Rendez-vous potentiellement en double',
     'duplicate_prospects': 'Numéros potentiellement en double',
     'missing_ownership': 'Rendez-vous sans responsable',
-    'payroll_issues': 'Rémunérations à vérifier',
-    'payment_rejected': 'Enregistrements de paiement refusés depuis 7 jours',
 }
 
 
@@ -82,44 +80,6 @@ def source(store, kind):
             .filter(total__gt=1)
             .order_by('first_id')
         )
-    if kind == 'payment_rejected':
-        return store.audit_rows().filter(
-            action=store.audit_prefix + 'payment_rejected', created_at__gte=now - timedelta(days=7)
-        )
-    if kind == 'payroll_issues':
-        names = store.Payroll.roster()
-        if len(names) > 500:
-            raise ValidationError('Annuaire limité à 500 agents pour le contrôle financier.')
-        from .payroll_service import balance
-
-        rows = []
-        for agent in sorted(names):
-            state = balance(store.Payroll, agent, {}, names)
-            if (
-                state['unpriced']
-                or state['adjustment_pending']
-                or state['to_regularize_cad'] != '0.00'
-            ):
-                rows.append(
-                    row(
-                        kind,
-                        agent,
-                        state['agent_name'],
-                        [
-                            state['generated_cad'],
-                            state['paid_cad'],
-                            state['revision'],
-                            state['unpriced'],
-                        ],
-                        reference=agent,
-                        details={
-                            'Unités sans tarif': state['unpriced'],
-                            'Montant à régulariser (CAD)': state['to_regularize_cad'],
-                            'Rapprochement attendu': state['adjustment_pending'],
-                        },
-                    )
-                )
-        return rows
     raise ValidationError('Type d’alerte inconnu.')
 
 
@@ -128,8 +88,6 @@ def count(rows):
 
 
 def serialize(store, kind, item):
-    if kind == 'payroll_issues':
-        return item
     if kind == 'duplicate_prospects':
         return row(
             kind,
@@ -165,21 +123,6 @@ def serialize(store, kind, item):
             reference=item.pk,
             due_at=item.due_at,
             details={'Rappel': item.pk, 'Version du suivi': item.revision},
-        )
-    if kind == 'payment_rejected':
-        return row(
-            kind,
-            item.pk,
-            'Enregistrement de paiement refusé',
-            item.pk,
-            reference=item.object_id,
-            created_at=item.created_at,
-            details={
-                'Motif du refus': item.metadata.get('reason', 'Validation refusée'),
-                'Compte auteur': item.metadata.get(
-                    'actor_portal_id', getattr(item, 'actor_id', None)
-                ),
-            },
         )
     return row(
         kind,
@@ -220,9 +163,7 @@ def center(store, request):
         if not values['id'].isdigit() or len(values['id']) > 18:
             raise ValidationError('Référence invalide.')
         rows = source(store, kind)
-        if kind == 'payroll_issues':
-            found = next((r for r in rows if r['id'] == values['id']), None)
-        elif kind in ('duplicate_meetings', 'duplicate_prospects'):
+        if kind in ('duplicate_meetings', 'duplicate_prospects'):
             item = rows.filter(first_id=values['id']).first()
             found = serialize(store, kind, item) if item else None
         else:

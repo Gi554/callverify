@@ -9,15 +9,6 @@ from rest_framework.permissions import IsAuthenticated
 class Store(AlertStore):
     snapshot = 'c2_snapshot'
 
-    @staticmethod
-    def money_sources(agent):
-        from .isolation_compensation import credited
-
-        return [
-            (credited('attendance').filter(setter_id=agent), 'result__attendance_unit_cad'),
-            (credited('sale').filter(setter_id=agent), 'result__sale_unit_cad'),
-        ]
-
 
 @api_view(['GET'])
 @authentication_classes([WorkAuthentication])

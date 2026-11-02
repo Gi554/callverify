@@ -1,5 +1,6 @@
 from .crm.admin_search import results as admin_search
 from .crm.setter_performance import own as setter_performance
+from .crm.payable import appointments as payable_appointments
 from .crm.admin_alerts import alerts as admin_alerts
 from .crm.journal import events as journal_events
 from django.urls import path, include
@@ -37,6 +38,7 @@ router.register('notifications', TaskNotificationViewSet, basename='assurance-no
 urlpatterns = [
     path('api/assurance/admin-search/', admin_search),
     path('api/assurance/setter-performance/', setter_performance),
+    path('api/assurance/payable-appointments/', payable_appointments),
     path('api/assurance/setter-performance/<int:agent>/', setter_performance),
     path('api/assurance/admin-alerts/', admin_alerts),
     path('api/assurance/admin-journal/', journal_events),
