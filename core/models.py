@@ -471,3 +471,36 @@ class IsolationPayrollAdjustment(payroll_models.Adjustment):
 
 class IsolationAlertReview(AlertReviewBase):
     pass
+
+
+class PayableEntry(models.Model):
+    """One visit counted once, in the week the attendance was confirmed. Never moved."""
+
+    visit = models.OneToOneField(
+        IsolationVisit, on_delete=models.PROTECT, related_name='payable_entry'
+    )
+    setter_id = models.PositiveBigIntegerField(db_index=True)
+    setter_name = models.CharField(max_length=150, blank=True)
+    counted_at = models.DateTimeField(db_index=True)
+    week_start = models.DateField(db_index=True)
+    # Category frozen when counted: a later sale never moves a paid week.
+    closed_at_count = models.BooleanField(default=False)
+    confirmed_by_id = models.PositiveBigIntegerField(null=True, blank=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+
+class PayableHistory(models.Model):
+    entry = models.ForeignKey(PayableEntry, on_delete=models.PROTECT, related_name='history')
+    kind = models.CharField(max_length=30)
+    old_value = models.CharField(max_length=40, blank=True)
+    new_value = models.CharField(max_length=40, blank=True)
+    late = models.BooleanField(default=False)
+    actor_id = models.PositiveBigIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+
+from packages.payable_ledger import connect as _connect_payable_ledger  # noqa: E402
+
+_connect_payable_ledger(
+    IsolationVisitResult, PayableEntry, PayableHistory, 'visit', split_sales=True
+)

@@ -19,6 +19,7 @@ KINDS = {
     'duplicate_meetings': 'Rendez-vous potentiellement en double',
     'duplicate_prospects': 'Numéros potentiellement en double',
     'missing_ownership': 'Rendez-vous sans responsable',
+    'late_closures': 'Rendez-vous non closés passés à closés depuis 7 jours',
 }
 
 
@@ -53,6 +54,16 @@ def source(store, kind):
         )
     if kind == 'missing_ownership':
         return meetings.filter(Q(setter_id=0) | Q(**{store.target + '_id': 0}))
+    if kind == 'late_closures':
+        history = store.History.objects.select_related('entry')
+        if not store.closed_alerts:
+            return history.none()
+        return history.filter(
+            kind='sale_status_changed',
+            new_value='closed',
+            late=True,
+            created_at__gte=now - timedelta(days=7),
+        )
     if kind == 'new_meetings':
         return meetings.filter(created_at__gte=now - timedelta(days=7))
     if kind in ('overdue_tasks', 'upcoming_tasks'):
@@ -112,6 +123,22 @@ def serialize(store, kind, item):
             details={
                 'Nombre': item['total'],
                 'Critère': 'Même fiche, même début, statut planifié. Aucun regroupement automatique.',
+            },
+        )
+    if kind == 'late_closures':
+        reference = getattr(item.entry, store.parent + '_id')
+        return row(
+            kind,
+            item.pk,
+            f'Rendez-vous #{reference} · non closé devenu closé',
+            [item.pk, item.created_at],
+            reference=reference,
+            created_at=item.created_at,
+            details={
+                'Compté dans la semaine du': item.entry.week_start,
+                'Ancien statut': 'Non closé',
+                'Nouveau statut': 'Closé',
+                'Rendez-vous payable': 'Déjà compté, une seule fois',
             },
         )
     if kind in ('overdue_tasks', 'upcoming_tasks'):
@@ -220,6 +247,7 @@ def center(store, request):
             'kinds': [
                 {'kind': k, 'label': label, 'count': count(sources[k])}
                 for k, label in KINDS.items()
+                if k != 'late_closures' or store.closed_alerts
             ],
             'results': results,
             'count': count(rows),
