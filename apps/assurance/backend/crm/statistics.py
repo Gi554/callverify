@@ -81,7 +81,7 @@ def statistics(request):
     if request.user.role not in ('administrator', 'setter'):
         raise PermissionDenied('Statistiques internes Assurance uniquement')
     kind = request.query_params.get('export', '')
-    if kind not in ('', 'csv', 'xlsx'):
+    if kind not in ('', 'csv', 'xlsx', 'pdf'):
         raise ValidationError('Export CSV ou XLSX uniquement')
     today = timezone.now().astimezone(ZONE).date()
     try:

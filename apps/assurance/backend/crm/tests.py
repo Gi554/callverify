@@ -2221,6 +2221,14 @@ class StatisticsExportTests(TestCase):
         self.base = fixture.base
         self.url = fixture.query()
 
+    def test_pdf_is_downloadable_and_advisor_is_still_denied(self):
+        response = self.client.get(self.url + '&export=pdf')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF-'))
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(31, 'assurance', 'advisor'))
+        self.assertEqual(self.client.get(self.url + '&export=pdf').status_code, 403)
+
     def test_csv_bom_readable_headers_and_audit(self):
         import csv
         import io
@@ -2295,7 +2303,7 @@ class StatisticsExportTests(TestCase):
         self.assertEqual(len(rows), 29)
 
     def test_invalid_export_and_dates_are_refused(self):
-        self.assertEqual(self.client.get(self.url + '&export=pdf').status_code, 400)
+        self.assertEqual(self.client.get(self.url + '&export=docx').status_code, 400)
         self.assertEqual(
             self.client.get('/api/assurance/statistics/?from=bad&export=xlsx').status_code, 400
         )

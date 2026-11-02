@@ -101,8 +101,22 @@ class IsolationStatisticsExportTests(TestCase):
         self.assertEqual(rows[1][3], '1')
         self.assertIn('Non calculable', rows[1])
         self.assertEqual(self.export(**{'from': 'bad'}).status_code, 400)
-        self.assertEqual(self.export('pdf').status_code, 400)
+        self.assertEqual(self.export('docx').status_code, 400)
         self.auth(21, 'setter', 'assurance')
         self.assertEqual(self.export().status_code, 401)
         self.client.credentials()
         self.assertEqual(self.export('xlsx').status_code, 401)
+
+
+@override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
+class PDFStatisticsTests(TestCase):
+    def test_pdf_reuses_exact_statistics_scope(self):
+        from . import test_isolation_statistics as fixtures
+
+        fixture = fixtures.IsolationStatisticsTests()
+        fixture.setUp()
+        fixture.visit(performed=True)
+        response = fixture.client.get(fixture.url, {'export': 'pdf'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF-'))

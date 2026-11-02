@@ -174,3 +174,15 @@ test('parent loading blocks the download before any request', async () => {
     f.close()
   }
 })
+
+test('PDF downloads keep the exact list filters and their own extension', async () => {
+  const f = fixture()
+  try {
+    button(f, /^PDF$/).props.onClick()
+    await flush()
+    assert.deepEqual(f.requests, ['work-queue/export/?file=pdf&search=Dupont&due=true'])
+    assert.equal(f.links[0].download, 'prospects.pdf')
+  } finally {
+    f.close()
+  }
+})

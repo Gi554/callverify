@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — exports PDF dans les parcours existants
+
+Un bouton PDF complète CSV/Excel dans les statistiques Assurance/Isolation et dans le composant d’export utilisé par les prospects, dossiers et prospects du conseiller. Le serveur reprend exactement les filtres et permissions du parcours ; aucune nouvelle route publique ni mélange des bases. Les PDF sont confidentiels (no-store), avec police embarquée, en-têtes répétées, pagination et échappement du texte fourni. Les tableaux larges sont présentés comme fiches verticales lisibles.
+
+Limites explicites : maximum 500 lignes, de 1 à 100 colonnes ; une cellule trop longue pour rester lisible provoque une erreur claire proposant Excel/CSV, sans troncature silencieuse. Les formats tabulaires et leurs limites restent disponibles. Les exports de rémunération historiques ne sont pas encore convertis par cette livraison. Les nouveaux filtres administratifs combinés et rapports planifiés restent à livrer séparément.
+
+Vérifications : génération réelle de PDF, extraction et contrôle des accents, rendu et inspection des pages de tableaux et fiches sur données fictives ; tests des bornes et métadonnées HTTP, contrôle du périmètre des statistiques existantes, téléchargement frontend avec les filtres exacts. ReportLab et Pillow sont verrouillés dans les dépendances. La recette navigateur reste distincte et bloquée par les réglages Work.
+
+
 ## Retour novembre — performance individuelle des setters
 
 Un onglet « Ma performance » côté setter et « Performance des setters » côté administrateur rassemble, dans les layouts existants, les prospects actuellement affectés, les affectations actuelles datées de la période, les fiches distinctes qualifiées dans les rendez-vous, les rendez-vous planifiés/tenus/non tenus, ventes conclues/non conclues/inconnues, résultats attendus et gains CAD figés. L’administrateur choisit un setter connu de son espace ; un setter ne peut consulter que ses propres résultats. Les graphiques StatBars existants proposent jour, semaine et mois pour les rendez-vous, gains et appels. Bornes de période au Québec, maximum 366 jours.

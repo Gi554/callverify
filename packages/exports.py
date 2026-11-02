@@ -13,8 +13,8 @@ from openpyxl.utils import get_column_letter
 from rest_framework.exceptions import ValidationError
 
 # Excel generation is much slower than CSV: larger volumes go through CSV.
-MAX_ROWS = {'csv': 50000, 'xlsx': 20000}
-KINDS = ('csv', 'xlsx')
+MAX_ROWS = {'csv': 50000, 'xlsx': 20000, 'pdf': 500}
+KINDS = ('csv', 'xlsx', 'pdf')
 CONTROL = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 # Phone-like values may start with + or - without being formulas.
 NUMBERISH = re.compile(r'^[+-]?[\d\s().-]*$')
@@ -23,7 +23,7 @@ NUMBERISH = re.compile(r'^[+-]?[\d\s().-]*$')
 def kind(request):
     value = request.query_params.get('file', '')
     if value not in KINDS:
-        raise ValidationError('Format d’export attendu : csv ou xlsx.')
+        raise ValidationError('Format d’export attendu : csv, xlsx ou pdf.')
     if 'page' in request.query_params:
         raise ValidationError('L’export porte sur tous les résultats filtrés, sans pagination.')
     return value
@@ -68,6 +68,10 @@ def csv_text(value):
 
 def response(kind, headers, rows, filename, title):
     stamp = timezone.localdate().isoformat()
+    if kind == 'pdf':
+        from .pdf_exports import response as pdf_response
+
+        return pdf_response(title, headers, rows, f'{filename}-{stamp}')
     if kind == 'csv':
         stream = StringIO()
         # Semicolons and a BOM let French-locale Excel open the file directly.
