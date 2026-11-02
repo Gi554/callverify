@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — performance individuelle des setters
+
+Un onglet « Ma performance » côté setter et « Performance des setters » côté administrateur rassemble, dans les layouts existants, les prospects actuellement affectés, les affectations actuelles datées de la période, les fiches distinctes qualifiées dans les rendez-vous, les rendez-vous planifiés/tenus/non tenus, ventes conclues/non conclues/inconnues, résultats attendus et gains CAD figés. L’administrateur choisit un setter connu de son espace ; un setter ne peut consulter que ses propres résultats. Les graphiques StatBars existants proposent jour, semaine et mois pour les rendez-vous, gains et appels. Bornes de période au Québec, maximum 366 jours.
+
+Les appels proviennent d’une route portail authentifiée, limitée à l’espace et à l’agent demandé. Les tentatives émises, commandes acceptées par le poste et réponses incertaines restent distinctes ; les prospects joints sont marqués « Non disponible » car NEWT ne prouve pas leur décrochage. Une panne de la source appels laisse les indicateurs métier consultables et affiche des tirets pour les appels, sans faux zéros. Les gains sont calculés avec les mêmes unités rémunérables que le registre et conservent le setter d’origine après réattribution.
+
+Limites : l’inventaire utilise l’affectation actuelle, sans reconstitution d’un ancien stock ; la qualification compte les instantanés non vides attachés aux rendez-vous de la période, pas tous les formulaires ouverts. Les appels composés hors Orvia sont exclus. Annuaire administratif de 500 agents maximum. Les résultats de rendez-vous sont déclaratifs, après la fin de la rencontre et pour les rendez-vous encore planifiés. Les anciennes statistiques détaillées restent accessibles. Recette visuelle toujours bloquée par l’accès navigateur local.
+
+
 ## Retour novembre — centre d’alertes et contrôles de cohérence
 
 Un onglet administrateur commun aux layouts existants, séparé par base métier, affiche neuf catégories : résultats manquants ou vente inconnue après présence, rappels en retard, rappels dans les 24 h, rendez-vous créés dans les sept jours, doublons potentiels de rendez-vous, doublons potentiels de numéros, rendez-vous sans responsable, rémunérations à vérifier et enregistrements de paiement refusés dans les sept jours. Les listes sont paginées par 25, avec heure du Québec et actualisation manuelle. Les notifications individuelles existantes restent inchangées.

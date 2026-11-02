@@ -196,3 +196,7 @@ urlpatterns += [
         {'workspace': 'isolation', 'publication': True},
     ),
 ]
+
+from .identity.performance_calls import statistics as performance_calls
+
+urlpatterns += [path('api/portal/<str:workspace>/performance-calls/', performance_calls)]
