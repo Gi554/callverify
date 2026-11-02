@@ -11,3 +11,5 @@ django-storages>=1.14,<2
 boto3>=1.40,<2
 cryptography>=50,<51
 qrcode>=8,<9
+
+reportlab>=4.4,<5

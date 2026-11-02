@@ -138,7 +138,7 @@ class IsolationStatisticsTests(TestCase):
             {'from': '2026-01-02', 'to': '2026-01-01'},
             {'from': '2020-01-01', 'to': '2026-01-01'},
             {'from': '9999-12-31', 'to': '9999-12-31'},
-            {'export': 'pdf'},
+            {'export': 'docx'},
         ):
             self.assertEqual(self.client.get(self.url, args).status_code, 400, args)
 

@@ -73,6 +73,16 @@ def response(result, groups, kind):
 
     rows = [values('Total autorisé', result['totals']), *[values(person, row) for row in groups]]
     filename = f"statistiques-isolation-{result['from']}-{result['to']}.{kind}"
+    if kind == 'pdf':
+        from packages.pdf_exports import response as pdf_response
+
+        return pdf_response(
+            'Statistiques Isolation',
+            headers,
+            rows,
+            filename[:-4],
+            f"Du {result['from']} au {result['to']} - Heure du Québec. {result['definition']}",
+        )
     if kind == 'csv':
         stream = io.StringIO(newline='')
         stream.write('\ufeff')

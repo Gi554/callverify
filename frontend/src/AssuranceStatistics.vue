@@ -178,7 +178,8 @@ onMounted(load);
       <div class="stats-exports">
         <span><Download :size="15" />Exporter</span>
         <button class="secondary" :disabled="busy" @click="download('xlsx')">Excel</button>
-        <button class="secondary" :disabled="busy" @click="download('csv')">CSV</button>
+        <button class="secondary" :disabled="busy" @click="download('csv')">CSV</button
+        ><button class="secondary" :disabled="busy" @click="download('pdf')">PDF</button>
       </div>
     </header>
     <p v-if="error" role="alert" class="stats-error">{{ error }}</p>

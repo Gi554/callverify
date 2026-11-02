@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Downloads the visible prospects (current filters, all pages) as CSV or Excel.
+// Downloads the visible prospects (current filters, all pages) as CSV, Excel or PDF.
 import { ref } from 'vue';
 import { Download } from 'lucide-vue-next';
 const props = defineProps<{
@@ -13,7 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{ busy: [value: boolean] }>();
 const busy = ref(''),
   error = ref('');
-async function download(file: 'csv' | 'xlsx') {
+async function download(file: 'csv' | 'xlsx' | 'pdf') {
   if (busy.value || props.blocked) return;
   const filename = props.filename || 'prospects';
   busy.value = file;
@@ -61,6 +61,15 @@ async function download(file: 'csv' | 'xlsx') {
       @click="download('xlsx')"
     >
       {{ busy === 'xlsx' ? 'Export…' : 'Excel' }}
+    </button>
+    <button
+      type="button"
+      class="secondary"
+      :disabled="!!busy || !!blocked"
+      title="Document PDF (500 lignes maximum)"
+      @click="download('pdf')"
+    >
+      {{ busy === 'pdf' ? 'Export…' : 'PDF' }}
     </button>
     <p v-if="error" role="alert" class="prospect-export-error">{{ error }}</p>
   </div>

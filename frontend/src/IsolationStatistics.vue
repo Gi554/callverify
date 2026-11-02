@@ -195,9 +195,8 @@ onMounted(() => load());
         ><span>{{ result.timezone }}</span
         ><button class="secondary" :disabled="busy" @click="download('xlsx')">
           Télécharger Excel</button
-        ><button class="secondary" :disabled="busy" @click="download('csv')">
-          Télécharger CSV
-        </button>
+        ><button class="secondary" :disabled="busy" @click="download('csv')">Télécharger CSV</button
+        ><button class="secondary" :disabled="busy" @click="download('pdf')">PDF</button>
       </div>
       <section v-if="result.payable" aria-label="Rendez-vous payables">
         <h3>Rendez-vous payables sur la période</h3>

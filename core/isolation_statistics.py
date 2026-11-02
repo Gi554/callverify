@@ -116,7 +116,7 @@ def finish(row):
 def statistics(request):
     now = timezone.now()
     kind = request.query_params.get('export', '')
-    if kind not in ('', 'csv', 'xlsx'):
+    if kind not in ('', 'csv', 'xlsx', 'pdf'):
         raise ValidationError('Export CSV ou XLSX uniquement')
     start, end, lower, upper, zone = period(request.query_params, now)
     group = request.query_params.get('group', 'setter')

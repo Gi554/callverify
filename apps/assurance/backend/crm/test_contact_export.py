@@ -89,7 +89,7 @@ class ContactExportTests(TestCase):
     def test_invalid_requests_are_refused(self):
         self.auth(21, 'setter')
         self.assertEqual(self.client.get(self.url).status_code, 400)
-        self.assertEqual(self.client.get(self.url, {'file': 'pdf'}).status_code, 400)
+        self.assertEqual(self.client.get(self.url, {'file': 'docx'}).status_code, 400)
         self.assertEqual(self.client.get(self.url, {'file': 'csv', 'page': 2}).status_code, 400)
         self.client.credentials()
         self.assertIn(self.client.get(self.url, {'file': 'csv'}).status_code, (401, 403))
