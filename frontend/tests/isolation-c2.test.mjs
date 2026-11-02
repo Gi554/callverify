@@ -53,6 +53,12 @@ const renderer = createRenderer({
     children: [],
     props: {},
     addEventListener() {},
+    focus() {
+      this.focused = true
+    },
+    scrollIntoView() {
+      this.scrolled = true
+    },
     get options() {
       return this.children.filter((n) => n.tag === 'option')
     },
@@ -156,7 +162,7 @@ test('a conflicting C2 save rejects booking preparation and retains the dirty dr
   try {
     await flush()
     set(
-      all(f.root).find((n) => n.tag === 'input'),
+      all(f.root).find((n) => n.tag === 'input' && n.props.type === 'text'),
       'Autre nom',
     )
     await flush()
@@ -205,6 +211,27 @@ test('known import fields prefill qualification while saved values and explicit 
     assert.equal(fields.city, 'Québec')
     assert.equal(fields.postal_code, '')
     assert.equal(fields.age, null)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('confirmation email is visible above the qualification fields and can be focused without blocking draft saves', async () => {
+  const f = fixture({ defaults: { email: 'client@example.test' } })
+  try {
+    await flush()
+    const inputs = all(f.root).filter((n) => n.tag === 'input')
+    const email = inputs.find((n) => n.props.type === 'email')
+    assert.equal(inputs[0], email)
+    assert.equal(email.props['aria-required'], 'true')
+    assert.equal(f.exposed().getEmail(), 'client@example.test')
+    set(email, '')
+    await flush()
+    f.exposed().focusEmail()
+    assert.equal(email.focused, true)
+    assert.equal(email.scrolled, true)
+    await f.exposed().ensureSaved()
+    assert.equal(f.writes[0].body.c2.email, '')
   } finally {
     f.app.unmount()
   }

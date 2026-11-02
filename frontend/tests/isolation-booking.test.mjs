@@ -40,7 +40,7 @@ code = code
   )
   .replace(/import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g, (_, name) =>
     name === 'IsolationC2'
-      ? `const IsolationC2={setup(props,{expose,emit}){expose({getEmail(){return globalThis.c2Booking.email},async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`
+      ? `const IsolationC2={setup(props,{expose,emit}){expose({focusEmail(){globalThis.c2Booking.events.push('focus-email')},getEmail(){return globalThis.c2Booking.email},async ensureSaved(){globalThis.c2Booking.events.push('c2');if(globalThis.c2Booking.fail)throw new Error('Conflit C2');emit('saved',7)}});return ()=>null}}`
       : name === 'SidePanel'
         ? `const ${name}={inheritAttrs:false,props:['open','title'],setup(props,{slots,emit}){return ()=>{if(props.title==='Renseigner le résultat de la visite'){globalThis.resultPanel={open:props.open,close:()=>emit('request-close')};return props.open?slots.default?.():null}return slots.default?.()}}}`
         : name === 'IsolationVisitResult'
@@ -405,6 +405,8 @@ test('a new Google booking requires the prospect email and sends the explicit co
     await flush()
     await submit(missing)
     assert.equal(missing.writes.length, 0)
+    assert.equal(missing.proofs.length, 0)
+    assert.deepEqual(missing.events, ['focus-email'])
     assert.ok(
       all(missing.root).some(
         (n) => n.props?.role === 'alert' && n.text?.includes('courriel du prospect'),
