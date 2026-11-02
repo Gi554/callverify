@@ -88,6 +88,19 @@ const isolation = {
     { agent_id: 21, agent_name: 'Setter Un', presented: 2, closed: 2, not_closed: 0, payable: 2 },
   ],
   definition: 'Isolation.',
+  changes: [
+    {
+      id: 1,
+      kind: 'sale_status_changed',
+      label: 'Statut de vente modifié',
+      appointment_id: 5,
+      agent_name: 'Setter Un',
+      before: 'Non closé',
+      after: 'Closé',
+      late: true,
+      at: '2026-11-11T16:00:00Z',
+    },
+  ],
 }
 function fixture(workspace, role, payload) {
   const root = { children: [] },
@@ -142,6 +155,25 @@ test('Isolation counts closed and not closed apart, with zero when empty, and th
     })
   } finally {
     f.close()
+  }
+})
+
+test('the administrator sees the history of status changes, flagged when after the week closed', async () => {
+  const f = fixture('isolation', 'administrator', isolation)
+  try {
+    await flush()
+    assert.match(text(f.root), /Historique des modifications/)
+    assert.match(text(f.root), /Non closé → Closé/)
+    assert.match(text(f.root), /après la clôture de la semaine/)
+  } finally {
+    f.close()
+  }
+  const g = fixture('isolation', 'setter', { ...isolation, changes: [] })
+  try {
+    await flush()
+    assert.doesNotMatch(text(g.root), /Historique des modifications/)
+  } finally {
+    g.close()
   }
 })
 

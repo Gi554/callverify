@@ -75,7 +75,7 @@ onBeforeUnmount(() => version++);
   <div class="iso-page payable">
     <IsolationPageHeader
       :title="admin ? 'Suivi et rémunération' : 'Mes gains et mon objectif'"
-      subtitle="Les rendez-vous à rémunérer, comptés à partir des résultats enregistrés. Heure du Québec."
+      subtitle="Les rendez-vous à rémunérer, comptés la semaine où la présence est confirmée. Heure du Québec."
       :eyebrow="workspace.toUpperCase() + ' · RENDEZ-VOUS PAYABLES'"
       :busy="busy"
       @refresh="load"
@@ -136,6 +136,36 @@ onBeforeUnmount(() => version++);
           </table>
         </div>
       </section>
+      <section v-if="admin && data.changes?.length" class="iso-panel">
+        <h2>Historique des modifications</h2>
+        <div class="payable-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Rendez-vous</th>
+                <th>Setter</th>
+                <th>Changement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in data.changes" :key="item.id">
+                <td>{{ item.at.slice(0, 10) }}</td>
+                <td>#{{ item.appointment_id }}</td>
+                <td>{{ item.agent_name }}</td>
+                <td>
+                  {{ item.label
+                  }}<template v-if="item.before || item.after">
+                    : {{ item.before }} → {{ item.after }}</template
+                  ><strong v-if="item.late" class="payable-late">
+                    · après la clôture de la semaine</strong
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
       <p class="payable-definition">{{ data.definition }}</p>
     </template>
   </div>
@@ -175,6 +205,9 @@ onBeforeUnmount(() => version++);
   padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid #eef1f6;
+}
+.payable-late {
+  color: #b3261e;
 }
 .payable-definition {
   font-size: 12px;

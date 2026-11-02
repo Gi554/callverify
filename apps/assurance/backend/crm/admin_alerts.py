@@ -17,6 +17,9 @@ class Store:
     closed_field = 'sale_concluded'
     target = 'advisor'
     audit_prefix = 'payroll.'
+    History = models.PayableHistory
+    parent = 'appointment'
+    closed_alerts = False
 
     @staticmethod
     def audit_rows():

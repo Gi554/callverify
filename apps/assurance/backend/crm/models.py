@@ -2,6 +2,7 @@ from packages.alert_models import Review as AlertReviewBase
 from packages import payroll_models
 from datetime import time
 from django.db import models
+from django.utils import timezone
 
 
 class ContactImport(models.Model):
@@ -503,3 +504,33 @@ class SetterPayrollAdjustment(payroll_models.Adjustment):
 
 class SetterAlertReview(AlertReviewBase):
     pass
+
+
+class PayableEntry(models.Model):
+    """One appointment counted once, in the week the attendance was confirmed. Never moved."""
+
+    appointment = models.OneToOneField(
+        Appointment, on_delete=models.PROTECT, related_name='payable_entry'
+    )
+    setter_id = models.PositiveBigIntegerField(db_index=True)
+    setter_name = models.CharField(max_length=150, blank=True)
+    counted_at = models.DateTimeField(db_index=True)
+    week_start = models.DateField(db_index=True)
+    confirmed_by_id = models.PositiveBigIntegerField(null=True, blank=True)
+    # Set only when attendance is withdrawn during the same week; a closed week is never changed.
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+
+class PayableHistory(models.Model):
+    entry = models.ForeignKey(PayableEntry, on_delete=models.PROTECT, related_name='history')
+    kind = models.CharField(max_length=30)
+    old_value = models.CharField(max_length=40, blank=True)
+    new_value = models.CharField(max_length=40, blank=True)
+    late = models.BooleanField(default=False)
+    actor_id = models.PositiveBigIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+
+from packages.payable_ledger import connect as _connect_payable_ledger  # noqa: E402
+
+_connect_payable_ledger(AppointmentReport, PayableEntry, PayableHistory, 'appointment')
