@@ -4,6 +4,7 @@ import PortalInvitations from './PortalInvitations.vue';
 import PortalPhoneExtensions from './PortalPhoneExtensions.vue';
 import PortalCallRules from './PortalCallRules.vue';
 import PortalAccessHistory from './PortalAccessHistory.vue';
+import SidePanel from './SidePanel.vue';
 const activeSection = ref('users');
 const sections = [
   { key: 'users', label: 'Utilisateurs' },
@@ -12,7 +13,7 @@ const sections = [
   { key: 'rules', label: 'Règles d’appel' },
   { key: 'history', label: 'Journal des accès' },
 ];
-import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight, Trash2 } from 'lucide-vue-next';
 const props = defineProps<{
   spaces: string[];
   username: string;
@@ -27,6 +28,40 @@ const space = ref(props.spaces[0] || ''),
   error = ref(''),
   message = ref(''),
   adding = ref(false);
+const deleting = ref<any>(null),
+  confirmation = ref(''),
+  deleteReason = ref('');
+function openDelete(row: any) {
+  deleting.value = { ...row };
+  confirmation.value = '';
+  deleteReason.value = '';
+  error.value = '';
+}
+async function remove() {
+  if (!deleting.value || busy.value) return;
+  busy.value = true;
+  error.value = '';
+  message.value = '';
+  try {
+    const result = await props.request(
+      base() + deleting.value.id + '/',
+      { confirm_username: confirmation.value, reason: deleteReason.value },
+      'DELETE',
+    );
+    deleting.value = null;
+    confirmation.value = '';
+    deleteReason.value = '';
+    page.value = 1;
+    await load();
+    message.value = result.account_disabled
+      ? 'Compte supprimé de l’espace et connexion désactivée. Historique conservé.'
+      : 'Compte supprimé de cet espace. Ses autres accès et son historique sont conservés.';
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    busy.value = false;
+  }
+}
 const form = ref({
   username: '',
   email: '',
@@ -114,6 +149,9 @@ async function create() {
 watch(space, () => {
   page.value = 1;
   close();
+  deleting.value = null;
+  confirmation.value = '';
+  deleteReason.value = '';
   message.value = '';
   load();
 });
@@ -250,6 +288,17 @@ onMounted(load);
                       row.active ? 'Suspendre' : 'Réactiver'
                     }}
                   </button>
+                  <button
+                    v-if="
+                      row.can_delete && row.role !== 'administrator' && row.username !== username
+                    "
+                    class="secondary access-delete"
+                    :disabled="busy"
+                    :aria-label="'Supprimer le compte ' + row.username"
+                    @click="openDelete(row)"
+                  >
+                    <Trash2 :size="16" />Supprimer
+                  </button>
                 </div>
               </td>
             </tr>
@@ -282,8 +331,8 @@ onMounted(load);
         </button>
       </div>
       <p class="subtle">
-        Votre propre accès est protégé. Après une suspension, un accès métier déjà délivré peut
-        rester valable pendant deux minutes.
+        Les comptes administrateurs ne peuvent pas être supprimés. Votre propre accès est protégé.
+        Après une suspension, un accès métier déjà délivré peut rester valable pendant deux minutes.
       </p>
       <section v-if="adding" class="card access-form" aria-label="Ajouter un utilisateur">
         <h2>Ajouter à {{ space === 'assurance' ? 'Assurance' : 'Isolation' }}</h2>
@@ -368,9 +417,75 @@ onMounted(load);
         :request="request"
       />
     </div>
+    <SidePanel
+      :open="!!deleting"
+      title="Supprimer ce compte de l’espace"
+      eyebrow="ADMINISTRATION · UTILISATEURS"
+      :close-disabled="busy"
+      @request-close="deleting = null"
+    >
+      <form v-if="deleting" class="delete-account-form" @submit.prevent="remove">
+        <p>
+          <strong>{{ deleting.username }}</strong> sera retiré de l’espace
+          {{ space === 'assurance' ? 'Assurance' : 'Isolation' }}. La suspension reste disponible si
+          vous souhaitez seulement bloquer temporairement son accès.
+        </p>
+        <p>
+          Les fiches, rendez-vous, appels, paiements et historiques restent conservés. Si ce compte
+          possède un accès dans un autre espace, celui-ci est conservé. Ses connexions d’agenda pour
+          cet espace sont désactivées ; les événements déjà présents dans l’agenda ne sont pas
+          annulés.
+        </p>
+        <label
+          >Motif de suppression<textarea
+            v-model="deleteReason"
+            required
+            maxlength="1000"
+            rows="3"
+            :disabled="busy"
+          />
+        </label>
+        <label
+          >Pour confirmer, saisissez {{ deleting.username
+          }}<input v-model="confirmation" required autocomplete="off" :disabled="busy"
+        /></label>
+        <p v-if="error" role="alert" class="error">{{ error }}</p>
+        <div class="access-actions">
+          <button
+            type="submit"
+            class="primary delete-confirm"
+            :disabled="busy || confirmation !== deleting.username || !deleteReason.trim()"
+          >
+            <Trash2 :size="16" />Confirmer la suppression</button
+          ><button type="button" class="secondary" :disabled="busy" @click="deleting = null">
+            Annuler
+          </button>
+        </div>
+      </form>
+    </SidePanel>
   </section>
 </template>
 <style scoped>
+.delete-account-form {
+  display: grid;
+  gap: 18px;
+}
+.delete-account-form label {
+  display: grid;
+  gap: 8px;
+}
+.delete-account-form p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #65758b;
+}
+.access-delete {
+  color: #b42318;
+  border-color: #f2c7c1;
+}
+.delete-confirm {
+  background: #b42318;
+}
 .access-quota {
   display: grid;
   gap: 4px;

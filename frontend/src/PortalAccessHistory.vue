@@ -16,6 +16,7 @@ const rows = ref<any[]>([]),
 const actions: Record<string, string> = {
   'membership.granted': 'Accès accordé',
   'membership.updated': 'Accès modifié',
+  'membership.deleted': 'Compte supprimé de l’espace',
   'invitation.created': 'Invitation créée',
   'invitation.resend': 'Invitation renouvelée',
   'invitation.revoke': 'Invitation révoquée',
@@ -31,6 +32,7 @@ function state(value: any) {
   return (
     [
       roles[value?.role] || '',
+      value?.deleted ? 'Supprimé de l’espace' : '',
       typeof value?.active === 'boolean' ? (value.active ? 'Actif' : 'Suspendu') : '',
     ]
       .filter(Boolean)
@@ -102,6 +104,8 @@ onMounted(load);
         }}
       </p>
       <p v-if="row.details.subject_id">Compte concerné n° {{ row.details.subject_id }}</p>
+      <p v-if="row.details.subject_username">Identifiant : {{ row.details.subject_username }}</p>
+      <p v-if="row.details.reason">Motif : {{ row.details.reason }}</p>
       <p v-if="row.details.invitation_id">Invitation {{ row.details.invitation_id }}</p>
       <p v-if="row.details.role">Rôle : {{ roles[row.details.role] || row.details.role }}</p>
       <p v-if="typeof row.details.existing_account === 'boolean'">

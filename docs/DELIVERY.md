@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Suppression de comptes par l’administrateur
+
+Dans Administration → Utilisateurs, le bouton « Supprimer » complète Suspendre/Réactiver pour les comptes non administrateurs. Le panneau de confirmation exige l’identifiant exact et un motif. La suppression retire définitivement l’association à l’espace administré : le compte disparaît de cette liste et ne peut plus recevoir d’accès pour cet espace. Les fiches, visites, appels, paiements et audits ne sont pas effacés. L’identité historique reste archivée en base pour conserver les références.
+
+Un administrateur ne peut pas supprimer un compte administrateur, y compris suspendu ou administrateur dans un autre espace. Les comptes techniques staff/superutilisateurs et l’auto-suppression sont également protégés. Le serveur revérifie la règle au moment du DELETE, indépendamment du bouton ou d’un rôle changé depuis le chargement de la page. Les modifications et attributions administratives verrouillent l’identité concernée pour sérialiser les changements avec la suppression. CSRF et permissions de l’espace restent requis.
+
+Les autres espaces éventuels restent accessibles. Si l’association supprimée était la dernière, le compte central est désactivé, ses sessions sont révoquées et le poste téléphonique est libéré. Les jetons d’agenda de l’espace sont effacés localement, les synchronisations désactivées, sans appel fournisseur ni annulation d’événement externe. Une entrée « Compte supprimé de l’espace » avec auteur, compte concerné, motif et avant/après est consultable dans le Journal des accès. Toutes les écritures sont atomiques : une panne d’audit annule la suppression.
+
+Limites : une identité archivée n’est pas un effacement de données personnelles ; l’identifiant reste réservé et aucune purge métier n’est exécutée. Les dossiers encore attribués restent historiques et demandent une réaffectation explicite à un agent actif. Les accès métier signés déjà délivrés peuvent subsister jusqu’à leur expiration de deux minutes, comme pour une suspension. Validation locale : 330 tests portail, 223 tests frontend, types/lint/build ; suppression réelle d’association et conservation d’historique, rôle admin interespaces/suspendu/promu, sessions/CSRF, rollback, droits et confirmation frontend. Aucun compte existant de production n’est ciblé pendant la recette ; test final sur compte jetable après déploiement.
+
+
 ## Recette finale du retour de novembre — 2 novembre 2026
 
 PR #244 à #252 fusionnées et déployées : pilotage administrateur, objectifs/rémunération/paiements/ajustements, journal, alertes/anomalies, performance setter, PDF, rapports planifiés et recherche filtrée. Les six rapports réels de contrôle sont terminés dans le CRM et téléchargeables dans les deux formats ; planifications actives à 19 h au Québec. Les nouvelles routes ont été vérifiées en production pour les rôles autorisés et refusées aux autres. Sessions HTTPS/HttpOnly/SameSite Strict, CSRF HTTPS, DEBUG désactivé, durée maximale de huit heures vérifiés.

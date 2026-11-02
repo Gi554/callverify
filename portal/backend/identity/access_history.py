@@ -11,6 +11,7 @@ from .models import AccessAudit, ROLES
 LABELS = {
     'membership.granted': 'Accès accordé',
     'membership.updated': 'Accès modifié',
+    'membership.deleted': 'Compte supprimé de l’espace',
     'invitation.created': 'Invitation créée',
     'invitation.resend': 'Invitation renouvelée',
     'invitation.revoke': 'Invitation révoquée',
@@ -39,6 +40,13 @@ def details(row):
     source = row.metadata if isinstance(row.metadata, dict) else {}
     result = {}
     if row.action.startswith('membership.'):
+        if row.action == 'membership.deleted':
+            if isinstance(source.get('subject_username'), str):
+                result['subject_username'] = source['subject_username'][:150]
+            if isinstance(source.get('reason'), str):
+                result['reason'] = source['reason'][:1000]
+            if type(source.get('account_disabled')) is bool:
+                result['account_disabled'] = source['account_disabled']
         subject = source.get('subject')
         if type(subject) is int and subject > 0:
             result['subject_id'] = subject
@@ -55,6 +63,8 @@ def details(row):
                 clean = {}
                 if isinstance(state.get('role'), str) and state['role'] in ROLES[row.workspace]:
                     clean['role'] = state['role']
+                if type(state.get('deleted')) is bool:
+                    clean['deleted'] = state['deleted']
                 if type(state.get('active')) is bool:
                     clean['active'] = state['active']
                 result[phase] = clean
