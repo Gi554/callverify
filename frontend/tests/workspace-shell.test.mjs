@@ -162,14 +162,6 @@ test('open access management is the only active steering entry', async () => {
 
 for (const [role, items, expected] of [
   [
-    'closer',
-    [
-      { id: 'overview', label: 'Mes visites', icon: 'appointments' },
-      { id: 'statistics', label: 'Mes statistiques', icon: 'statistics' },
-    ],
-    ['Mes visites', 'Mes statistiques', 'Isolation · Closer'],
-  ],
-  [
     'client',
     [
       { id: 'overview', label: 'Vue d’ensemble', icon: 'overview' },

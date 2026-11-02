@@ -10,7 +10,7 @@ from rest_framework.decorators import (
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from .models import Membership, AccessAudit
+from .models import Membership, AccessAudit, ROLES
 from packages.access.tickets import issue
 
 
@@ -44,7 +44,9 @@ def sign_in(request):
     if workspace is not None:
         if workspace not in ('assurance', 'isolation'):
             return Response({'detail': 'Profil inconnu'}, status=400)
-        if not Membership.objects.filter(user=user, workspace=workspace, active=True).exists():
+        if not Membership.objects.filter(
+            user=user, workspace=workspace, active=True, role__in=ROLES[workspace]
+        ).exists():
             return Response({'detail': 'Votre compte n’a pas accès à ce profil.'}, status=403)
     login(request, user)
     from .authentication import SESSION_KEY, generation
@@ -56,7 +58,9 @@ def sign_in(request):
 
 def session_payload(user):
     memberships = list(
-        Membership.objects.filter(user=user, active=True).values('workspace', 'role')
+        Membership.objects.filter(user=user, active=True)
+        .exclude(role='closer')
+        .values('workspace', 'role')
     )
     return Response(
         {
@@ -84,7 +88,7 @@ def access(request, workspace):
     membership = Membership.objects.filter(
         user=request.user, workspace=workspace, active=True
     ).first()
-    if not membership:
+    if not membership or membership.role not in ROLES.get(workspace, set()):
         return Response({'detail': 'Accès non autorisé à cet espace'}, status=403)
     membership.full_clean()
     AccessAudit.objects.create(user=request.user, action='workspace.access', workspace=workspace)

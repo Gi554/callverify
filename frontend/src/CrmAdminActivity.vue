@@ -125,7 +125,7 @@ onBeforeUnmount(() => {
         </select></label
       >
       <label v-if="!assurance"
-        >Représentant<select v-model="closer">
+        >Ancien représentant (historique)<select v-model="closer">
           <option value="">Tous les représentants</option>
           <option v-for="row in options?.closer_id || []" :key="row.id" :value="String(row.id)">
             {{ row.name }}

@@ -46,7 +46,9 @@ class JournalTests(TestCase):
         self.assertEqual(self.client.post('/api/admin-journal/', {}).status_code, 405)
         for role in ('setter', 'client', 'closer'):
             self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', role))
-            self.assertEqual(self.client.get(self.url).status_code, 403)
+            self.assertEqual(
+                self.client.get(self.url).status_code, 401 if role == 'closer' else 403
+            )
         self.client.credentials(
             HTTP_AUTHORIZATION='Bearer ' + issue(90, 'assurance', 'administrator')
         )

@@ -53,7 +53,9 @@ class AdminAlertsTests(TestCase):
         self.assertGreater(response.data['count'], 0)
         for role in ('setter', 'client', 'closer'):
             self.auth(21, role)
-            self.assertEqual(self.client.get('/api/admin-alerts/').status_code, 403)
+            self.assertEqual(
+                self.client.get('/api/admin-alerts/').status_code, 401 if role == 'closer' else 403
+            )
 
     def test_invalid_filters_and_rejected_payment_alert(self):
         self.assertEqual(self.get('other').status_code, 400)

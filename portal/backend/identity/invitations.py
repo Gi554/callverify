@@ -84,7 +84,6 @@ ROLE_NAMES = {
     'setter': 'Setter',
     'advisor': 'Conseiller',
     'client': 'Client',
-    'closer': 'Closer',
 }
 
 
@@ -126,7 +125,10 @@ def invitations(request, workspace):
     if request.method == 'GET':
         pager = AccessPagination()
         page = pager.paginate_queryset(
-            Invitation.objects.filter(workspace=workspace).order_by('-created_at'), request
+            Invitation.objects.filter(workspace=workspace)
+            .exclude(role='closer')
+            .order_by('-created_at'),
+            request,
         )
         response = pager.get_paginated_response([output(row) for row in page])
         response['Cache-Control'] = 'no-store'
@@ -178,7 +180,7 @@ def invitation_action(request, workspace, pk):
         row = Invitation.objects.select_for_update().filter(pk=pk, workspace=workspace).first()
         if not row:
             return Response({'detail': 'Invitation introuvable'}, status=404)
-        if row.accepted_at or row.revoked_at:
+        if row.accepted_at or row.revoked_at or row.role not in ROLES.get(workspace, set()):
             return Response({'detail': 'Invitation déjà clôturée'}, status=409)
         if request.data['action'] == 'revoke':
             row.revoked_at = timezone.now()
@@ -234,7 +236,8 @@ def accept(request):
                 raise ValidationError('Invitation invalide ou expirée')
             row = Invitation.objects.get(pk=initial.pk)
             if (
-                row.accepted_at
+                row.role not in ROLES.get(row.workspace, set())
+                or row.accepted_at
                 or row.revoked_at
                 or row.expires_at <= timezone.now()
                 or not secrets.compare_digest(row.token_hash, digest(values['token']))

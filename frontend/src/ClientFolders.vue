@@ -533,7 +533,7 @@ onMounted(load);
             <tr v-for="row in rows" :key="row.id">
               <td>
                 <strong>{{ row.name || 'Sans nom' }}</strong
-                ><small v-if="row.closer_name">Closer : {{ row.closer_name }}</small>
+                ><small v-if="row.closer_name">Ancien représentant : {{ row.closer_name }}</small>
               </td>
               <td>
                 {{

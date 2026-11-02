@@ -49,7 +49,8 @@ defineEmits<{ open: [] }>();
       >
     </p>
     <div class="iso-visit-people">
-      <span><UserRound :size="13" />{{ visit.closer?.name || 'Représentant à désigner' }}</span
+      <span
+        ><UserRound :size="13" />{{ visit.client?.name || 'Suivi par le client Isolation' }}</span
       ><small>Setter · {{ visit.original_setter?.name || 'Non renseigné' }}</small>
     </div>
     <button class="iso-card-open" :disabled="busy" @click="$emit('open')">

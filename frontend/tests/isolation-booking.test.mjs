@@ -252,65 +252,26 @@ test('client requalification uses a bound entry proof and creates a Google visit
   }
 })
 
-test('a client booking requires a representative choice that is attested using the common Québec calendar', async () => {
-  const f = fixture({
-    reactivation: true,
-    representatives: [
-      { id: 88, name: 'Représentant A' },
-      { id: 89, name: 'Représentant B' },
-    ],
-  })
-  try {
-    await flush()
-    await submit(f)
-    assert.equal(f.writes.length, 0)
-    const select = all(f.root).find(
-      (n) => n.tag === 'select' && all(n).some((child) => child.props?.value === '88'),
-    )
-    select.props['onUpdate:modelValue']('89')
-    await submit(f)
-    assert.equal(f.writes.length, 1)
-    assert.equal(f.proofs[0].closer_id, 89)
-    assert.equal(f.writes[0].body.timezone, 'America/Toronto')
-  } finally {
-    f.app.unmount()
-  }
-})
-
-test('a setter may leave the representative for the client to designate later', async () => {
-  const f = fixture({
-    representatives: [
-      { id: 88, name: 'A' },
-      { id: 89, name: 'B' },
-    ],
-  })
-  try {
-    await flush()
-    await submit(f)
-    assert.equal(f.writes.length, 1)
-    assert.equal(f.proofs[0].closer_id, undefined)
-    assert.equal(f.writes[0].body.timezone, 'America/Toronto')
-  } finally {
-    f.app.unmount()
-  }
-})
-
-test('a unique representative is selected and an unavailable directory prevents booking', async () => {
-  const f = fixture({ representatives: [{ id: 88, name: 'Représentant unique' }] })
-  try {
-    await flush()
-    await submit(f)
-    assert.equal(f.proofs[0].closer_id, 88)
-  } finally {
-    f.app.unmount()
-  }
-  const failed = fixture({ directoryFail: true })
-  try {
-    await flush()
-    await submit(failed)
-    assert.equal(failed.writes.length, 0)
-  } finally {
-    failed.app.unmount()
+test('client and setter book using the client calendar without calling the retired closer directory', async () => {
+  for (const reactivation of [false, true]) {
+    const f = fixture({
+      reactivation,
+      directoryFail: true,
+      representatives: [{ id: 88, name: 'Ancien représentant' }],
+    })
+    try {
+      await flush()
+      await submit(f)
+      assert.equal(f.writes.length, 1)
+      assert.equal(f.proofs[0].closer_id, undefined)
+      assert.equal(f.writes[0].body.timezone, 'America/Toronto')
+      assert.equal(
+        all(f.root).some((n) => n.tag === 'select' && all(n).some((c) => c.props?.value === '88')),
+        false,
+      )
+    } finally {
+      f.app.unmount()
+    }
   }
 })
 

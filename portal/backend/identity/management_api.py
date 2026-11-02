@@ -127,6 +127,7 @@ def users(request, workspace):
     if request.method == 'GET':
         qs = (
             Membership.objects.filter(workspace=workspace)
+            .exclude(role='closer')
             .annotate(
                 _protected_account=Exists(
                     Membership.objects.filter(user_id=OuterRef('user_id'), role='administrator')
@@ -208,6 +209,8 @@ def update_access(request, workspace, pk):
         before = {'role': row.role, 'active': row.active, 'prospect_quota': row.prospect_quota}
         changes = dict(serializer.validated_data)
         role = changes.get('role', row.role)
+        if role not in ROLES[workspace]:
+            raise ValidationError({'role': 'Rôle retiré : choisissez un rôle disponible.'})
         client_immutable(row, role)
         client_available(workspace, role, exclude=row.pk)
         # Leaving the advisor role drops a quota that no longer applies.

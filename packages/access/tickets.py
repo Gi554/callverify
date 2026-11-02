@@ -29,7 +29,7 @@ def verify(token, workspace):
     claims = signing.loads(token, key=key_for(workspace), salt='amx.workspace.v1', max_age=120)
     roles = {
         'assurance': {'administrator', 'setter', 'advisor'},
-        'isolation': {'administrator', 'setter', 'client', 'closer'},
+        'isolation': {'administrator', 'setter', 'client'},
     }
     if (
         claims.get('aud') != workspace

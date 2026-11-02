@@ -35,7 +35,6 @@ import AssuranceAppointments from './AssuranceAppointments.vue';
 import AssuranceAdvisorProspects from './AssuranceAdvisorProspects.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import IsolationTasksBoard from './IsolationTasksBoard.vue';
-import IsolationCloserVisits from './IsolationCloserVisits.vue';
 import AssuranceFollowUps from './AssuranceFollowUps.vue';
 import AssuranceSetterTasks from './AssuranceSetterTasks.vue';
 import AssuranceNotifications from './AssuranceNotifications.vue';
@@ -146,11 +145,7 @@ function assurance(path: string, body?: any, method?: string) {
   return business(path, body, method, 'assurance');
 }
 function isolationDashboard(role: string) {
-  return role === 'closer'
-    ? 'closer-visits/dashboard/'
-    : role === 'client'
-      ? 'client-dashboard/'
-      : 'workspace-dashboard/';
+  return role === 'client' ? 'client-dashboard/' : 'workspace-dashboard/';
 }
 function isolation(path: string, body?: any, method?: string) {
   return business(path, body, method, 'isolation');
@@ -314,11 +309,6 @@ const navigation = computed(() => {
     return [
       { id: 'appointments', label: 'Mes rendez-vous', icon: 'appointments' },
       { id: 'contacts', label: 'Mes prospects', icon: 'contacts' },
-    ];
-  if (role.value === 'closer')
-    return [
-      { id: 'overview', label: 'Mes visites', icon: 'appointments' },
-      { id: 'statistics', label: 'Mes statistiques', icon: 'statistics' },
     ];
   if (workspace.value === 'isolation' && role.value === 'client')
     return [
@@ -515,7 +505,7 @@ onMounted(async () => {
         workspace === 'isolation' &&
         !passwordOpen &&
         !managing &&
-        (['client', 'closer'].includes(role) ||
+        (role === 'client' ||
           ['personal-followups', 'missing-updates', 'unqualified'].includes(activeModule)),
       'setter-home':
         !!user &&
@@ -645,12 +635,7 @@ onMounted(async () => {
               </p>
             </div>
             <button
-              v-if="
-                workspace &&
-                !passwordOpen &&
-                !managing &&
-                !(workspace === 'isolation' && role === 'closer' && activeModule === 'overview')
-              "
+              v-if="workspace && !passwordOpen && !managing"
               class="secondary"
               :disabled="busy"
               @click="refreshWorkspace"
@@ -680,15 +665,6 @@ onMounted(async () => {
                 :request="isolation"
                 :portal="portal"
                 :role="role"
-              />
-              <IsolationCloserVisits
-                v-else-if="
-                  workspace === 'isolation' && role === 'closer' && activeModule === 'overview'
-                "
-                :request="isolation"
-                :summary="summary"
-                :username="user.username"
-                @changed="refreshWorkspace"
               />
               <IsolationClientHome
                 v-else-if="

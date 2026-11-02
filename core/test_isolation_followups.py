@@ -300,8 +300,10 @@ class FollowUpTests(TestCase):
         self.task()
         for role in ('client', 'closer'):
             self.auth(72, role)
-            self.assertEqual(self.client.get('/api/follow-ups/').status_code, 403)
-            self.assertEqual(self.call().status_code, 403)
+            self.assertEqual(
+                self.client.get('/api/follow-ups/').status_code, 401 if role == 'closer' else 403
+            )
+            self.assertEqual(self.call().status_code, 401 if role == 'closer' else 403)
         self.auth(22, 'setter')
         self.assertEqual(self.client.get('/api/follow-ups/').data['count'], 0)
         self.assertEqual(self.task().status_code, 404)

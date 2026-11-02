@@ -255,7 +255,7 @@ test('administrator can switch to the existing list and back to the calendar', a
   }
 })
 
-test('Isolation team calendar offers setters, closers and clients', async () => {
+test('Isolation team calendar offers setters and clients without retired closer choices', async () => {
   const f = fixture({ workspace: 'isolation' })
   try {
     await flush()
@@ -264,13 +264,14 @@ test('Isolation team calendar offers setters, closers and clients', async () => 
       all(select)
         .filter((n) => n.tag === 'optgroup')
         .map((g) => g.props.label),
-      ['Setters', 'Closers', 'Clients'],
+      ['Setters', 'Clients'],
     )
-    select.props['onUpdate:modelValue']('closer:5')
+    assert.ok(!all(select).some((n) => String(n.props?.value).startsWith('closer:')))
+    select.props['onUpdate:modelValue']('client:9')
     await flush()
-    assert.equal(count(f), '1')
+    assert.equal(count(f), '2')
     assert.match(text(f.root), /Maison Gamma/)
-    assert.doesNotMatch(text(f.root), /Maison Delta/)
+    assert.match(text(f.root), /Maison Delta/)
   } finally {
     f.close()
   }

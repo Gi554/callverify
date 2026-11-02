@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Retrait du rôle Closer Isolation — setters conservés
+
+Le rôle Closer est retiré des accès et des invitations. Son espace, les routes de compte rendu Closer, l’attribution d’un closer et les sélections correspondantes à la réservation et dans l’agenda d’équipe sont supprimés. Les setters restent le rôle de prospection et de réservation ; le client Isolation conserve ses dossiers, son agenda, les visites et la saisie/correction des résultats. Une réservation utilise directement le client et son agenda, sans annuaire ni choix de représentant.
+
+La migration 0027 désactive les associations Isolation Closer et révoque les invitations non acceptées ; elle invalide leurs sessions existantes et journalise chaque accès retiré. Les identités et autres accès éventuels ne sont pas supprimés. Les anciens comptes Closer sont retirés de la liste de gestion courante. Les créations, invitations, réactivations avec ce rôle, anciens jetons métier et anciens formulaires contenant un closer sont refusés côté serveur. Le point d’annuaire conservé pour les anciens navigateurs ne renvoie aucun compte et ne délivre plus d’attestation. Le retour arrière de migration ne réactive aucun accès automatiquement.
+
+Les attributions et auteurs historiques, visites, résultats, paiements et rémunérations sont conservés. Le client peut reprendre le compte rendu d’une ancienne visite. Les noms d’anciens représentants ne subsistent que comme informations historiques et dans les rapports correspondants ; aucune nouvelle attribution n’est possible. Les nouvelles données de démonstration ne créent plus de compte Closer et leurs résultats sont renseignés par le client.
+
+Vérifications : suite portail (331 tests, 15 ignorés), suite métier Isolation hors tests Bash du déploiement (357 tests, 22 ignorés), suite Assurance (409 tests, 30 ignorés), 220 tests frontend réussis. Régressions sur refus de nouveaux accès/jetons/attributions, migration idempotente et conservation des setters/client/autres espaces, ancien représentant lisible et résultat toujours saisissable par le client, réservation sans annuaire et choix administratifs sans Closer. Les tests Bash du déploiement échouent sous Windows ; la CI Linux complète est requise avant fusion. Types, lint, format, migrations et build contrôlés avant fusion. Avant livraison, la production compte deux setters actifs, un client actif et deux anciens closers : contrôle de conservation prévu après migration. Aucun appel ni e-mail de test envoyé ; contrôle visuel navigateur restant à effectuer.
+
+
 ## Correction client — courriel de confirmation Isolation identifiable
 
 Le courriel du prospect occupe un champ dédié en tête de « Préparer la visite », avant les coordonnées, avec une mention explicite de son usage pour la confirmation. Une réservation sans courriel ramène le curseur et le défilement sur ce champ ; le contrôle précède la sauvegarde de qualification et la demande d’attestation. Aucun rendez-vous ni attestation de réservation n’est créé en cas de courriel manquant. Un brouillon incomplet reste enregistrable, et les adresses déjà importées ou enregistrées sont conservées.
