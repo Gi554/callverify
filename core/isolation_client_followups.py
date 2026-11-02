@@ -154,12 +154,19 @@ class ClientFollowUps(viewsets.GenericViewSet):
         return response
 
 
+PRESENTED_NOT_CLOSED = 'Présenté, non closé : suivi à effectuer'
+
+
 def sync_client_followup(visit, report):
-    active = (
+    absent = (
         not report.performed
         and report.follow_up_owner == 'client'
         and report.outcome != 'unqualified'
     )
+    # Attended but no sale yet: the prospect stays in the client's list to be called back, until
+    # the sale is concluded. This never changes how the appointment is counted as payable.
+    pending_sale = report.performed and report.closed is not True
+    active = absent or pending_sale
     row = IsolationClientFollowUp.objects.filter(visit=visit).first()
     if not active:
         if row and row.closed_at is None:
@@ -168,17 +175,20 @@ def sync_client_followup(visit, report):
             row.save(update_fields=['closed_at', 'revision'])
         return
     if row and row.programmed_visit_id:
+        if pending_sale:
+            return  # The next visit is already planned: a correction must not be blocked.
         raise Conflict('Une nouvelle visite est déjà programmée depuis cette relance.')
+    reason = report.absence_reason if absent else PRESENTED_NOT_CLOSED
     if row is None:
         IsolationClientFollowUp.objects.create(
             visit=visit,
-            reason=report.absence_reason,
+            reason=reason,
             note=report.note,
             due_at=report.follow_up_at,
         )
     else:
         row.closed_at = None
-        row.reason = report.absence_reason
+        row.reason = reason
         row.note = report.note
         row.due_at = report.follow_up_at
         row.revision += 1

@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation : les rendez-vous présentés non closés rejoignent les « clients à rappeler »
+
+Conformément aux règles du client, quand le commercial enregistre un rendez-vous « présenté » sans vente conclue, le prospect apparaît dans sa liste « Relances personnelles du client » avec le motif « Présenté, non closé : suivi à effectuer » (sans date de rappel imposée ; le commercial peut en fixer une et reprogrammer une visite depuis cette liste). Quand il passe le rendez-vous à « closé », la relance se ferme d’elle-même et rien de nouveau n’est créé. Un rendez-vous présenté et déjà closé, ou non qualifié, n’entre pas dans la liste. Un prospect en relance quitte la file active du setter, comme pour les absents relancés par le client. Cette liste n’influence en rien le décompte des rendez-vous payables : un rendez-vous reste compté une seule fois, dans la semaine de confirmation de sa présence.
+
+Limites : les rendez-vous déjà enregistrés avant cette livraison n’entrent dans la liste qu’à leur prochaine modification ; correction possible du résultat même si une nouvelle visite a été programmée depuis la relance ; aucun e-mail de notification (l’alerte de l’administrateur reste dans le Centre d’alertes) ; non vérifié à l’écran.
+
 ## Retrait du rôle Closer Isolation — setters conservés
 
 Le rôle Closer est retiré des accès et des invitations. Son espace, les routes de compte rendu Closer, l’attribution d’un closer et les sélections correspondantes à la réservation et dans l’agenda d’équipe sont supprimés. Les setters restent le rôle de prospection et de réservation ; le client Isolation conserve ses dossiers, son agenda, les visites et la saisie/correction des résultats. Une réservation utilise directement le client et son agenda, sans annuaire ni choix de représentant.

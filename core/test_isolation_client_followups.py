@@ -109,6 +109,13 @@ class ClientFollowUpTests(TestCase):
         self.assertEqual(
             self.report(revision=3, closed=False, reason='Présence confirmée').status_code, 201
         )
+        # Attended without a sale: the prospect stays in the client's list until the sale.
+        row = IsolationClientFollowUp.objects.get()
+        self.assertIsNone(row.closed_at)
+        self.assertEqual(row.reason, 'Présenté, non closé : suivi à effectuer')
+        self.assertEqual(
+            self.report(revision=4, closed=True, reason='Vente conclue').status_code, 201
+        )
         self.assertIsNotNone(IsolationClientFollowUp.objects.get().closed_at)
 
     def test_client_rebooks_same_prospect_and_process_then_personal_plan_leaves_active_list(self):
@@ -181,3 +188,30 @@ class ClientFollowUpTests(TestCase):
         self.assertEqual(
             self.client.post('/api/visits/availability/', query, format='json').status_code, 404
         )
+
+    def test_attended_without_sale_joins_the_client_list_until_the_sale_is_concluded(self):
+        response = self.report(performed=True, closed=False, outcome='interested')
+        self.assertEqual(response.status_code, 201, response.data)
+        row = IsolationClientFollowUp.objects.get()
+        self.assertEqual(row.reason, 'Présenté, non closé : suivi à effectuer')
+        self.assertIsNone(row.closed_at)
+        listing = self.client.get('/api/client-follow-ups/').data
+        self.assertEqual(listing['count'], 1)
+        self.assertEqual(listing['results'][0]['reason'], row.reason)
+        # The sale comes later: the prospect leaves the list, nothing new is created.
+        again = self.report(
+            revision=1,
+            performed=True,
+            closed=True,
+            outcome='interested',
+            reason='Vente conclue',
+        )
+        self.assertEqual(again.status_code, 201, again.data)
+        row.refresh_from_db()
+        self.assertIsNotNone(row.closed_at)
+        self.assertEqual(self.client.get('/api/client-follow-ups/').data['count'], 0)
+        self.assertEqual(IsolationClientFollowUp.objects.count(), 1)
+
+    def test_attended_and_closed_or_unqualified_never_enter_the_list(self):
+        self.assertEqual(self.report(performed=True, closed=True).status_code, 201)
+        self.assertFalse(IsolationClientFollowUp.objects.exists())
