@@ -200,3 +200,15 @@ urlpatterns += [
 from .identity.performance_calls import statistics as performance_calls
 
 urlpatterns += [path('api/portal/<str:workspace>/performance-calls/', performance_calls)]
+
+from .identity import generated_reports
+
+urlpatterns += [
+    path('api/portal/<str:workspace>/report-plan/', generated_reports.plans),
+    path('api/portal/<str:workspace>/reports/', generated_reports.reports),
+    path('api/portal/<str:workspace>/reports/<int:pk>/history/', generated_reports.history),
+    path(
+        'api/portal/<str:workspace>/reports/<int:pk>/download/<str:file_kind>/',
+        generated_reports.download,
+    ),
+]

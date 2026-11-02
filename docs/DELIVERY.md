@@ -1,5 +1,16 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — rapports planifiés et historique d’exécution
+
+Un onglet administrateur « Rapports » permet d’activer la planification séparément par espace, de choisir l’heure au Québec (19 h proposée), de demander une période personnalisée et de télécharger PDF/Excel. Chaque jour produit la veille ; chaque lundi la semaine précédente ; chaque premier du mois le mois précédent. Trois rapports sont préparés : performance des agents, campagnes/lots et rémunérations/soldes. La planification est désactivée avant sa première activation explicite par un administrateur ; aucun courriel n’est envoyé.
+
+Le worker `portal-reports` traite la file toutes les minutes. Clé d’échéance unique, revendication conditionnelle et bail de dix minutes empêchent deux workers de produire le même rapport. Trois tentatives maximum, délai de reprise de cinq minutes, échecs visibles, reprise des baux expirés. Un instantané capturé est conservé pour les reprises ; les fichiers terminés ne sont pas écrasés. Demandes manuelles idempotentes et limitées à cinq par minute ; une nouvelle demande explicite peut produire un nouvel instantané. Les téléchargements et états de génération sont audités par espace, sous l’autorisation du compte qui a activé ou demandé le rapport. Sa révocation bloque la génération.
+
+Les sources métier sont lues par leurs routes administratives signées, uniquement dans l’espace du rapport ; les appels sont comptés depuis les commandes Orvia du même espace. Les prospects joints restent inconnus, sans inférence depuis NEWT. Les campagnes Assurance sont des lots importés ; un total conserve les rendez-vous sans campagne. Les gains de période sont distincts des paiements et soldes cumulés. Les montants Excel sont numériques ; les textes fournis sont forcés comme textes. Les fichiers sont conservés dans la base portail et accessibles uniquement aux administrateurs du même espace, sans URL publique.
+
+Limites : instantanés successifs des services, pas de transaction distribuée ; 500 agents, 50 campagnes, sources JSON de 2 Mio et fichiers de 10 Mio maximum. Aucun rattrapage automatique des échéances ratées pendant un arrêt prolongé : la période peut être demandée manuellement. Les rapports terminés sont conservés sans purge automatique. Aucun envoi d’e-mail ni paiement n’est déclenché. L’historique de détail montre les 100 derniers événements d’un rapport. Les tests couvrent les périodes Québec/DST, idempotence, reprises figées, permissions, formats et valeurs financières, ainsi que la concurrence réelle PostgreSQL en CI. Configuration Compose vérifiée avec valeurs factices, sans sortie de secrets ; recette visuelle de l’écran encore bloquée par le navigateur local.
+
+
 ## Retour novembre — exports PDF dans les parcours existants
 
 Un bouton PDF complète CSV/Excel dans les statistiques Assurance/Isolation et dans le composant d’export utilisé par les prospects, dossiers et prospects du conseiller. Le serveur reprend exactement les filtres et permissions du parcours ; aucune nouvelle route publique ni mélange des bases. Les PDF sont confidentiels (no-store), avec police embarquée, en-têtes répétées, pagination et échappement du texte fourni. Les tableaux larges sont présentés comme fiches verticales lisibles.

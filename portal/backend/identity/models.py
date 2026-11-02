@@ -333,3 +333,41 @@ class IsolationMailRelay(models.Model):
 class IsolationMailCursor(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1)
     after_id = models.PositiveBigIntegerField(default=0)
+
+
+class ReportPlan(models.Model):
+    workspace = models.CharField(max_length=20, unique=True)
+    enabled = models.BooleanField(default=False)
+    hour = models.PositiveSmallIntegerField(default=19)
+    actor_id = models.PositiveBigIntegerField()
+    revision = models.PositiveIntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class GeneratedReport(models.Model):
+    event_key = models.CharField(max_length=150, unique=True)
+    workspace = models.CharField(max_length=20, db_index=True)
+    kind = models.CharField(max_length=20)
+    cadence = models.CharField(max_length=20)
+    starts_on = models.DateField()
+    ends_on = models.DateField()
+    actor_id = models.PositiveBigIntegerField()
+    state = models.CharField(max_length=20, default='queued', db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    lease_token = models.UUIDField(null=True)
+    lease_until = models.DateTimeField(null=True)
+    retry_at = models.DateTimeField(null=True)
+    snapshot = models.JSONField(default=dict)
+    pdf_data = models.BinaryField(null=True)
+    xlsx_data = models.BinaryField(null=True)
+    error_code = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(ends_on__gte=models.F('starts_on')),
+                name='report_positive_period',
+            )
+        ]

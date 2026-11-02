@@ -9,6 +9,7 @@ import PayrollLedger from './PayrollLedger.vue';
 import AdminJournal from './AdminJournal.vue';
 import AdminAlerts from './AdminAlerts.vue';
 import SetterPerformance from './SetterPerformance.vue';
+import GeneratedReports from './GeneratedReports.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
 import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
@@ -113,6 +114,7 @@ async function portal(path: string, body?: any, method?: string) {
         'Accès indisponible',
     );
   }
+  if (response.headers.get('Content-Disposition')?.includes('attachment')) return response.blob();
   return response.status === 204 ? null : response.json();
 }
 async function business(path: string, body?: any, method?: string, target = workspace.value) {
@@ -398,6 +400,8 @@ const navigation = computed(() => {
       label: role.value === 'setter' ? 'Ma performance' : 'Performance des setters',
       icon: 'statistics',
     });
+  if (role.value === 'administrator')
+    items.push({ id: 'generated-reports', label: 'Rapports', icon: 'statistics' });
   if (role.value === 'administrator')
     items.push({ id: 'admin-alerts', label: 'Centre d’alertes', icon: 'followups' });
   if (role.value === 'administrator')
@@ -731,8 +735,13 @@ onMounted(async () => {
                 class="card amx-workspace"
               >
                 <div class="amx-content">
+                  <GeneratedReports
+                    v-if="activeModule === 'generated-reports' && role === 'administrator'"
+                    :workspace="workspace"
+                    :request="portal"
+                  />
                   <SetterPerformance
-                    v-if="
+                    v-else-if="
                       activeModule === 'setter-performance' &&
                       ['administrator', 'setter'].includes(role)
                     "

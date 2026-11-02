@@ -121,6 +121,19 @@ services:
         condition: service_healthy
       assurance:
         condition: service_started
+  portal-reports:
+    build: .
+    environment: *portal-environment
+    command: python manage.py generate_reports --settings=portal.backend.settings --loop --interval 60
+    restart: unless-stopped
+    depends_on:
+      portal-db:
+        condition: service_healthy
+      assurance:
+        condition: service_started
+      api:
+        condition: service_started
+
   assurance:
     build: .
     environment: &assurance-environment
