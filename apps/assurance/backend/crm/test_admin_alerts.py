@@ -25,10 +25,8 @@ class AdminAlertsTests(TestCase):
             self.auth(role, 21)
             self.assertEqual(self.client.get('/api/assurance/admin-alerts/').status_code, 403)
 
-    def test_rejected_payments_are_audited_and_listed(self):
-        response = self.client.post('/api/assurance/payroll/21/payments/', {}, format='json')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            self.client.get('/api/assurance/admin-alerts/?kind=payment_rejected').data['count'], 1
-        )
-        self.assertEqual(self.client.get('/api/assurance/admin-alerts/?kind=bad').status_code, 400)
+    def test_unknown_alert_kinds_and_removed_payment_kinds_are_refused(self):
+        for kind in ('bad', 'payment_rejected', 'payroll_issues'):
+            self.assertEqual(
+                self.client.get(f'/api/assurance/admin-alerts/?kind={kind}').status_code, 400
+            )

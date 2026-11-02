@@ -19,8 +19,7 @@ KINDS = {
     'duplicate_meetings': 'Rendez-vous potentiellement en double',
     'duplicate_prospects': 'Numéros potentiellement en double',
     'missing_ownership': 'Rendez-vous sans responsable',
-    'payroll_issues': 'Rémunérations à vérifier',
-    'payment_rejected': 'Enregistrements de paiement refusés depuis 7 jours',
+    'late_closures': 'Rendez-vous non closés passés à closés depuis 7 jours',
 }
 
 
@@ -55,6 +54,16 @@ def source(store, kind):
         )
     if kind == 'missing_ownership':
         return meetings.filter(Q(setter_id=0) | Q(**{store.target + '_id': 0}))
+    if kind == 'late_closures':
+        history = store.History.objects.select_related('entry')
+        if not store.closed_alerts:
+            return history.none()
+        return history.filter(
+            kind='sale_status_changed',
+            new_value='closed',
+            late=True,
+            created_at__gte=now - timedelta(days=7),
+        )
     if kind == 'new_meetings':
         return meetings.filter(created_at__gte=now - timedelta(days=7))
     if kind in ('overdue_tasks', 'upcoming_tasks'):
@@ -82,44 +91,6 @@ def source(store, kind):
             .filter(total__gt=1)
             .order_by('first_id')
         )
-    if kind == 'payment_rejected':
-        return store.audit_rows().filter(
-            action=store.audit_prefix + 'payment_rejected', created_at__gte=now - timedelta(days=7)
-        )
-    if kind == 'payroll_issues':
-        names = store.Payroll.roster()
-        if len(names) > 500:
-            raise ValidationError('Annuaire limité à 500 agents pour le contrôle financier.')
-        from .payroll_service import balance
-
-        rows = []
-        for agent in sorted(names):
-            state = balance(store.Payroll, agent, {}, names)
-            if (
-                state['unpriced']
-                or state['adjustment_pending']
-                or state['to_regularize_cad'] != '0.00'
-            ):
-                rows.append(
-                    row(
-                        kind,
-                        agent,
-                        state['agent_name'],
-                        [
-                            state['generated_cad'],
-                            state['paid_cad'],
-                            state['revision'],
-                            state['unpriced'],
-                        ],
-                        reference=agent,
-                        details={
-                            'Unités sans tarif': state['unpriced'],
-                            'Montant à régulariser (CAD)': state['to_regularize_cad'],
-                            'Rapprochement attendu': state['adjustment_pending'],
-                        },
-                    )
-                )
-        return rows
     raise ValidationError('Type d’alerte inconnu.')
 
 
@@ -128,8 +99,6 @@ def count(rows):
 
 
 def serialize(store, kind, item):
-    if kind == 'payroll_issues':
-        return item
     if kind == 'duplicate_prospects':
         return row(
             kind,
@@ -156,6 +125,22 @@ def serialize(store, kind, item):
                 'Critère': 'Même fiche, même début, statut planifié. Aucun regroupement automatique.',
             },
         )
+    if kind == 'late_closures':
+        reference = getattr(item.entry, store.parent + '_id')
+        return row(
+            kind,
+            item.pk,
+            f'Rendez-vous #{reference} · non closé devenu closé',
+            [item.pk, item.created_at],
+            reference=reference,
+            created_at=item.created_at,
+            details={
+                'Compté dans la semaine du': item.entry.week_start,
+                'Ancien statut': 'Non closé',
+                'Nouveau statut': 'Closé',
+                'Rendez-vous payable': 'Déjà compté, une seule fois',
+            },
+        )
     if kind in ('overdue_tasks', 'upcoming_tasks'):
         return row(
             kind,
@@ -165,21 +150,6 @@ def serialize(store, kind, item):
             reference=item.pk,
             due_at=item.due_at,
             details={'Rappel': item.pk, 'Version du suivi': item.revision},
-        )
-    if kind == 'payment_rejected':
-        return row(
-            kind,
-            item.pk,
-            'Enregistrement de paiement refusé',
-            item.pk,
-            reference=item.object_id,
-            created_at=item.created_at,
-            details={
-                'Motif du refus': item.metadata.get('reason', 'Validation refusée'),
-                'Compte auteur': item.metadata.get(
-                    'actor_portal_id', getattr(item, 'actor_id', None)
-                ),
-            },
         )
     return row(
         kind,
@@ -220,9 +190,7 @@ def center(store, request):
         if not values['id'].isdigit() or len(values['id']) > 18:
             raise ValidationError('Référence invalide.')
         rows = source(store, kind)
-        if kind == 'payroll_issues':
-            found = next((r for r in rows if r['id'] == values['id']), None)
-        elif kind in ('duplicate_meetings', 'duplicate_prospects'):
+        if kind in ('duplicate_meetings', 'duplicate_prospects'):
             item = rows.filter(first_id=values['id']).first()
             found = serialize(store, kind, item) if item else None
         else:
@@ -279,6 +247,7 @@ def center(store, request):
             'kinds': [
                 {'kind': k, 'label': label, 'count': count(sources[k])}
                 for k, label in KINDS.items()
+                if k != 'late_closures' or store.closed_alerts
             ],
             'results': results,
             'count': count(rows),

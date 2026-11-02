@@ -26,8 +26,6 @@ class PerformanceTests(TestCase):
         self.assertEqual(data['agent_id'], 21)
         self.assertEqual(data['totals']['held'], 1)
         self.assertEqual(data['totals']['closed'], 1)
-        self.assertEqual(data['totals']['generated_cad'], '75.00')
-        self.assertEqual(data['daily'][0]['generated_cad'], '75.00')
         self.assertEqual(len(data['daily']), 1)
         self.assertEqual(self.client.get('/api/setter-performance/22/').status_code, 403)
         self.auth(72, 'client')

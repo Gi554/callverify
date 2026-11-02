@@ -19,8 +19,6 @@ class PerformanceTests(TestCase):
         response = self.client.get(f'/api/assurance/setter-performance/?from={day}&to={day}')
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data['totals']['held'], 1)
-        self.assertEqual(response.data['totals']['generated_cad'], '15.00')
-        self.assertEqual(response.data['daily'][0]['generated_cad'], '15.00')
         self.assertEqual(self.client.get('/api/assurance/setter-performance/22/').status_code, 403)
         self.auth('advisor', 31)
         self.assertEqual(self.client.get('/api/assurance/setter-performance/').status_code, 403)

@@ -5,14 +5,13 @@ import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
 import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
-import PayrollLedger from './PayrollLedger.vue';
+import PayableAppointments from './PayableAppointments.vue';
 import AdminJournal from './AdminJournal.vue';
 import AdminAlerts from './AdminAlerts.vue';
 import SetterPerformance from './SetterPerformance.vue';
 import GeneratedReports from './GeneratedReports.vue';
 import AdminSearch from './AdminSearch.vue';
 import IsolationStatistics from './IsolationStatistics.vue';
-import IsolationCompensation from './IsolationCompensation.vue';
 import IsolationAgenda from './IsolationAgenda.vue';
 import IsolationNotices from './IsolationNotices.vue';
 import IsolationUnqualified from './IsolationUnqualified.vue';
@@ -43,7 +42,6 @@ import TaskAlerts from './TaskAlerts.vue';
 import CallsCenter from './CallsCenter.vue';
 import AssuranceReminders from './AssuranceReminders.vue';
 import AssuranceStatistics from './AssuranceStatistics.vue';
-import AssuranceCompensation from './AssuranceCompensation.vue';
 import AssuranceFieldSettings from './AssuranceFieldSettings.vue';
 import { RefreshCw } from 'lucide-vue-next';
 import { appointmentLink, isolationVisitLink } from './appointment-link';
@@ -746,12 +744,11 @@ onMounted(async () => {
                     :portal="portal"
                     :request="workspace === 'assurance' ? assurance : isolation"
                   />
-                  <PayrollLedger
+                  <PayableAppointments
                     v-else-if="activeModule === 'earnings' && role === 'setter'"
                     :workspace="workspace"
                     :role="role"
                     :request="workspace === 'assurance' ? assurance : isolation"
-                    :portal="portal"
                   />
                   <ClientFolders
                     v-else-if="activeModule === 'client-folders' && role === 'administrator'"
@@ -826,10 +823,11 @@ onMounted(async () => {
                       :request="assurance"
                       @changed="refreshAssurance"
                     />
-                    <AssuranceCompensation
+                    <PayableAppointments
                       v-else-if="assuranceModule === 'compensation' && role === 'administrator'"
+                      workspace="assurance"
+                      :role="role"
                       :request="assurance"
-                      :portal="portal"
                     />
                     <AssuranceStatistics
                       v-else-if="assuranceModule === 'statistics' && role !== 'advisor'"
@@ -891,10 +889,11 @@ onMounted(async () => {
                       @navigate="selectModule"
                       @changed="refreshIsolation"
                     />
-                    <IsolationCompensation
+                    <PayableAppointments
                       v-else-if="isolationModule === 'compensation' && role === 'administrator'"
+                      workspace="isolation"
+                      :role="role"
                       :request="isolation"
-                      :portal="portal"
                     />
                     <IsolationUnqualified
                       v-else-if="isolationModule === 'unqualified'"

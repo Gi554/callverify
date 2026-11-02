@@ -104,10 +104,8 @@ function fixture() {
         not_held: 1,
         awaiting_result: 0,
         sale_unknown: 0,
-        generated_cad: '75',
-        unpriced: 0,
       },
-      daily: [{ day: '2026-11-02', scheduled: 4, held: 3, closed: 1, generated_cad: '75' }],
+      daily: [{ day: '2026-11-02', scheduled: 4, held: 3, closed: 1 }],
       definition: 'Période Québec',
     }),
     portal: async () => {
@@ -135,7 +133,7 @@ test('business performance remains usable on call source failure and never inven
     assert.match(text(f.root), /Alice/)
     assert.match(text(f.root), /Source appels indisponible/)
     assert.match(text(f.root), /Non disponible/)
-    assert.match(text(f.root), /75/)
+    assert.doesNotMatch(text(f.root), /Gains|CAD|\$/)
     assert.doesNotMatch(text(f.root), /Aucun setter/)
   } finally {
     f.app.unmount()

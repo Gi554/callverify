@@ -27,8 +27,6 @@ const from = ref(now.slice(0, 8) + '01'),
   callError = ref('');
 let version = 0;
 const admin = computed(() => props.role === 'administrator');
-const cad = (value: any) =>
-  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(Number(value));
 const metrics = [
   { key: 'assigned_now', label: 'Prospects affectés actuellement' },
   { key: 'current_assignments_in_period', label: 'Affectations actuelles reçues sur la période' },
@@ -41,12 +39,7 @@ const metrics = [
   { key: 'awaiting_result', label: 'Résultats attendus' },
   { key: 'sale_unknown', label: 'Résultat commercial attendu' },
 ];
-const days = computed(() =>
-  (data.value?.daily || []).map((row: any) => ({
-    ...row,
-    generated_cad: Number(row.generated_cad),
-  })),
-);
+const days = computed(() => data.value?.daily || []);
 const callDays = computed(() =>
   days.value.map((row: any) => ({
     ...row,
@@ -135,11 +128,8 @@ onBeforeUnmount(() => version++);
           :key="item.key"
           :label="item.label"
           :value="data.totals[item.key]"
-        /><StatKpi label="Gains générés sur la période" :value="cad(data.totals.generated_cad)" />
+        />
       </div>
-      <p v-if="data.totals.unpriced" class="error">
-        {{ data.totals.unpriced }} unité(s) sans tarif : gains à compléter par l’administration.
-      </p>
       <section class="iso-panel">
         <h2>Appels Orvia</h2>
         <p v-if="callError" role="alert" class="error">{{ callError }}</p>
@@ -163,11 +153,6 @@ onBeforeUnmount(() => version++);
           { key: 'held', label: 'Tenus', color: '#2f6fed' },
           { key: 'closed', label: 'Ventes', color: '#2ab48b' },
         ]"
-      />
-      <StatBars
-        title="Gains générés (CAD)"
-        :days="days"
-        :series="[{ key: 'generated_cad', label: 'Gains CAD', color: '#2ab48b' }]"
       />
       <StatBars
         v-if="calls"
