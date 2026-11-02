@@ -1,3 +1,4 @@
+from core.isolation_search import results as admin_search
 from core.isolation_performance import own as setter_performance
 from core.isolation_alerts import alerts as admin_alerts
 from core.isolation_journal import events as journal_events
@@ -44,6 +45,7 @@ router.register('isolation-unqualified', Unqualified, basename='isolation-unqual
 from core import isolation_compensation
 
 urlpatterns = [
+    path('api/admin-search/', admin_search),
     path('api/setter-performance/', setter_performance),
     path('api/setter-performance/<int:agent>/', setter_performance),
     path('api/admin-alerts/', admin_alerts),
