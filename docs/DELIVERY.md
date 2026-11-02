@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Correction client — courriel de confirmation Isolation identifiable
+
+Le courriel du prospect occupe un champ dédié en tête de « Préparer la visite », avant les coordonnées, avec une mention explicite de son usage pour la confirmation. Une réservation sans courriel ramène le curseur et le défilement sur ce champ ; le contrôle précède la sauvegarde de qualification et la demande d’attestation. Aucun rendez-vous ni attestation de réservation n’est créé en cas de courriel manquant. Un brouillon incomplet reste enregistrable, et les adresses déjà importées ou enregistrées sont conservées.
+
+Vérification : régressions sur visibilité du champ, préremplissage, focus, brouillon sans courriel et absence d’attestation/réservation quand il manque. Suite frontend, types, lint et build vérifiés avant fusion. Aucun e-mail réel envoyé. Le champ existait déjà dans le code précédent ; l’origine exacte de son absence sur la capture client n’est pas établie. Recharger la page après livraison pour charger la nouvelle version ; recette visuelle restante.
+
+
 ## Correction client — saisie du résultat Isolation dans un panneau
 
 Le bouton « Renseigner le résultat » ouvre le formulaire dans le panneau latéral commun au lieu de le rendre sous toute la liste des visites. Le prospect sélectionné reste identifié dans l’en-tête. Une saisie modifiée demande confirmation avant fermeture ; un enregistrement en cours bloque la fermeture. Après enregistrement, le panneau se ferme et la liste ainsi que les compteurs sont rechargés. Droits client et règles de résultat inchangés.

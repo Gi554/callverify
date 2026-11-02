@@ -227,6 +227,7 @@ function qualificationRequest(path: string, body?: any) {
 async function save() {
   await run(async () => {
     const record = editing.value;
+    let bookingEmail = '';
     if (!record) {
       if (
         !representativesReady.value ||
@@ -235,6 +236,13 @@ async function save() {
         throw new Error('Choisissez un représentant avant de programmer la visite.');
       if (!c2.value && !props.clientFollowupId)
         throw new Error('Chargez la qualification avant de réserver.');
+      bookingEmail = props.clientFollowupId
+        ? prospectEmail.value.trim()
+        : c2.value.getEmail().trim();
+      if (!bookingEmail) {
+        c2.value?.focusEmail?.();
+        throw new Error('Renseignez le courriel du prospect pour envoyer sa confirmation.');
+      }
       if (!props.clientFollowupId) await c2.value.ensureSaved();
     }
     const current = record
@@ -250,11 +258,7 @@ async function save() {
       body.reason = reason.value;
       saved = await props.request(`visits/${record.id}/reschedule/`, body);
     } else {
-      body.prospect_email = props.clientFollowupId
-        ? prospectEmail.value.trim()
-        : c2.value.getEmail().trim();
-      if (!body.prospect_email)
-        throw new Error('Renseignez le courriel du prospect pour envoyer sa confirmation.');
+      body.prospect_email = bookingEmail;
       body.prospect_id = current.id;
       body.request_id = requestId;
       body.publication = 'google';

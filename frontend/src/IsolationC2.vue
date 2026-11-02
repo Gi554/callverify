@@ -22,6 +22,11 @@ const labels: Record<string, string> = {
   construction_year: 'Année de construction',
   age: 'Âge du client',
 };
+const emailInput = ref<HTMLInputElement | null>(null);
+function focusEmail() {
+  emailInput.value?.scrollIntoView?.({ block: 'center' });
+  emailInput.value?.focus();
+}
 const values = ref<any>({}),
   revision = ref(0),
   loaded = ref(false),
@@ -112,7 +117,7 @@ onMounted(() => {
   load().catch(() => {});
 });
 onBeforeUnmount(() => window.removeEventListener('beforeunload', unload));
-defineExpose({ ensureSaved, dirty, getEmail: () => values.value.email || '' });
+defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.email || '' });
 </script>
 <template>
   <section class="c2-form">
@@ -127,26 +132,38 @@ defineExpose({ ensureSaved, dirty, getEmail: () => values.value.email || '' });
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
     <fieldset v-if="loaded" :disabled="busy || blocked">
+      <label class="c2-email">
+        Courriel du prospect · requis pour la confirmation
+        <input
+          ref="emailInput"
+          v-model="values.email"
+          type="email"
+          autocomplete="email"
+          maxlength="254"
+          aria-required="true"
+          placeholder="nom@exemple.com"
+        />
+        <small
+          >La confirmation du rendez-vous sera envoyée à cette adresse. Vous pouvez enregistrer un
+          brouillon sans courriel.</small
+        >
+      </label>
       <div class="c2-grid">
-        <label
-          v-for="key in ['full_name', 'phone', 'email', 'address', 'city', 'postal_code']"
-          :key="key"
+        <label v-for="key in ['full_name', 'phone', 'address', 'city', 'postal_code']" :key="key"
           >{{ labels[key]
           }}<input
             v-model="values[key]"
-            :type="key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'"
+            :type="key === 'phone' ? 'tel' : 'text'"
             :maxlength="
-              key === 'email'
-                ? 254
-                : key === 'address'
-                  ? 500
-                  : key === 'phone'
-                    ? 40
-                    : key === 'city'
-                      ? 150
-                      : key === 'postal_code'
-                        ? 10
-                        : 250
+              key === 'address'
+                ? 500
+                : key === 'phone'
+                  ? 40
+                  : key === 'city'
+                    ? 150
+                    : key === 'postal_code'
+                      ? 10
+                      : 250
             " /></label
         ><label
           >Grenier accessible<select v-model="values.attic_accessible">
@@ -227,12 +244,17 @@ defineExpose({ ensureSaved, dirty, getEmail: () => values.value.email || '' });
   gap: 14px;
   margin-bottom: 16px;
 }
+.c2-email,
 .c2-grid label {
   display: flex;
   flex-direction: column;
   gap: 7px;
   font-size: 12px;
 }
+.c2-email {
+  margin-bottom: 20px;
+}
+.c2-email input,
 .c2-grid input,
 .c2-grid select {
   width: 100%;
