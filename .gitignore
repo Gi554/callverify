@@ -12,3 +12,5 @@ private-media/
 .test-media/
 node_modules/
 frontend/dist/
+
+.daily-backups/

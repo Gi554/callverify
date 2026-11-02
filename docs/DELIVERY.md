@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Retour novembre — sauvegarde quotidienne chiffrée et contrôle isolé
+
+Nouvel opérateur Linux `scripts/daily_crm_backup.py` : captures PostgreSQL des trois services, médias et configuration chiffrés avant écriture, manifeste authentifié, permissions privées, verrou partagé avec CD, marqueur de capture complète. Installation idempotente d’un cron quotidien à 04:15 heure du serveur en conservant les autres tâches. La clé n’est ni dans Git ni dans les archives ; les dumps clairs ne sont pas écrits sur le disque hôte.
+
+Le contrôle restaure les trois bases dans un conteneur temporaire sans réseau, sans port ni volume de production ; tables, migrations et lecture de chaque table sont vérifiées. Les médias et la configuration sont vérifiés sans extraction ni exécution. Aucun worker du CRM n’est démarré dans la recette. Seul le conteneur nouvellement généré est supprimé. Tests du chiffrement/intégrité, capture partielle, isolement de la restauration et conservation du crontab. Recette VPS à exécuter après déploiement ; résultats à consigner avant de déclarer la sauvegarde planifiée et restaurée.
+
+Limites : capture en ligne indépendante par base et composants successifs, 256 Mio par composant, mémoire bornée ; pas de transaction distribuée, pas de copie hors site/purge automatique, pas de restauration de production. Redis, rôles globaux, stockages externes et reprise contractuelle ne sont pas couverts. Détails et commandes dans `docs/DAILY_BACKUP.md`.
+
+
 ## Retour novembre — recherche administrative combinée et exports exacts
 
 Un onglet administrateur « Recherche avancée » distinct dans chaque espace combine nom, téléphone, setter actuellement affecté, setter à la réservation, conseiller/client du rendez-vous, campagne (lot importé Assurance), identifiant de rendez-vous, période au Québec et statuts de fiche/rendez-vous. Les critères de rendez-vous doivent être satisfaits par la même rencontre ; une fiche ne correspond donc pas en mélangeant le setter d’une ancienne rencontre et le conseiller d’une autre. La dernière rencontre qui correspond aux critères est affichée. Sans critère de rendez-vous, les fiches sans rencontre restent consultables. Le bouton « Ouvrir la fiche » reprend le panneau métier existant.
