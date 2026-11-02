@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Rendez-vous payables : « Suivi et rémunération » et « Mes gains » simplifiés (Assurance et Isolation)
+
+Les rubriques « Suivi et rémunération » (administrateur) et « Mes gains et mon objectif » (setter) ne gèrent plus d’argent : elles comptent les rendez-vous à rémunérer à partir des résultats réellement enregistrés. **Assurance** : « Rendez-vous présentés » et « Total des rendez-vous payables » (tout rendez-vous présenté et validé est payable, avec ou sans vente). **Isolation** : « Présentés – Non closés », « Présentés – Closés » et le total (une catégorie vide affiche 0 ; un résultat sans vente renseignée compte comme non closé). Filtres identiques dans les deux espaces : setter (administrateur : toute l’équipe ou un setter, avec tableau par setter), « Cette semaine », période libre du … au … ; un setter ne voit que ses chiffres. Règles : seuls comptent les rendez-vous non annulés, terminés et déclarés présents ; absent, sans mise à jour ou non validé ne compte pas ; un rendez-vous reprogrammé compte une fois, à sa nouvelle date, selon son résultat final ; la période suit la date du rendez-vous (heure du Québec) et les périodes passées restent consultables.
+
+Retiré de l’application : les écrans de tarifs, d’enregistrement de paiements, de montants payés, de soldes et de gains par période (ainsi que les gains de « Performance des setters ») et les deux alertes « Rémunérations à vérifier » et « Enregistrements de paiement refusés ». Conservé : toutes les données déjà enregistrées (paiements, tarifs, montants figés) restent en base ; les anciennes adresses d’API de rémunération restent actives mais plus aucun écran ne les appelle, et la capture du tarif à l’enregistrement d’un résultat est inchangée (à retirer plus tard si vous le souhaitez). Aucun autre module n’est modifié.
+
+Limites : non vérifié à l’écran par moi ; pas de comptage par date de validation (seulement par date de rendez-vous) ; revue visuelle à la revue finale.
+
 ## Correction client — courriel de confirmation Isolation identifiable
 
 Le courriel du prospect occupe un champ dédié en tête de « Préparer la visite », avant les coordonnées, avec une mention explicite de son usage pour la confirmation. Une réservation sans courriel ramène le curseur et le défilement sur ce champ ; le contrôle précède la sauvegarde de qualification et la demande d’attestation. Aucun rendez-vous ni attestation de réservation n’est créé en cas de courriel manquant. Un brouillon incomplet reste enregistrable, et les adresses déjà importées ou enregistrées sont conservées.

@@ -1,5 +1,6 @@
 from core.isolation_search import results as admin_search
 from core.isolation_performance import own as setter_performance
+from core.isolation_payable import appointments as payable_appointments
 from core.isolation_alerts import alerts as admin_alerts
 from core.isolation_journal import events as journal_events
 from django.urls import path, include
@@ -47,6 +48,7 @@ from core import isolation_compensation
 urlpatterns = [
     path('api/admin-search/', admin_search),
     path('api/setter-performance/', setter_performance),
+    path('api/payable-appointments/', payable_appointments),
     path('api/setter-performance/<int:agent>/', setter_performance),
     path('api/admin-alerts/', admin_alerts),
     path('api/admin-journal/', journal_events),
