@@ -767,6 +767,7 @@ onMounted(async () => {
                   <AdminJournal
                     v-else-if="activeModule === 'admin-journal' && role === 'administrator'"
                     :workspace="workspace"
+                    :portal="portal"
                     :request="workspace === 'assurance' ? assurance : isolation"
                   />
                   <PayrollLedger

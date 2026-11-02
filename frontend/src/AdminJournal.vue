@@ -3,7 +3,19 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { History, Search } from 'lucide-vue-next';
 import IsolationPageHeader from './IsolationPageHeader.vue';
 import SidePanel from './SidePanel.vue';
-const props = defineProps<{ workspace: string; request: (path: string) => Promise<any> }>();
+import { actorNames } from './actor-names';
+const props = defineProps<{
+  workspace: string;
+  request: (path: string) => Promise<any>;
+  portal?: (path: string) => Promise<any>;
+}>();
+const names = ref<Record<number, string>>({});
+const actorLabel = (row: any) =>
+  names.value[row.actor_id] ? `${names.value[row.actor_id]} · #${row.actor_id}` : row.actor_label;
+const changes = (row: any) =>
+  row.metadata.changes?.before !== undefined || row.metadata.changes?.after !== undefined
+    ? row.metadata.changes
+    : row.metadata;
 const day = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Toronto',
   year: 'numeric',
@@ -43,6 +55,12 @@ async function load(reset = false) {
   try {
     const result = await props.request('admin-journal/?' + parameters());
     if (current === version) data.value = result;
+    const resolved = await actorNames(
+      props.portal,
+      props.workspace,
+      result.results.map((row: any) => row.actor_id),
+    );
+    if (current === version) names.value = resolved;
   } catch (e: any) {
     if (current === version) {
       data.value = null;
@@ -119,7 +137,7 @@ onBeforeUnmount(() => version++);
           <tbody>
             <tr v-for="row in data.results" :key="row.id">
               <td>{{ date(row.created_at) }}</td>
-              <td>{{ row.actor_label }}</td>
+              <td>{{ actorLabel(row) }}</td>
               <td>{{ row.action }}</td>
               <td>{{ row.object_id || '—' }}</td>
               <td><button class="secondary" @click="selected = row">Consulter</button></td>
@@ -148,20 +166,20 @@ onBeforeUnmount(() => version++);
       <template v-if="selected"
         ><section class="iso-panel">
           <h3>{{ selected.action }}</h3>
-          <p>{{ selected.actor_label }} · {{ date(selected.created_at) }}</p>
+          <p>{{ actorLabel(selected) }} · {{ date(selected.created_at) }}</p>
           <p>Référence : {{ selected.object_id || '—' }}</p>
         </section>
         <section
-          v-if="selected.metadata.before !== undefined || selected.metadata.after !== undefined"
+          v-if="changes(selected).before !== undefined || changes(selected).after !== undefined"
           class="journal-comparison"
         >
           <article>
             <h3>Avant</h3>
-            <pre>{{ JSON.stringify(selected.metadata.before ?? null, null, 2) }}</pre>
+            <pre>{{ JSON.stringify(changes(selected).before ?? null, null, 2) }}</pre>
           </article>
           <article>
             <h3>Après</h3>
-            <pre>{{ JSON.stringify(selected.metadata.after ?? null, null, 2) }}</pre>
+            <pre>{{ JSON.stringify(changes(selected).after ?? null, null, 2) }}</pre>
           </article>
         </section>
         <h3>Informations enregistrées</h3>

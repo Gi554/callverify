@@ -42,6 +42,10 @@ code = code
     /import SidePanel from ['"]\.\/SidePanel\.vue['"]/g,
     `const SidePanel={props:['open'],setup(p,{slots}){return()=>p.open?slots.default?.():null}}`,
   )
+code = code.replace(
+  /import \{ actorNames \} from ['"]\.\/actor-names['"]/g,
+  `const actorNames=async(portal,workspace,ids)=>portal?Object.fromEntries((await portal(workspace+'/actor-names/?ids='+ids.join(','))).results.map(row=>[row.id,row.name])):{}`,
+)
 code =
   withStatComponents(code)
     .replace(/vModelText as _vModelText,?/g, '')
@@ -91,6 +95,7 @@ function fixture({ fail = false } = {}) {
     calls = []
   const app = renderer.createApp(component, {
     workspace: 'isolation',
+    portal: async () => ({ results: [{ id: 21, name: 'Alice' }] }),
     request: async (path) => {
       calls.push(path)
       if (fail) throw new Error('Service indisponible')
@@ -101,6 +106,7 @@ function fixture({ fail = false } = {}) {
           {
             id: 1,
             created_at: '2026-11-02T14:00:00Z',
+            actor_id: 21,
             actor_label: 'Compte #21',
             action: 'isolation.visit.changed',
             object_id: '12',
@@ -123,7 +129,7 @@ test('journal paginates and opens recorded before and after without sending muta
     await flush()
     assert.match(text(f.root), /Avant/)
     assert.match(text(f.root), /Après/)
-    assert.match(text(f.root), /Compte #21/)
+    assert.match(text(f.root), /Alice · #21/)
     button(f, 'Suivant').props.onClick()
     await flush()
     assert.match(f.calls[1], /page=2/)
