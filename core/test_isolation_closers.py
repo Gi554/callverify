@@ -1,274 +1,60 @@
-from datetime import timedelta
-from uuid import uuid4
-from unittest.mock import patch
+"""Retirement of closer access must preserve historical visits and client follow-up."""
+
 from django.test import TestCase, override_settings
-from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from packages.access.isolation_visits import issue_closer
-from . import test_isolation_client as fixtures
-from .models import IsolationVisit, IsolationVisitResult, AuditEvent
+from .test_isolation_client import client_fixture
+from .models import IsolationVisit, IsolationVisitResult
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
-class CloserTests(TestCase):
+class RetiredCloserTests(TestCase):
     def setUp(self):
-        self.prospect, self.visit = fixtures.client_fixture()
+        self.prospect, self.visit = client_fixture()
+        IsolationVisit.objects.filter(pk=self.visit.pk).update(
+            closer_id=77, closer_name='Ancien représentant'
+        )
         self.client = APIClient()
+
+    def auth(self, user_id, role):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(user_id, 'isolation', role))
+
+    def test_retired_routes_and_tickets_cannot_be_used(self):
+        self.auth(77, 'closer')
+        for path in ('/api/visits/', '/api/workspace-statistics/', '/api/client-prospects/'):
+            self.assertEqual(self.client.get(path).status_code, 401)
+        self.assertEqual(self.client.get('/api/closer-visits/').status_code, 404)
         self.auth(72, 'client')
-        self.assign_url = f'/api/visits/{self.visit.pk}/assign-closer/'
-        self.base = f'/api/closer-visits/{self.visit.pk}/'
+        self.assertEqual(
+            self.client.post(f'/api/visits/{self.visit.pk}/assign-closer/', {}).status_code, 404
+        )
 
-    def auth(self, pk, role, space='isolation'):
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(pk, space, role))
-
-    def assign(self, **changes):
-        return self.client.post(
-            self.assign_url,
+    def test_client_keeps_historical_attribution_and_can_report_without_closer(self):
+        IsolationVisitResult.objects.create(
+            visit=self.visit,
+            performed=True,
+            closed=False,
+            outcome='completed',
+            author_closer_id=77,
+            note='Historique',
+        )
+        self.auth(72, 'client')
+        url = f'/api/visits/{self.visit.pk}/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['closer'], {'id': 77, 'name': 'Ancien représentant'})
+        result = self.client.post(
+            url + 'result/',
             {
                 'revision': 0,
-                'proof': issue_closer(72, self.visit.pk, 77, 'Closer test'),
-                'reason': 'Secteur Montréal',
-                **changes,
+                'performed': True,
+                'closed': True,
+                'outcome': 'closed',
+                'note': 'Vente confirmée par le client',
+                'reason': 'Suivi du client',
             },
             format='json',
         )
-
-    def prepare(self):
-        response = self.assign()
-        self.assertEqual(response.status_code, 200, response.data)
-        self.auth(77, 'closer')
-
-    def payload(self, **changes):
-        return {
-            'request_id': str(uuid4()),
-            'revision': 1,
-            'performed': True,
-            'closed': True,
-            'note': '',
-            'reason': '',
-            **changes,
-        }
-
-    def report(self, **changes):
-        return self.client.post(self.base + 'result/', self.payload(**changes), format='json')
-
-    def test_assignment_and_closer_scope_are_separate_from_client_and_setter(self):
-        self.prepare()
-        self.assertEqual(self.client.get('/api/closer-visits/').data['count'], 1)
-        self.assertEqual(self.client.get('/api/closer-visits/dashboard/').data['results_due'], 1)
-        self.assertEqual(
-            self.client.get(self.base).data['closer'], {'id': 77, 'name': 'Closer test'}
-        )
-        for url in ('/api/visits/', '/api/work-queue/', '/api/client-prospects/'):
-            self.assertEqual(self.client.get(url).status_code, 403, url)
-        self.assertEqual(self.client.get('/api/workspace-statistics/').data['totals']['visits'], 1)
-        self.auth(78, 'closer')
-        self.assertEqual(self.client.get(self.base).status_code, 404)
-        self.assertEqual(self.report().status_code, 404)
-        self.assertEqual(self.client.get('/api/closer-visits/').data['count'], 0)
-        self.auth(21, 'setter')
-        self.assertEqual(self.client.get(self.base).status_code, 403)
-        self.auth(77, 'closer', 'assurance')
-        self.assertEqual(self.client.get(self.base).status_code, 401)
-
-    def test_assignment_rejects_forgery_cross_visit_stale_and_setter(self):
-        self.assertEqual(
-            self.assign(proof=issue_closer(72, self.visit.pk + 1, 77, 'Closer')).status_code, 400
-        )
-        self.assertEqual(
-            self.assign(proof=issue_closer(73, self.visit.pk, 77, 'Closer')).status_code, 400
-        )
-        self.assertEqual(self.assign(revision=9).status_code, 409)
-        self.auth(21, 'setter')
-        self.assertEqual(self.assign().status_code, 403)
-        self.auth(73, 'client')
-        self.assertEqual(self.assign().status_code, 404)
-        self.auth(72, 'client')
-        self.assertEqual(self.assign().status_code, 200)
-        self.assertEqual(self.assign().status_code, 409)
-
-    def test_calendar_page_size_is_opt_in_and_bounded(self):
-        values = {
-            field.attname: getattr(self.visit, field.attname)
-            for field in IsolationVisit._meta.fields
-            if not field.primary_key and field.name != 'created_at'
-        }
-        for _ in range(104):
-            IsolationVisit.objects.create(**{**values, 'request_id': uuid4()})
-        self.assertEqual(len(self.client.get('/api/visits/').data['results']), 25)
-        response = self.client.get('/api/visits/', {'page_size': 100})
-        self.assertEqual(len(response.data['results']), 100)
-        self.assertEqual(response.data['count'], 105)
-        self.assertEqual(
-            len(self.client.get('/api/visits/', {'page_size': 500}).data['results']), 100
-        )
-
-    def test_team_calendar_filters_only_narrow_the_role_scope(self):
-        values = {
-            field.attname: getattr(self.visit, field.attname)
-            for field in IsolationVisit._meta.fields
-            if not field.primary_key and field.name != 'created_at'
-        }
-        IsolationVisit.objects.create(
-            **{**values, 'request_id': uuid4(), 'setter_id': 23, 'client_id': 73, 'closer_id': 77}
-        )
-
-        def count(**query):
-            return self.client.get('/api/visits/', query).data['count']
-
-        self.auth(1, 'administrator')
-        self.assertEqual(count(), 2)
-        self.assertEqual(count(setter_id=23), 1)
-        self.assertEqual(count(closer_id=77), 1)
-        self.assertEqual(count(client_id=72), 1)
-        self.assertEqual(self.client.get('/api/visits/', {'closer_id': '-1'}).status_code, 400)
-        self.auth(72, 'client')
-        self.assertEqual(count(), 1)
-        self.assertEqual(count(client_id=73), 0)
-
-    def test_availability_lists_busy_times_only_within_the_booking_scope(self):
-        from .models import Prospect
-
-        other = Prospect.objects.get(pk=self.prospect.pk)
-        other.pk = None
-        other.phone = None
-        other.save()
-        IsolationVisit.objects.create(
-            prospect=other,
-            request_id=uuid4(),
-            fingerprint='other',
-            client_id=72,
-            client_name='Client',
-            setter_id=23,
-            setter_name='Autre setter',
-            booked_by_id=91,
-            starts_at=self.visit.starts_at,
-            ends_at=self.visit.ends_at,
-            timezone='UTC',
-        )
-        window = {
-            'prospect_id': self.prospect.pk,
-            'start': (self.visit.starts_at - timedelta(hours=1)).isoformat(),
-            'end': (self.visit.ends_at + timedelta(hours=1)).isoformat(),
-        }
-        self.auth(1, 'administrator')
-        data = self.client.get('/api/visits/availability/', window).data
-        self.assertEqual(sorted(row['reason'] for row in data['busy']), ['client', 'prospect'])
-        self.assertEqual(set(data['busy'][0]), {'starts_at', 'ends_at', 'reason'})
-        self.assertEqual(data['external_calendar'], 'checked_at_booking')
-        self.auth(21, 'setter')
-        self.assertEqual(self.client.get('/api/visits/availability/', window).status_code, 200)
-        self.auth(22, 'setter')
-        self.assertEqual(self.client.get('/api/visits/availability/', window).status_code, 404)
-        self.auth(72, 'client')
-        self.assertEqual(self.client.get('/api/visits/availability/', window).status_code, 403)
-        self.auth(1, 'administrator')
-        too_long = {**window, 'end': (self.visit.starts_at + timedelta(days=8)).isoformat()}
-        self.assertEqual(self.client.get('/api/visits/availability/', too_long).status_code, 400)
-        missing = {key: value for key, value in window.items() if key != 'prospect_id'}
-        self.assertEqual(self.client.get('/api/visits/availability/', missing).status_code, 400)
-
-    def test_explicit_result_optional_note_and_retry(self):
-        self.prepare()
-        body = self.payload()
-        response = self.client.post(self.base + 'result/', body, format='json')
-        self.assertEqual(response.status_code, 201, response.data)
-        self.assertEqual(
-            self.client.post(self.base + 'result/', body, format='json').status_code, 200
-        )
-        self.assertEqual(
-            AuditEvent.objects.filter(action='isolation.visit.closer_reported').count(), 1
-        )
-        row = IsolationVisitResult.objects.get()
-        self.assertTrue(row.closed)
-        self.assertTrue(row.performed)
-        self.assertEqual(row.author_closer_id, 77)
-        self.assertIsNone(row.author_client_id)
-        self.assertEqual(self.client.get(self.base).data['result']['closed'], True)
-        self.assertEqual(
-            self.client.post(
-                self.base + 'result/', {**body, 'closed': False}, format='json'
-            ).status_code,
-            409,
-        )
-        self.auth(72, 'client')
-        self.assertEqual(
-            self.client.get(f'/api/visits/{self.visit.pk}/').data['result']['closed'], True
-        )
-
-    def test_nonheld_result_and_unknown_legacy_sale_are_not_inferred(self):
-        self.prepare()
-        self.assertEqual(self.report(performed=False, closed=True).status_code, 400)
-        self.assertEqual(self.report(performed=False, closed=False).status_code, 201)
-        self.assertEqual(self.client.get(self.base).data['result']['performed'], False)
-        self.assertFalse(IsolationVisitResult.objects.get().closed)
-
-    def test_correction_requires_revision_reason_and_preserves_before_after(self):
-        self.prepare()
-        self.report()
-        self.assertEqual(self.report(revision=2, closed=False).status_code, 400)
-        self.assertEqual(
-            self.report(revision=1, closed=False, reason='Erreur de saisie').status_code, 409
-        )
-        response = self.report(revision=2, closed=False, reason='Erreur de saisie', note='À suivre')
-        self.assertEqual(response.status_code, 200, response.data)
-        history = self.client.get(self.base + 'history/').data['results']
-        self.assertEqual(len(history), 2)
-        self.assertTrue(history[0]['before']['closed'])
-        self.assertFalse(history[0]['after']['closed'])
-        self.assertEqual(history[0]['reason'], 'Erreur de saisie')
-        self.assertEqual(IsolationVisitResult.objects.count(), 1)
-
-    def test_reassignment_removes_old_closer_write_and_preserves_existing_result(self):
-        self.prepare()
-        self.report()
-        self.auth(72, 'client')
-        response = self.assign(
-            revision=2, proof=issue_closer(72, self.visit.pk, 78, 'Autre closer')
-        )
-        self.assertEqual(response.status_code, 200, response.data)
-        self.auth(77, 'closer')
-        self.assertEqual(self.report(revision=3).status_code, 404)
-        self.assertEqual(self.client.get(self.base + 'history/').status_code, 404)
-        self.auth(78, 'closer')
-        self.assertEqual(self.client.get(self.base).data['result']['closed'], True)
-        self.assertEqual(
-            self.report(revision=3, closed=False, reason='Correction contrôlée').status_code, 200
-        )
-
-    def test_legacy_result_remains_unknown_until_explicit_correction(self):
-        IsolationVisitResult.objects.create(
-            visit=self.visit,
-            author_client_id=72,
-            performed=True,
-            outcome='interested',
-            note='Intéressé',
-        )
-        self.prepare()
-        self.assertIsNone(self.client.get(self.base).data['result']['closed'])
-        self.assertEqual(self.report().status_code, 400)
-        self.assertEqual(self.report(reason='Qualification de la vente').status_code, 200)
-        history = self.client.get(self.base + 'history/').data['results'][0]
-        self.assertIsNone(history['before']['closed'])
-        self.assertEqual(history['before']['author_client_id'], 72)
-
-    def test_future_cancelled_and_audit_failure_do_not_save_results(self):
-        self.prepare()
-        IsolationVisit.objects.filter(pk=self.visit.pk).update(
-            ends_at=timezone.now() + timedelta(hours=1)
-        )
-        self.assertEqual(self.report().status_code, 409)
-        IsolationVisit.objects.filter(pk=self.visit.pk).update(
-            ends_at=self.visit.ends_at, status='cancelled'
-        )
-        self.assertEqual(self.report().status_code, 409)
-        IsolationVisit.objects.filter(pk=self.visit.pk).update(status='scheduled')
-        with patch(
-            'core.isolation_closers.AuditEvent.objects.create', side_effect=RuntimeError('audit')
-        ):
-            with self.assertRaises(RuntimeError):
-                self.report()
-        self.assertFalse(IsolationVisitResult.objects.exists())
-        self.visit.refresh_from_db()
-        self.assertEqual(self.visit.revision, 1)
+        self.assertEqual(result.status_code, 201, result.data)
+        self.assertEqual(IsolationVisit.objects.get(pk=self.visit.pk).closer_id, 77)
+        self.assertTrue(IsolationVisitResult.objects.get(visit=self.visit).closed)

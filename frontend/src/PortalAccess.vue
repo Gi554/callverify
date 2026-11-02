@@ -73,13 +73,12 @@ const form = ref({
 const roles = () =>
   space.value === 'assurance'
     ? ['administrator', 'setter', 'advisor']
-    : ['administrator', 'setter', 'client', 'closer'];
+    : ['administrator', 'setter', 'client'];
 const labels: Record<string, string> = {
   administrator: 'Administrateur',
   setter: 'Setter',
   advisor: 'Conseiller',
   client: 'Client',
-  closer: 'Closer',
 };
 const base = () => `workspaces/${space.value}/users/`;
 async function load() {

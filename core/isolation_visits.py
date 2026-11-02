@@ -31,7 +31,6 @@ from .isolation_client import ResultMixin, result_output
 from .isolation_sharing import SharingMixin
 from .calendar_checks import check as external_check
 from .isolation_c2 import captured
-from .isolation_closers import CloserAssignmentMixin
 
 
 class SlotInput(serializers.Serializer):
@@ -215,9 +214,7 @@ class VisitPager(Pager):
     max_page_size = 100
 
 
-class IsolationVisitViewSet(
-    CloserAssignmentMixin, SharingMixin, ResultMixin, viewsets.GenericViewSet
-):
+class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
     authentication_classes = [VisitAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BookingInput
@@ -414,7 +411,7 @@ class IsolationVisitViewSet(
         }
         canonical.update(client=claims['client']['id'], setter=claims['setter']['id'])
         if 'closer' in claims:
-            canonical['closer'] = claims['closer']['id']
+            raise ValidationError('Le rôle Closer a été supprimé. Actualisez avant de réserver.')
         if 'prospect_email' in data:
             canonical['prospect_email'] = data['prospect_email']
         if data['publication'] == 'google':
@@ -654,8 +651,6 @@ class IsolationVisitViewSet(
                     client_name=row.client_name,
                     setter_id=row.setter_id,
                     setter_name=row.setter_name,
-                    closer_id=row.closer_id,
-                    closer_name=row.closer_name,
                     booked_by_id=request.user.pk,
                     c2_snapshot=row.c2_snapshot,
                     publication=row.publication,

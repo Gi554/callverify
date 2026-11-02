@@ -74,7 +74,6 @@ const memberKinds = computed(() =>
       ]
     : [
         { kind: 'setter', label: 'Setters', of: (row: any) => row.original_setter },
-        { kind: 'closer', label: 'Closers', of: (row: any) => row.closer },
         { kind: 'client', label: 'Clients', of: (row: any) => row.client },
       ],
 );

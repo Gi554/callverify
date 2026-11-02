@@ -96,7 +96,7 @@ async function flush() {
 }
 
 const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
-function fixture({ fail = false } = {}) {
+function fixture({ fail = false, space = 'assurance' } = {}) {
   const root = { children: [] },
     writes = []
   let removed = false
@@ -127,7 +127,7 @@ function fixture({ fail = false } = {}) {
     },
   ]
   const app = renderer.createApp(component, {
-    spaces: ['assurance'],
+    spaces: [space],
     username: 'admin',
     request: async (path, body, method) => {
       if (method === 'DELETE') {
@@ -189,6 +189,25 @@ test('server refusal keeps deletion confirmation open without reporting success'
     assert.match(text(f.root), /Compte devenu administrateur/)
     assert.ok(button(f, 'Confirmer la suppression'))
     assert.doesNotMatch(text(f.root), /connexion désactivée/)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('Isolation administration keeps Setter and Client but no longer offers the Closer role', async () => {
+  const f = fixture({ space: 'isolation' })
+  try {
+    await flush()
+    const add = all(f.root).find((n) => n.tag === 'button' && text(n).includes('Ajouter'))
+    assert.ok(add)
+    add.props.onClick()
+    await flush()
+    const roles = all(f.root)
+      .filter((n) => n.tag === 'option')
+      .map((n) => n.props.value)
+    assert.ok(roles.includes('setter'))
+    assert.ok(roles.includes('client'))
+    assert.ok(!roles.includes('closer'))
   } finally {
     f.app.unmount()
   }

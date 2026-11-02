@@ -18,7 +18,7 @@ from packages.stats_series import daily, previous
 
 
 class StatisticsAuthentication(WorkAuthentication):
-    roles = ('administrator', 'client', 'setter', 'closer')
+    roles = ('administrator', 'client', 'setter')
 
 
 def period(params, now):
@@ -144,8 +144,6 @@ def statistics(request):
             rows = rows.filter(
                 setter_id=request.user.pk, prospect__assigned_setter_id=request.user.pk
             )
-        if request.user.role == 'closer':
-            rows = rows.filter(closer_id=request.user.pk)
         return filtered(rows)
 
     qs = scoped(lower, upper)
@@ -156,7 +154,7 @@ def statistics(request):
         'group': group,
         'as_of': now,
         'totals': finish(qs.aggregate(**metrics(now))),
-        'definition': f'Période selon le début actuel de la visite, jours inclus dans le fuseau {zone}. Setter d’origine ; closer actuellement affecté. Une réattribution déplace donc les visites et leurs résultats courants dans le groupe du nouveau closer, sans modifier leur auteur historique. Client : ses visites uniquement. Setter : ses réservations dont il conserve le prospect. Closer : ses visites actuellement attribuées. Taux effectué (présence) = tenues / résultats de tenue renseignés. Taux de conclusion observé = ventes explicitement conclues / visites tenues, y compris celles dont la vente reste non renseignée ; ces inconnues sont affichées séparément, pas classées comme ventes perdues. Les annulations, rendez-vous futurs et résultats manquants ne deviennent pas des absences. Prospects distincts par groupe, non additionnables. Un report peut déplacer une visite de période.',
+        'definition': f'Période selon le début actuel de la visite, jours inclus dans le fuseau {zone}. Setter d’origine ; ancien représentant enregistré (historique). Une réattribution déplace donc les visites et leurs résultats courants dans le groupe du nouveau closer, sans modifier leur auteur historique. Client : ses visites uniquement. Setter : ses réservations dont il conserve le prospect. Taux effectué (présence) = tenues / résultats de tenue renseignés. Taux de conclusion observé = ventes explicitement conclues / visites tenues, y compris celles dont la vente reste non renseignée ; ces inconnues sont affichées séparément, pas classées comme ventes perdues. Les annulations, rendez-vous futurs et résultats manquants ne deviennent pas des absences. Prospects distincts par groupe, non additionnables. Un report peut déplacer une visite de période.',
     }
     if request.user.role == 'administrator' and not kind:
         all_rows = IsolationVisit.objects.all()

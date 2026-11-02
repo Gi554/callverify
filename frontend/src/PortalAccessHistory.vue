@@ -16,6 +16,7 @@ const rows = ref<any[]>([]),
 const actions: Record<string, string> = {
   'membership.granted': 'Accès accordé',
   'membership.updated': 'Accès modifié',
+  'membership.role_retired': 'Rôle Closer retiré',
   'membership.deleted': 'Compte supprimé de l’espace',
   'invitation.created': 'Invitation créée',
   'invitation.resend': 'Invitation renouvelée',

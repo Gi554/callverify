@@ -71,12 +71,8 @@ def identities(password):
         (f'conseiller.demo{i:02d}', f'Conseiller Démo {i:02d}', [('assurance', 'advisor')])
         for i in range(1, 6)
     ]
-    definitions += [
-        (f'closer.demo{i:02d}', f'Closer Démo {i:02d}', [('isolation', 'closer')])
-        for i in range(1, 6)
-    ]
     definitions += [('client.demo', 'Client Isolation Démo', [('isolation', 'client')])]
-    # One hash, twenty-two accounts; never a fixed password committed in source.
+    # One hash, seventeen accounts; never a fixed password committed in source.
     from django.contrib.auth.hashers import make_password
 
     encoded = make_password(password)
@@ -106,7 +102,7 @@ def participants(context):
     return (
         role('assurance', 'setter'),
         role('assurance', 'advisor'),
-        role('isolation', 'closer'),
+        [],
         role('isolation', 'client')[0],
     )
 
@@ -332,7 +328,7 @@ def isolation(context, count, seed, now):
 
     if AdminUser.objects.exists() or Campaign.objects.exists() or Prospect.objects.exists():
         raise ValueError('Isolation business tables must be empty.')
-    setters, _, closers, client = participants(context)
+    setters, _, _, client = participants(context)
     owner = AdminUser(username='demo.legacy.inactive', is_active=False)
     owner.set_unusable_password()
     owner.save()
@@ -400,7 +396,6 @@ def isolation(context, count, seed, now):
             continue
         k = i // 4
         setter = setters[k % 10]
-        closer = closers[k % 5]
         starts = slot(k, (count + 3) // 4, now)
         snap = captured(prospect)
         snap['captured_at'] = min(now, starts - timedelta(days=2)).isoformat()
@@ -413,8 +408,6 @@ def isolation(context, count, seed, now):
             setter_id=setter['id'],
             setter_name=setter['name'],
             booked_by_id=setter['id'],
-            closer_id=closer['id'],
-            closer_name=closer['name'],
             c2_snapshot=snap,
             starts_at=starts,
             ends_at=starts + timedelta(minutes=30),
@@ -435,7 +428,7 @@ def isolation(context, count, seed, now):
             reports.append(
                 IsolationVisitResult(
                     visit=visit,
-                    author_closer_id=visit.closer_id,
+                    author_client_id=visit.client_id,
                     performed=performed,
                     closed=closed,
                     outcome='closed' if closed else 'completed' if performed else 'not_performed',

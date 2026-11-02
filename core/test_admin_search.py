@@ -50,4 +50,6 @@ class SearchTests(TestCase):
         )
         for role in ('setter', 'client', 'closer'):
             self.auth(21, role)
-            self.assertEqual(self.client.get('/api/admin-search/').status_code, 403)
+            self.assertEqual(
+                self.client.get('/api/admin-search/').status_code, 401 if role == 'closer' else 403
+            )

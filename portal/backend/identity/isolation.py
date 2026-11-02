@@ -22,7 +22,6 @@ class AssignmentInput(serializers.Serializer):
 class BookingProofInput(AssignmentInput):
     client_followup_id = serializers.IntegerField(min_value=1, required=False)
     unqualified_id = serializers.IntegerField(min_value=1, required=False)
-    closer_id = serializers.IntegerField(min_value=1, required=False)
 
 
 @api_view(['GET', 'POST'])
@@ -93,12 +92,6 @@ def visit_proof(request):
     if len(clients) != 1:
         raise ValidationError('Configurer exactement un client Isolation actif pour réserver')
     client = clients[0]
-    closer = None
-    if 'closer_id' in data:
-        target = active.filter(role='closer', user_id=data['closer_id']).first()
-        if target is None:
-            raise ValidationError('Représentant Isolation actif requis.')
-        closer = {'id': target.user_id, 'name': target.user.username}
     if actor.role == 'client' and client.user_id != request.user.pk:
         raise PermissionDenied('Le client actif doit être le compte connecté.')
     AccessAudit.objects.create(
@@ -118,7 +111,6 @@ def visit_proof(request):
                 client.user.username,
                 reactivation=data.get('unqualified_id'),
                 followup=data.get('client_followup_id'),
-                closer=closer,
             ),
             'expires_in': 120,
         }

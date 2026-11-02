@@ -25,7 +25,6 @@ const labels: Record<string, string> = {
   setter: 'Setter',
   advisor: 'Conseiller',
   client: 'Client',
-  closer: 'Closer',
 };
 </script>
 

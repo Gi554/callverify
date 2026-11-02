@@ -69,4 +69,7 @@ class AdminActivityTests(TestCase):
         for role, pk in [('setter', 21), ('client', 72), ('closer', 41)]:
             self.auth(pk, role)
             self.assertNotIn('filter_options', self.client.get(self.url).data)
-            self.assertEqual(self.client.get(self.url, {'setter_id': '21'}).status_code, 403)
+            self.assertEqual(
+                self.client.get(self.url, {'setter_id': '21'}).status_code,
+                401 if role == 'closer' else 403,
+            )

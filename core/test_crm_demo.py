@@ -95,7 +95,7 @@ class SyntheticDataAcceptance(TestCase):
             try:
                 manifest = demo.create_demo(path, count=120, seed=42)
                 self.assertEqual(manifest['demo']['state'], 'ready')
-                self.assertEqual(manifest['demo']['counts']['portal']['accounts'], 22)
+                self.assertEqual(manifest['demo']['counts']['portal']['accounts'], 17)
                 self.assertEqual(manifest['demo']['counts']['assurance']['contacts'], 120)
                 self.assertEqual(manifest['demo']['counts']['isolation']['prospects'], 120)
                 self.assertTrue((path.parent / 'ACCES.txt').is_file())
@@ -133,7 +133,7 @@ class SyntheticDataAcceptance(TestCase):
                         db.execute(
                             'SELECT COUNT(DISTINCT closer_id) FROM isolation.core_isolationvisit'
                         ).fetchone()[0],
-                        5,
+                        0,
                     )
                     for service, table in [
                         ('assurance', 'assurance_appointment'),

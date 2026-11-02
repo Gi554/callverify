@@ -81,26 +81,11 @@ class PerformanceTests(TestCase):
         self.assertEqual(response.data['totals']['visits'], 2)
         self.assertEqual(str(response.data['from']), '2026-10-26')
 
-    def test_closer_scope_applies_before_totals_groups_and_exports(self):
+    def test_retired_closer_cannot_read_totals_or_exports(self):
         self.report(performed=True, closed=True)
-        foreign = self.report(performed=False, closer=88, setter=22)
-        foreign.closer_name = 'SECRET'
-        foreign.save()
         self.auth(77, 'closer')
-        for group in ('setter', 'closer'):
-            response = self.client.get(self.url, {'group': group})
-            self.assertEqual(response.status_code, 200, response.data)
-            self.assertEqual(response.data['totals']['visits'], 1)
-            self.assertNotIn('closers', response.data)
-            self.assertNotIn('setters', response.data)
-            exported = self.client.get(self.url, {'group': group, 'export': 'csv'})
-            rows = list(
-                csv.reader(io.StringIO(exported.content.decode('utf-8-sig')), delimiter=';')
-            )
-            self.assertEqual(len(rows), 2)
-            self.assertNotIn('SECRET', str(rows))
-        IsolationVisit.objects.filter(closer_id=77).update(closer_id=88)
-        self.assertEqual(self.client.get(self.url).data['totals']['visits'], 0)
+        for params in ({}, {'group': 'closer'}, {'export': 'csv'}):
+            self.assertEqual(self.client.get(self.url, params).status_code, 401)
 
     def test_admin_and_client_group_current_closer_and_keep_unassigned(self):
         own = self.report(performed=True, closed=True)

@@ -47,7 +47,6 @@ const labels: Record<string, string> = {
   cancelled: 'Annulés',
   rescheduled: 'Anciennes occurrences reportées',
   upcoming: 'À venir',
-  unassigned_closer: 'Sans closer attribué',
 };
 const columns = [
   'visits',
@@ -100,7 +99,6 @@ const details = [
   'not_closed',
   'upcoming',
   'cancelled',
-  'unassigned_closer',
 ];
 const outcomes = computed(() => [
   { label: 'Ventes conclues', value: totals.value.closed || 0, color: '#2f6fed' },
@@ -180,7 +178,6 @@ onMounted(() => load());
         <label v-if="canCompare"
           >Comparer par<select v-model="group">
             <option value="setter">Setter d’origine</option>
-            <option value="closer">Closer actuellement attribué</option>
           </select></label
         ><button class="primary">{{ busy ? 'Calcul…' : 'Calculer' }}</button>
       </fieldset>
@@ -286,14 +283,16 @@ onMounted(() => load());
       <div v-if="groups" class="statistics-groups">
         <h4>
           {{
-            result.group === 'closer' ? 'Par closer actuellement attribué' : 'Par setter d’origine'
+            result.group === 'closer'
+              ? 'Par ancien représentant · historique'
+              : 'Par setter d’origine'
           }}
         </h4>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>{{ result.group === 'closer' ? 'Closer' : 'Setter' }}</th>
+                <th>{{ result.group === 'closer' ? 'Ancien représentant' : 'Setter' }}</th>
                 <th v-for="key in columns" :key="key">{{ labels[key] }}</th>
               </tr>
             </thead>

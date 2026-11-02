@@ -47,7 +47,7 @@ const profileOpen = ref(false);
 const admin = computed(() => props.role === 'administrator');
 const advisor = computed(() => props.role === 'advisor');
 // Field roles get the shared frame without search, calls or steering: kept simple for phones.
-const simple = computed(() => ['advisor', 'closer', 'client'].includes(props.role));
+const simple = computed(() => ['advisor', 'client'].includes(props.role));
 // Modules opened from the "Pilotage" block of the administrator sidebar.
 const steeringIds = [
   'statistics',
@@ -94,7 +94,6 @@ const roles: Record<string, string> = {
   setter: 'Setter',
   advisor: 'Conseiller',
   client: 'Client',
-  closer: 'Closer',
 };
 function navigate(id: string) {
   emit('navigate', id);
@@ -1309,7 +1308,7 @@ function navigate(id: string) {
     border-radius: 5px;
   }
 }
-/* Field roles (advisor, closer, client) work from phones: tables become stacked cards. */
+/* Field roles (advisor, client) work from phones: tables become stacked cards. */
 @media (max-width: 700px) {
   .simple-shell .crm-stage :deep(.table-scroll) {
     overflow: visible;

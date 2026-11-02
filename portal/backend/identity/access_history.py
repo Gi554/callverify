@@ -11,6 +11,7 @@ from .models import AccessAudit, ROLES
 LABELS = {
     'membership.granted': 'Accès accordé',
     'membership.updated': 'Accès modifié',
+    'membership.role_retired': 'Rôle Closer retiré',
     'membership.deleted': 'Compte supprimé de l’espace',
     'invitation.created': 'Invitation créée',
     'invitation.resend': 'Invitation renouvelée',
@@ -40,7 +41,7 @@ def details(row):
     source = row.metadata if isinstance(row.metadata, dict) else {}
     result = {}
     if row.action.startswith('membership.'):
-        if row.action == 'membership.deleted':
+        if row.action in ('membership.deleted', 'membership.role_retired'):
             if isinstance(source.get('subject_username'), str):
                 result['subject_username'] = source['subject_username'][:150]
             if isinstance(source.get('reason'), str):
@@ -61,7 +62,10 @@ def details(row):
                 if not isinstance(state, dict):
                     continue
                 clean = {}
-                if isinstance(state.get('role'), str) and state['role'] in ROLES[row.workspace]:
+                historic_roles = ROLES[row.workspace] | (
+                    {'closer'} if row.workspace == 'isolation' else set()
+                )
+                if isinstance(state.get('role'), str) and state['role'] in historic_roles:
                     clean['role'] = state['role']
                 if type(state.get('deleted')) is bool:
                     clean['deleted'] = state['deleted']

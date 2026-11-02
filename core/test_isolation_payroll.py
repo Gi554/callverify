@@ -169,7 +169,7 @@ class PayrollTests(TestCase):
         self.auth(72, 'client')
         self.assertEqual(self.client.get('/api/payroll/').status_code, 403)
         self.auth(91, 'closer')
-        self.assertEqual(self.client.get('/api/payroll/').status_code, 403)
+        self.assertEqual(self.client.get('/api/payroll/').status_code, 401)
 
     def test_missing_tariff_and_no_show_never_generate_fake_amounts(self):
         self.auth(72, 'client')

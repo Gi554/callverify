@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import { CalendarDays, Clock3, ArrowUpRight } from 'lucide-vue-next';
+import { CalendarDays, Clock3 } from 'lucide-vue-next';
 import IsolationPageHeader from './IsolationPageHeader.vue';
 import IsolationVisitCard from './IsolationVisitCard.vue';
 import { visitName, initials, visitStatus, visitTone } from './isolation-visit-display';
-import IsolationCloserAssignment from './IsolationCloserAssignment.vue';
 import IsolationC2 from './IsolationC2.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
 import { bookingInterval } from './booking-time';
@@ -17,25 +16,6 @@ import SidePanel from './SidePanel.vue';
 const nonqualified = ref(false),
   nonqualifiedReason = ref(''),
   nonqualifiedNote = ref('');
-const representatives = ref<any[]>([]),
-  representative = ref(''),
-  representativesReady = ref(false);
-async function loadRepresentatives() {
-  representativesReady.value = false;
-  const found: any[] = [];
-  for (let page = 1; page <= 20; page++) {
-    const data = await props.portal(`isolation/closers/?page=${page}`);
-    if (!Array.isArray(data.results) || !Number.isInteger(data.count) || data.count > 500)
-      throw new Error('Liste des représentants indisponible. Rechargez la fiche.');
-    found.push(...data.results);
-    if (found.length >= data.count) break;
-    if (page === 20) throw new Error('Liste des représentants incomplète.');
-  }
-  representatives.value = found;
-  if (found.length === 1) representative.value = String(found[0].id);
-  else if (!found.some((row) => String(row.id) === representative.value)) representative.value = '';
-  representativesReady.value = true;
-}
 const props = defineProps<{
   visitId?: number;
   period?: 'upcoming' | 'history' | 'missing_updates';
@@ -101,7 +81,6 @@ function close() {
   )
     emit('close');
 }
-const assigning = ref<any>(null);
 const supplements = ref<any>(null),
   sharedActivities = ref<any>(null);
 const reporting = ref<any>(null),
@@ -183,8 +162,6 @@ async function load() {
     prospectEmail.value = prospect.value.email || '';
     prospectEmailInitial.value = prospectEmail.value;
   }
-  if (prospect.value && (props.role !== 'client' || props.reactivationId || props.clientFollowupId))
-    await loadRepresentatives();
   const data = await props.request(
     `visits/?page=${page.value}&result_due=${dueOnly.value}${props.period ? '&period=' + props.period : ''}${props.prospectId ? '&prospect_id=' + props.prospectId : ''}`,
   );
@@ -212,9 +189,6 @@ async function attest(row: any) {
       setter_id: row.assigned_setter.id,
       ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
       ...(props.clientFollowupId ? { client_followup_id: props.clientFollowupId } : {}),
-      ...(!editing.value && representative.value
-        ? { closer_id: Number(representative.value) }
-        : {}),
     })
   ).proof;
 }
@@ -229,11 +203,6 @@ async function save() {
     const record = editing.value;
     let bookingEmail = '';
     if (!record) {
-      if (
-        !representativesReady.value ||
-        (props.role === 'client' && representatives.value.length > 1 && !representative.value)
-      )
-        throw new Error('Choisissez un représentant avant de programmer la visite.');
       if (!c2.value && !props.clientFollowupId)
         throw new Error('Chargez la qualification avant de réserver.');
       bookingEmail = props.clientFollowupId
@@ -407,26 +376,10 @@ onMounted(() => run(load));
           Nouvelle visite après la visite non tenue n° {{ previousVisit.id }}. L’ancienne visite et
           son résultat sont conservés.
         </p>
-        <template v-if="!editing"
-          ><label v-if="representatives.length"
-            >Représentant chargé de la visite<select
-              v-model="representative"
-              :required="role === 'client' && representatives.length > 1"
-            >
-              <option value="">
-                {{ role === 'client' ? 'Choisir un représentant' : 'À désigner par le client' }}
-              </option>
-              <option v-for="person in representatives" :key="person.id" :value="String(person.id)">
-                {{ person.name }}
-              </option>
-            </select></label
-          >
-          <p v-else-if="representativesReady">
-            Aucun représentant configuré. Le client pourra attribuer la visite ultérieurement.
-          </p>
+        <template v-if="!editing">
           <p>
-            L’agenda et les créneaux sont ceux du client Isolation. Le représentant est affecté à la
-            visite, sans agenda personnel connecté.
+            L’agenda et les créneaux sont ceux du client Isolation, qui assure le suivi de la
+            visite.
           </p>
           <label v-if="clientFollowupId"
             >Courriel du prospect<input
@@ -483,14 +436,7 @@ onMounted(() => run(load));
           </select></label
         ><label v-if="editing"
           >Motif du report<textarea v-model="reason" required maxlength="1000"></textarea></label
-        ><button
-          class="primary"
-          :disabled="
-            !editing &&
-            (!representativesReady ||
-              (role === 'client' && representatives.length > 1 && !representative))
-          "
-        >
+        ><button class="primary">
           {{ editing ? 'Confirmer le report' : 'Programmer la visite' }}</button
         ><button
           v-if="editing"
@@ -642,18 +588,9 @@ onMounted(() => run(load));
               {{ row.c2_snapshot?.fields?.postal_code }}
             </dd>
           </div>
-          <div>
-            <dt>Représentant</dt>
-            <dd>{{ row.closer?.name || 'À désigner' }}</dd>
-            <button
-              v-if="['client', 'administrator'].includes(role) && row.status === 'scheduled'"
-              class="iso-text-link"
-              :disabled="busy"
-              @click="assigning = row"
-            >
-              {{ row.closer ? 'Modifier le représentant' : 'Désigner un représentant' }}
-              <ArrowUpRight :size="12" />
-            </button>
+          <div v-if="row.closer">
+            <dt>Ancien représentant · historique</dt>
+            <dd>{{ row.closer.name }}</dd>
           </div>
           <div>
             <dt>Setter à la réservation</dt>
@@ -850,18 +787,6 @@ onMounted(() => run(load));
         "
       />
     </SidePanel>
-    <IsolationCloserAssignment
-      v-if="assigning"
-      :key="assigning.id"
-      :visit="assigning"
-      :request="request"
-      :portal="portal"
-      @busy="busy = $event"
-      @saved="
-        assigning = null;
-        run(load);
-      "
-    />
     <section v-if="sharedActivities">
       <IsolationSharedActivities
         :key="sharedActivities.id"

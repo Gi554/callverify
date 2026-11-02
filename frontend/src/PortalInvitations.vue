@@ -27,7 +27,6 @@ const roleLabels: Record<string, string> = {
   administrator: 'Administrateur',
   advisor: 'Conseiller',
   client: 'Client',
-  closer: 'Closer',
 };
 function cancel() {
   composing.value = false;
@@ -147,10 +146,7 @@ onMounted(load);
             <option value="setter">Setter</option>
             <option value="administrator">Administrateur</option>
             <option v-if="space === 'assurance'" value="advisor">Conseiller</option>
-            <template v-else
-              ><option value="client">Client</option>
-              <option value="closer">Closer</option></template
-            >
+            <template v-else><option value="client">Client</option> </template>
           </select></label
         ><label v-if="form.role === 'advisor'"
           >Nombre de prospects à fournir<input

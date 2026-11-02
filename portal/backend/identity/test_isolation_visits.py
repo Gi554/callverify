@@ -38,20 +38,13 @@ class IsolationVisitProofTests(TestCase):
         self.client.force_authenticate(self.admin)
         self.assertEqual(self.post().status_code, 200)
 
-    def test_booking_can_attest_an_active_representative_but_not_an_arbitrary_role(self):
-        closer = get_user_model().objects.create_user('representative')
-        membership = Membership.objects.create(user=closer, workspace='isolation', role='closer')
-        self.assertEqual(self.client.get('/api/portal/isolation/closers/').status_code, 200)
-        response = self.post(closer_id=closer.pk)
-        self.assertEqual(response.status_code, 200, response.data)
-        self.assertEqual(
-            verify_booking(response.data['proof'], self.setter.pk, 12)['closer'],
-            {'id': closer.pk, 'name': closer.username},
-        )
-        self.assertEqual(self.post(closer_id=self.setter.pk).status_code, 400)
-        membership.active = False
-        membership.save()
-        self.assertEqual(self.post(closer_id=closer.pk).status_code, 400)
+    def test_booking_rejects_the_retired_representative_field(self):
+        self.assertEqual(self.client.get('/api/portal/isolation/closers/').data['count'], 0)
+        response = self.post(closer_id=self.setter.pk)
+        self.assertEqual(response.status_code, 400)
+        response = self.post()
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('closer', verify_booking(response.data['proof'], self.setter.pk, 12))
 
     def test_no_client_or_multiple_active_clients_require_configuration(self):
         self.client_access.active = False
