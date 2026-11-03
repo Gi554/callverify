@@ -1,6 +1,7 @@
 import time
 from django.core.management.base import BaseCommand, CommandError
 from ...isolation_mail import sync
+from ...isolation_sms import sync as sync_sms
 
 
 class Command(BaseCommand):
@@ -24,6 +25,14 @@ class Command(BaseCommand):
                             'Mail relay failed; verify service, key and configuration'
                         ) from None
                     self.stderr.write('Mail relay unavailable; retry scheduled')
+                try:
+                    sync_sms()
+                except Exception:
+                    if not options['loop']:
+                        raise CommandError(
+                            'SMS relay failed; verify service and configuration'
+                        ) from None
+                    self.stderr.write('SMS relay unavailable; retry scheduled')
                 if not options['loop']:
                     break
                 time.sleep(options['interval'])

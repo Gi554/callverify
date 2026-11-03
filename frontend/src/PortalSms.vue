@@ -6,6 +6,7 @@ type Attempt = {
   destination: string;
   caller_id: string;
   state: string;
+  kind: string;
   created_at: string;
 };
 const props = defineProps<{ request: (path: string, body?: unknown) => Promise<any> }>();
@@ -19,6 +20,11 @@ const requestId = ref('');
 const current = ref<Attempt | null>(null);
 const busy = ref(false);
 const error = ref('');
+const kinds: Record<string, string> = {
+  manual: 'Manuel',
+  confirmation: 'Confirmation',
+  reminder: 'Rappel',
+};
 const labels: Record<string, string> = {
   dispatching: 'En cours',
   accepted: 'Accepté par NEWT',
@@ -122,7 +128,7 @@ onMounted(refresh);
     <ul v-else>
       <li v-for="row in history" :key="row.request_id">
         {{ format.format(new Date(row.created_at)) }} · {{ row.destination }} ·
-        {{ labels[row.state] }}
+        {{ kinds[row.kind] || kinds.manual }} · {{ labels[row.state] }}
       </li>
     </ul>
   </section>

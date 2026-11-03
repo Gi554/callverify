@@ -1,3 +1,4 @@
+from core import isolation_sms
 from core.isolation_search import results as admin_search
 from core.isolation_performance import own as setter_performance
 from core.isolation_payable import appointments as payable_appointments
@@ -98,6 +99,7 @@ from core import isolation_reminders
 
 urlpatterns += [
     path('api/isolation-reminder-policy/', isolation_reminders.configuration),
+    path('api/internal/isolation/sms-visits/', isolation_sms.visits),
     path('api/internal/isolation/mail-events/', isolation_reminders.mail_events),
     path(
         'api/internal/isolation/mail-events/<int:pk>/<int:user_id>/',

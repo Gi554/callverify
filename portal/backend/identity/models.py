@@ -375,7 +375,8 @@ class GeneratedReport(models.Model):
 
 class SmsAttempt(models.Model):
     request_id = models.UUIDField(primary_key=True)
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True)
+    kind = models.CharField(max_length=16, default='manual')
     correlation = models.CharField(max_length=10, unique=True)
     destination = models.CharField(max_length=10)
     caller_id = models.CharField(max_length=10)
