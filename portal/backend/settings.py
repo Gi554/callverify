@@ -135,3 +135,6 @@ NEWT_AUTO_ANSWER = os.getenv('NEWT_AUTO_ANSWER', 'false').lower() == 'true'
 if os.getenv('TRUST_PROXY', 'false').lower() == 'true':
     # Behind Caddy, throttles must count the visitor (last X-Forwarded-For hop), not the proxy.
     REST_FRAMEWORK['NUM_PROXIES'] = 1
+
+NEWT_SMS_ENABLED = os.getenv('NEWT_SMS_ENABLED', 'false').lower() == 'true'
+NEWT_SMS_CALLER_ID = os.getenv('NEWT_SMS_CALLER_ID', '')

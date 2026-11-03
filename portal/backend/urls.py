@@ -212,3 +212,7 @@ urlpatterns += [
         generated_reports.download,
     ),
 ]
+
+from .identity.newt_sms import messages as newt_sms_messages
+
+urlpatterns += [path('api/portal/isolation/sms/', newt_sms_messages)]

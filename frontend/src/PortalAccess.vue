@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import PortalInvitations from './PortalInvitations.vue';
 import PortalPhoneExtensions from './PortalPhoneExtensions.vue';
+import PortalSms from './PortalSms.vue';
 import PortalCallRules from './PortalCallRules.vue';
 import PortalAccessHistory from './PortalAccessHistory.vue';
 import SidePanel from './SidePanel.vue';
@@ -11,6 +12,7 @@ const sections = [
   { key: 'invitations', label: 'Invitations' },
   { key: 'phone', label: 'Postes téléphoniques' },
   { key: 'rules', label: 'Règles d’appel' },
+  { key: 'sms', label: 'SMS NEWT' },
   { key: 'history', label: 'Journal des accès' },
 ];
 import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight, Trash2 } from 'lucide-vue-next';
@@ -174,7 +176,7 @@ onMounted(load);
     </header>
     <nav class="access-navigation" aria-label="Rubriques de l’administration">
       <button
-        v-for="section in sections"
+        v-for="section in sections.filter((item) => item.key !== 'sms' || space === 'isolation')"
         :key="section.key"
         :aria-current="activeSection === section.key ? 'page' : undefined"
         :disabled="busy"
@@ -408,6 +410,9 @@ onMounted(load);
         v-else-if="activeSection === 'rules'"
         :key="'rules-' + space"
         :space="space"
+        :request="request"
+      /><PortalSms
+        v-else-if="activeSection === 'sms' && space === 'isolation'"
         :request="request"
       /><PortalInvitations
         v-else-if="activeSection === 'invitations'"

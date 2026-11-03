@@ -371,3 +371,14 @@ class GeneratedReport(models.Model):
                 name='report_positive_period',
             )
         ]
+
+
+class SmsAttempt(models.Model):
+    request_id = models.UUIDField(primary_key=True)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    correlation = models.CharField(max_length=10, unique=True)
+    destination = models.CharField(max_length=10)
+    caller_id = models.CharField(max_length=10)
+    fingerprint = models.CharField(max_length=64)
+    state = models.CharField(max_length=12, default='dispatching')
+    created_at = models.DateTimeField(auto_now_add=True)
