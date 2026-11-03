@@ -9,6 +9,11 @@ Le journal conserve le destinataire, l’expéditeur, la date, le demandeur et l
 
 Activation par NEWT_SMS_ENABLED et NEWT_SMS_CALLER_ID, avec les identifiants NEWT déjà utilisés côté portail. L’envoi est désactivé par défaut. La vérification sur un téléphone réel reste à faire avec un CID du PBX et un destinataire de test. Les SMS automatiques de confirmation et de rappel restent à réaliser.
 
+## Isolation : les rendez-vous présentés non closés rejoignent les « clients à rappeler »
+
+Conformément aux règles du client, quand le commercial enregistre un rendez-vous « présenté » sans vente conclue, le prospect apparaît dans sa liste « Relances personnelles du client » avec le motif « Présenté, non closé : suivi à effectuer » (sans date de rappel imposée ; le commercial peut en fixer une et reprogrammer une visite depuis cette liste). Quand il passe le rendez-vous à « closé », la relance se ferme d’elle-même et rien de nouveau n’est créé. Un rendez-vous présenté et déjà closé, ou non qualifié, n’entre pas dans la liste. Un prospect en relance quitte la file active du setter, comme pour les absents relancés par le client. Cette liste n’influence en rien le décompte des rendez-vous payables : un rendez-vous reste compté une seule fois, dans la semaine de confirmation de sa présence.
+
+Limites : les rendez-vous déjà enregistrés avant cette livraison n’entrent dans la liste qu’à leur prochaine modification ; correction possible du résultat même si une nouvelle visite a été programmée depuis la relance ; aucun e-mail de notification (l’alerte de l’administrateur reste dans le Centre d’alertes) ; non vérifié à l’écran.
 
 ## Retrait du rôle Closer Isolation — setters conservés
 
