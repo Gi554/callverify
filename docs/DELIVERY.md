@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Fin du suivi financier : plus aucun calcul de tarif, de paiement ni de solde
+
+Le point 5 de la demande du client est terminé. **Retiré** : le rapport « Rémunérations et soldes » du module Rapports (PDF/Excel) et la colonne « Gains de période » du rapport « Performance des agents » ; le tarif individuel figé à chaque enregistrement de résultat (Assurance : conseiller et administrateur ; Isolation : client), la mise à jour des comptes de paiement et de leurs ajustements à chaque validation ou annulation ; les routes d’API de rémunération (`/payroll/`, `/compensation/`, `/isolation-compensation/`) et la preuve portail de tarif ; le code correspondant (calculs de tarifs, de soldes, de paiements, exports financiers) et ses tests. **Aligné** : le panneau « Mes rendez-vous payables de la semaine » de l’accueil Isolation et le compteur payable des statistiques du setter lisent désormais le même registre que l’écran de rémunération (semaine de confirmation, catégorie figée) ; un seul crédit de présence par dossier (un rendez-vous relancé du même dossier n’est pas payé deux fois), y compris dans la reprise des données existantes. **Conservé** : les données déjà enregistrées (comptes, tarifs, paiements, ajustements, montants figés sur les résultats) restent en base, intactes et sans écran ; les anciens rapports déjà générés restent téléchargeables ; les rapports financiers programmés ne sont plus produits.
+
+Limites : l’audit des anciens paiements reste dans le journal d’audit ; aucun e-mail pour la notification administrateur ; non vérifié à l’écran par moi ; suppression éventuelle des tables financières (migration destructive) à décider plus tard.
+
 
 ## SMS automatiques des visites Isolation
 

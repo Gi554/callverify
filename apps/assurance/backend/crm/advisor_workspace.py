@@ -265,9 +265,6 @@ class AdvisorWorkspaceMixin:
                                 'after': deadline.isoformat(),
                             },
                         )
-            from .compensation import capture
-
-            capture(report, appointment, request.user.pk)
             if before is None or before['performed'] != report.performed:
                 from .appointment_notifications import notify_attendance
 

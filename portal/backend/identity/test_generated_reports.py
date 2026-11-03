@@ -27,7 +27,7 @@ class ReportTests(TestCase):
         self.url = '/api/portal/assurance/reports/'
         self.body = {
             'request_id': str(uuid4()),
-            'kind': 'financial',
+            'kind': 'performance',
             'starts_on': '2026-10-26',
             'ends_on': '2026-11-01',
         }
@@ -43,8 +43,8 @@ class ReportTests(TestCase):
             'kind': job.kind,
             'from': str(job.starts_on),
             'to': str(job.ends_on),
-            'headers': ['Setter', 'Gains de période (CAD)'],
-            'rows': [['=Texte fourni', '75.00']],
+            'headers': ['Setter', 'Tenus'],
+            'rows': [['=Texte fourni', '3']],
             'definition': 'Données fictives. Heure du Québec.',
         }
 
@@ -69,17 +69,17 @@ class ReportTests(TestCase):
             workspace='assurance', enabled=True, hour=19, actor_id=self.admin.pk
         )
         now = datetime(2026, 11, 2, 19, 0, tzinfo=ZoneInfo('America/Toronto'))
-        self.assertEqual(schedule(now), 6)
+        self.assertEqual(schedule(now), 4)
         self.assertEqual(schedule(now), 0)
         week = GeneratedReport.objects.get(cadence='weekly', kind='performance')
         self.assertEqual(str(week.starts_on), '2026-10-26')
         self.assertEqual(str(week.ends_on), '2026-11-01')
-        self.assertEqual(AccessAudit.objects.filter(action='report.requested').count(), 6)
+        self.assertEqual(AccessAudit.objects.filter(action='report.requested').count(), 4)
         self.assertEqual(
             schedule(datetime(2026, 12, 1, 18, 0, tzinfo=ZoneInfo('America/Toronto'))), 0
         )
         self.assertEqual(
-            schedule(datetime(2026, 12, 1, 19, 0, tzinfo=ZoneInfo('America/Toronto'))), 6
+            schedule(datetime(2026, 12, 1, 19, 0, tzinfo=ZoneInfo('America/Toronto'))), 4
         )
 
     def test_manual_idempotency_frozen_files_and_download_scope(self):
@@ -98,7 +98,7 @@ class ReportTests(TestCase):
         self.assertTrue(bytes(job.pdf_data).startswith(b'%PDF-'))
         book = load_workbook(BytesIO(bytes(job.xlsx_data)))
         self.assertEqual(book.active['A7'].data_type, 's')
-        self.assertEqual(book.active['B7'].value, 75)
+        self.assertEqual(book.active['B7'].value, '3')
         path = f'{self.url}{job.pk}/download/pdf/'
         self.assertEqual(self.client.get(path).status_code, 200)
         excel = self.client.get(f'{self.url}{job.pk}/download/xlsx/')
@@ -190,34 +190,19 @@ class ReportTests(TestCase):
                 'results': [{'setter_id': self.setter.pk, 'setter_name': 'Setter', **totals}],
             },
         }
-        earned = {
-            'agent_id': self.setter.pk,
-            'agent_name': 'Setter',
-            'period': {'amount_cad': '75.00', 'attendance': 15, 'sale_bonus_cad': '0.00'},
-            'generated_cad': '200.00',
-            'paid_cad': '100.00',
-            'to_pay_cad': '100.00',
-            'to_regularize_cad': '0.00',
-            'unpriced': 0,
-        }
 
         def source(workspace, actor, path, params):
             self.assertEqual(workspace, 'assurance')
             self.assertEqual(actor, self.admin.pk)
-            return {'results': [earned]} if path == 'payroll/' else stats
+            self.assertNotEqual(path, 'payroll/')
+            return stats
 
         with patch('portal.backend.identity.report_sources.business', side_effect=source):
             data = snapshot(job)
             row = dict(zip(data['headers'], data['rows'][0]))
             self.assertEqual(row['Acceptés par le poste'], 1)
             self.assertEqual(row['Prospects joints'], 'Non disponible')
-            self.assertEqual(row['Gains de période (CAD)'], '75.00')
-            job.kind = 'financial'
-            data = snapshot(job)
-            row = dict(zip(data['headers'], data['rows'][0]))
-            self.assertEqual(row['Gains cumulés (CAD)'], '200.00')
-            self.assertEqual(row['Déjà payé cumulé (CAD)'], '100.00')
-            self.assertEqual(row['Gains de la période (CAD)'], '75.00')
+            self.assertFalse([name for name in data['headers'] if 'CAD' in name or 'Gains' in name])
 
     def test_campaign_report_filters_each_campaign_and_retains_the_whole_space_total(self):
         from .report_sources import snapshot

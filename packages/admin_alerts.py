@@ -208,7 +208,7 @@ def center(store, request):
                 defaults={'kind': kind, 'actor_id': request.user.pk, 'note': values['note']},
             )
             if created:
-                store.Payroll.audit(
+                store.Roster.audit(
                     request.user.pk,
                     int(found['reference']),
                     'alert_reviewed',

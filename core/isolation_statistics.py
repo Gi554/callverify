@@ -182,7 +182,7 @@ def statistics(request):
         result['overdue_callbacks'] = tasks.filter(due_at__lte=now).count()
         result['applied_filters'] = selected
     if request.user.role == 'setter':
-        from .isolation_compensation import setter_payable
+        from .isolation_payable import setter_payable
 
         result['payable'] = setter_payable(request.user.pk, {'from': str(start), 'to': str(end)})
     if not kind:

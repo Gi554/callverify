@@ -42,7 +42,6 @@ router.register('isolation-notices', Notices, basename='isolation-notice')
 from core.isolation_unqualified import Unqualified
 
 router.register('isolation-unqualified', Unqualified, basename='isolation-unqualified')
-from core import isolation_compensation
 
 urlpatterns = [
     path('api/admin-search/', admin_search),
@@ -73,11 +72,6 @@ urlpatterns += [
 urlpatterns += [path('api/webhooks/twilio/amd/', views.voice_webhook)]
 urlpatterns += [path('api/workspace-dashboard/', workspace_dashboard)]
 urlpatterns += [path('api/client-dashboard/', client_dashboard)]
-urlpatterns += [
-    path('api/isolation-compensation/', isolation_compensation.summary),
-    path('api/isolation-compensation/rates/', isolation_compensation.rates),
-    path('api/isolation-compensation/value/', isolation_compensation.value_missing),
-]
 urlpatterns += [path('api/workspace-statistics/', isolation_statistics)]
 from core.client_folders import clients as client_folders, export_client
 
@@ -105,14 +99,4 @@ urlpatterns += [
         'api/internal/isolation/mail-events/<int:pk>/<int:user_id>/',
         isolation_reminders.mail_eligible,
     ),
-]
-
-from core import payroll as isolation_payroll
-
-urlpatterns += [
-    path('api/payroll/', isolation_payroll.overview),
-    path('api/payroll/<int:agent>/', isolation_payroll.overview),
-    path('api/payroll/<int:agent>/terms/', isolation_payroll.terms),
-    path('api/payroll/<int:agent>/terms/<int:pk>/', isolation_payroll.terms),
-    path('api/payroll/<int:agent>/payments/', isolation_payroll.payment),
 ]

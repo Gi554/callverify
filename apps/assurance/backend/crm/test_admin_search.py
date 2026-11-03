@@ -3,14 +3,14 @@ from uuid import uuid4
 from io import BytesIO
 from django.test import TestCase, override_settings
 from openpyxl import load_workbook
-from . import test_payroll as fixtures
+from .payable_fixtures import AppointmentFixture
 from .models import Appointment
 
 
 @override_settings(DEBUG=True)
 class SearchTests(TestCase):
-    setUp = fixtures.PayrollTests.setUp
-    auth = fixtures.PayrollTests.auth
+    setUp = AppointmentFixture.setUp
+    auth = AppointmentFixture.auth
 
     def test_same_row_filters_and_export_permissions(self):
         row = Appointment.objects.get(pk=self.appointment.pk)

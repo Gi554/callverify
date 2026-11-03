@@ -1,5 +1,5 @@
 from django.test import TestCase, override_settings
-from .test_payroll import PayrollTests as Fixtures
+from .payable_fixtures import AppointmentFixture as Fixtures
 from .models import SetterAlertReview, BusinessAudit
 
 

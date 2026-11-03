@@ -181,8 +181,8 @@ onBeforeUnmount(() => version++);
             />
           </label>
           <p>
-            Cette action ne modifie ni le rendez-vous, ni la tâche, ni le paiement. Corrigez ensuite
-            le dossier concerné dans son module habituel.
+            Cette action ne modifie ni le rendez-vous, ni la tâche, ni le décompte des rendez-vous
+            payables. Corrigez ensuite le dossier concerné dans son module habituel.
           </p>
           <button class="primary" :disabled="busy || !note.trim()">
             Marquer comme pris en charge

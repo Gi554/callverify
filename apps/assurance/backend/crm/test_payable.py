@@ -2,7 +2,7 @@ from datetime import datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 from django.test import TestCase, override_settings
-from . import test_compensation as fixtures
+from .payable_fixtures import AppointmentFixture
 from .models import AppointmentReport, PayableEntry, PayableHistory
 
 ZONE = ZoneInfo('America/Toronto')
@@ -18,8 +18,8 @@ def at(day, hour=12):
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
 class PayableAppointmentsTests(TestCase):
-    setUp = fixtures.CompensationTests.setUp
-    auth = fixtures.CompensationTests.auth
+    setUp = AppointmentFixture.setUp
+    auth = AppointmentFixture.auth
 
     def get(self, first=2, last=8, **params):
         query = {'from': f'2026-11-{first:02d}', 'to': f'2026-11-{last:02d}', **params}

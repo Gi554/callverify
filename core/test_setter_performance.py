@@ -1,20 +1,17 @@
 from django.test import TestCase, override_settings
 from packages.quebec_period import ZONE
-from . import test_isolation_payroll as fixtures
 from .models import Prospect
+from .visit_fixtures import VisitFixture
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
 class PerformanceTests(TestCase):
-    setUp = fixtures.PayrollTests.setUp
-    auth = fixtures.PayrollTests.auth
-    terms = fixtures.PayrollTests.terms
-    token = fixtures.PayrollTests.token
-    report = fixtures.PayrollTests.report
-    payload = fixtures.PayrollTests.payload
+    setUp = VisitFixture.setUp
+    auth = VisitFixture.auth
+    report = VisitFixture.report
+    payload = VisitFixture.payload
 
     def test_original_setter_credits_and_series_survive_current_reassignment(self):
-        self.terms()
         self.auth(72, 'client')
         self.assertEqual(self.report(closed=True).status_code, 201)
         Prospect.objects.filter(pk=self.visit.prospect_id).update(assigned_setter_id=22)
@@ -27,6 +24,7 @@ class PerformanceTests(TestCase):
         self.assertEqual(data['totals']['held'], 1)
         self.assertEqual(data['totals']['closed'], 1)
         self.assertEqual(len(data['daily']), 1)
+        self.assertNotIn('generated_cad', data['totals'])
         self.assertEqual(self.client.get('/api/setter-performance/22/').status_code, 403)
         self.auth(72, 'client')
         self.assertEqual(self.client.get('/api/setter-performance/').status_code, 403)

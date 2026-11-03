@@ -1,13 +1,39 @@
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from packages import admin_alerts
+import json
 from . import models
-from .payroll import Store as Payroll
 from .isolation_work import WorkAuthentication
 
 
+class Roster:
+    """Setters known to Isolation, and the audit line written when an alert is reviewed."""
+
+    @staticmethod
+    def roster():
+        names = dict(models.IsolationSetterRate.objects.values_list('setter_id', 'setter_name'))
+        names.update(
+            dict(
+                models.IsolationVisit.objects.order_by('pk').values_list('setter_id', 'setter_name')
+            )
+        )
+        return names
+
+    @staticmethod
+    def audit(actor, agent, action, data):
+        models.AuditEvent.objects.create(
+            action='isolation.payroll.' + action,
+            object_id=str(agent),
+            metadata={
+                'actor_portal_id': actor,
+                'setter_id': agent,
+                **json.loads(json.dumps(data, default=str)),
+            },
+        )
+
+
 class Store:
-    Payroll = Payroll
+    Roster = Roster
     Meeting = models.IsolationVisit
     Contact = models.Prospect
     Task = models.IsolationFollowUp

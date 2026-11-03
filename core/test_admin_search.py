@@ -3,14 +3,14 @@ from uuid import uuid4
 from io import BytesIO
 from django.test import TestCase, override_settings
 from openpyxl import load_workbook
-from . import test_isolation_payroll as fixtures
+from .visit_fixtures import VisitFixture
 from .models import IsolationVisit, Prospect, AuditEvent
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
 class SearchTests(TestCase):
-    setUp = fixtures.PayrollTests.setUp
-    auth = fixtures.PayrollTests.auth
+    setUp = VisitFixture.setUp
+    auth = VisitFixture.auth
 
     def test_combined_filters_must_match_the_same_appointment_and_exports_match(self):
         self.auth(90, 'administrator')

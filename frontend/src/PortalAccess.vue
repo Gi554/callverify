@@ -435,10 +435,9 @@ onMounted(load);
           vous souhaitez seulement bloquer temporairement son accès.
         </p>
         <p>
-          Les fiches, rendez-vous, appels, paiements et historiques restent conservés. Si ce compte
-          possède un accès dans un autre espace, celui-ci est conservé. Ses connexions d’agenda pour
-          cet espace sont désactivées ; les événements déjà présents dans l’agenda ne sont pas
-          annulés.
+          Les fiches, rendez-vous, appels et historiques restent conservés. Si ce compte possède un
+          accès dans un autre espace, celui-ci est conservé. Ses connexions d’agenda pour cet espace
+          sont désactivées ; les événements déjà présents dans l’agenda ne sont pas annulés.
         </p>
         <label
           >Motif de suppression<textarea

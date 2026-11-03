@@ -193,9 +193,6 @@ class ReportMixin:
                 author_id=request.user.pk,
                 **{key: data[key] for key in ('performed', 'outcome', 'problem', 'note')},
             )
-            from .compensation import capture
-
-            capture(row, appointment, request.user.pk)
             if not row.performed or row.problem:
                 rules = policy()
                 task = FollowUpTask.objects.create(

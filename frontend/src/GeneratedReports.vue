@@ -16,7 +16,6 @@ const day = new Intl.DateTimeFormat('en-CA', {
 const kinds: Record<string, string> = {
   performance: 'Performance des agents',
   campaigns: 'Campagnes et lots',
-  financial: 'Rémunérations et soldes',
 };
 const cadence: Record<string, string> = {
   manual: 'À la demande',
@@ -167,7 +166,7 @@ onBeforeUnmount(() => {
   <div class="iso-page generated-reports">
     <IsolationPageHeader
       title="Rapports"
-      subtitle="Vos rapports de performance, de campagnes et de rémunération, en PDF et Excel."
+      subtitle="Vos rapports de performance et de campagnes, en PDF et Excel."
       :eyebrow="'ADMINISTRATION · ' + workspace.toUpperCase()"
       :busy="busy"
       @refresh="load"
@@ -217,7 +216,7 @@ onBeforeUnmount(() => {
       </header>
       <article v-for="row in rows" :key="row.id" class="report-row">
         <div>
-          <strong>{{ kinds[row.kind] }}</strong>
+          <strong>{{ kinds[row.kind] || row.kind }}</strong>
           <p>{{ row.starts_on }} → {{ row.ends_on }} · {{ cadence[row.cadence] }}</p>
           <span :class="['report-state', row.state]">{{ state(row) }}</span
           ><small

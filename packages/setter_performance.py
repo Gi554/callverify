@@ -13,7 +13,7 @@ def performance(store, request, agent=None):
         raise PermissionDenied('Performance réservée aux setters et administrateurs.')
     if request.user.role == 'setter' and agent is not None and agent != request.user.pk:
         raise PermissionDenied('Votre performance uniquement.')
-    names = store.Payroll.roster()
+    names = store.Roster.roster()
     assigned = store.Contact.objects.exclude(assigned_setter_id=None)
     if request.user.role == 'setter':
         assigned = assigned.filter(assigned_setter_id=request.user.pk)
