@@ -24,7 +24,7 @@ def week_of(moment):
     return day - timedelta(days=day.weekday())
 
 
-def connect(result_model, entry_model, history_model, parent, split_sales=False):
+def connect(result_model, entry_model, history_model, parent, split_sales=False, process=None):
     """Keep the ledger in step with every saved result, whichever screen recorded it."""
 
     def before(sender, instance, **kwargs):
@@ -61,6 +61,21 @@ def connect(result_model, entry_model, history_model, parent, split_sales=False)
 
         if instance.performed:
             extra = {'closed_at_count': closed} if split_sales else {}
+            if (
+                entry is None
+                and process
+                and (
+                    entry_model.objects.filter(
+                        **{f'{parent}__{process}': getattr(item, process)},
+                        withdrawn_at__isnull=True,
+                    )
+                    .exclude(**{parent: item})
+                    .exists()
+                )
+            ):
+                # One presence credit per process: a further visit of the same prospect
+                # process (reschedule, relaunch) is a new occurrence, never a second payment.
+                return
             if entry is None:
                 entry = entry_model.objects.create(
                     **{parent: item},

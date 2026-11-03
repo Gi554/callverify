@@ -12,8 +12,18 @@ def backfill(apps, schema_editor):
     Result = apps.get_model('core', 'IsolationVisitResult')
     Entry = apps.get_model('core', 'PayableEntry')
     alias = schema_editor.connection.alias
-    rows = []
-    for result in Result.objects.using(alias).filter(performed=True).select_related('visit'):
+    rows, seen = [], set()
+    # One presence credit per process: the earliest confirmed visit of each process.
+    ordered = (
+        Result.objects.using(alias)
+        .filter(performed=True)
+        .select_related('visit')
+        .order_by('created_at', 'pk')
+    )
+    for result in ordered:
+        if result.visit.process_id in seen:
+            continue
+        seen.add(result.visit.process_id)
         day = result.created_at.astimezone(ZONE).date()
         rows.append(
             Entry(

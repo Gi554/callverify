@@ -502,5 +502,10 @@ class PayableHistory(models.Model):
 from packages.payable_ledger import connect as _connect_payable_ledger  # noqa: E402
 
 _connect_payable_ledger(
-    IsolationVisitResult, PayableEntry, PayableHistory, 'visit', split_sales=True
+    IsolationVisitResult,
+    PayableEntry,
+    PayableHistory,
+    'visit',
+    split_sales=True,
+    process='process_id',
 )

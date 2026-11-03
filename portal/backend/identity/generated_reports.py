@@ -23,7 +23,6 @@ from .report_sources import snapshot
 KINDS = {
     'performance': 'Performance des agents',
     'campaigns': 'Campagnes et lots',
-    'financial': 'Rémunérations et soldes',
 }
 MAX_BYTES = 10_000_000
 
@@ -129,7 +128,7 @@ def xlsx(data):
     book = Workbook()
     sheet = book.active
     sheet.title = 'Rapport'
-    sheet.append(['ORVIA CRM', KINDS[data['kind']]])
+    sheet.append(['ORVIA CRM', KINDS.get(data['kind'], data['kind'])])
     sheet.append(['Espace', data['workspace']])
     sheet.append(['Du (Québec)', data['from']])
     sheet.append(['Au inclus (Québec)', data['to']])
@@ -181,7 +180,7 @@ def generate(job):
         if not updated:
             return False
         pdf = document(
-            KINDS[job.kind],
+            KINDS.get(job.kind, job.kind),
             data['headers'],
             data['rows'],
             f"{job.workspace.upper()} - Du {job.starts_on} au {job.ends_on}. {data['definition']}",

@@ -282,9 +282,6 @@ class ResultMixin:
             from .isolation_notices import result_changed
 
             result_changed(visit, row, before, request.user)
-            from .isolation_compensation import capture
-
-            capture(visit, row, request.user.pk)
             AuditEvent.objects.create(
                 action='isolation.visit.result_recorded',
                 object_id=str(visit.pk),

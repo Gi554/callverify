@@ -1,7 +1,7 @@
 from copy import copy
 from uuid import uuid4
 from django.test import TestCase, override_settings
-from .test_isolation_payroll import PayrollTests as Fixtures
+from .visit_fixtures import VisitFixture as Fixtures
 from .models import IsolationVisit, IsolationAlertReview
 
 

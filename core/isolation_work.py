@@ -285,7 +285,7 @@ class WorkViewSet(
 @permission_classes([IsAuthenticated])
 def dashboard(request):
     qs = visible(request.user)
-    from .isolation_compensation import setter_payable
+    from .isolation_payable import setter_payable
 
     return Response(
         {
