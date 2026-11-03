@@ -1,5 +1,15 @@
 # Suivi des livraisons CRM AMX
 
+
+## SMS manuel NEWT 261 — administration Isolation
+
+L’onglet SMS NEWT permet à un administrateur Isolation d’envoyer explicitement un SMS à un numéro nord-américain à dix chiffres. Le serveur utilise un seul CID configuré et associé au PBX. Le message conserve les caractères accentués, espaces et retours à la ligne dans la requête. Le formulaire accepte jusqu’à 1 600 caractères.
+
+Le journal conserve le destinataire, l’expéditeur, la date, le demandeur et l’état de la demande. Le texte du SMS n’y est pas conservé. La réponse est rapprochée du destinataire, du CID et de l’identifiant envoyé dans _t. Un succès confirme l’acceptation par NEWT. Une réponse manquante ou incohérente donne un état incertain. Rejouer la même demande ne renvoie pas le message.
+
+Activation par NEWT_SMS_ENABLED et NEWT_SMS_CALLER_ID, avec les identifiants NEWT déjà utilisés côté portail. L’envoi est désactivé par défaut. La vérification sur un téléphone réel reste à faire avec un CID du PBX et un destinataire de test. Les SMS automatiques de confirmation et de rappel restent à réaliser.
+
+
 ## Retrait du rôle Closer Isolation — setters conservés
 
 Le rôle Closer est retiré des accès et des invitations. Son espace, les routes de compte rendu Closer, l’attribution d’un closer et les sélections correspondantes à la réservation et dans l’agenda d’équipe sont supprimés. Les setters restent le rôle de prospection et de réservation ; le client Isolation conserve ses dossiers, son agenda, les visites et la saisie/correction des résultats. Une réservation utilise directement le client et son agenda, sans annuaire ni choix de représentant.
