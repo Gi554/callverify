@@ -1,6 +1,16 @@
 # Suivi des livraisons CRM AMX
 
 
+## SMS automatiques des visites Isolation
+
+Le relais Isolation transmet au numéro du prospect une confirmation après validation de la visite, puis un rappel dans les 24 heures qui la précèdent si elle avait été réservée au moins 24 heures à l’avance. L’heure indiquée est celle du Québec. Les visites publiées sur Google attendent une publication confirmée. Une visite annulée, passée, sans numéro valide ou créée avant la date d’activation est ignorée. Une nouvelle date constitue un nouveau créneau.
+
+Chaque demande est journalisée avec son type. La demande est enregistrée avant l’appel NEWT et un même créneau ne reçoit qu’une tentative par type. Le relais revérifie le rendez-vous avant l’envoi. Une réponse incertaine ne donne pas lieu à une relance automatique. L’activation nécessite NEWT_SMS_ENABLED, un CID PBX valide et une date NEWT_SMS_AUTOMATIC_FROM avec fuseau. Aucun rattrapage des visites d’avant activation.
+
+Tests sur le flux signé, les annulations, la publication en attente, les numéros invalides et la déduplication. La recette réelle a confirmé Success avec le bon identifiant et les deux numéros dans l’ordre CID puis destinataire. Le parseur vérifie les deux ordres avec les mêmes valeurs exactes. Réception sur le téléphone de test à confirmer. Le parcours concerne les visites Isolation et les SMS destinés au prospect.
+
+
+
 ## SMS manuel NEWT 261 — administration Isolation
 
 L’onglet SMS NEWT permet à un administrateur Isolation d’envoyer explicitement un SMS à un numéro nord-américain à dix chiffres. Le serveur utilise un seul CID configuré et associé au PBX. Le message conserve les caractères accentués, espaces et retours à la ligne dans la requête. Le formulaire accepte jusqu’à 1 600 caractères.

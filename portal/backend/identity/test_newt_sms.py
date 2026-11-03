@@ -71,6 +71,16 @@ class SmsTests(TestCase):
         response.iter_content.return_value = [b'Failure,5145550101,5145550100,expected,,,']
         self.assertEqual(send(*args), 'rejected')
 
+    @patch('packages.newt.sms.requests.post')
+    def test_observed_reversed_fields_require_both_exact_numbers_and_request(self, post):
+        response = post.return_value.__enter__.return_value
+        response.status_code = 200
+        args = ('user', 'password', '4387388944', '4387388939', 'Test', 'expected')
+        response.iter_content.return_value = [b'Success,4387388939,4387388944,expected,,,']
+        self.assertEqual(send(*args), 'accepted')
+        response.iter_content.return_value = [b'Success,4387388939,4387388999,expected,,,']
+        self.assertEqual(send(*args), 'unknown')
+
     @patch('packages.newt.sms.send')
     def test_disabled_and_unauthorized_never_submit(self, dispatch):
         with self.settings(NEWT_SMS_ENABLED=False):

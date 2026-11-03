@@ -138,3 +138,5 @@ if os.getenv('TRUST_PROXY', 'false').lower() == 'true':
 
 NEWT_SMS_ENABLED = os.getenv('NEWT_SMS_ENABLED', 'false').lower() == 'true'
 NEWT_SMS_CALLER_ID = os.getenv('NEWT_SMS_CALLER_ID', '')
+
+NEWT_SMS_AUTOMATIC_FROM = os.getenv('NEWT_SMS_AUTOMATIC_FROM', '')

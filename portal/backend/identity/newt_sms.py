@@ -36,20 +36,26 @@ def output(row):
         'destination': row.destination,
         'caller_id': row.caller_id,
         'state': state,
+        'kind': row.kind,
         'created_at': row.created_at,
     }
+
+
+def configured():
+    caller_id = settings.NEWT_SMS_CALLER_ID
+    return bool(
+        settings.NEWT_SMS_ENABLED
+        and settings.NEWT_USERNAME
+        and settings.NEWT_PASSWORD
+        and re.fullmatch(r'[2-9][0-9]{2}[2-9][0-9]{6}', caller_id)
+    )
 
 
 @api_view(['GET', 'POST'])
 def messages(request):
     require_admin(request.user, 'isolation')
     caller_id = settings.NEWT_SMS_CALLER_ID
-    enabled = bool(
-        settings.NEWT_SMS_ENABLED
-        and settings.NEWT_USERNAME
-        and settings.NEWT_PASSWORD
-        and re.fullmatch(r'[2-9][0-9]{2}[2-9][0-9]{6}', caller_id)
-    )
+    enabled = configured()
     if request.method == 'GET':
         response = Response(
             {

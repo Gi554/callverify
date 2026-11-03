@@ -37,7 +37,9 @@ def send(username, password, destination, caller_id, message, correlation):
             if len(rows) != 1 or len(rows[0]) != 7:
                 return 'unknown'
             status, tn, cid, returned_id, *reserved = rows[0]
-            if (tn, cid, returned_id) != (destination, caller_id, correlation) or any(reserved):
+            # The live PBX also echoes CID before TN. Require both exact numbers and _t.
+            matches_pair = (tn, cid) in ((destination, caller_id), (caller_id, destination))
+            if not matches_pair or returned_id != correlation or any(reserved):
                 return 'unknown'
             return {'Success': 'accepted', 'Failure': 'rejected'}.get(status, 'unknown')
     except (requests.RequestException, ValueError, csv.Error):
