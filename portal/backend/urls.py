@@ -46,6 +46,9 @@ from .identity.isolation_call_statistics import statistics as isolation_call_sta
 
 urlpatterns += [path('api/portal/internal/isolation/call-statistics/', isolation_call_statistics)]
 urlpatterns += [path('api/portal/password/change/', change_password)]
+from .identity.reminder_phone import reminder_phone
+
+urlpatterns += [path('api/portal/reminder-phone/', reminder_phone)]
 urlpatterns += [path('api/portal/session/revoke-others/', revoke_others)]
 urlpatterns += [
     path('api/portal/calendar/', calendars.connections),

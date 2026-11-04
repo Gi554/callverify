@@ -384,7 +384,8 @@ onMounted(() => run(load));
               maxlength="254"
           /></label>
           <p>
-            Une confirmation sera envoyée au prospect et au client après publication de la visite.
+            Le client Isolation recevra les informations de la visite par courriel. Aucun courriel
+            automatique ne sera envoyé au prospect.
           </p>
           <AvailabilitySlots
             v-if="prospect"

@@ -585,6 +585,9 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
                     'external_check': external,
                 },
             )
+            from .isolation_reminders import booked
+
+            booked(row)
         row.refresh_from_db()
         return booking_response(row, request.user, status=201)
 

@@ -12,8 +12,8 @@ from django.utils.dateparse import parse_datetime
 from django.utils.crypto import salted_hmac
 
 from packages.newt import sms
-from .isolation_mail import fetch
-from .models import SmsAttempt
+from .isolation_mail import eligible, fetch
+from .models import ReminderPhone, SmsAttempt
 from .newt_sms import configured
 
 
@@ -90,6 +90,53 @@ def submit(visit, kind, since):
         row.correlation,
     )
     row.save(update_fields=['state'])
+    return 1
+
+
+def remind_client(user, event, starts):
+    """One reminder SMS to the Isolation client when a visit result is still missing.
+
+    Sent only to the number the client set in its account (empty by default), once per event,
+    and only while the source still shows the result as missing.
+    """
+    if not configured() or not settings.NEWT_SMS_AUTOMATIC_FROM:
+        return 0
+    row = ReminderPhone.objects.filter(user=user).first()
+    phone = destination(row.mobile) if row else None
+    if phone is None:
+        return 0
+    identifier = uuid5(NAMESPACE_URL, f'orvia/isolation/sms/client-reminder/{event}')
+    if SmsAttempt.objects.filter(pk=identifier).exists() or not eligible(event, user.pk):
+        return 0
+    stamp = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
+    message = (
+        f'Orvia CRM : le résultat de votre visite du {stamp} (heure du Québec) '
+        'n’est pas encore renseigné. Merci de le mettre à jour dans votre espace ORVIA.'
+    )
+    caller_id = settings.NEWT_SMS_CALLER_ID
+    attempt, created = SmsAttempt.objects.get_or_create(
+        pk=identifier,
+        defaults={
+            'kind': 'client_reminder',
+            'correlation': secrets.token_hex(5),
+            'destination': phone,
+            'caller_id': caller_id,
+            'fingerprint': salted_hmac(
+                'newt-sms-v1', phone + ':' + message, algorithm='sha256'
+            ).hexdigest(),
+        },
+    )
+    if not created:
+        return 0
+    attempt.state = sms.send(
+        settings.NEWT_USERNAME,
+        settings.NEWT_PASSWORD,
+        phone,
+        caller_id,
+        message,
+        attempt.correlation,
+    )
+    attempt.save(update_fields=['state'])
     return 1
 
 

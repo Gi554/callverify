@@ -373,6 +373,14 @@ class GeneratedReport(models.Model):
         ]
 
 
+class ReminderPhone(models.Model):
+    """Mobile number the Isolation client chose to receive its update reminders on."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    mobile = models.CharField(max_length=10, blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class SmsAttempt(models.Model):
     request_id = models.UUIDField(primary_key=True)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True)
