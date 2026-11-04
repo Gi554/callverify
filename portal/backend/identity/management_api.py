@@ -7,6 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction, IntegrityError
 from django.db.models import Q, F, Exists, OuterRef
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -125,7 +126,16 @@ class AccessPagination(PageNumberPagination):
 
 def retire_login(user):
     """Free login credentials without reassigning historical foreign keys."""
-    user.username = f'deleted-{uuid4().hex}'
+    from .models import Invitation
+
+    retired_username = f'deleted-{uuid4().hex}'
+    # Accepted invitations also reserve identifiers; retain their IDs for the audit only.
+    Invitation.objects.filter(username__iexact=user.username, accepted_at__isnull=False).update(
+        username=retired_username,
+        email=f'{retired_username}@deleted.invalid',
+        revoked_at=timezone.now(),
+    )
+    user.username = retired_username
     user.email = ''
     user.first_name = ''
     user.last_name = ''

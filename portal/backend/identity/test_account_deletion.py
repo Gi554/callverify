@@ -154,6 +154,35 @@ class AccountDeletionTests(TestCase):
         client = Membership.objects.get(workspace='isolation', role='client')
         self.assertNotEqual(client.user_id, self.subject.pk)
 
+    def test_accepted_invitation_does_not_block_reinviting_deleted_account(self):
+        from django.utils import timezone
+        from .models import Invitation
+
+        previous = Invitation.objects.create(
+            username=self.subject.username,
+            email='replacement@example.com',
+            workspace='assurance',
+            role='setter',
+            issuer=self.actor,
+            token_hash='old-token',
+            expires_at=timezone.now(),
+            accepted_at=timezone.now(),
+        )
+        self.assertEqual(self.delete().status_code, 200)
+        response = self.client.post(
+            '/api/portal/workspaces/assurance/invitations/',
+            {
+                'username': self.body['confirm_username'],
+                'email': 'replacement@example.com',
+                'role': 'setter',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        previous.refresh_from_db()
+        self.assertIsNotNone(previous.revoked_at)
+        self.assertNotEqual(previous.username, self.body['confirm_username'])
+
     def test_account_in_another_space_keeps_its_other_access_calendar_and_phone(self):
         other = Membership.objects.create(user=self.subject, workspace='isolation', role='setter')
         CalendarConnection.objects.create(
