@@ -40,9 +40,6 @@ def candidates():
         kind='booked',
         visit__starts_at__gt=now,
         visit__created_at__gte=rules.active_from,
-    ) & (
-        Q(visit__publication='internal')
-        | Q(visit__publication='google', visit__publication_status='confirmed')
     )
     if rules.enabled:
         available |= (
@@ -64,14 +61,7 @@ def candidates():
 
 
 def booked(visit):
-    if (
-        visit.status != 'scheduled'
-        or (
-            visit.publication != 'internal'
-            and not (visit.publication == 'google' and visit.publication_status == 'confirmed')
-        )
-        or visit.created_at < policy().active_from
-    ):
+    if visit.status != 'scheduled' or visit.created_at < policy().active_from:
         return
     key = hashlib.sha256(
         f'booked:{visit.pk}:{visit.client_id}:{visit.starts_at.isoformat()}'.encode()
@@ -85,15 +75,11 @@ def generate():
     due_notices()
     rules = policy()
     now = timezone.now()
-    for visit in (
-        IsolationVisit.objects.filter(
-            status='scheduled',
-            starts_at__gt=now,
-            created_at__gte=rules.active_from,
-        )
-        .filter(Q(publication='internal') | Q(publication='google', publication_status='confirmed'))
-        .iterator(chunk_size=200)
-    ):
+    for visit in IsolationVisit.objects.filter(
+        status='scheduled',
+        starts_at__gt=now,
+        created_at__gte=rules.active_from,
+    ).iterator(chunk_size=200):
         booked(visit)
     for visit in (
         IsolationVisit.objects.filter(
@@ -205,7 +191,12 @@ def mail_events(request):
     except (ValueError, TypeError):
         raise ValidationError('Curseur invalide.') from None
     authorize(request, 'mail_events', {'after': after})
-    rows = candidates().filter(pk__gt=after).select_related('visit__prospect').order_by('pk')[:100]
+    rows = (
+        candidates()
+        .filter(pk__gt=after)
+        .select_related('visit__prospect__campaign')
+        .order_by('pk')[:100]
+    )
     response = Response(
         {
             'events': [
@@ -227,6 +218,28 @@ def mail_events(request):
                     ).strip(' ·')
                     if r.kind == 'booked'
                     else '',
+                    'qualification': {
+                        key: value
+                        for key, value in r.visit.c2_snapshot.get('fields', {}).items()
+                        if key
+                        in (
+                            'full_name',
+                            'email',
+                            'phone',
+                            'address',
+                            'city',
+                            'postal_code',
+                            'attic_accessible',
+                            'monthly_electricity',
+                            'construction_year',
+                            'age',
+                        )
+                    }
+                    if r.kind == 'booked'
+                    else {},
+                    'setter_name': r.visit.setter_name if r.kind == 'booked' else '',
+                    'reference': r.visit.prospect.reference if r.kind == 'booked' else '',
+                    'campaign_name': r.visit.prospect.campaign.name if r.kind == 'booked' else '',
                 }
                 for r in rows
             ]

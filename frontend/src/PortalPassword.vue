@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import PortalSessions from './PortalSessions.vue';
 import PortalCalendars from './PortalCalendars.vue';
+import PortalReminderPhone from './PortalReminderPhone.vue';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
@@ -75,6 +76,8 @@ async function save() {
       Les autorisations métier déjà délivrées peuvent rester valides au maximum deux minutes. Le
       compte de l’application historique conserve son mot de passe distinct.
     </p>
-    <PortalSessions :request="request" /><PortalCalendars :request="request" />
+    <PortalReminderPhone :request="request" /><PortalSessions :request="request" /><PortalCalendars
+      :request="request"
+    />
   </section>
 </template>

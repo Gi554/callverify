@@ -133,8 +133,13 @@ class IsolationReminderTests(TestCase):
                 'ends_at',
                 'prospect_email',
                 'visit_address',
+                'qualification',
+                'setter_name',
+                'reference',
+                'campaign_name',
             },
         )
+        self.assertEqual(row['qualification'], self.visit.c2_snapshot.get('fields', {}))
         client.credentials(
             HTTP_AUTHORIZATION='Bearer ' + issue('mail_eligible', event=row['id'], user=72)
         )

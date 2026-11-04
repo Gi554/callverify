@@ -20,7 +20,18 @@ def site_name():
     return host or ''
 
 
-def layout(*, title, intro, action, url, notice, details=(), name=''):
+def layout(
+    *,
+    title,
+    intro,
+    action,
+    url,
+    notice,
+    details=(),
+    name='',
+    sections=(),
+    signature='l’équipe Orvia CRM',
+):
     parsed = urlsplit(url)
     if (action or url) and (
         parsed.scheme not in (('http', 'https') if settings.DEBUG else ('https',))
@@ -41,6 +52,8 @@ def layout(*, title, intro, action, url, notice, details=(), name=''):
                 url=url,
                 notice=notice,
                 details=details,
+                sections=sections,
+                signature=signature,
                 name=first_name(name),
                 site=site_name(),
             ),
