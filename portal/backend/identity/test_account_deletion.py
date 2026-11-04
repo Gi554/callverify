@@ -79,7 +79,115 @@ class AccountDeletionTests(TestCase):
             'results'
         ][0]
         self.assertEqual(history['action'], 'membership.deleted')
-        self.assertEqual(history['details']['subject_username'], self.subject.username)
+        self.assertEqual(history['details']['subject_username'], self.body['confirm_username'])
+
+    def create_replacement(self, username=None):
+        return self.client.post(
+            '/api/portal/workspaces/assurance/users/',
+            {
+                'username': username or self.body['confirm_username'],
+                'email': 'replacement@example.com',
+                'password': 'new-distinct-password-42',
+                'role': 'setter',
+            },
+            format='json',
+        )
+
+    def test_deleted_login_can_be_recreated_without_inheriting_history_or_credentials(self):
+        self.subject.email = 'replacement@example.com'
+        self.subject.save(update_fields=['email'])
+        previous_id = self.subject.pk
+        self.assertEqual(self.delete().status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertFalse(self.subject.has_usable_password())
+        self.assertEqual(self.subject.email, '')
+        self.assertNotEqual(self.subject.username, self.body['confirm_username'])
+        response = self.create_replacement()
+        self.assertEqual(response.status_code, 201, response.data)
+        replacement = get_user_model().objects.get(username=self.body['confirm_username'])
+        self.assertNotEqual(replacement.pk, previous_id)
+        self.assertTrue(replacement.check_password('new-distinct-password-42'))
+        self.assertFalse(CalendarConnection.objects.filter(user=replacement).exists())
+        self.assertFalse(PhoneExtension.objects.filter(user=replacement).exists())
+        self.assertEqual(
+            AccessAudit.objects.get(action='membership.deleted').metadata['subject'], previous_id
+        )
+
+    def test_previously_deleted_login_is_released_but_suspended_login_is_not(self):
+        self.subject.is_active = False
+        self.subject.save(update_fields=['is_active'])
+        self.assertEqual(self.create_replacement().status_code, 400)
+        self.grant.delete()
+        # An inactive account without an audited deletion must never be reclaimed.
+        self.assertEqual(self.create_replacement().status_code, 400)
+        AccessAudit.objects.create(
+            user=self.actor,
+            action='membership.deleted',
+            workspace='assurance',
+            metadata={'subject': self.subject.pk, 'account_disabled': True},
+        )
+        response = self.create_replacement()
+        self.assertEqual(response.status_code, 201, response.data)
+        self.subject.refresh_from_db()
+        self.assertFalse(self.subject.has_usable_password())
+        self.assertNotEqual(self.subject.username, self.body['confirm_username'])
+
+    def test_isolation_client_can_be_recreated_after_deletion(self):
+        self.own.workspace = 'isolation'
+        self.own.save(update_fields=['workspace'])
+        self.grant.workspace = 'isolation'
+        self.grant.role = 'client'
+        self.grant.save(update_fields=['workspace', 'role'])
+        self.url = self.url.replace('/assurance/', '/isolation/')
+        self.assertEqual(self.delete().status_code, 200)
+        response = self.client.post(
+            '/api/portal/workspaces/isolation/users/',
+            {
+                'username': self.body['confirm_username'],
+                'email': 'replacement@example.com',
+                'password': 'new-distinct-password-42',
+                'role': 'client',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        client = Membership.objects.get(workspace='isolation', role='client')
+        self.assertNotEqual(client.user_id, self.subject.pk)
+
+    def test_accepted_invitation_does_not_block_reinviting_deleted_account(self):
+        self.check_reinvitation(accepted=True)
+
+    def test_pending_invitation_is_revoked_when_account_is_deleted(self):
+        self.check_reinvitation(accepted=False)
+
+    def check_reinvitation(self, accepted):
+        from django.utils import timezone
+        from .models import Invitation
+
+        previous = Invitation.objects.create(
+            username=self.subject.username,
+            email='replacement@example.com',
+            workspace='assurance',
+            role='setter',
+            issuer=self.actor,
+            token_hash='old-token',
+            expires_at=timezone.now(),
+            accepted_at=timezone.now() if accepted else None,
+        )
+        self.assertEqual(self.delete().status_code, 200)
+        response = self.client.post(
+            '/api/portal/workspaces/assurance/invitations/',
+            {
+                'username': self.body['confirm_username'],
+                'email': 'replacement@example.com',
+                'role': 'setter',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        previous.refresh_from_db()
+        self.assertIsNotNone(previous.revoked_at)
+        self.assertNotEqual(previous.username, self.body['confirm_username'])
 
     def test_account_in_another_space_keeps_its_other_access_calendar_and_phone(self):
         other = Membership.objects.create(user=self.subject, workspace='isolation', role='setter')
@@ -96,6 +204,8 @@ class AccountDeletionTests(TestCase):
         self.assertFalse(response.data['account_disabled'])
         self.subject.refresh_from_db()
         self.assertTrue(self.subject.is_active)
+        self.assertEqual(self.subject.username, self.body['confirm_username'])
+        self.assertEqual(self.create_replacement().status_code, 400)
         self.assertTrue(Membership.objects.filter(pk=other.pk).exists())
         self.assertTrue(CalendarConnection.objects.get(user=self.subject).connected)
         extension.refresh_from_db()
