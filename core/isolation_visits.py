@@ -491,12 +491,6 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
                     'La relance doit concerner la dernière visite non tenue de ce prospect.'
                 )
             email = data.get('prospect_email', prospect.c2.get('email', ''))
-            if data['publication'] == 'google' and not email:
-                raise ValidationError(
-                    {
-                        'prospect_email': 'Renseignez le courriel du prospect pour envoyer sa confirmation.'
-                    }
-                )
             if 'prospect_email' in data:
                 prospect.c2 = {**prospect.c2, 'email': email}
                 prospect.save(update_fields=['c2'])

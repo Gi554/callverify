@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation : courriel du prospect facultatif à la réservation
+
+La réservation et la transmission d’une visite, y compris avec publication Google et depuis une relance client, acceptent désormais un courriel vide ou absent. Le champ reste disponible et un courriel renseigné doit être valide. Les autres champs obligatoires du C2 et les contrôles de créneau sont conservés ; aucun changement dans Assurance. Tests : réservation Google sans champ courriel, avec champ vide, courriel valide figé dans la qualification et format invalide refusé ; parcours frontend sans blocage ni focus obligatoire sur ce champ.
+
 ## Suppression de compte : identifiant réutilisable
 
 La suppression du dernier accès libère immédiatement l’identifiant et le courriel, rend le mot de passe inutilisable, révoque les sessions et déconnecte les agendas. Les invitations liées libèrent également leurs identifiants pour permettre une réinvitation ; leurs anciens liens d’activation sont révoqués. Une nouvelle création avec le même identifiant produit un compte distinct, sans transfert des anciens historiques, accès ou connexions. Les suppressions antérieures sont prises en charge lors de la recréation uniquement si un audit de suppression existe, que le compte est inactif et sans aucun accès. Un compte suspendu, administrateur ou encore présent dans un autre espace reste protégé.

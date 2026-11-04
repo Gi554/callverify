@@ -125,28 +125,24 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
       <span>ISOLATION · QUALIFICATION</span>
       <h3>Préparer la visite</h3>
       <p>
-        Enregistrez votre brouillon à tout moment. Tous les champs, sauf le coût d’électricité et
-        l’âge, sont requis pour réserver.
+        Enregistrez votre brouillon à tout moment. Tous les champs, sauf le courriel, le coût
+        d’électricité et l’âge, sont requis pour réserver.
       </p>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
     <fieldset v-if="loaded" :disabled="busy || blocked">
       <label class="c2-email">
-        Courriel du prospect · requis pour la confirmation
+        Courriel du prospect · facultatif
         <input
           ref="emailInput"
           v-model="values.email"
           type="email"
           autocomplete="email"
           maxlength="254"
-          aria-required="true"
           placeholder="nom@exemple.com"
         />
-        <small
-          >La confirmation du rendez-vous sera envoyée à cette adresse. Vous pouvez enregistrer un
-          brouillon sans courriel.</small
-        >
+        <small>Vous pouvez enregistrer et transmettre la visite sans adresse courriel.</small>
       </label>
       <div class="c2-grid">
         <label v-for="key in ['full_name', 'phone', 'address', 'city', 'postal_code']" :key="key"

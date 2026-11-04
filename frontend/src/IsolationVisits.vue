@@ -208,10 +208,6 @@ async function save() {
       bookingEmail = props.clientFollowupId
         ? prospectEmail.value.trim()
         : c2.value.getEmail().trim();
-      if (!bookingEmail) {
-        c2.value?.focusEmail?.();
-        throw new Error('Renseignez le courriel du prospect pour envoyer sa confirmation.');
-      }
       if (!props.clientFollowupId) await c2.value.ensureSaved();
     }
     const current = record
@@ -382,11 +378,10 @@ onMounted(() => run(load));
             visite.
           </p>
           <label v-if="clientFollowupId"
-            >Courriel du prospect<input
+            >Courriel du prospect · facultatif<input
               v-model="prospectEmail"
               type="email"
               maxlength="254"
-              required
           /></label>
           <p>
             Une confirmation sera envoyée au prospect et au client après publication de la visite.

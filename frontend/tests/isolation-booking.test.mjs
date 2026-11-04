@@ -360,19 +360,15 @@ test('Google publication follows the committed booking and a failure never posts
   }
 })
 
-test('a new Google booking requires the prospect email and sends the explicit confirmation recipient', async () => {
+test('a new Google booking accepts an empty prospect email and preserves a provided email', async () => {
   const missing = fixture({ email: '' })
   try {
     await flush()
     await submit(missing)
-    assert.equal(missing.writes.length, 0)
-    assert.equal(missing.proofs.length, 0)
-    assert.deepEqual(missing.events, ['focus-email'])
-    assert.ok(
-      all(missing.root).some(
-        (n) => n.props?.role === 'alert' && n.text?.includes('courriel du prospect'),
-      ),
-    )
+    assert.equal(missing.writes[0].body.prospect_email, '')
+    assert.equal(missing.writes[0].body.publication, 'google')
+    assert.ok(missing.proofs.length)
+    assert.ok(!missing.events.includes('focus-email'))
   } finally {
     missing.app.unmount()
   }

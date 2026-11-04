@@ -25,21 +25,28 @@ class IsolationC2Tests(TestCase):
             self.draft_url, {'revision': 0, 'c2': {**fixtures.C2_DATA, **changes}}, format='json'
         )
 
-    def test_google_booking_requires_a_valid_prospect_email_and_freezes_it_in_the_snapshot(self):
+    def test_google_booking_accepts_a_missing_email(self):
         values = fixtures.C2_DATA.copy()
         values.pop('email')
         self.prospect.c2 = values
         self.prospect.save()
         response = self.book(publication='google')
-        self.assertEqual(response.status_code, 400, response.data)
-        self.prospect.refresh_from_db()
-        self.assertEqual(self.prospect.assignment_revision, 0)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['c2_snapshot']['fields']['email'], '')
+
+    def test_google_booking_preserves_a_provided_email_and_rejects_invalid_email(self):
         self.assertEqual(self.save(email='not-an-email').status_code, 400)
+        self.assertEqual(self.book(publication='google', prospect_email='invalid').status_code, 400)
         response = self.book(publication='google', prospect_email='prospect@example.test')
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.data['c2_snapshot']['fields']['email'], 'prospect@example.test')
         self.prospect.refresh_from_db()
         self.assertEqual(self.prospect.c2['email'], 'prospect@example.test')
+
+    def test_google_booking_accepts_an_explicitly_empty_email(self):
+        response = self.book(publication='google', prospect_email='')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['c2_snapshot']['fields']['email'], '')
 
     def test_age_is_optional_for_booking_but_required_qualification_remains_checked(self):
         Prospect.objects.filter(pk=self.prospect.pk).update(c2={**fixtures.C2_DATA, 'age': None})
