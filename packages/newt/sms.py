@@ -3,6 +3,7 @@
 import csv
 import io
 from time import monotonic
+from urllib.parse import quote, urlencode
 
 import requests
 
@@ -13,13 +14,20 @@ def send(username, password, destination, caller_id, message, correlation):
     try:
         with requests.post(
             URL,
-            data={
-                '_f': '261',
-                '_tn': destination,
-                '_cid': caller_id,
-                '_txt': message,
-                '_t': correlation,
-            },
+            # NEWT decodes percent escapes but leaves form-style '+' spaces literal.
+            data=urlencode(
+                {
+                    '_f': '261',
+                    '_tn': destination,
+                    '_cid': caller_id,
+                    '_txt': message,
+                    '_t': correlation,
+                },
+                quote_via=quote,
+                safe='',
+                encoding='utf-8',
+            ),
+            headers={'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'},
             auth=(username, password),
             timeout=(5, 25),
             allow_redirects=False,

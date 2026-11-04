@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+
+## Correction des espaces dans les SMS NEWT
+
+Les requêtes SMS utilisent un encodage UTF-8 avec espaces en %20. Les signes plus littéraux sont encodés en %2B. Le corps est préparé explicitement pour empêcher le remplacement des espaces par des signes plus par l’encodage de formulaire standard. Les SMS manuels et automatiques utilisent le même client corrigé.
+
+Le test de régression vérifie le corps HTTP préparé et reproduit le décodage par pourcentages du fournisseur, avec accents, retours à la ligne, signe plus, esperluette, pourcentage et signe égal. La réception d’un SMS de recette lisible reste à confirmer sur le téléphone fourni.
+
+
 ## Fin du suivi financier : plus aucun calcul de tarif, de paiement ni de solde
 
 Le point 5 de la demande du client est terminé. **Retiré** : le rapport « Rémunérations et soldes » du module Rapports (PDF/Excel) et la colonne « Gains de période » du rapport « Performance des agents » ; le tarif individuel figé à chaque enregistrement de résultat (Assurance : conseiller et administrateur ; Isolation : client), la mise à jour des comptes de paiement et de leurs ajustements à chaque validation ou annulation ; les routes d’API de rémunération (`/payroll/`, `/compensation/`, `/isolation-compensation/`) et la preuve portail de tarif ; le code correspondant (calculs de tarifs, de soldes, de paiements, exports financiers) et ses tests. **Aligné** : le panneau « Mes rendez-vous payables de la semaine » de l’accueil Isolation et le compteur payable des statistiques du setter lisent désormais le même registre que l’écran de rémunération (semaine de confirmation, catégorie figée) ; un seul crédit de présence par dossier (un rendez-vous relancé du même dossier n’est pas payé deux fois), y compris dans la reprise des données existantes. **Conservé** : les données déjà enregistrées (comptes, tarifs, paiements, ajustements, montants figés sur les résultats) restent en base, intactes et sans écran ; les anciens rapports déjà générés restent téléchargeables ; les rapports financiers programmés ne sont plus produits.
