@@ -1,5 +1,6 @@
 from unittest.mock import patch
 from uuid import uuid4
+from urllib.parse import parse_qs, unquote
 
 import requests
 from django.contrib.auth import get_user_model
@@ -37,10 +38,10 @@ class SmsTests(TestCase):
         response.status_code = 200
 
         def reply(size):
-            data = post.call_args.kwargs['data']
-            self.assertEqual(data['_txt'], self.body['message'])
-            self.assertEqual(data['_f'], '261')
-            return [f"Success,5145550101,5145550100,{data['_t']},,,".encode()]
+            data = parse_qs(post.call_args.kwargs['data'])
+            self.assertEqual(data['_txt'], [self.body['message']])
+            self.assertEqual(data['_f'], ['261'])
+            return [f"Success,5145550101,5145550100,{data['_t'][0]},,,".encode()]
 
         response.iter_content.side_effect = reply
         first = self.client.post(self.path, self.body, format='json')
@@ -51,6 +52,31 @@ class SmsTests(TestCase):
         self.assertEqual(self.client.post(self.path, changed, format='json').status_code, 409)
         post.assert_called_once()
         self.assertNotIn('message', self.client.get(self.path).data['results'][0])
+
+    @patch('packages.newt.sms.requests.post')
+    def test_wire_format_uses_percent_spaces_and_preserves_special_characters(self, post):
+        message = 'Orvia - Québec + 2 & 50% = confirmé\nDeuxième ligne : déjà.'
+        response = post.return_value.__enter__.return_value
+        response.status_code = 200
+        response.iter_content.return_value = [b'Success,5145550101,5145550100,expected,,,']
+        self.assertEqual(
+            send('user', 'password', '5145550101', '5145550100', message, 'expected'), 'accepted'
+        )
+        prepared = requests.Request(
+            'POST',
+            'https://example.invalid',
+            **{key: post.call_args.kwargs[key] for key in ('data', 'headers')},
+        ).prepare()
+        self.assertNotIn('+', prepared.body)
+        self.assertIn('%20', prepared.body)
+        self.assertIn('%2B', prepared.body)
+        self.assertIn('%0A', prepared.body)
+        # Match the provider's percent-only decoding, rather than forgiving '+' decoding.
+        fields = dict(item.split('=', 1) for item in prepared.body.split('&'))
+        self.assertEqual(unquote(fields['_txt'], encoding='utf-8'), message)
+        self.assertEqual(
+            prepared.headers['Content-Type'], 'application/x-www-form-urlencoded; charset=utf-8'
+        )
 
     @patch('packages.newt.sms.requests.post', side_effect=requests.Timeout)
     def test_timeout_is_durable_and_does_not_resend(self, post):
