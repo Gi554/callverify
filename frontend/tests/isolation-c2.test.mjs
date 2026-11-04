@@ -216,14 +216,15 @@ test('known import fields prefill qualification while saved values and explicit 
   }
 })
 
-test('confirmation email is visible above the qualification fields and can be focused without blocking draft saves', async () => {
+test('optional email is visible above qualification fields and does not block saving', async () => {
   const f = fixture({ defaults: { email: 'client@example.test' } })
   try {
     await flush()
     const inputs = all(f.root).filter((n) => n.tag === 'input')
     const email = inputs.find((n) => n.props.type === 'email')
     assert.equal(inputs[0], email)
-    assert.equal(email.props['aria-required'], 'true')
+    assert.notEqual(email.props['aria-required'], 'true')
+    assert.ok(!email.props.required)
     assert.equal(f.exposed().getEmail(), 'client@example.test')
     set(email, '')
     await flush()
