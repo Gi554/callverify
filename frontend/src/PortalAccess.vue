@@ -56,7 +56,7 @@ async function remove() {
     page.value = 1;
     await load();
     message.value = result.account_disabled
-      ? 'Compte supprimé de l’espace et connexion désactivée. Historique conservé.'
+      ? 'Compte supprimé. Identifiant libéré pour une nouvelle création. Historique conservé.'
       : 'Compte supprimé de cet espace. Ses autres accès et son historique sont conservés.';
   } catch (e: any) {
     error.value = e.message;
@@ -438,6 +438,11 @@ onMounted(load);
           Les fiches, rendez-vous, appels et historiques restent conservés. Si ce compte possède un
           accès dans un autre espace, celui-ci est conservé. Ses connexions d’agenda pour cet espace
           sont désactivées ; les événements déjà présents dans l’agenda ne sont pas annulés.
+        </p>
+        <p>
+          Sans autre accès, ses identifiants de connexion sont supprimés et son identifiant devient
+          réutilisable. Un compte recréé sera distinct, sans reprise des anciens accès ou
+          historiques.
         </p>
         <label
           >Motif de suppression<textarea

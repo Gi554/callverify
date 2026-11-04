@@ -1,5 +1,7 @@
 """Delegated access administration, strictly confined to the actor's workspace."""
 
+from uuid import uuid4
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -121,6 +123,37 @@ class AccessPagination(PageNumberPagination):
     page_size = 25
 
 
+def retire_login(user):
+    """Free login credentials without reassigning historical foreign keys."""
+    user.username = f'deleted-{uuid4().hex}'
+    user.email = ''
+    user.first_name = ''
+    user.last_name = ''
+    user.is_active = False
+    user.set_unusable_password()
+    user.save(
+        update_fields=['username', 'email', 'first_name', 'last_name', 'is_active', 'password']
+    )
+
+
+def release_previously_deleted_login(username):
+    """Compatibility for accounts removed before identifiers were released."""
+    user = get_user_model().objects.select_for_update().filter(username=username).first()
+    if (
+        user
+        and not user.is_active
+        and not user.is_staff
+        and not user.is_superuser
+        and not Membership.objects.filter(user=user).exists()
+        and AccessAudit.objects.filter(
+            action='membership.deleted',
+            metadata__subject=user.pk,
+            metadata__account_disabled=True,
+        ).exists()
+    ):
+        retire_login(user)
+
+
 @api_view(['GET', 'POST'])
 def users(request, workspace):
     require_admin(request.user, workspace)
@@ -160,6 +193,7 @@ def users(request, workspace):
                 if not user:
                     raise ValidationError('Compte indisponible ou déjà associé à cet espace')
             else:
+                release_previously_deleted_login(values['username'])
                 if get_user_model().objects.filter(username=values['username']).exists():
                     raise ValidationError(
                         'Identifiant indisponible ; utilisez l’ajout d’un compte existant si vous êtes autorisé'
@@ -275,6 +309,7 @@ def remove_access(request, workspace, pk):
             )
         if subject.username != data.validated_data['confirm_username']:
             raise ValidationError('Saisissez exactement l’identifiant du compte à supprimer.')
+        subject_username = subject.username
         before = {'role': row.role, 'active': row.active, 'prospect_quota': row.prospect_quota}
         row.delete()
         remaining = Membership.objects.filter(user=subject).exists()
@@ -294,8 +329,7 @@ def remove_access(request, workspace, pk):
             )
         if not remaining:
             # Keep the historical identity because calls, audit and financial records reference it.
-            subject.is_active = False
-            subject.save(update_fields=['is_active'])
+            retire_login(subject)
             SessionGeneration.objects.get_or_create(user=subject)
             SessionGeneration.objects.filter(user=subject).update(generation=F('generation') + 1)
             PhoneExtension.objects.filter(user=subject).update(
@@ -307,7 +341,7 @@ def remove_access(request, workspace, pk):
             action='membership.deleted',
             metadata={
                 'subject': subject.pk,
-                'subject_username': subject.username,
+                'subject_username': subject_username,
                 'before': before,
                 'after': {'deleted': True, 'active': False},
                 'account_disabled': not remaining,
