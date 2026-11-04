@@ -155,6 +155,12 @@ class AccountDeletionTests(TestCase):
         self.assertNotEqual(client.user_id, self.subject.pk)
 
     def test_accepted_invitation_does_not_block_reinviting_deleted_account(self):
+        self.check_reinvitation(accepted=True)
+
+    def test_pending_invitation_is_revoked_when_account_is_deleted(self):
+        self.check_reinvitation(accepted=False)
+
+    def check_reinvitation(self, accepted):
         from django.utils import timezone
         from .models import Invitation
 
@@ -166,7 +172,7 @@ class AccountDeletionTests(TestCase):
             issuer=self.actor,
             token_hash='old-token',
             expires_at=timezone.now(),
-            accepted_at=timezone.now(),
+            accepted_at=timezone.now() if accepted else None,
         )
         self.assertEqual(self.delete().status_code, 200)
         response = self.client.post(

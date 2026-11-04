@@ -129,8 +129,8 @@ def retire_login(user):
     from .models import Invitation
 
     retired_username = f'deleted-{uuid4().hex}'
-    # Accepted invitations also reserve identifiers; retain their IDs for the audit only.
-    Invitation.objects.filter(username__iexact=user.username, accepted_at__isnull=False).update(
+    # Release invitation identifiers and invalidate any outstanding activation links.
+    Invitation.objects.filter(username__iexact=user.username).update(
         username=retired_username,
         email=f'{retired_username}@deleted.invalid',
         revoked_at=timezone.now(),
