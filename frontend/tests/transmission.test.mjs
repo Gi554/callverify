@@ -78,7 +78,7 @@ async function flush() {
   }
 }
 
-function fixture({ multiple = false, failOnce = false } = {}) {
+function fixture({ multiple = false, failOnce = false, noLink = false } = {}) {
   const root = { children: [] },
     calls = [],
     booked = []
@@ -86,7 +86,7 @@ function fixture({ multiple = false, failOnce = false } = {}) {
     {
       id: 1,
       advisor: { id: 31, name: 'Conseiller' },
-      booking_url: 'https://bookings.cloud.microsoft/book/demo@example.com/',
+      booking_url: noLink ? '' : 'https://bookings.cloud.microsoft/book/demo@example.com/',
     },
   ]
   if (multiple)
@@ -167,7 +167,26 @@ test('several advisors require a choice; an unconfirmed booking is never sent', 
     await submit(f)
     await flush()
     assert.ok(!f.calls.some((c) => c.path === 'appointments/transmit/'))
-    assert.match(text(f.root), /Réservez dans le lien/)
+    assert.match(text(f.root), /Confirmez le rendez-vous avant l’envoi/)
+  } finally {
+    f.close()
+  }
+})
+
+test('a missing advisor booking link does not block a manually confirmed transmission', async () => {
+  const f = fixture({ noLink: true })
+  try {
+    await flush()
+    assert.equal(
+      all(f.root).find((n) => n.tag === 'a'),
+      undefined,
+    )
+    await fill(f)
+    await submit(f)
+    await flush()
+    const sent = f.calls.find((c) => c.path === 'appointments/transmit/').body
+    assert.equal(sent.external_confirmed, true)
+    assert.equal(f.booked.length, 1)
   } finally {
     f.close()
   }

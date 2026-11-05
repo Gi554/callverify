@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Correctifs de réservation Assurance et réutilisation des comptes
+
+**En cours de livraison.** Le lien public Microsoft/Calendly du conseiller est réellement
+facultatif dans le formulaire Assurance : lorsqu’il est absent, le setter peut confirmer une
+réservation manuelle et la transmettre avec les mêmes contrôles de date, qualification et
+notification. La case de confirmation reste obligatoire pour éviter une transmission non validée.
+
+La libération des identifiants supprimés est maintenant insensible à la casse et s’applique aussi
+aux nouvelles invitations. Une suppression de dernier accès rend donc l’identifiant réutilisable
+immédiatement, sans reprendre mot de passe, agenda, poste ni historique du compte précédent ; les
+historiques métier restent conservés sous l’identité technique anonymisée.
+
 ## Objectif hebdomadaire, réservation sans lien et téléphone facultatif
 
 **Livré.** L’objectif des conseillers Assurance est désormais présenté comme un

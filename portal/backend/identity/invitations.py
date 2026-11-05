@@ -23,7 +23,13 @@ from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from .models import Invitation, Membership, AccessAudit, ROLES, ReminderPhone
-from .management_api import require_admin, lock_admin, AccessInput, AccessPagination
+from .management_api import (
+    require_admin,
+    lock_admin,
+    AccessInput,
+    AccessPagination,
+    release_previously_deleted_login,
+)
 from .client_policy import available as client_available
 from .advisor_quotas import quota_field, check_quota
 from .recovery import public_url, ResetThrottle
@@ -149,6 +155,10 @@ def invitations(request, workspace):
     try:
         with transaction.atomic():
             lock_admin(request.user, workspace)
+            # Accounts deleted by older builds were anonymised but could retain
+            # their old login. Release that stale identity before checking
+            # uniqueness so the same account can be invited again.
+            release_previously_deleted_login(values['username'])
             available(values['username'], values['email'])
             client_available(workspace, values['role'])
             if Invitation.objects.filter(username__iexact=values['username']).exists():

@@ -75,9 +75,9 @@ async function submit() {
   message.value = '';
   try {
     const row = advisor.value;
-    if (!row?.booking_url || !confirmed.value)
+    if (!row || !confirmed.value)
       throw new Error(
-        'Réservez dans le lien du conseiller et confirmez la réservation avant l’envoi.',
+        'Confirmez le rendez-vous avant l’envoi. Le lien externe du conseiller est facultatif.',
       );
     await props.prepare();
     await nextTick();
@@ -117,8 +117,9 @@ onMounted(load);
   <section class="transmission">
     <h3>Informations du rendez-vous</h3>
     <p>
-      Réservez d’abord dans l’outil du conseiller, puis reportez ici le rendez-vous confirmé.
-      Horaires du Québec.
+      Réservez dans l’outil du conseiller lorsque son lien est disponible, puis confirmez ici le
+      rendez-vous. Si aucun lien n’est fourni, vous pouvez saisir une réservation confirmée
+      manuellement. Horaires du Québec.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
@@ -148,7 +149,9 @@ onMounted(load);
           rel="noopener noreferrer"
           >Ouvrir le lien de réservation du conseiller ↗</a
         >
-        <p v-else-if="advisor">Ce conseiller n’a pas encore fourni de lien de réservation.</p>
+        <p v-else-if="advisor">
+          Aucun lien de réservation fourni : saisissez le rendez-vous confirmé manuellement.
+        </p>
         <label
           >Type de rendez-vous<select v-model="meeting" required>
             <option value="video">Vidéoconférence</option>
@@ -169,10 +172,10 @@ onMounted(load);
           /></label>
         </div>
         <label
-          ><input v-model="confirmed" type="checkbox" required /> Le rendez-vous est confirmé dans
-          l’outil externe du conseiller.</label
+          ><input v-model="confirmed" type="checkbox" required /> Le rendez-vous est confirmé (dans
+          l’outil du conseiller ou manuellement).</label
         >
-        <button class="primary" :disabled="!advisor?.booking_url || !confirmed || !!message">
+        <button class="primary" :disabled="!advisor || !confirmed || !!message">
           Envoyer le rendez-vous
         </button>
       </fieldset>
