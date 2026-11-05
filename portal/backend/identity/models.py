@@ -224,6 +224,8 @@ class Invitation(models.Model):
     email = models.EmailField()
     workspace = models.CharField(max_length=20)
     role = models.CharField(max_length=30)
+    # Optional Québec mobile used for operational SMS alerts.
+    mobile = models.CharField(max_length=10, blank=True, default='')
     prospect_quota = models.PositiveIntegerField(null=True, blank=True)
     issuer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     token_hash = models.CharField(max_length=64)

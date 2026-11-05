@@ -91,8 +91,9 @@ class TransmissionTests(TestCase):
             response = self.client.post(self.url, {**deepcopy(data), **changes}, format='json')
             self.assertEqual(response.status_code, status, response.data)
         AdvisorSchedule.objects.update(booking_url='')
-        self.assertEqual(self.client.post(self.url, data, format='json').status_code, 400)
-        self.assertFalse(Appointment.objects.exists())
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['external_booking_url'], '')
 
     def test_assignment_permissions_overlap_and_notification_privacy(self):
         data = self.payload()

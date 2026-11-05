@@ -1,5 +1,7 @@
 """Only confirmed attendance consumes the advisor's prospect quota."""
 
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 from django.db.models import Count, Q, OuterRef, Subquery
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -17,9 +19,17 @@ def appointment_usage(user):
 
 @api_view(['GET'])
 def usage(request):
+    # Quotas are weekly objectives in the Québec business week (Monday–Sunday).
+    today = datetime.now(ZoneInfo('America/Toronto')).date()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=7)
+    start = datetime.combine(week_start, time.min, tzinfo=ZoneInfo('America/Toronto'))
+    end = datetime.combine(week_end, time.min, tzinfo=ZoneInfo('America/Toronto'))
+    base = appointment_usage(request.user)
+    if request.query_params.get('period', 'week') == 'week':
+        base = base.filter(starts_at__gte=start, starts_at__lt=end)
     rows = (
-        appointment_usage(request.user)
-        .values('advisor_id')
+        base.values('advisor_id')
         .annotate(
             booked=Count('pk'),
             attended=Count('pk', filter=Q(report__performed=True)),

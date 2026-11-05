@@ -1,5 +1,21 @@
 # Suivi des livraisons CRM AMX
 
+## Objectif hebdomadaire, réservation sans lien et téléphone facultatif
+
+**En cours de livraison.** L’objectif des conseillers Assurance est désormais présenté comme un
+objectif de prospects à fournir **chaque semaine** ; le décompte de présence utilisé par le
+compteur est borné à la semaine courante du Québec (lundi–dimanche), tandis que les statistiques
+générales restent consultables séparément. Le lien public Microsoft/Calendly d’un conseiller reste
+enregistrable et visible, mais son absence ne bloque plus une transmission manuelle confirmée par
+le setter : le rendez-vous est conservé avec un lien externe vide.
+
+Le numéro mobile de l’utilisateur est facultatif à la création directe ou par invitation, pour les
+espaces Assurance et Isolation. Lorsqu’il est renseigné, il est validé au format mobile canadien et
+conservé pour les alertes opérationnelles ; aucune valeur n’est inventée si le champ est vide.
+Les SMS automatiques Assurance ne sont pas encore activés par cette livraison : le relais NEWT
+automatique actuellement livré concerne les visites Isolation et doit être étendu séparément avec
+un numéro destinataire et une règle d’alerte Assurance validés.
+
 ## Isolation : courriel automatique au client à chaque rendez-vous, SMS de rappel
 
 **Livré.** Quand un setter clique sur « Envoyer le rendez-vous », le compte client Isolation (et lui seul : jamais le prospect ni l’ensemble des représentants) reçoit immédiatement le courriel « Une nouvelle visite vient d’être programmée » : salutation au prénom du compte, sections « Informations du prospect » (nom, téléphone, adresse, ville, code postal, courriel s’il est renseigné), « Informations du rendez-vous » (date, heure du Québec, fin, setter, campagne, référence) et « Informations de qualification » (toutes les réponses saisies), rappel de la gestion dans ORVIA, bouton « Accéder à mon espace ORVIA » qui ouvre la visite après connexion, signature « Cordialement, Martinien ». Le courriel ne dépend plus de la publication Google. Le courriel de confirmation au prospect n’est plus envoyé et ceux déjà en attente expirent.
@@ -13,6 +29,10 @@ Vérifications : tests portail (353) et Isolation (356) verts, tests frontend (2
 La réservation et la transmission d’une visite, y compris avec publication Google et depuis une relance client, acceptent désormais un courriel vide ou absent. Le champ reste disponible et un courriel renseigné doit être valide. Les autres champs obligatoires du C2 et les contrôles de créneau sont conservés ; aucun changement dans Assurance. Tests : réservation Google sans champ courriel, avec champ vide, courriel valide figé dans la qualification et format invalide refusé ; parcours frontend sans blocage ni focus obligatoire sur ce champ.
 
 ## Suppression de compte : identifiant réutilisable
+
+Un administrateur peut maintenant supprimer n’importe quel compte affiché dans son espace, y compris un autre administrateur ou son propre compte. La suppression de l’accès est définitive : sessions, mot de passe, identifiant, courriel, poste et connexions d’agenda sont révoqués. Les données métier historiques restent conservées sous une identité technique anonymisée pour préserver les appels et rendez-vous déjà enregistrés.
+
+Les anciens comptes Closer archivés restent visibles à l’administration sous le libellé « Ancien représentant » afin de pouvoir être supprimés eux aussi.
 
 La suppression du dernier accès libère immédiatement l’identifiant et le courriel, rend le mot de passe inutilisable, révoque les sessions et déconnecte les agendas. Les invitations liées libèrent également leurs identifiants pour permettre une réinvitation ; leurs anciens liens d’activation sont révoqués. Une nouvelle création avec le même identifiant produit un compte distinct, sans transfert des anciens historiques, accès ou connexions. Les suppressions antérieures sont prises en charge lors de la recréation uniquement si un audit de suppression existe, que le compte est inactif et sans aucun accès. Un compte suspendu, administrateur ou encore présent dans un autre espace reste protégé.
 
