@@ -1,5 +1,21 @@
 # Suivi des livraisons CRM AMX
 
+## Objectif hebdomadaire, réservation sans lien et téléphone facultatif
+
+**En cours de livraison.** L’objectif des conseillers Assurance est désormais présenté comme un
+objectif de prospects à fournir **chaque semaine** ; le décompte de présence utilisé par le
+compteur est borné à la semaine courante du Québec (lundi–dimanche), tandis que les statistiques
+générales restent consultables séparément. Le lien public Microsoft/Calendly d’un conseiller reste
+enregistrable et visible, mais son absence ne bloque plus une transmission manuelle confirmée par
+le setter : le rendez-vous est conservé avec un lien externe vide.
+
+Le numéro mobile de l’utilisateur est facultatif à la création directe ou par invitation, pour les
+espaces Assurance et Isolation. Lorsqu’il est renseigné, il est validé au format mobile canadien et
+conservé pour les alertes opérationnelles ; aucune valeur n’est inventée si le champ est vide.
+Les SMS automatiques Assurance ne sont pas encore activés par cette livraison : le relais NEWT
+automatique actuellement livré concerne les visites Isolation et doit être étendu séparément avec
+un numéro destinataire et une règle d’alerte Assurance validés.
+
 ## Isolation : courriel automatique au client à chaque rendez-vous, SMS de rappel
 
 **Livré.** Quand un setter clique sur « Envoyer le rendez-vous », le compte client Isolation (et lui seul : jamais le prospect ni l’ensemble des représentants) reçoit immédiatement le courriel « Une nouvelle visite vient d’être programmée » : salutation au prénom du compte, sections « Informations du prospect » (nom, téléphone, adresse, ville, code postal, courriel s’il est renseigné), « Informations du rendez-vous » (date, heure du Québec, fin, setter, campagne, référence) et « Informations de qualification » (toutes les réponses saisies), rappel de la gestion dans ORVIA, bouton « Accéder à mon espace ORVIA » qui ouvre la visite après connexion, signature « Cordialement, Martinien ». Le courriel ne dépend plus de la publication Google. Le courriel de confirmation au prospect n’est plus envoyé et ceux déjà en attente expirent.

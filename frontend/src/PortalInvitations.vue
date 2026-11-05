@@ -19,7 +19,7 @@ const rows = ref<any[]>([]),
   busy = ref(false),
   error = ref(''),
   message = ref('');
-const form = ref({ username: '', email: '', role: 'setter', prospect_quota: '' });
+const form = ref({ username: '', email: '', role: 'setter', prospect_quota: '', mobile: '' });
 const composing = ref(false),
   loading = ref(false);
 const roleLabels: Record<string, string> = {
@@ -30,7 +30,7 @@ const roleLabels: Record<string, string> = {
 };
 function cancel() {
   composing.value = false;
-  form.value = { username: '', email: '', role: 'setter', prospect_quota: '' };
+  form.value = { username: '', email: '', role: 'setter', prospect_quota: '', mobile: '' };
 }
 const base = () => `workspaces/${props.space}/invitations/`;
 async function load() {
@@ -141,6 +141,12 @@ onMounted(load);
             required
             maxlength="254"
             autocomplete="off" /></label
+        ><label
+          >Téléphone mobile (facultatif)<input
+            v-model="form.mobile"
+            type="tel"
+            autocomplete="tel"
+            placeholder="438 738-8944" /></label
         ><label
           >Rôle dans cet espace<select v-model="form.role">
             <option value="setter">Setter</option>

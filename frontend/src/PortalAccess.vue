@@ -71,6 +71,7 @@ const form = ref({
   role: 'setter',
   existing: false,
   prospect_quota: '' as string | number,
+  mobile: '',
 });
 const roles = () =>
   space.value === 'assurance'
@@ -124,6 +125,7 @@ function close() {
     role: 'setter',
     existing: false,
     prospect_quota: '' as string | number,
+    mobile: '',
   };
 }
 async function create() {
@@ -362,6 +364,12 @@ onMounted(load);
                 v-model="form.email"
                 type="email"
                 autocomplete="off" /></label
+            ><label
+              >Téléphone mobile (facultatif)<input
+                v-model="form.mobile"
+                type="tel"
+                autocomplete="tel"
+                placeholder="438 738-8944" /></label
             ><label
               >Mot de passe initial (12 caractères minimum)<input
                 v-model="form.password"

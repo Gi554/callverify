@@ -22,7 +22,7 @@ from rest_framework.decorators import (
 from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from .models import Invitation, Membership, AccessAudit, ROLES
+from .models import Invitation, Membership, AccessAudit, ROLES, ReminderPhone
 from .management_api import require_admin, lock_admin, AccessInput, AccessPagination
 from .client_policy import available as client_available
 from .advisor_quotas import quota_field, check_quota
@@ -38,6 +38,7 @@ class InviteInput(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
     role = serializers.CharField()
     prospect_quota = quota_field()
+    mobile = serializers.CharField(required=False, allow_blank=True, max_length=40)
 
     def validate_username(self, value):
         return AccessInput().validate_username(value)
@@ -48,6 +49,13 @@ class InviteInput(serializers.Serializer):
         if data['role'] not in ROLES[self.context['workspace']]:
             raise ValidationError('Rôle incompatible avec cet espace')
         check_quota(self.context['workspace'], data['role'], data.get('prospect_quota'))
+        if data.get('mobile'):
+            from .isolation_sms import destination
+
+            value = destination(data['mobile'])
+            if not value:
+                raise ValidationError({'mobile': 'Numéro mobile canadien invalide'})
+            data['mobile'] = value
         return data
 
 
@@ -57,6 +65,7 @@ def output(row):
         'username': row.username,
         'email': row.email,
         'role': row.role,
+        'mobile': row.mobile,
         'prospect_quota': row.prospect_quota,
         'expires_at': row.expires_at,
         'status': 'accepted'
@@ -260,6 +269,8 @@ def accept(request):
                 role=row.role,
                 prospect_quota=row.prospect_quota,
             )
+            if row.mobile:
+                ReminderPhone.objects.update_or_create(user=user, defaults={'mobile': row.mobile})
             row.accepted_at = timezone.now()
             row.save(update_fields=['accepted_at'])
             AccessAudit.objects.create(

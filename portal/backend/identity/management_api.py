@@ -13,7 +13,7 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from .models import Membership, AccessAudit, ROLES
+from .models import Membership, AccessAudit, ROLES, ReminderPhone
 from .client_policy import available as client_available, immutable as client_immutable
 from .advisor_quotas import quota_field, check_quota
 
@@ -42,9 +42,14 @@ class MembershipOutput(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     can_delete = serializers.SerializerMethodField()
+    mobile = serializers.SerializerMethodField()
 
     def get_can_delete(self, row):
         return True
+
+    def get_mobile(self, row):
+        phone = getattr(row.user, 'reminderphone', None)
+        return phone.mobile if phone else ''
 
     account_active = serializers.BooleanField(source='user.is_active', read_only=True)
 
@@ -59,6 +64,7 @@ class MembershipOutput(serializers.ModelSerializer):
             'account_active',
             'prospect_quota',
             'can_delete',
+            'mobile',
         ]
 
 
@@ -71,6 +77,7 @@ class AccessInput(serializers.Serializer):
     role = serializers.CharField()
     existing = serializers.BooleanField(default=False)
     prospect_quota = quota_field()
+    mobile = serializers.CharField(required=False, allow_blank=True, max_length=40)
 
     def validate_username(self, value):
         for validator in get_user_model()._meta.get_field('username').validators:
@@ -99,6 +106,13 @@ class AccessInput(serializers.Serializer):
                 validate_password(data['password'], candidate)
             except DjangoValidationError as error:
                 raise serializers.ValidationError({'password': error.messages})
+        if data.get('mobile'):
+            from .isolation_sms import destination
+
+            value = destination(data['mobile'])
+            if not value:
+                raise serializers.ValidationError({'mobile': 'Numéro mobile canadien invalide'})
+            data['mobile'] = value
         return data
 
 
@@ -213,6 +227,10 @@ def users(request, workspace):
                 role=values['role'],
                 prospect_quota=values.get('prospect_quota'),
             )
+            if 'mobile' in values:
+                ReminderPhone.objects.update_or_create(
+                    user=user, defaults={'mobile': values['mobile']}
+                )
             AccessAudit.objects.create(
                 user=request.user,
                 action='membership.granted',

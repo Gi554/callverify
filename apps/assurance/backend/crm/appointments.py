@@ -347,8 +347,6 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                 extras = {}
                 if external_booking:
                     schedule = AdvisorSchedule.objects.get(pk=assignment.advisor_id)
-                    if not schedule.booking_url:
-                        raise ValidationError('Le conseiller doit fournir son lien de réservation.')
                     values = dict(data['qualification'])
                     if 'additional_notes' not in request.data.get('qualification', {}):
                         values['additional_notes'] = contact.assurance_qualification.get(
@@ -369,7 +367,11 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                     extras = {
                         'calendar': 'external_link',
                         'meeting_type': data['meeting_type'],
-                        'external_booking_url': schedule.booking_url,
+                        # The link is helpful for traceability, but it is not a
+                        # prerequisite: an administrator/setter may confirm a
+                        # manually booked appointment when the advisor has not
+                        # configured an external booking page yet.
+                        'external_booking_url': schedule.booking_url or '',
                     }
                 if data['starts_at'] <= timezone.now():
                     raise ValidationError('Le rendez-vous doit commencer dans le futur')
