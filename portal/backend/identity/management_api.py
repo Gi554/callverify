@@ -157,7 +157,7 @@ def retire_login(user):
 
 def release_previously_deleted_login(username):
     """Compatibility for accounts removed before identifiers were released."""
-    user = get_user_model().objects.select_for_update().filter(username=username).first()
+    user = get_user_model().objects.select_for_update().filter(username__iexact=username).first()
     if (
         user
         and not user.is_active
@@ -212,7 +212,7 @@ def users(request, workspace):
                     raise ValidationError('Compte indisponible ou déjà associé à cet espace')
             else:
                 release_previously_deleted_login(values['username'])
-                if get_user_model().objects.filter(username=values['username']).exists():
+                if get_user_model().objects.filter(username__iexact=values['username']).exists():
                     raise ValidationError(
                         'Identifiant indisponible ; utilisez l’ajout d’un compte existant si vous êtes autorisé'
                     )
