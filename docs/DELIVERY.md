@@ -2,7 +2,7 @@
 
 ## Objectif hebdomadaire, réservation sans lien et téléphone facultatif
 
-**En cours de livraison.** L’objectif des conseillers Assurance est désormais présenté comme un
+**Livré.** L’objectif des conseillers Assurance est désormais présenté comme un
 objectif de prospects à fournir **chaque semaine** ; le décompte de présence utilisé par le
 compteur est borné à la semaine courante du Québec (lundi–dimanche), tandis que les statistiques
 générales restent consultables séparément. Le lien public Microsoft/Calendly d’un conseiller reste
@@ -12,9 +12,11 @@ le setter : le rendez-vous est conservé avec un lien externe vide.
 Le numéro mobile de l’utilisateur est facultatif à la création directe ou par invitation, pour les
 espaces Assurance et Isolation. Lorsqu’il est renseigné, il est validé au format mobile canadien et
 conservé pour les alertes opérationnelles ; aucune valeur n’est inventée si le champ est vide.
-Les SMS automatiques Assurance ne sont pas encore activés par cette livraison : le relais NEWT
-automatique actuellement livré concerne les visites Isolation et doit être étendu séparément avec
-un numéro destinataire et une règle d’alerte Assurance validés.
+Les alertes Assurance suivent désormais le même relais NEWT : lorsqu’un événement d’incident, de
+rappel ou d’escalade est relayé, un SMS est envoyé une seule fois au mobile facultatif du membre
+concerné (setter, conseiller ou administrateur). Sans numéro valide, aucun SMS n’est inventé ; les
+e-mails et alertes internes continuent normalement. L’activation exige les identifiants NEWT, le
+CID et `NEWT_SMS_AUTOMATIC_FROM` déjà utilisés par le relais automatique.
 
 ## Isolation : courriel automatique au client à chaque rendez-vous, SMS de rappel
 
