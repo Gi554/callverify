@@ -51,7 +51,8 @@ class RetiredCloserTests(TestCase):
 
     def test_legacy_membership_is_not_exposed_or_granted_a_ticket(self):
         listed = self.client.get('/api/portal/workspaces/isolation/users/').data
-        self.assertEqual(listed['count'], 3)
+        self.assertEqual(listed['count'], 4)
+        self.assertTrue(any(row['role'] == 'closer' for row in listed['results']))
         self.client.force_authenticate(self.users['closer'])
         self.assertEqual(self.client.get('/api/portal/session/').data['workspaces'], [])
         self.assertEqual(
