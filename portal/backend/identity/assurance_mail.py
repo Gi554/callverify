@@ -220,6 +220,11 @@ def sync(stream='incidents'):
                 expires_at=created + timedelta(days=7),
             )
             relay.save(update_fields=['mail'])
+            from .assurance_sms import send_alert
+
+            if send_alert(stream, event_id, user, event):
+                counts.setdefault('sms_queued', 0)
+                counts['sms_queued'] += 1
             counts['queued'] += 1
     AssuranceMailCursor.objects.filter(pk=cursor_id, after_id=cursor.after_id).update(
         after_id=previous if len(events) == 100 else 0

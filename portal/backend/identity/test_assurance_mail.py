@@ -5,7 +5,14 @@ from django.core import mail
 from django.core.management import call_command, CommandError
 from django.utils import timezone
 from packages.access.mail_bridge import verify
-from .models import Membership, PortalMail, AssuranceMailRelay, AssuranceMailCursor
+from .models import (
+    Membership,
+    PortalMail,
+    AssuranceMailRelay,
+    AssuranceMailCursor,
+    ReminderPhone,
+    SmsAttempt,
+)
 from .assurance_mail import sync, fetch
 from .mail_queue import dispatch
 from unittest import skipUnless
@@ -40,6 +47,24 @@ class AssuranceMailTests(TestCase):
             'portal.backend.identity.assurance_mail.fetch', return_value=events or self.events
         ):
             return sync()
+
+    @override_settings(
+        NEWT_SMS_ENABLED=True,
+        NEWT_SMS_CALLER_ID='4387388939',
+        NEWT_USERNAME='newt-user',
+        NEWT_PASSWORD='newt-password',
+        NEWT_SMS_AUTOMATIC_FROM='2026-01-01T00:00:00Z',
+    )
+    @patch('portal.backend.identity.assurance_sms.sms.send', return_value='accepted')
+    def test_configured_mobile_receives_one_assurance_alert_sms(self, send):
+        ReminderPhone.objects.create(user=self.user, mobile='4387388944')
+        result = self.sync()
+        self.assertEqual(result['sms_queued'], 1)
+        self.assertEqual(SmsAttempt.objects.get().kind, 'assurance_alert')
+        send.assert_called_once()
+        self.assertIn('Assurance', send.call_args.args[4])
+        self.assertEqual(self.sync()['already_queued'], 1)
+        self.assertEqual(SmsAttempt.objects.count(), 1)
 
     def test_queue_is_idempotent_and_content_is_minimal(self):
         self.assertEqual(self.sync()['queued'], 1)
