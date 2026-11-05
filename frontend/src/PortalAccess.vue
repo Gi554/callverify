@@ -81,6 +81,7 @@ const labels: Record<string, string> = {
   setter: 'Setter',
   advisor: 'Conseiller',
   client: 'Client',
+  closer: 'Ancien représentant',
 };
 const base = () => `workspaces/${space.value}/users/`;
 async function load() {

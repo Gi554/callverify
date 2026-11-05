@@ -165,7 +165,6 @@ def users(request, workspace):
     if request.method == 'GET':
         qs = (
             Membership.objects.filter(workspace=workspace)
-            .exclude(role='closer')
             .annotate(
                 _protected_account=Exists(
                     Membership.objects.filter(user_id=OuterRef('user_id'), role='administrator')
