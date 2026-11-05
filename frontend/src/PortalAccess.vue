@@ -290,9 +290,7 @@ onMounted(load);
                     }}
                   </button>
                   <button
-                    v-if="
-                      row.can_delete && row.role !== 'administrator' && row.username !== username
-                    "
+                    v-if="row.can_delete"
                     class="secondary access-delete"
                     :disabled="busy"
                     :aria-label="'Supprimer le compte ' + row.username"
@@ -332,8 +330,9 @@ onMounted(load);
         </button>
       </div>
       <p class="subtle">
-        Les comptes administrateurs ne peuvent pas être supprimés. Votre propre accès est protégé.
-        Après une suspension, un accès métier déjà délivré peut rester valable pendant deux minutes.
+        La suppression désactive définitivement le compte, révoque ses sessions et libère ses
+        identifiants. Les historiques métier restent conservés sous une identité technique
+        anonymisée.
       </p>
       <section v-if="adding" class="card access-form" aria-label="Ajouter un utilisateur">
         <h2>Ajouter à {{ space === 'assurance' ? 'Assurance' : 'Isolation' }}</h2>
@@ -435,9 +434,10 @@ onMounted(load);
           vous souhaitez seulement bloquer temporairement son accès.
         </p>
         <p>
-          Les fiches, rendez-vous, appels et historiques restent conservés. Si ce compte possède un
-          accès dans un autre espace, celui-ci est conservé. Ses connexions d’agenda pour cet espace
-          sont désactivées ; les événements déjà présents dans l’agenda ne sont pas annulés.
+          Les fiches, rendez-vous, appels et historiques restent conservés sous une identité
+          technique anonymisée. Si ce compte possède un accès dans un autre espace, celui-ci est
+          conservé. Ses connexions d’agenda pour cet espace sont désactivées ; les événements déjà
+          présents dans l’agenda ne sont pas annulés.
         </p>
         <p>
           Sans autre accès, ses identifiants de connexion sont supprimés et son identifiant devient

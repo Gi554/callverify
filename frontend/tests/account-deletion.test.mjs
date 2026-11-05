@@ -107,7 +107,7 @@ function fixture({ fail = false, space = 'assurance' } = {}) {
       role: 'administrator',
       active: true,
       account_active: true,
-      can_delete: false,
+      can_delete: true,
     },
     {
       id: 2,
@@ -123,7 +123,7 @@ function fixture({ fail = false, space = 'assurance' } = {}) {
       role: 'setter',
       active: false,
       account_active: true,
-      can_delete: false,
+      can_delete: true,
     },
   ]
   const app = renderer.createApp(component, {
@@ -150,9 +150,9 @@ test('deletion is separate from suspension and requires exact confirmation befor
   try {
     await flush()
     const deletes = all(f.root).filter((n) => n.tag === 'button' && text(n).trim() === 'Supprimer')
-    assert.equal(deletes.length, 1)
+    assert.equal(deletes.length, 3)
     assert.ok(button(f, 'Suspendre'))
-    deletes[0].props.onClick()
+    deletes[1].props.onClick()
     await flush()
     assert.equal(button(f, 'Confirmer la suppression').props.disabled, true)
     const inputs = all(f.root).filter((n) => n.tag === 'input')

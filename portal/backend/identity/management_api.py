@@ -44,12 +44,7 @@ class MembershipOutput(serializers.ModelSerializer):
     can_delete = serializers.SerializerMethodField()
 
     def get_can_delete(self, row):
-        protected = getattr(row, '_protected_account', None)
-        if protected is None:
-            protected = Membership.objects.filter(
-                user_id=row.user_id, role='administrator'
-            ).exists()
-        return not (protected or row.user.is_staff or row.user.is_superuser)
+        return True
 
     account_active = serializers.BooleanField(source='user.is_active', read_only=True)
 
@@ -308,15 +303,6 @@ def remove_access(request, workspace, pk):
         if row is None:
             return Response({'detail': 'Accès introuvable dans cet espace.'}, status=404)
         subject = get_user_model().objects.select_for_update().get(pk=row.user_id)
-        if (
-            subject.pk == request.user.pk
-            or subject.is_staff
-            or subject.is_superuser
-            or Membership.objects.filter(user=subject, role='administrator').exists()
-        ):
-            raise PermissionDenied(
-                'Un administrateur ne peut pas supprimer un compte administrateur.'
-            )
         if subject.username != data.validated_data['confirm_username']:
             raise ValidationError('Saisissez exactement l’identifiant du compte à supprimer.')
         subject_username = subject.username

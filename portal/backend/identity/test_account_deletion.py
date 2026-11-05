@@ -70,7 +70,7 @@ class AccountDeletionTests(TestCase):
         self.assertTrue(event.metadata['after']['deleted'])
         self.assertNotIn('private-token', str(event.metadata))
         self.assertEqual(self.delete().status_code, 404)
-        self.assertFalse(
+        self.assertTrue(
             self.client.get('/api/portal/workspaces/assurance/users/').data['results'][0][
                 'can_delete'
             ]
@@ -211,20 +211,17 @@ class AccountDeletionTests(TestCase):
         extension.refresh_from_db()
         self.assertEqual(extension.extension, '502')
 
-    def test_admins_are_protected_including_suspended_and_other_workspace_admins(self):
+    def test_administrators_are_visible_and_deletable(self):
         self.grant.role = 'administrator'
         self.grant.active = False
         self.grant.save()
-        self.assertEqual(self.delete().status_code, 403)
-        self.grant.role = 'setter'
-        self.grant.save()
-        Membership.objects.create(
-            user=self.subject, workspace='isolation', role='administrator', active=False
-        )
-        self.assertEqual(self.delete().status_code, 403)
         data = self.client.get('/api/portal/workspaces/assurance/users/').data
-        self.assertTrue(all(not r['can_delete'] for r in data['results']))
-        self.assertTrue(Membership.objects.filter(pk=self.grant.pk).exists())
+        self.assertTrue(
+            next(row for row in data['results'] if row['id'] == self.grant.pk)['can_delete']
+        )
+        self.assertEqual(self.delete().status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertFalse(self.subject.is_active)
 
     def test_confirmation_scope_nonadmin_and_atomic_audit(self):
         self.assertEqual(self.delete(confirm_username='wrong').status_code, 400)
@@ -257,16 +254,9 @@ class AccountDeletionTests(TestCase):
         self.assertEqual(self.delete().status_code, 200)
         self.assertIn(former.get('/api/portal/session/').status_code, (401, 403))
 
-    def test_promotion_after_list_loading_and_staff_accounts_are_protected(self):
+    def test_promotion_after_list_loading_keeps_delete_action_available(self):
         listed = self.client.get('/api/portal/workspaces/assurance/users/').data['results']
         self.assertTrue(next(row for row in listed if row['id'] == self.grant.pk)['can_delete'])
         Membership.objects.filter(pk=self.grant.pk).update(role='administrator')
-        self.assertEqual(self.delete().status_code, 403)
-        Membership.objects.filter(pk=self.grant.pk).update(role='setter')
-        self.subject.is_staff = True
-        self.subject.save(update_fields=['is_staff'])
-        self.assertEqual(self.delete().status_code, 403)
-        self.subject.is_staff = False
-        self.subject.is_superuser = True
-        self.subject.save(update_fields=['is_staff', 'is_superuser'])
-        self.assertEqual(self.delete().status_code, 403)
+        listed = self.client.get('/api/portal/workspaces/assurance/users/').data['results']
+        self.assertTrue(next(row for row in listed if row['id'] == self.grant.pk)['can_delete'])
