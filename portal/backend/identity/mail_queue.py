@@ -103,7 +103,8 @@ def eligible(guard, recipient):
         ):
             return False
         if guard['kind'] == 'isolation_prospect_notice':
-            return source_eligible(guard['event'], user.pk, recipient=recipient)
+            # Client-only transmission also cancels previously queued prospect confirmations.
+            return False
         if (
             user.email != recipient
             or get_user_model().objects.filter(email__iexact=recipient, is_active=True).count() != 1

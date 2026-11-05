@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Isolation : courriel automatique au client à chaque rendez-vous, SMS de rappel
+
+**Livré.** Quand un setter clique sur « Envoyer le rendez-vous », le compte client Isolation (et lui seul : jamais le prospect ni l’ensemble des représentants) reçoit immédiatement le courriel « Une nouvelle visite vient d’être programmée » : salutation au prénom du compte, sections « Informations du prospect » (nom, téléphone, adresse, ville, code postal, courriel s’il est renseigné), « Informations du rendez-vous » (date, heure du Québec, fin, setter, campagne, référence) et « Informations de qualification » (toutes les réponses saisies), rappel de la gestion dans ORVIA, bouton « Accéder à mon espace ORVIA » qui ouvre la visite après connexion, signature « Cordialement, Martinien ». Le courriel ne dépend plus de la publication Google. Le courriel de confirmation au prospect n’est plus envoyé et ceux déjà en attente expirent.
+
+**Rappel inchangé** : rendez-vous transmis dans l’espace du client, courriel complet, puis sans mise à jour après 24 h un rappel et l’apparition dans « Rendez-vous non mis à jour ». **Ajout** : champ « Numéro mobile pour les rappels » dans Mon compte du client Isolation (vide par défaut, validé comme numéro canadien, vidable). Tant qu’il est vide, aucun SMS ; une fois renseigné, un SMS est envoyé une seule fois par rendez-vous au moment du rappel de 24 h, seulement si le résultat est toujours manquant et si l’envoi automatique est activé (`NEWT_SMS_AUTOMATIC_FROM`).
+
+Vérifications : tests portail (353) et Isolation (356) verts, tests frontend (218), eslint, prettier, vue-tsc et build. Limites : aucun courriel ni SMS réel envoyé ; mise en page non vérifiée dans une vraie boîte de réception ; le SMS exige un numéro saisi par Charles et l’activation du SMS automatique en production.
+
 ## Isolation : courriel du prospect facultatif à la réservation
 
 La réservation et la transmission d’une visite, y compris avec publication Google et depuis une relance client, acceptent désormais un courriel vide ou absent. Le champ reste disponible et un courriel renseigné doit être valide. Les autres champs obligatoires du C2 et les contrôles de créneau sont conservés ; aucun changement dans Assurance. Tests : réservation Google sans champ courriel, avec champ vide, courriel valide figé dans la qualification et format invalide refusé ; parcours frontend sans blocage ni focus obligatoire sur ce champ.
