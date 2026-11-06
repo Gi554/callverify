@@ -1,5 +1,20 @@
 # Suivi des livraisons CRM AMX
 
+## Invitation Assurance personnalisée pour les conseillers
+
+Les invitations destinées aux conseillers Assurance utilisent maintenant l’en-tête « Bienvenue
+dans l’univers de Martinien ! », une salutation personnalisée à partir du prénom identifiable dans
+l’identifiant, le texte de partenariat fourni, le rôle « Conseiller en sécurité financière »,
+l’identifiant, le bouton « ACTIVER MON COMPTE », l’avertissement de lien à usage unique valable
+24 heures et la signature « Martinien Affanoukpe ». Si l’identifiant ne permet pas d’extraire un
+prénom sans afficher une adresse e-mail, le message utilise « Bonjour, ». Le texte brut et le HTML
+contiennent le lien d’activation et le rappel de confidentialité. Les invitations Isolation et les
+autres rôles gardent leur modèle existant.
+
+Vérification ciblée : couverture du modèle Assurance (sujet, prénom, rôle, lien et validité), du
+message de secours en texte brut et du maintien du modèle générique Isolation. La réception dans une
+boîte réelle dépend de la configuration e-mail déployée.
+
 ## Correctifs de réservation Assurance et réutilisation des comptes
 
 **En cours de livraison.** Le lien public Microsoft/Calendly du conseiller est réellement
