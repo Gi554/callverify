@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .mail_queue import enqueue
-from .email_layout import layout
+from .email_layout import layout, first_name
 from django.db import transaction, IntegrityError
 from django.db.models import Q, F
 from django.utils import timezone
@@ -106,27 +106,77 @@ def deliver(row, token):
     space = SPACES.get(row.workspace, row.workspace)
     role = ROLE_NAMES.get(row.role, row.role)
     link = f'{public_url()}/crm#invite={row.pk}:{token}'
-    enqueue(
-        user=row.issuer,
-        workspace=row.workspace,
-        subject=f'Orvia CRM — Votre invitation à l’espace {space}',
-        html=layout(
-            title='Bienvenue dans votre équipe',
-            intro=f'Vous êtes invité dans l’espace {space} en tant que {role}. Activez votre compte en choisissant votre mot de passe.',
-            details=(('Espace', space), ('Votre rôle', role), ('Votre identifiant', row.username)),
-            action='Activer mon compte',
-            name=row.username,
-            url=link,
-            notice='Ce lien personnel expire dans 24 heures et ne peut être utilisé qu’une fois. Si vous n’attendiez pas cette invitation, contactez votre administrateur.',
-        ),
-        body=(
+    assurance_advisor = row.workspace == 'assurance' and row.role == 'advisor'
+    if assurance_advisor:
+        role = 'Conseiller en sécurité financière'
+        subject = 'Bienvenue dans l’univers de Martinien !'
+        title = 'Bienvenue dans l’univers de Martinien !'
+        intro = (
+            'Je suis ravi de pouvoir collaborer avec vous. Dans le cadre de notre partenariat, '
+            'je vous invite à accéder à ORVIA, ma plateforme professionnelle dédiée à la '
+            'transmission et au suivi de vos rendez-vous.'
+        )
+        signature = 'Martinien Affanoukpe'
+        notice = (
+            'Ce lien personnel expire dans 24 heures et ne peut être utilisé qu’une seule fois. '
+            'Si vous n’attendiez pas cette invitation, veuillez me contacter.'
+        )
+        greeting_name = first_name(row.username).split(' ', 1)[0]
+    else:
+        subject = f'Orvia CRM — Votre invitation à l’espace {space}'
+        title = 'Bienvenue dans votre équipe'
+        intro = (
+            f'Vous êtes invité dans l’espace {space} en tant que {role}. '
+            'Activez votre compte en choisissant votre mot de passe.'
+        )
+        signature = 'l’équipe Orvia CRM'
+        notice = (
+            'Ce lien personnel expire dans 24 heures et ne peut être utilisé qu’une fois. '
+            'Si vous n’attendiez pas cette invitation, contactez votre administrateur.'
+        )
+        greeting_name = row.username
+    if assurance_advisor:
+        greeting = f'Bonjour {greeting_name},' if greeting_name else 'Bonjour,'
+        body = (
+            f'Bienvenue dans l’univers de Martinien !\n\n{greeting}\n\n'
+            f'{intro}\n\n'
+            'Vous avez été invité en qualité de Conseiller en sécurité financière dans votre '
+            'espace Assurance.\n\nEspace : Assurance\n'
+            'Votre rôle : Conseiller en sécurité financière\n'
+            f'Votre identifiant : {row.username}\n\n'
+            f'ACTIVER MON COMPTE\n{link}\n\n{notice}\n\n'
+            'Cordialement,\nMartinien Affanoukpe\n\n'
+            'Gardez vos liens d’accès confidentiels : aucun mot de passe ne vous sera jamais '
+            'demandé par e-mail.'
+        )
+    else:
+        body = (
             f'Bonjour,\n\nVous êtes invité dans l’espace {space} en tant que {role}.\n'
             f'Votre identifiant : {row.username}\n\n'
             'Pour activer votre compte, ouvrez ce lien et choisissez votre mot de passe :\n'
             f'{link}\n\n'
             'Ce lien expire dans 24 heures. Ensuite, connectez-vous avec votre identifiant '
             f'et votre mot de passe : votre espace {space} s’ouvrira directement.\n\nOrvia CRM'
+        )
+    enqueue(
+        user=row.issuer,
+        workspace=row.workspace,
+        subject=subject,
+        html=layout(
+            title=title,
+            intro=intro,
+            details=(
+                ('Votre espace' if assurance_advisor else 'Espace', space),
+                ('Votre rôle', role),
+                ('Votre identifiant', row.username),
+            ),
+            action='ACTIVER MON COMPTE' if assurance_advisor else 'Activer mon compte',
+            name=greeting_name,
+            url=link,
+            notice=notice,
+            signature=signature,
         ),
+        body=body,
         recipient=row.email,
         guard={'kind': 'invitation', 'id': str(row.pk), 'hash': row.token_hash},
         expires_at=row.expires_at,

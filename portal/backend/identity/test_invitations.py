@@ -86,15 +86,59 @@ class InvitationTests(TestCase):
             [('assurance', 'advisor')],
         )
         self.assertNotIn('_auth_user_id', self.public.session)
-        self.assertIn('l’espace Assurance en tant que Conseiller', mail.outbox[0].body)
+        self.assertIn(
+            'Conseiller en sécurité financière dans votre espace Assurance', mail.outbox[0].body
+        )
         self.assertNotIn('advisor', mail.outbox[0].body)
         html, mime = mail.outbox[0].alternatives[0]
         self.assertEqual(mime, 'text/html')
-        self.assertIn('Activer mon compte', html)
+        self.assertIn('ACTIVER MON COMPTE', html)
         self.assertIn('Conseiller', html)
         self.assertIn('newperson', html)
         self.assertIn(f'#invite={body["id"]}:{body["token"]}', html)
         self.assertEqual(self.accept(body).status_code, 400)
+
+    def test_assurance_advisor_receives_martinien_invitation_template(self):
+        response = self.create(username='camille.tremblay')
+        self.assertEqual(response.status_code, 201)
+        message = mail.outbox[0]
+        self.assertEqual(message.subject, 'Bienvenue dans l’univers de Martinien !')
+        self.assertIn('Bonjour Camille,', message.body)
+        self.assertIn('Je suis ravi de pouvoir collaborer avec vous.', message.body)
+        self.assertIn('Conseiller en sécurité financière', message.body)
+        self.assertIn('Votre identifiant : camille.tremblay', message.body)
+        self.assertIn('24 heures', message.body)
+        self.assertIn('ne peut être utilisé qu’une seule fois', message.body)
+        self.assertIn('Martinien Affanoukpe', message.body)
+        self.assertIn('aucun mot de passe ne vous sera jamais demandé par e-mail', message.body)
+        html = message.alternatives[0][0]
+        self.assertIn('Bienvenue dans l’univers de Martinien !', html)
+        self.assertIn('Bonjour Camille,', html)
+        self.assertIn('ACTIVER MON COMPTE', html)
+        self.assertIn('Conseiller en sécurité financière', html)
+        self.assertIn('Votre identifiant', html)
+        self.assertIn('24 heures', html)
+        self.assertIn('Martinien Affanoukpe', html)
+
+    def test_non_assurance_invitation_keeps_generic_template(self):
+        Membership.objects.create(user=self.admin, workspace='isolation', role='administrator')
+        client = APIClient(enforce_csrf_checks=True)
+        client.force_login(self.admin)
+        csrf = client.get('/api/portal/csrf/').data['csrfToken']
+        response = client.post(
+            '/api/portal/workspaces/isolation/invitations/',
+            {'username': 'fieldsetter', 'email': 'setter@example.test', 'role': 'setter'},
+            format='json',
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        dispatch()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            mail.outbox[-1].subject, 'Orvia CRM — Votre invitation à l’espace Isolation'
+        )
+        self.assertIn('Bienvenue dans votre équipe', mail.outbox[-1].alternatives[0][0])
+        self.assertNotIn('Bienvenue dans l’univers de Martinien', mail.outbox[-1].body)
+        self.assertNotIn('Martinien Affanoukpe', mail.outbox[-1].body)
 
     def test_permissions_scoping_and_roles(self):
         self.assertEqual(
