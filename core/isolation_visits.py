@@ -289,6 +289,11 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
                 set(params) != {'prospect_id', 'start', 'end', 'proof'}
                 and set(params) != {'prospect_id', 'start', 'end', 'proof', 'unqualified_id'}
                 and set(params) != {'prospect_id', 'start', 'end', 'proof', 'client_followup_id'}
+                and set(params) != {'prospect_id', 'start', 'end', 'proof', 'publication'}
+                and set(params)
+                != {'prospect_id', 'start', 'end', 'proof', 'unqualified_id', 'publication'}
+                and set(params)
+                != {'prospect_id', 'start', 'end', 'proof', 'client_followup_id', 'publication'}
             )
         ):
             raise ValidationError('Prospect, période et preuve de réservation requis.')
@@ -309,6 +314,9 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
             if 'client_followup_id' in params
             else None
         )
+        publication = params.get('publication', 'google')
+        if publication not in ('internal', 'google'):
+            raise ValidationError('Publication invalide.')
         prospect = booking_subject(
             request.user, int(prospect_id), unqualified_id, client_followup_id
         )
@@ -347,20 +355,21 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
                 request.user,
                 prospect,
             )
-            from packages.calendar_connectors.booking import check
+            if publication == 'google':
+                from packages.calendar_connectors.booking import check
 
-            external = check(
-                request.user,
-                claims['client']['id'],
-                start,
-                end,
-                workspace='isolation',
-                include_busy=True,
-            )
-            external_busy = [
-                {'starts_at': row['start'], 'ends_at': row['end'], 'reason': 'external'}
-                for row in external['busy']
-            ]
+                external = check(
+                    request.user,
+                    claims['client']['id'],
+                    start,
+                    end,
+                    workspace='isolation',
+                    include_busy=True,
+                )
+                external_busy = [
+                    {'starts_at': row['start'], 'ends_at': row['end'], 'reason': 'external'}
+                    for row in external['busy']
+                ]
 
         # Isolation has a single client (enforced by the portal): every scheduled visit occupies it.
         rows = (
@@ -497,12 +506,19 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
             c2_snapshot = captured(prospect)
             calendar(claims['client']['id'])
             available(prospect, claims['client']['id'], data)
-            external = external_check(
-                request.user,
-                claims['client']['id'],
-                data['starts_at'],
-                data['ends_at'],
-                **({'publication': True} if data['publication'] == 'google' else {}),
+            # Keep legacy API callers fail-closed when they omit publication;
+            # the explicit internal option is the opt-out used by the UI when
+            # the client has not connected an external calendar.
+            external = (
+                external_check(
+                    request.user,
+                    claims['client']['id'],
+                    data['starts_at'],
+                    data['ends_at'],
+                    publication=True,
+                )
+                if data['publication'] == 'google' or 'publication' not in request.data
+                else {'result': 'internal_only'}
             )
             if data['starts_at'] <= timezone.now():
                 raise ValidationError('Créneau futur requis')

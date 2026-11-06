@@ -12,6 +12,11 @@ aux nouvelles invitations. Une suppression de dernier accès rend donc l’ident
 immédiatement, sans reprendre mot de passe, agenda, poste ni historique du compte précédent ; les
 historiques métier restent conservés sous l’identité technique anonymisée.
 
+Le même principe est disponible en Isolation : un setter ou administrateur peut programmer une
+visite en mode « ORVIA uniquement » lorsque le client n’a pas connecté ou fourni de lien externe.
+La connexion Google reste proposée lorsqu’elle existe, et demeure obligatoire uniquement lorsque le
+client lui-même reprend une fiche depuis son espace.
+
 ## Objectif hebdomadaire, réservation sans lien et téléphone facultatif
 
 **Livré.** L’objectif des conseillers Assurance est désormais présenté comme un

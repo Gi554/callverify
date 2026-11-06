@@ -62,7 +62,10 @@ const c2 = ref<any>(null),
   resultBusy = ref(false),
   resultDirty = ref(false),
   localStart = ref(''),
-  duration = ref(60);
+  duration = ref(60),
+  // Keep the existing Google flow as the default while exposing the explicit
+  // ORVIA-only option for setters/admins when no client link is available.
+  publication = ref<'internal' | 'google'>('google');
 function cancelReport() {
   if (resultBusy.value) return;
   if (resultDirty.value && !window.confirm('Abandonner ce résultat sans enregistrer ?')) return;
@@ -177,6 +180,7 @@ async function loadBusy(start: string, end: string) {
     proof,
     ...(props.reactivationId ? { unqualified_id: props.reactivationId } : {}),
     ...(props.clientFollowupId ? { client_followup_id: props.clientFollowupId } : {}),
+    publication: publication.value,
   });
   return data.busy;
 }
@@ -226,7 +230,7 @@ async function save() {
       body.prospect_email = bookingEmail;
       body.prospect_id = current.id;
       body.request_id = requestId;
-      body.publication = 'google';
+      body.publication = publication.value;
       if (props.reactivationId) body.unqualified_id = props.reactivationId;
       if (props.clientFollowupId) body.client_followup_id = props.clientFollowupId;
       if (previousVisit.value) body.previous_visit_id = previousVisit.value.id;
@@ -325,9 +329,8 @@ onMounted(() => run(load));
     </p>
     <h3 v-if="!visitId && prospect">Visites · {{ prospect.name || prospect.raw_phone }}</h3>
     <p v-if="!visitId && role !== 'client'">
-      Les visites concernent le client Isolation unique. Les conflits internes et les occupations de
-      son agenda Google connecté sont contrôlés avant confirmation. Activez la publication dans les
-      réglages de l’agenda du client.
+      Les visites concernent le client Isolation unique. Les conflits internes sont toujours
+      contrôlés. La publication dans l’agenda Google du client est facultative.
     </p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="publicationMessage" role="status">{{ publicationMessage }}</p>
@@ -377,6 +380,12 @@ onMounted(() => run(load));
             L’agenda et les créneaux sont ceux du client Isolation, qui assure le suivi de la
             visite.
           </p>
+          <label v-if="role !== 'client'"
+            >Publication de la visite<select v-model="publication">
+              <option value="internal">ORVIA uniquement (aucune connexion requise)</option>
+              <option value="google">Agenda Google du client</option>
+            </select></label
+          >
           <label v-if="clientFollowupId"
             >Courriel du prospect · facultatif<input
               v-model="prospectEmail"
@@ -396,7 +405,7 @@ onMounted(() => run(load));
             :load="loadBusy"
             :load-key="String(prospect.id)"
             label="Disponibilités du client Isolation"
-            note="Les horaires du client et son agenda connecté sont consultés. Nouvelle vérification à la confirmation."
+            note="Les horaires du client sont consultés si son agenda est connecté. Nouvelle vérification à la confirmation."
           /><label
             >Date et heure du rendez-vous<input
               v-model="localStart"
