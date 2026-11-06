@@ -78,7 +78,7 @@ Les URL internes `/api/` du service historique sont exposées par le proxy CRM s
 | Calendly | Reporté | Décision explicite utilisateur ; non prioritaire pour finir la version Google/Microsoft. |
 | E-mails | Développé/testé, recette externe | File chiffrée et contrôles d’éligibilité/relais ; SMTP et délivrabilité réels client à vérifier. |
 | Sauvegarde/restauration locale et PostgreSQL | Développé/testé, outils opérateur | Lots58/59 ; restauration SQLite jetable et PostgreSQL réelle en CI. Pas de sauvegarde automatique externe opérationnelle. |
-| Copie externe / médias de production | Reporté, non livré | Brouillon local S3 et tests déplacés dans `private-media/deferred-remote-backup/`, hors Git. Aucun bucket réel contacté ou configuré ; ne pas annoncer ce lot comme fusionné. |
+| Copie externe / médias de production | Outil prêt, non configuré | `scripts/crm_offsite_backup.py` envoie des archives Fernet vérifiées vers un bucket S3 privé et marque la copie complète après relecture/intégrité. Aucun bucket/credential réel configuré, ni clé Fernet conservée hors VPS ; sauvegarde hors site non active tant que la recette réelle n’est pas réussie. |
 | VPS/HTTPS, restauration hébergement, supervision | Partiel / recette déploiement | Compose et guides présents, pas une production client acceptée. |
 
 ## Ordre proposé pour finir le backend

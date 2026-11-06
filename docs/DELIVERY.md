@@ -2981,6 +2981,14 @@ Vérifications locales : six tests ciblés (activation, chiffrement, blocage ava
 
 Limites : MFA TOTP seulement ; pas de clés WebAuthn, SSO, récupération administrative dédiée ou MFA pour les autres rôles. Une perte de téléphone et de tous les codes de secours requiert une intervention opérateur. La clé Fernet ne doit pas être changée sans migration/réchiffrement des secrets. Prochaine fonctionnalité : copies chiffrées hors site des bases et fichiers privés.
 
+## Fonctionnalité 73 — transfert vérifié des sauvegardes chiffrées vers S3
+
+Le cron quotidien existant peut transférer chaque archive après restauration dans un conteneur isolé sans réseau. Un fichier de configuration distinct de l’environnement Compose empêche l’exposition des clés S3 aux applications. Seuls manifeste, bases, médias et configuration déjà chiffrés sont envoyés ; le client ne transfère jamais sa clé Fernet. Chaque fichier est relu depuis le stockage et son empreinte SHA-256 comparée ; le marqueur distant `complete` n’est écrit qu’après vérification de tous les objets. Une erreur de transfert ou de contrôle d’intégrité ne valide pas la copie. Le bucket/média runtime n’est pas réutilisé, aucun objet distant n’est supprimé par le code. Commandes, ACL minimales, rotation, conservation du bucket et sauvegarde séparée de la clé décrites dans `docs/DAILY_BACKUP.md`.
+
+Vérifications : sept tests de transfert/configuration et quatre tests du processus quotidien ciblés ; preuve de restauration isolée obligatoire, chiffrement, contenu inattendu, téléchargement corrompu, ordre de marqueur final et fichier de credentials trop ouvert. La suite locale `core` (364 tests, 20 réservés/ignorés), Ruff et vérification Django sont passés ; la simulation S3 locale ne remplace pas la recette fournisseur.
+
+État de production observé avant cette livraison : cron local présent, bucket distant non configuré, aucun dossier d’archive quotidienne existant. Par conséquent, le transfert distant et la reprise hors site ne sont **pas encore actifs**. Le déploiement des outils ne crée ni compte/bucket ni credentials et n’exporte pas la clé. Activation réelle et premier upload encore à faire après configuration S3 dédiée et dépôt protégé de la clé Fernet dans un coffre indépendant.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
@@ -2988,6 +2996,6 @@ Limites : MFA TOTP seulement ; pas de clés WebAuthn, SSO, récupération admini
 3. Compléments des fiches Assurance : champs métier définitifs à valider, cycle métier complet des mandats/contrats (registre administratif réservé aux administrateurs livré au lot 50 ; documents liés livrés au lot 51 ; visibilité et cycle à préciser, finances exclues) (partages champs/documents/notes suivis séparément dans les lots 42 à 44) (coordonnées sous verrou, champs configurables avec partage conseiller explicite, notes, documents et chronologie des interactions livrés).
 4. Phonetico dans chaque CRM, après validation des opérations réelles du fournisseur.
 5. Connecteur Calendly et synchronisation Google/Microsoft avancée (publication unidirectionnelle sur agenda principal livrée, recette réelle OAuth à effectuer) ; règles avancées de relance (notifications e-mail, rappels périodiques et escalades administrateurs Assurance livrés ; SMTP réel à valider).
-6. Cycle administratif final des contrats (sans finances), statistiques métier, sauvegardes externes et déploiement final.
+6. Cycle administratif final des contrats (sans finances), statistiques métier, activation/rétention des sauvegardes hors site et test de restauration depuis l’objet distant.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.
