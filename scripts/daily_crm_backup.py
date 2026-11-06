@@ -358,6 +358,7 @@ def main():
     parser.add_argument('--verify-restore', action='store_true')
     parser.add_argument('--archive')
     parser.add_argument('--install-cron', action='store_true')
+    parser.add_argument('--require-offsite', action='store_true')
     args = parser.parse_args()
     root = validate_root(args.root)
     os.chdir(root)
@@ -378,6 +379,18 @@ def main():
         else:
             folder = capture(root, encryption)
         verified = verify_restore(folder, encryption) if args.verify_restore else None
+        from scripts.crm_offsite_backup import read_config, upload_archive
+
+        remote_config = read_config(root / '.git' / 'crm-backup-s3.env')
+        if args.require_offsite and not remote_config:
+            raise BackupError('Destination hors site non configurée.')
+        remote = None
+        if remote_config:
+            if not verified:
+                raise BackupError('La vérification de restauration est obligatoire avant l’upload.')
+            remote = upload_archive(
+                folder, encryption, remote_config, restore_verified=bool(verified)
+            )
         print(
             json.dumps(
                 {
@@ -385,6 +398,7 @@ def main():
                     'encrypted': True,
                     'state': 'restore_verified' if verified else 'captured',
                     'verification': verified,
+                    'offsite': remote or {'configured': False, 'uploaded': False},
                 }
             )
         )
