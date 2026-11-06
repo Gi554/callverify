@@ -1,6 +1,7 @@
 from django.urls import path
 from .identity.actor_names import names as actor_names
 from .identity import views
+from .identity.mfa import manage_mfa
 from .identity import management_api
 from .identity import invitations
 from .identity import calendars
@@ -24,6 +25,7 @@ from .identity.participants import (
 urlpatterns = [
     path('api/portal/csrf/', views.csrf),
     path('api/portal/login/', views.sign_in),
+    path('api/portal/mfa/', manage_mfa),
     path('api/portal/session/', views.session),
     path('api/portal/access/<str:workspace>/', views.access),
 ]

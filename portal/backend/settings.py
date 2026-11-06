@@ -104,6 +104,9 @@ if not DEBUG and not PORTAL_MAIL_KEY:
 DEFAULT_FROM_EMAIL = os.getenv('PORTAL_FROM_EMAIL', 'Orvia <orvia@localhost>')
 PASSWORD_RESET_TIMEOUT = 1800
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update(portal_recovery='5/hour', portal_reset='10/hour')
+MFA_ENCRYPTION_KEY = os.getenv('MFA_ENCRYPTION_KEY', '')
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['portal_mfa'] = '5/min'
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['portal_mfa_login'] = '5/min'
 PORTAL_CALENDAR_KEY = os.getenv('PORTAL_CALENDAR_KEY', '')
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['portal_calendar'] = '20/min'
 GOOGLE_CALENDAR_CLIENT_ID = os.getenv('GOOGLE_CALENDAR_CLIENT_ID', '')

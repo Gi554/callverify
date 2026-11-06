@@ -70,6 +70,14 @@ class SessionGeneration(models.Model):
     generation = models.PositiveBigIntegerField(default=0)
 
 
+class PortalMFA(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    secret = models.CharField(max_length=512)
+    enabled_at = models.DateTimeField(null=True, blank=True)
+    last_step = models.BigIntegerField(default=-1)
+    backup_codes = models.JSONField(default=list, blank=True)
+
+
 class CalendarConnection(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     workspace = models.CharField(max_length=20)

@@ -2971,6 +2971,16 @@ Prospects Isolation présentés dans une table : identité, état technique avec
 
 Vérifications : TypeScript, huit tests frontend et build réussis ; diff vérifié et CI avant fusion. Aucun appel réel, nouvelle donnée de présentation ou changement backend. Contrôle visuel navigateur encore indisponible (désactivé dans Work) : harmonisation du code livrée, validation esthétique et parcours réel de tous les rôles non déclarés terminés. Les agendas restent des listes fonctionnelles, pas une grille calendaire livrée. Prochaine étape : recette visuelle utilisateur et corrections ciblées avant la présentation, puis écarts métier/production déjà recensés.
 
+## Fonctionnalité 72 — MFA centrale obligatoire pour les administrateurs
+
+La connexion du portail central impose une application TOTP aux comptes ayant une adhésion administrateur active. À leur première connexion, les administrateurs sont guidés vers l’activation et restent limités aux routes de session, CSRF et MFA jusqu’à confirmation. Les autres rôles conservent leur connexion habituelle. Le TOTP est vérifié avec une fenêtre de tolérance de 30 secondes de part et d’autre et un pas ne peut être réutilisé. Dix codes de secours aléatoires, hachés en base et consommés une fois, sont affichés à l’activation ; leur renouvellement demande le mot de passe et un TOTP frais. Les secrets TOTP sont chiffrés par Fernet avec la clé stable `MFA_ENCRYPTION_KEY`. Les réponses d’enrôlement et de secours sont privées/non mises en cache ; événements consignés au journal d’audit ; routes limitées à cinq requêtes par minute.
+
+Interface centrale d’enrôlement QR/code manuel, confirmation puis affichage et téléchargement ponctuel des codes de secours. Connexion avec saisie TOTP ou code de secours. Clé MFA déjà présente dans la configuration du conteneur de production ; aucun secret ou code de recette ajouté à Git.
+
+Vérifications locales : six tests ciblés (activation, chiffrement, blocage avant MFA en production, rejeu TOTP, codes de secours à usage unique, accès non administrateur et validation des champs), `makemigrations --check`, `manage.py check`, TypeScript/Vue et build Vite réussis. Compilation : 1 859 modules ; avertissement Vite existant de taille du bundle principal supérieur à 500 kB. Déploiement production via le pipeline après fusion, puis contrôle de santé et migration.
+
+Limites : MFA TOTP seulement ; pas de clés WebAuthn, SSO, récupération administrative dédiée ou MFA pour les autres rôles. Une perte de téléphone et de tous les codes de secours requiert une intervention opérateur. La clé Fernet ne doit pas être changée sans migration/réchiffrement des secrets. Prochaine fonctionnalité : copies chiffrées hors site des bases et fichiers privés.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
