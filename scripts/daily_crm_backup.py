@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import threading
 import time
 from uuid import uuid4
@@ -92,6 +93,13 @@ def validate_root(value):
     ):
         raise BackupError('Racine CRM explicite requise.')
     return root.resolve()
+
+
+def ensure_package_root(root):
+    """Make package imports work when cron executes this file by absolute path."""
+    path = str(Path(root).resolve())
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 
 def capture(root, encryption):
@@ -362,6 +370,7 @@ def main():
     args = parser.parse_args()
     root = validate_root(args.root)
     os.chdir(root)
+    ensure_package_root(root)
     if args.install_cron:
         if args.archive or args.verify_restore:
             raise BackupError('Installation de cron seule requise.')

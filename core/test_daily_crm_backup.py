@@ -1,4 +1,5 @@
 from pathlib import Path, PurePosixPath
+import sys
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
@@ -106,3 +107,10 @@ class DailyBackupTests(TestCase):
         self.assertEqual(entry.count('# orvia-encrypted-daily-backup'), 1)
         self.assertIn('--verify-restore', entry)
         self.assertNotIn('old #', entry)
+
+    def test_script_directory_execution_adds_project_root_for_package_imports(self):
+        original = list(sys.path)
+        self.addCleanup(setattr, sys, 'path', original)
+        sys.path[:] = []
+        backup.ensure_package_root(self.root)
+        self.assertEqual(sys.path[0], str(self.root.resolve()))
