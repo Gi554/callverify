@@ -165,7 +165,11 @@ def deliver(row, token):
         html=layout(
             title=title,
             intro=intro,
-            details=(('Votre espace' if assurance_advisor else 'Espace', space), ('Votre rôle', role), ('Votre identifiant', row.username)),
+            details=(
+                ('Votre espace' if assurance_advisor else 'Espace', space),
+                ('Votre rôle', role),
+                ('Votre identifiant', row.username),
+            ),
             action='ACTIVER MON COMPTE' if assurance_advisor else 'Activer mon compte',
             name=greeting_name,
             url=link,

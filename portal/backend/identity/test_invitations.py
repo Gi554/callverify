@@ -86,7 +86,9 @@ class InvitationTests(TestCase):
             [('assurance', 'advisor')],
         )
         self.assertNotIn('_auth_user_id', self.public.session)
-        self.assertIn('Conseiller en sécurité financière dans votre espace Assurance', mail.outbox[0].body)
+        self.assertIn(
+            'Conseiller en sécurité financière dans votre espace Assurance', mail.outbox[0].body
+        )
         self.assertNotIn('advisor', mail.outbox[0].body)
         html, mime = mail.outbox[0].alternatives[0]
         self.assertEqual(mime, 'text/html')
@@ -131,7 +133,9 @@ class InvitationTests(TestCase):
         )
         dispatch()
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(mail.outbox[-1].subject, 'Orvia CRM — Votre invitation à l’espace Isolation')
+        self.assertEqual(
+            mail.outbox[-1].subject, 'Orvia CRM — Votre invitation à l’espace Isolation'
+        )
         self.assertIn('Bienvenue dans votre équipe', mail.outbox[-1].alternatives[0][0])
         self.assertNotIn('Bienvenue dans l’univers de Martinien', mail.outbox[-1].body)
         self.assertNotIn('Martinien Affanoukpe', mail.outbox[-1].body)
