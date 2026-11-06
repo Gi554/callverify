@@ -34,6 +34,12 @@ class IsolationC2Tests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.data['c2_snapshot']['fields']['email'], '')
 
+    def test_internal_booking_does_not_require_a_client_calendar(self):
+        response = self.book(publication='internal')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.external_check.assert_not_called()
+        self.assertEqual(response.data['calendar'], 'internal')
+
     def test_google_booking_preserves_a_provided_email_and_rejects_invalid_email(self):
         self.assertEqual(self.save(email='not-an-email').status_code, 400)
         self.assertEqual(self.book(publication='google', prospect_email='invalid').status_code, 400)
