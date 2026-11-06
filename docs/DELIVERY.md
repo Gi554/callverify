@@ -7,6 +7,11 @@ facultatif dans le formulaire Assurance : lorsqu’il est absent, le setter peut
 réservation manuelle et la transmettre avec les mêmes contrôles de date, qualification et
 notification. La case de confirmation reste obligatoire pour éviter une transmission non validée.
 
+La qualification Assurance remplace « Statut de fumeur » par « A des placements ou de l’épargne en
+cours ? », avec les réponses Oui/Non et une valeur inconnue conservée comme telle. Les conseillers
+peuvent modifier cette qualification et les coordonnées des fiches qui leur sont attribuées depuis
+leur onglet « Fiche client » ; les notes internes du setter restent protégées.
+
 La libération des identifiants supprimés est maintenant insensible à la casse et s’applique aussi
 aux nouvelles invitations. Une suppression de dernier accès rend donc l’identifiant réutilisable
 immédiatement, sans reprendre mot de passe, agenda, poste ni historique du compte précédent ; les
