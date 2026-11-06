@@ -120,7 +120,9 @@ test('login asks for credentials only, without choosing a space first', async ()
       .find((n) => n.tag === 'form')
       .props.onSubmit({ preventDefault() {} })
     await nextTick()
-    assert.deepEqual(f.submitted, [{ username: 'synthetic-advisor', password: 'synthetic-secret' }])
+    assert.deepEqual(f.submitted, [
+      { username: 'synthetic-advisor', password: 'synthetic-secret', code: '' },
+    ])
     assert.equal(f.all().find((n) => n.props?.id === 'crm-password').value, '')
   } finally {
     f.close()

@@ -22,6 +22,7 @@ function submit() {
     password: password.value,
     code: props.mfaRequired ? code.value.trim() : '',
   });
+  password.value = '';
 }
 watch(
   () => props.authVersion,
