@@ -24,7 +24,7 @@ class QualificationTests(TestCase):
             'marital_status': 'common_law',
             'has_children': True,
             'homeowner': True,
-            'smoker': False,
+            'has_investments': True,
             'has_advisor': None,
             'insurances': ['life', 'group'],
             'additional_notes': 'Disponibilité le matin',
@@ -55,7 +55,7 @@ class QualificationTests(TestCase):
         self.assertEqual(response.data['contact_revision'], 1)
         self.assertEqual(response['Cache-Control'], 'no-store')
         self.assertIsNone(response.data['qualification']['has_advisor'])
-        self.assertIs(response.data['qualification']['smoker'], False)
+        self.assertIs(response.data['qualification']['has_investments'], True)
         self.assertEqual(self.save(revision=0).status_code, 409)
         self.assertEqual(
             BusinessAudit.objects.filter(action='contact.assurance_qualification_updated').count(),
@@ -70,7 +70,7 @@ class QualificationTests(TestCase):
             {'age': 12.5},
             {'profession': 'invented'},
             {'marital_status': 'invented'},
-            {'smoker': 'unknown'},
+            {'has_investments': 'unknown'},
             {'insurances': ['none_known', 'life']},
             {'insurances': ['life', 'life']},
             {'insurances': ['invented']},

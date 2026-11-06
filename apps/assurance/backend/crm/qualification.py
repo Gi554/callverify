@@ -44,7 +44,7 @@ FIELDS = [
         for key, label in [
             ('has_children', 'A des enfants'),
             ('homeowner', 'Est propriétaire'),
-            ('smoker', 'Statut de fumeur'),
+            ('has_investments', 'A des placements ou de l’épargne en cours ?'),
             ('has_advisor', 'Possède actuellement un conseiller en sécurité financière'),
         ]
     ],
@@ -65,7 +65,7 @@ class Qualification(serializers.Serializer):
     marital_status = serializers.ChoiceField(choices=MARITAL, allow_blank=True, default='')
     has_children = serializers.BooleanField(allow_null=True, default=None)
     homeowner = serializers.BooleanField(allow_null=True, default=None)
-    smoker = serializers.BooleanField(allow_null=True, default=None)
+    has_investments = serializers.BooleanField(allow_null=True, default=None)
     has_advisor = serializers.BooleanField(allow_null=True, default=None)
     insurances = serializers.ListField(
         child=serializers.ChoiceField(choices=INSURANCES), max_length=5, default=list

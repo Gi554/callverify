@@ -26,6 +26,7 @@ class AdvisorWorkspaceTests(TestCase):
         self.contact.assigned_advisor_id = 31
         self.contact.assurance_qualification = {
             'age': 45,
+            'has_investments': True,
             'additional_notes': 'INTERNAL DRAFT',
             'advisor_notes': 'Shared note',
         }
@@ -50,7 +51,7 @@ class AdvisorWorkspaceTests(TestCase):
                 'name': 'Updated client',
                 'phone': '001 raw phone',
                 'email': 'original raw email',
-                'qualification': {'age': 46},
+                'qualification': {'age': 46, 'has_investments': False},
                 **values,
             },
             format='json',
@@ -181,6 +182,7 @@ class AdvisorWorkspaceTests(TestCase):
         self.appointment.refresh_from_db()
         self.assertEqual(self.contact.assurance_qualification['additional_notes'], 'INTERNAL DRAFT')
         self.assertEqual(self.contact.assurance_qualification['age'], 46)
+        self.assertIs(self.contact.assurance_qualification['has_investments'], False)
         self.assertEqual(self.contact.phone, '001 raw phone')
         self.assertEqual(self.contact.email, 'original raw email')
         self.assertEqual(self.appointment.qualification_snapshot, {'original': 'immutable'})
