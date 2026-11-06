@@ -46,6 +46,8 @@ services:
     <<: *service
   portal:
     <<: *service
+    environment:
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?Set MFA_ENCRYPTION_KEY}
   portal-mail:
     <<: *service
   portal-calendars:

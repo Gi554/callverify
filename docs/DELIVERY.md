@@ -2989,6 +2989,10 @@ Vérifications : sept tests de transfert/configuration et cinq tests du processu
 
 État de production observé avant cette livraison : cron local présent, bucket distant non configuré, aucun dossier d’archive quotidienne existant. Le transfert distant et la reprise hors site ne sont **pas actifs**. Le déploiement n’a créé ni compte/bucket ni credentials et n’a pas exporté la clé. La première exécution manuelle de capture/restauration sur le VPS a renvoyé l’erreur générique du script ; sa cause n’a pas pu être confirmée car l’inspection distante suivante a été refusée. Un correctif rend explicite le chemin d’import du projet lors de l’exécution par cron/script absolu. La suite locale simulée a réussi après ce durcissement ; une nouvelle recette réelle VPS et un upload distant restent nécessaires.
 
+## Correction — clé MFA transmise au portail de production
+
+Le contrôle de la production a trouvé une clé `MFA_ENCRYPTION_KEY` présente dans `.env`, mais non transmise au conteneur du portail par l’allowlist Compose. Le déploiement ajoute désormais cette variable uniquement au profil de production et échoue au rendu Compose si elle est absente. Le modèle d’environnement documente la clé sans valeur réelle. CI doit valider le correctif avant déploiement ; l’état MFA et la connexion des administrateurs seront ensuite vérifiés avant la création des comptes.
+
 ## Fonctionnalités suivantes non livrées
 
 1. Migration complète des comptes, MFA et navigation unifiée avec Isolation (gestion des accès, invitations, récupération et consultation du journal d’administration et révocation des autres sessions livrées).
