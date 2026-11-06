@@ -1,20 +1,41 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Phone, ShieldCheck, Eye, EyeOff, LogIn, LockKeyhole } from 'lucide-vue-next';
-defineProps<{ busy: boolean; error: string }>();
+const props = defineProps<{
+  busy: boolean;
+  error: string;
+  mfaRequired?: boolean;
+  authVersion?: number;
+}>();
 const emit = defineEmits<{
-  submit: [value: { username: string; password: string }];
+  submit: [value: { username: string; password: string; code: string }];
   recover: [];
 }>();
 // Credentials first: the portal then opens the only authorised space, or lists them.
 const username = ref(''),
   password = ref(''),
+  code = ref(''),
   visible = ref(false);
 function submit() {
-  const secret = password.value;
-  password.value = '';
-  emit('submit', { username: username.value, password: secret });
+  emit('submit', {
+    username: username.value,
+    password: password.value,
+    code: props.mfaRequired ? code.value.trim() : '',
+  });
 }
+watch(
+  () => props.authVersion,
+  () => {
+    password.value = '';
+    code.value = '';
+  },
+);
+watch(
+  () => props.error,
+  (value) => {
+    if (value && !props.mfaRequired) password.value = '';
+  },
+);
 </script>
 <template>
   <div class="login-shell profile-login">
@@ -148,7 +169,13 @@ function submit() {
       <div class="login-form-wrap">
         <span class="welcome-icon"><Phone :size="23" /></span>
         <h2>Heureux de vous revoir !</h2>
-        <p>Connectez-vous avec vos identifiants : votre espace s’ouvre ensuite automatiquement.</p>
+        <p>
+          {{
+            mfaRequired
+              ? 'Saisissez le code de votre application d’authentification ou un code de secours.'
+              : 'Connectez-vous avec vos identifiants : votre espace s’ouvre ensuite automatiquement.'
+          }}
+        </p>
         <form @submit.prevent="submit">
           <label for="crm-username">Votre identifiant</label
           ><input
@@ -173,6 +200,19 @@ function submit() {
               Mot de passe oublié ?
             </button>
           </div>
+          <template v-if="mfaRequired">
+            <label for="crm-mfa-code">Code de sécurité</label>
+            <input
+              id="crm-mfa-code"
+              v-model="code"
+              autocomplete="one-time-code"
+              inputmode="numeric"
+              maxlength="40"
+              placeholder="Code à six chiffres ou code de secours"
+              required
+              :disabled="busy"
+            />
+          </template>
           <div class="password-input">
             <input
               id="crm-password"

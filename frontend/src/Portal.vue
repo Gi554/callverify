@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import PortalLogin from './PortalLogin.vue';
+import PortalMfaSetup from './PortalMfaSetup.vue';
 import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
 import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
@@ -54,6 +55,8 @@ const user = ref<{
   workspaces: Membership[];
   admin_workspaces: string[];
   landing: string | null;
+  mfa_enabled: boolean;
+  mfa_required: boolean;
 } | null>(null);
 const workspace = ref(''),
   error = ref(''),
@@ -64,6 +67,8 @@ const recoveryOpen = ref(false),
   resetToken = ref('');
 const inviteId = ref(''),
   inviteToken = ref('');
+const mfaPrompt = ref(false),
+  authVersion = ref(0);
 function closeRecovery() {
   recoveryOpen.value = false;
   resetUid.value = '';
@@ -104,13 +109,15 @@ async function portal(path: string, body?: any, method?: string) {
   });
   if (!response.ok) {
     const result = await response.json().catch(() => ({}));
-    throw new Error(
+    const failure = new Error(
       result.detail ||
         Object.entries(result)
           .map(([key, value]) => key + ': ' + String(value))
           .join(' · ') ||
         'Accès indisponible',
-    );
+    ) as Error & { payload?: any };
+    failure.payload = result;
+    throw failure;
   }
   if (response.headers.get('Content-Disposition')?.includes('attachment')) return response.blob();
   return response.status === 204 ? null : response.json();
@@ -213,16 +220,20 @@ async function enter(value: string) {
     if (version === workspaceVersion) busy.value = false;
   }
 }
-async function login(credentials: { username: string; password: string }) {
+async function login(credentials: { username: string; password: string; code: string }) {
   busy.value = true;
   error.value = '';
   try {
     const authenticated = await portal('login/', {
       username: credentials.username,
       password: credentials.password,
+      code: credentials.code,
     });
     csrf = '';
+    mfaPrompt.value = false;
+    authVersion.value++;
     user.value = authenticated;
+    if (authenticated.mfa_required) return;
     // A single authorised space opens directly; several are listed in « Mes espaces ».
     if (
       pendingIsolationVisit.value &&
@@ -242,8 +253,22 @@ async function login(credentials: { username: string; password: string }) {
       await enter(authenticated.workspaces[0].workspace);
   } catch (e: any) {
     error.value = e.message;
+    mfaPrompt.value = !!e.payload?.mfa_required;
   } finally {
     credentials.password = '';
+    busy.value = false;
+  }
+}
+async function completeMfa() {
+  busy.value = true;
+  error.value = '';
+  try {
+    const authenticated = await portal('session/');
+    user.value = authenticated;
+    if (authenticated.workspaces.length === 1) await enter(authenticated.workspaces[0].workspace);
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
     busy.value = false;
   }
 }
@@ -486,7 +511,7 @@ onMounted(async () => {
       user.value?.landing || '',
       allowed[0] || '',
     ].find((value) => value && allowed.includes(value));
-    if (target) await enter(target);
+    if (target && !user.value?.mfa_required) await enter(target);
   } catch {
   } finally {
     ready.value = true;
@@ -535,11 +560,18 @@ onMounted(async () => {
       v-if="ready && !user && !recoveryOpen && !inviteId"
       :busy="busy"
       :error="error"
+      :mfa-required="mfaPrompt"
+      :auth-version="authVersion"
       @submit="login"
       @recover="
         recoveryOpen = true;
         error = '';
       "
+    />
+    <PortalMfaSetup
+      v-else-if="ready && user?.mfa_required && !user?.mfa_enabled"
+      :portal="portal"
+      @complete="completeMfa"
     />
     <PortalWorkspaceChooser
       v-else-if="ready && user && !workspace && !passwordOpen && !managing"

@@ -1,5 +1,20 @@
 # API CallVerify
 
+## Authentification du portail CRM central
+
+Les routes centrales utilisent `/api/portal/` et sont distinctes de l’ancienne authentification CallVerify décrite ci-dessous. Les administrateurs centraux doivent activer une application TOTP avant d’ouvrir leur espace ; une connexion protégée demande le code TOTP à six chiffres. Chaque code TOTP ne peut être réutilisé. Dix codes de secours à usage unique sont remis lors de l’activation ; les secrets sont chiffrés avec `MFA_ENCRYPTION_KEY`, et les codes de secours sont hachés. Une nouvelle série exige le mot de passe et un nouveau code TOTP. Les autres rôles ne sont pas astreints à la MFA.
+
+| Méthode | Route | Utilisation |
+| --- | --- | --- |
+| POST | `/api/portal/mfa/` | Session centrale authentifiée : `{action: "enroll"}` retourne URI TOTP et QR privés ; `{action: "confirm", code}` active la MFA et retourne les codes de secours une seule fois ; `{action: "backup", password, code}` renouvelle les codes. |
+| POST | `/api/portal/login/` | `{username, password, workspace?, code?}` ; si MFA activée, un TOTP ou code de secours est requis. Un administrateur sans MFA est dirigé vers l’activation avant accès aux routes CRM. |
+
+En production, `MFA_ENCRYPTION_KEY` doit être configurée avec une clé Fernet stable et conservée hors Git. Toute rotation de cette clé nécessite de ré-encrypter les secrets MFA avant de remplacer l’ancienne clé. Les codes et QR ne sont pas mis en cache.
+
+La MFA centrale est livrée pour les comptes administrateurs. Les clés de sécurité WebAuthn, le SSO, une console administrateur de réinitialisation et les facteurs MFA des rôles non administrateurs ne sont pas inclus.
+
+## API CallVerify historique
+
 Base : `/api/`. Toutes les routes métier demandent un administrateur actif. Un administrateur accède à ses campagnes ; un superadministrateur accède à toutes. Les listes renvoient `{count, next, previous, results}` : 25 lignes par défaut, `page_size` configurable jusqu'à 100, navigation via `page`. La liste d'administrateurs est un tableau non paginé.
 
 | Méthode | Route | Utilisation |

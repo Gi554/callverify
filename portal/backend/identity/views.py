@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
+from django.db import transaction
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect
 from rest_framework.decorators import (
@@ -10,12 +11,22 @@ from rest_framework.decorators import (
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from .models import Membership, AccessAudit, ROLES
+from .models import Membership, AccessAudit, PortalMFA, ROLES
 from packages.access.tickets import issue
+from .mfa import admin_requires_mfa, authenticate_code, mfa_enabled
 
 
 class LoginThrottle(AnonRateThrottle):
     scope = 'portal_login'
+
+
+class MFALoginThrottle(AnonRateThrottle):
+    scope = 'portal_mfa_login'
+
+    def allow_request(self, request, view):
+        if not request.data.get('code'):
+            return True
+        return super().allow_request(request, view)
 
 
 @api_view(['GET'])
@@ -28,11 +39,13 @@ def csrf(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])
-@throttle_classes([LoginThrottle])
+@throttle_classes([LoginThrottle, MFALoginThrottle])
 def sign_in(request):
     from rest_framework.authentication import SessionAuthentication
 
     SessionAuthentication().enforce_csrf(request)
+    if set(request.data) - {'username', 'password', 'workspace', 'code'}:
+        return Response({'detail': 'Champs de connexion non autorisés'}, status=400)
     user = authenticate(
         request,
         username=request.data.get('username', ''),
@@ -48,15 +61,34 @@ def sign_in(request):
             user=user, workspace=workspace, active=True, role__in=ROLES[workspace]
         ).exists():
             return Response({'detail': 'Votre compte n’a pas accès à ce profil.'}, status=403)
+    factor = PortalMFA.objects.filter(user=user, enabled_at__isnull=False).first()
+    if factor:
+        with transaction.atomic():
+            factor = PortalMFA.objects.select_for_update().get(pk=factor.pk)
+            if not authenticate_code(factor, request.data.get('code', '')):
+                return Response(
+                    {
+                        'detail': 'Code de sécurité requis, invalide ou déjà utilisé.',
+                        'mfa_required': True,
+                    },
+                    status=401,
+                )
+            AccessAudit.objects.create(user=user, action='session.mfa_login')
     login(request, user)
     from .authentication import SESSION_KEY, generation
 
     request.session[SESSION_KEY] = generation(user)
+    if admin_requires_mfa(user) and not factor:
+        request.session['portal_mfa_setup_required'] = True
+    else:
+        request.session.pop('portal_mfa_setup_required', None)
     AccessAudit.objects.create(user=user, action='session.login')
-    return session_payload(user)
+    return session_payload(
+        user, setup_required=bool(request.session.get('portal_mfa_setup_required'))
+    )
 
 
-def session_payload(user):
+def session_payload(user, setup_required=None):
     memberships = list(
         Membership.objects.filter(user=user, active=True)
         .exclude(role='closer')
@@ -70,6 +102,12 @@ def session_payload(user):
                 row['workspace'] for row in memberships if row['role'] == 'administrator'
             ],
             'landing': memberships[0]['workspace'] if len(memberships) == 1 else None,
+            'mfa_enabled': mfa_enabled(user),
+            'mfa_required': (
+                admin_requires_mfa(user) and not mfa_enabled(user)
+                if setup_required is None
+                else setup_required
+            ),
         }
     )
 
