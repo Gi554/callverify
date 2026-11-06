@@ -74,11 +74,12 @@ onMounted(start);
 
       <template v-if="backupCodes.length">
         <div class="portal-mfa-success" role="status">
-          <ShieldCheck :size="18" /> La MFA est activée. Enregistrez maintenant vos codes de secours.
+          <ShieldCheck :size="18" /> La MFA est activée. Enregistrez maintenant vos codes de
+          secours.
         </div>
         <p class="portal-mfa-lead">
-          Chaque code fonctionne une seule fois si vous perdez l’accès à votre application.
-          ORVIA ne les affichera plus après cette étape.
+          Chaque code fonctionne une seule fois si vous perdez l’accès à votre application. ORVIA ne
+          les affichera plus après cette étape.
         </p>
         <ol class="portal-mfa-codes">
           <li v-for="backup in backupCodes" :key="backup">{{ backup }}</li>
