@@ -132,7 +132,7 @@ onMounted(load);
       >
       <label
         >Nombre de prospects (les premiers)
-        <input v-model.number="count" type="number" min="1" max="1000" inputmode="numeric"
+        <input v-model.number="count" type="number" min="1" max="10000" inputmode="numeric"
       /></label>
       <label
         >Provenance

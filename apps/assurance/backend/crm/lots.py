@@ -13,7 +13,7 @@ from .assignments import admin
 from .models import BusinessAudit, Contact, ContactImport
 from .prospect_queue import apply_queue
 
-MAX_LOT = 1000
+MAX_LOT = 10000
 
 
 class LotInput(serializers.Serializer):

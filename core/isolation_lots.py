@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from packages.access.isolation import verify_lot
 from .models import AuditEvent, IsolationAssignmentBatch, IsolationVisit, Prospect
 
-MAX_LOT = 1000
+MAX_LOT = 10000
 
 
 class AssignInput(serializers.Serializer):
