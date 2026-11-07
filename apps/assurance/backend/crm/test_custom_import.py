@@ -186,6 +186,8 @@ class CustomImportTests(TestCase):
         imported = self.upload(list_id=str(list_id))
         self.assertEqual(imported.status_code, 201, imported.data)
         self.assertEqual(Contact.objects.get().import_batch_id, list_id)
-        self.assertEqual(self.client.post(f'/api/assurance/lists/{list_id}/clear/').status_code, 200)
+        self.assertEqual(
+            self.client.post(f'/api/assurance/lists/{list_id}/clear/').status_code, 200
+        )
         self.assertFalse(Contact.objects.exists())
         self.assertEqual(ContactImport.objects.get(pk=list_id).imported, 0)

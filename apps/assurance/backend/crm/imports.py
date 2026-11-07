@@ -148,7 +148,9 @@ def lists(request):
         columns=[],
         mapping={},
     )
-    BusinessAudit.objects.create(actor_id=request.user.pk, action='contacts.list_created', object_id=batch.pk)
+    BusinessAudit.objects.create(
+        actor_id=request.user.pk, action='contacts.list_created', object_id=batch.pk
+    )
     return Response(output(batch), status=201)
 
 
@@ -301,12 +303,18 @@ def imports(request):
                 batch.rejected += len(errors)
                 batch.report = [*batch.report, *errors]
                 batch.columns = columns
-                batch.mapping = mapping if not custom_mapping else {
-                    **mapping,
-                    'custom_fields': custom_mapping,
-                    'schema_revision': int(revision),
-                }
-                batch.save(update_fields=['total', 'imported', 'rejected', 'report', 'columns', 'mapping'])
+                batch.mapping = (
+                    mapping
+                    if not custom_mapping
+                    else {
+                        **mapping,
+                        'custom_fields': custom_mapping,
+                        'schema_revision': int(revision),
+                    }
+                )
+                batch.save(
+                    update_fields=['total', 'imported', 'rejected', 'report', 'columns', 'mapping']
+                )
             else:
                 batch = ContactImport.objects.create(
                     request_id=request_id,
@@ -320,7 +328,11 @@ def imports(request):
                     columns=columns,
                     mapping=mapping
                     if not custom_mapping
-                    else {**mapping, 'custom_fields': custom_mapping, 'schema_revision': int(revision)},
+                    else {
+                        **mapping,
+                        'custom_fields': custom_mapping,
+                        'schema_revision': int(revision),
+                    },
                 )
             for contact in accepted:
                 contact.import_batch = batch
@@ -373,7 +385,11 @@ def clear_list(request, batch_id):
             batch.total = batch.imported = batch.rejected = 0
             batch.report = []
             batch.save(update_fields=['total', 'imported', 'rejected', 'report'])
-            BusinessAudit.objects.create(actor_id=request.user.pk, action='contacts.list_cleared', object_id=batch.pk)
+            BusinessAudit.objects.create(
+                actor_id=request.user.pk, action='contacts.list_cleared', object_id=batch.pk
+            )
     except ProtectedError as error:
-        raise ValidationError('Impossible de vider cette liste : un rendez-vous utilise encore un contact.') from error
+        raise ValidationError(
+            'Impossible de vider cette liste : un rendez-vous utilise encore un contact.'
+        ) from error
     return Response(output(batch))
