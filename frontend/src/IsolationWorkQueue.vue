@@ -357,6 +357,7 @@ onBeforeUnmount(() => {
         >
           <Users :size="16" />Répartir les prospects</button
         ><ProspectExport
+          v-if="role !== 'setter'"
           :request="request"
           path="work-queue/export/"
           :filters="{

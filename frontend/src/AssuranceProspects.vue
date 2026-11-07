@@ -288,7 +288,7 @@ onBeforeUnmount(() => {
         </button>
 
         <ProspectExport
-          v-if="!listView"
+          v-if="!listView && role !== 'setter'"
           :request="request"
           path="contacts/export/"
           :filters="{ search: applied, queue: includeProcessed ? 'all' : 'active' }"

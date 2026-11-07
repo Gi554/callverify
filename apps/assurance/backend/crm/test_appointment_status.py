@@ -180,9 +180,7 @@ class AppointmentStatusTests(TestCase):
         )
         for kind in ('csv', 'xlsx'):
             exported = self.client.get('/api/assurance/statistics/', {**params, 'export': kind})
-            self.assertEqual(exported.status_code, 200)
-            if kind == 'csv':
-                self.assertIn('Absences', exported.content.decode('utf-8-sig'))
+            self.assertEqual(exported.status_code, 403)
 
     def test_backfill_uses_only_audit_evidence_and_never_infers_absence(self):
         legacy = AppointmentReport.objects.create(

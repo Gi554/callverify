@@ -3021,3 +3021,9 @@ Assurance dispose désormais du même parcours de listes que Isolation dans « P
 
 Vérifications : 10 tests métier Assurance ciblés, dont création, remplissage et vidage d’une liste ; TypeScript/Vue et Prettier réussis. Les listes liées à un rendez-vous sont protégées contre une suppression partielle et chaque action d’administration est auditée.
 
+## Correction — exports interdits aux setters
+
+Les exports de prospects Isolation et Assurance sont désormais refusés côté serveur pour le rôle Setter, quel que soit le format demandé (CSV, XLSX ou PDF) ou l’URL appelée. Le bouton d’export est également masqué dans leurs interfaces. Les clients, conseillers et administrateurs conservent leurs exports autorisés selon leur périmètre ; les exports de statistiques des setters sont également bloqués sans retirer leur consultation.
+
+Vérifications : tests ciblés Isolation et Assurance export réussis, TypeScript/Vue et formatage réussis. Le contrôle est appliqué par permission backend et ne dépend donc pas du navigateur.
+

@@ -85,14 +85,10 @@ class IsolationStatisticsExportTests(TestCase):
         self.fixture.visit()
         self.fixture.visit(setter=22)
         self.auth(21, 'setter')
-        rows = self.rows(self.export())
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1][1:3], ['', ''])
-        book = load_workbook(io.BytesIO(self.export('xlsx').content))
-        self.assertEqual(book.sheetnames, ['Synthèse'])
+        for kind in ('csv', 'xlsx', 'pdf'):
+            self.assertEqual(self.export(kind).status_code, 403)
         Prospect.objects.filter(pk=self.fixture.prospect.pk).update(assigned_setter_id=22)
-        rows = self.rows(self.export())
-        self.assertEqual(rows[1][3], '0')
+        self.assertEqual(self.export().status_code, 403)
 
     def test_dates_empty_rates_and_permissions(self):
         self.fixture.visit()

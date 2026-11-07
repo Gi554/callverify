@@ -5,7 +5,7 @@ from openpyxl import load_workbook
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from .models import Contact, ContactFieldSchema, BusinessAudit
+from .models import Contact, ContactFieldSchema
 
 
 @override_settings(DEBUG=True)
@@ -48,23 +48,10 @@ class ContactExportTests(TestCase):
         self.assertTrue(text.startswith('﻿'))
         return list(csv.reader(StringIO(text[1:]), delimiter=';'))
 
-    def test_setter_csv_follows_list_filters_and_neutralises_formulas(self):
+    def test_setter_cannot_export_any_contact_file(self):
         self.auth(21, 'setter')
-        rows = self.csv_rows({})
-        self.assertEqual(
-            rows[0],
-            ['Réf. fiche', 'Nom', 'Téléphone', 'E-mail', 'Étape', 'Mis à jour le', 'Budget']
-            + ['Note interne'],
-        )
-        self.assertEqual([row[0] for row in rows[1:]], [str(self.bob.pk), str(self.alice.pk)])
-        self.assertEqual(rows[1][1], '\'=HYPERLINK("http://x")')
-        self.assertEqual(rows[2][2], '+33 6 12 34 56 78')
-        self.assertEqual(rows[2][6:], ['1200', 'interne'])
-        self.assertEqual(len(self.csv_rows({'search': 'alice'})), 2)
-        self.assertEqual(len(self.csv_rows({'status': 'callback'})), 2)
-        audit = BusinessAudit.objects.filter(action='contacts.exported').last()
-        self.assertEqual(audit.actor_id, 21)
-        self.assertEqual(audit.metadata['status'], 'callback')
+        for file in ('csv', 'xlsx', 'pdf'):
+            self.assertEqual(self.client.get(self.url, {'file': file}).status_code, 403)
 
     def test_administrator_excel_keeps_formulas_as_text(self):
         self.auth(99, 'administrator')
@@ -87,7 +74,7 @@ class ContactExportTests(TestCase):
         self.assertEqual(len(self.csv_rows({})), 1)
 
     def test_invalid_requests_are_refused(self):
-        self.auth(21, 'setter')
+        self.auth(91, 'administrator')
         self.assertEqual(self.client.get(self.url).status_code, 400)
         self.assertEqual(self.client.get(self.url, {'file': 'docx'}).status_code, 400)
         self.assertEqual(self.client.get(self.url, {'file': 'csv', 'page': 2}).status_code, 400)
@@ -95,7 +82,7 @@ class ContactExportTests(TestCase):
         self.assertIn(self.client.get(self.url, {'file': 'csv'}).status_code, (401, 403))
 
     def test_volume_limits_never_truncate(self):
-        self.auth(21, 'setter')
+        self.auth(91, 'administrator')
         with patch.dict('packages.exports.MAX_ROWS', {'csv': 2, 'xlsx': 1}):
             self.assertEqual(len(self.csv_rows({})), 3)
             response = self.client.get(self.url, {'file': 'xlsx'})

@@ -4,7 +4,7 @@ from openpyxl import load_workbook
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from .models import Prospect, AuditEvent
+from .models import Prospect
 from .test_isolation_work import fixture
 
 
@@ -31,23 +31,10 @@ class IsolationExportTests(TestCase):
         self.assertIn('prospects-isolation-', response['Content-Disposition'])
         return list(csv.reader(StringIO(response.content.decode('utf-8')[1:]), delimiter=';'))
 
-    def test_setter_exports_only_assigned_prospects(self):
+    def test_setter_cannot_export_any_prospect_file(self):
         self.auth(21, 'setter')
-        rows = self.csv_rows()
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(
-            rows[1][:8],
-            [str(self.row.pk), 'ISO-1', 'Prospect', '4165550123']
-            + [
-                '+14165550123',
-                'Isolation',
-                'setter.demo01',
-                'À contacter',
-            ],
-        )
-        audit = AuditEvent.objects.get(action='isolation.prospects.exported')
-        self.assertEqual(audit.metadata['actor_portal_id'], 21)
-        self.assertEqual(audit.metadata['rows'], 1)
+        for file in ('csv', 'xlsx', 'pdf'):
+            self.assertEqual(self.client.get(self.url, {'file': file}).status_code, 403)
 
     def test_administrator_exports_team_with_filters(self):
         self.auth(91, 'administrator')
