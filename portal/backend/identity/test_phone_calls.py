@@ -1,3 +1,4 @@
+from datetime import timedelta
 from uuid import uuid4
 from unittest.mock import patch, Mock
 from django.contrib.auth import get_user_model
@@ -6,7 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.phone_calls import issue
 from packages.newt.calls import place
-from .phone_calls import eligible
+from .phone_calls import CALL_COOLDOWN_SECONDS, eligible
 from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit, CallRules
 from unittest import skipUnless
 from concurrent.futures import ThreadPoolExecutor
@@ -169,6 +170,15 @@ class PhoneCallsTests(TestCase):
         new = issue(self.user.pk, 42, 3, uuid4(), '15145550101', self.lease)
         self.assertEqual(self.post(new).status_code, 409)
         self.assertEqual(self.provider.call_count, 1)
+
+    def test_call_cooldown_is_five_seconds(self):
+        self.post()
+        attempt = PhoneCallAttempt.objects.get()
+        attempt.created_at = timezone.now() - timedelta(seconds=CALL_COOLDOWN_SECONDS + 1)
+        attempt.save(update_fields=['created_at'])
+        new = issue(self.user.pk, 43, 3, uuid4(), '15145550101', self.lease)
+        self.assertEqual(self.post(new).status_code, 200)
+        self.assertEqual(self.provider.call_count, 2)
 
     def test_other_user_and_advisor_cannot_read_attempt(self):
         self.post()

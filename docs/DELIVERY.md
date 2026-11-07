@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Délai entre commandes d’appel
+
+Le délai minimal entre deux commandes d’appel distinctes du même compte est de **5 secondes**, pour
+Assurance comme pour Isolation. Le contrôle reste côté portail et est partagé entre les deux espaces
+pour le même compte ; la relecture d’une commande existante avec son identifiant reste immédiate.
+Ce délai réduit l’attente opérationnelle sans constituer une preuve que le poste ou le destinataire est
+disponible.
+
 ## Invitation Assurance personnalisée pour les conseillers
 
 Les invitations destinées aux conseillers Assurance utilisent maintenant l’en-tête « Bienvenue
