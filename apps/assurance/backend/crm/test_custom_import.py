@@ -171,3 +171,10 @@ class CustomImportTests(TestCase):
         self.assertEqual(response.data['imported'], 1)
         self.assertEqual(response.data['rejected'], 1)
         self.assertEqual(Contact.objects.get().custom_values['date'], '2026-10-20')
+
+    def test_administrator_can_delete_an_imported_list_and_its_contacts(self):
+        response = self.upload()
+        batch_id = response.data['id']
+        self.assertEqual(self.client.delete(f'{self.url}{batch_id}/').status_code, 204)
+        self.assertFalse(Contact.objects.exists())
+        self.assertFalse(ContactImport.objects.exists())

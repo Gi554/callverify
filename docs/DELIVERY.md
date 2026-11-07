@@ -3009,3 +3009,9 @@ Le module Isolation permet de créer une liste, d’y importer un fichier CSV/XL
 
 Vérifications : tests ciblés `core.test_isolation_qualification` (8 tests réussis), contrôle Prettier du composant Isolation. Le contrôle TypeScript complet n’a pas pu être terminé localement car l’environnement pnpm a tenté de réinstaller des dépendances sans accès réseau ; la CI devra confirmer le build frontend.
 
+## Fonctionnalité 74 — listes intégrées aux Prospects et parité Assurance
+
+La gestion « Listes et imports » Isolation est maintenant accessible directement depuis la page « Prospects » de l’administrateur, avec retour immédiat au tableau de prospection ; elle n’est plus un écran de navigation séparé. Dans Assurance, l’écran Contacts conserve l’aperçu et le mappage CSV/XLSX de toutes les lignes, propose l’export CSV/Excel/PDF et permet à l’administrateur de supprimer définitivement un import et les contacts qu’il a créés. Une liste liée à un rendez-vous protégé est refusée avec un message explicite, sans suppression partielle.
+
+Vérifications : neuf tests ciblés d’import Assurance (dont suppression définitive), TypeScript/Vue (`vue-tsc --noEmit`) et formatage Prettier réussis. Aucun secret, fournisseur téléphonique ou donnée de production n’est ajouté ; la suppression est réservée à l’administrateur et auditée.
+

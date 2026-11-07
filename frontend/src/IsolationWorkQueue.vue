@@ -20,11 +20,13 @@ import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
 import IsolationLots from './IsolationLots.vue';
+import IsolationQualification from './IsolationQualification.vue';
 const includeProcessed = ref(false);
 const lotsOpen = ref(false),
   adminTools = ref(false),
   callPending = ref(false),
-  workflow = ref<'edit' | 'call'>('edit');
+  workflow = ref<'edit' | 'call'>('edit'),
+  listManagement = ref(false);
 const statuses = [
   ['to_contact', 'À contacter'],
   ['in_progress', 'En cours'],
@@ -324,6 +326,16 @@ onBeforeUnmount(() => {
       </div>
       <div class="board-actions">
         <button
+          v-if="role === 'administrator' && !listManagement"
+          class="secondary"
+          @click="listManagement = true"
+        >
+          Listes et imports
+        </button>
+        <button v-if="listManagement" class="secondary" @click="listManagement = false">
+          ← Retour aux prospects
+        </button>
+        <button
           v-if="['setter', 'administrator'].includes(role) && !session"
           class="primary"
           :disabled="busy || !total"
@@ -359,378 +371,386 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <div class="prospects-toolbar">
-      <label class="processed-toggle"
-        ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les
-        fiches traitées</label
+    <IsolationQualification v-if="listManagement && role === 'administrator'" :request="request" />
+    <template v-else>
+      <div class="prospects-toolbar">
+        <label class="processed-toggle"
+          ><input type="checkbox" v-model="includeProcessed" @change="load" />Afficher aussi les
+          fiches traitées</label
+        >
+        <label class="stage-filter"
+          ><select v-model="commercialStatus" aria-label="Filtrer les prospects par statut">
+            <option value="">Tous les statuts</option>
+            <option v-for="[key, label] in statuses" :key="key" :value="key">{{ label }}</option>
+          </select></label
+        ><span class="prospects-count" role="status"
+          >{{ busy ? 'Chargement…' : total + ' prospect(s)'
+          }}{{ columns.some((c) => c.error) ? ' · résultat partiel' : '' }}</span
+        >
+        <form @submit.prevent="load">
+          <Search :size="17" /><input
+            v-model="search"
+            aria-label="Rechercher un prospect Isolation"
+            placeholder="Nom, téléphone ou référence"
+          /><button :disabled="busy">Rechercher</button>
+        </form>
+      </div>
+      <div class="isolation-filters">
+        <label
+          ><input v-model="dueOnly" type="checkbox" @change="load" />Rappels à traiter
+          <span v-if="callbacksDue">({{ callbacksDue }})</span></label
+        ><label v-if="role === 'administrator'"
+          >Responsable<select v-model="owner" @change="load">
+            <option value="">Tous les setters</option>
+            <option value="unassigned">Non affectés</option>
+            <option v-for="person in people" :key="person.id" :value="String(person.id)">
+              {{ person.name }}
+            </option></select
+          ><input
+            v-model="peopleSearch"
+            aria-label="Rechercher un responsable"
+            placeholder="Rechercher un setter"
+            @change="run(() => directory())" /></label
+        ><button
+          class="text-button"
+          @click="
+            visitProspect = undefined;
+            visitsOpen = true;
+          "
+        >
+          <CalendarDays :size="15" />Consulter les visites
+        </button>
+      </div>
+      <p v-if="error" role="alert" class="error">{{ error }}</p>
+      <CallCountdownModal
+        v-if="session && countdown !== null"
+        :seconds="countdown"
+        :prospect="nextProspect()?.name"
+        @stop="stopSession"
       >
-      <label class="stage-filter"
-        ><select v-model="commercialStatus" aria-label="Filtrer les prospects par statut">
-          <option value="">Tous les statuts</option>
-          <option v-for="[key, label] in statuses" :key="key" :value="key">{{ label }}</option>
-        </select></label
-      ><span class="prospects-count" role="status"
-        >{{ busy ? 'Chargement…' : total + ' prospect(s)'
-        }}{{ columns.some((c) => c.error) ? ' · résultat partiel' : '' }}</span
-      >
-      <form @submit.prevent="load">
-        <Search :size="17" /><input
-          v-model="search"
-          aria-label="Rechercher un prospect Isolation"
-          placeholder="Nom, téléphone ou référence"
-        /><button :disabled="busy">Rechercher</button>
-      </form>
-    </div>
-    <div class="isolation-filters">
-      <label
-        ><input v-model="dueOnly" type="checkbox" @change="load" />Rappels à traiter
-        <span v-if="callbacksDue">({{ callbacksDue }})</span></label
-      ><label v-if="role === 'administrator'"
-        >Responsable<select v-model="owner" @change="load">
-          <option value="">Tous les setters</option>
-          <option value="unassigned">Non affectés</option>
-          <option v-for="person in people" :key="person.id" :value="String(person.id)">
-            {{ person.name }}
-          </option></select
-        ><input
-          v-model="peopleSearch"
-          aria-label="Rechercher un responsable"
-          placeholder="Rechercher un setter"
-          @change="run(() => directory())" /></label
-      ><button
-        class="text-button"
-        @click="
-          visitProspect = undefined;
-          visitsOpen = true;
-        "
-      >
-        <CalendarDays :size="15" />Consulter les visites
-      </button>
-    </div>
-    <p v-if="error" role="alert" class="error">{{ error }}</p>
-    <CallCountdownModal
-      v-if="session && countdown !== null"
-      :seconds="countdown"
-      :prospect="nextProspect()?.name"
-      @stop="stopSession"
-    >
-      <span class="session-countdown-status" role="status"
-        >Prochain appel dans {{ countdown }} s</span
-      >
-      <button class="primary" @click="advance">Appeler maintenant</button>
-      <button class="secondary" @click="stopSession">Arrêter la session</button>
-    </CallCountdownModal>
-    <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
-    <IsolationLots
-      v-if="lotsOpen && role === 'administrator'"
-      :request="request"
-      :portal="portal"
-      @changed="load"
-    />
-    <section v-if="adminTools && role === 'administrator'" class="admin-tools">
-      <h2>Répartition et affectation</h2>
-      <p>
-        Ces outils portent sur les {{ rows.length }} fiches actuellement chargées. Filtrez ou
-        chargez davantage de cartes pour préciser la sélection.
-      </p>
-      <IsolationDistribution
-        :rows="rows"
-        :portal="portal"
+        <span class="session-countdown-status" role="status"
+          >Prochain appel dans {{ countdown }} s</span
+        >
+        <button class="primary" @click="advance">Appeler maintenant</button>
+        <button class="secondary" @click="stopSession">Arrêter la session</button>
+      </CallCountdownModal>
+      <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
+      <IsolationLots
+        v-if="lotsOpen && role === 'administrator'"
         :request="request"
+        :portal="portal"
         @changed="load"
-      /><IsolationBulkAssignment :rows="rows" :portal="portal" :request="request" @changed="load" />
-    </section>
-    <p v-if="!busy && !visible.length" class="board-empty">
-      Aucun prospect ne correspond à ces filtres.
-    </p>
-    <div
-      class="prospects-columns"
-      :class="{ 'single-status': visible.length === 1 }"
-      role="region"
-      tabindex="0"
-      aria-label="Prospects Isolation par statut"
-    >
-      <section
-        v-for="column in visible"
-        :key="column.key"
-        class="prospect-column"
-        :style="{
-          '--stage-tone': ['#f1ad54', '#5b8def', '#a18be2', '#48b3be', '#c990b8', '#90a0b9'][
-            columns.indexOf(column) % 6
-          ],
-        }"
+      />
+      <section v-if="adminTools && role === 'administrator'" class="admin-tools">
+        <h2>Répartition et affectation</h2>
+        <p>
+          Ces outils portent sur les {{ rows.length }} fiches actuellement chargées. Filtrez ou
+          chargez davantage de cartes pour préciser la sélection.
+        </p>
+        <IsolationDistribution
+          :rows="rows"
+          :portal="portal"
+          :request="request"
+          @changed="load"
+        /><IsolationBulkAssignment
+          :rows="rows"
+          :portal="portal"
+          :request="request"
+          @changed="load"
+        />
+      </section>
+      <p v-if="!busy && !visible.length" class="board-empty">
+        Aucun prospect ne correspond à ces filtres.
+      </p>
+      <div
+        class="prospects-columns"
+        :class="{ 'single-status': visible.length === 1 }"
+        role="region"
+        tabindex="0"
+        aria-label="Prospects Isolation par statut"
       >
-        <header>
-          <span class="stage-dot"></span>
-          <h2>{{ column.label }}</h2>
-          <span class="column-count">{{ column.count }}</span>
-        </header>
-        <div class="prospect-stack">
-          <p v-if="column.error" role="alert">
-            {{ column.error
-            }}<button class="secondary" @click="loadColumn(column, generation, column.page > 0)">
-              Réessayer
-            </button>
-          </p>
-          <article v-for="row in column.rows" :key="row.id" class="prospect-card">
-            <button class="prospect-title" @click="openActivity(row)">
-              {{ row.name || 'Prospect sans nom' }}</button
-            ><small class="prospect-updated">{{
-              row.campaign?.name || row.reference || 'Isolation'
-            }}</small>
-            <div class="prospect-phone">
-              <Phone :size="14" /><span>{{ row.phone || row.raw_phone || 'Non renseigné' }}</span>
-              <div class="number-actions">
-                <button
-                  :aria-label="'Ouvrir la fiche de ' + (row.name || 'ce prospect')"
-                  title="Fiche et suivi"
-                  @click="openActivity(row)"
-                >
-                  <Pencil :size="15" /></button
-                ><button
-                  v-if="['setter', 'administrator'].includes(role)"
-                  class="phone-button"
-                  :disabled="!row.phone && !row.raw_phone"
-                  :aria-label="'Préparer l’appel vers ' + (row.phone || row.raw_phone)"
-                  title="Préparer l’appel"
-                  @click="openActivity(row, 'call')"
-                >
-                  <Phone :size="15" />
-                </button>
-              </div>
-            </div>
-            <p class="prospect-email">
-              <Users :size="14" /><span>{{ row.assigned_setter?.name || 'Non affecté' }}</span>
+        <section
+          v-for="column in visible"
+          :key="column.key"
+          class="prospect-column"
+          :style="{
+            '--stage-tone': ['#f1ad54', '#5b8def', '#a18be2', '#48b3be', '#c990b8', '#90a0b9'][
+              columns.indexOf(column) % 6
+            ],
+          }"
+        >
+          <header>
+            <span class="stage-dot"></span>
+            <h2>{{ column.label }}</h2>
+            <span class="column-count">{{ column.count }}</span>
+          </header>
+          <div class="prospect-stack">
+            <p v-if="column.error" role="alert">
+              {{ column.error
+              }}<button class="secondary" @click="loadColumn(column, generation, column.page > 0)">
+                Réessayer
+              </button>
             </p>
-            <p
-              v-if="row.callback_at"
-              class="prospect-reminder"
-              :class="{ 'is-late': row.callback_due }"
-            >
-              {{ row.callback_due ? 'Rappel en retard' : 'Prochain rappel' }} ·
-              {{
-                new Date(row.callback_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
-              }}
-            </p>
-            <footer class="isolation-card-footer">
-              <span class="prospect-stage">{{
-                row.queue_reason === 'appointment_booked'
-                  ? 'RDV pris'
-                  : row.queue_reason === 'client_followup'
-                    ? 'Relance personnelle du client'
-                    : row.queue_reason === 'unqualified'
-                      ? 'Rendez-vous non qualifié'
-                      : row.commercial_label || column.label
-              }}</span>
-              <div>
-                <button
-                  title="Qualification et visites"
-                  aria-label="Qualification et visites"
-                  @click="
-                    visitProspect = row.id;
-                    visitsOpen = true;
-                  "
-                >
-                  <CalendarDays :size="16" /></button
-                ><template v-if="role === 'administrator'"
-                  ><button
-                    title="Affecter ou réattribuer"
-                    aria-label="Affecter ou réattribuer"
-                    :disabled="busy"
-                    @click="open(row)"
+            <article v-for="row in column.rows" :key="row.id" class="prospect-card">
+              <button class="prospect-title" @click="openActivity(row)">
+                {{ row.name || 'Prospect sans nom' }}</button
+              ><small class="prospect-updated">{{
+                row.campaign?.name || row.reference || 'Isolation'
+              }}</small>
+              <div class="prospect-phone">
+                <Phone :size="14" /><span>{{ row.phone || row.raw_phone || 'Non renseigné' }}</span>
+                <div class="number-actions">
+                  <button
+                    :aria-label="'Ouvrir la fiche de ' + (row.name || 'ce prospect')"
+                    title="Fiche et suivi"
+                    @click="openActivity(row)"
                   >
-                    <UserRoundCog :size="16" /></button
+                    <Pencil :size="15" /></button
                   ><button
-                    title="Historique d’affectation"
-                    aria-label="Historique d’affectation"
+                    v-if="['setter', 'administrator'].includes(role)"
+                    class="phone-button"
+                    :disabled="!row.phone && !row.raw_phone"
+                    :aria-label="'Préparer l’appel vers ' + (row.phone || row.raw_phone)"
+                    title="Préparer l’appel"
+                    @click="openActivity(row, 'call')"
+                  >
+                    <Phone :size="15" />
+                  </button>
+                </div>
+              </div>
+              <p class="prospect-email">
+                <Users :size="14" /><span>{{ row.assigned_setter?.name || 'Non affecté' }}</span>
+              </p>
+              <p
+                v-if="row.callback_at"
+                class="prospect-reminder"
+                :class="{ 'is-late': row.callback_due }"
+              >
+                {{ row.callback_due ? 'Rappel en retard' : 'Prochain rappel' }} ·
+                {{
+                  new Date(row.callback_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+                }}
+              </p>
+              <footer class="isolation-card-footer">
+                <span class="prospect-stage">{{
+                  row.queue_reason === 'appointment_booked'
+                    ? 'RDV pris'
+                    : row.queue_reason === 'client_followup'
+                      ? 'Relance personnelle du client'
+                      : row.queue_reason === 'unqualified'
+                        ? 'Rendez-vous non qualifié'
+                        : row.commercial_label || column.label
+                }}</span>
+                <div>
+                  <button
+                    title="Qualification et visites"
+                    aria-label="Qualification et visites"
                     @click="
-                      run(async () => {
-                        history = row;
-                        historyPage = 1;
-                        await loadHistory();
-                      })
+                      visitProspect = row.id;
+                      visitsOpen = true;
                     "
                   >
-                    <History :size="16" /></button
-                ></template>
-              </div>
-            </footer>
+                    <CalendarDays :size="16" /></button
+                  ><template v-if="role === 'administrator'"
+                    ><button
+                      title="Affecter ou réattribuer"
+                      aria-label="Affecter ou réattribuer"
+                      :disabled="busy"
+                      @click="open(row)"
+                    >
+                      <UserRoundCog :size="16" /></button
+                    ><button
+                      title="Historique d’affectation"
+                      aria-label="Historique d’affectation"
+                      @click="
+                        run(async () => {
+                          history = row;
+                          historyPage = 1;
+                          await loadHistory();
+                        })
+                      "
+                    >
+                      <History :size="16" /></button
+                  ></template>
+                </div>
+              </footer>
+            </article>
+            <button
+              v-if="column.next"
+              class="secondary more-prospects"
+              :disabled="column.busy"
+              @click="loadColumn(column, generation, true)"
+            >
+              {{ column.busy ? 'Chargement…' : 'Afficher plus' }} · {{ column.rows.length }} /
+              {{ column.count }}
+            </button>
+          </div>
+        </section>
+      </div>
+      <SidePanel
+        :open="!!activity"
+        :title="activity?.name || 'Fiche et suivi'"
+        eyebrow="ISOLATION"
+        :close-disabled="activityBusy || callPending"
+        @request-close="activityPanel?.close()"
+        ><CallAction
+          v-if="activity && ['setter', 'administrator'].includes(role)"
+          workspace="isolation"
+          :resource-id="activity.id"
+          :phone="activity.phone || activity.raw_phone"
+          :auto-open="workflow === 'call'"
+          :auto-send="session"
+          :before-open="
+            async () => {
+              activity = await request(`work-queue/${activity.id}/`);
+            }
+          "
+          :portal="portal"
+          :prepare="(id: string) => callIntent(activity, id)"
+          :disabled="activityBusy"
+          @busy="callPending = $event" /><IsolationProspectActivity
+          v-if="activity"
+          ref="activityPanel"
+          :key="activity.id"
+          :prospect-id="activity.id"
+          :role="role"
+          :portal="portal"
+          :request="request"
+          :session="session"
+          @busy="activityBusy = $event"
+          @close="activityClosed"
+          @saved="load"
+          @book="
+            visitProspect = activity.id;
+            visitsOpen = true;
+          "
+      /></SidePanel>
+      <SidePanel
+        :open="visitsOpen"
+        title="Qualification et visites"
+        eyebrow="ISOLATION"
+        :close-disabled="visitBusy"
+        @request-close="visitsPanel?.close()"
+        ><IsolationVisits
+          v-if="visitsOpen"
+          ref="visitsPanel"
+          :key="visitProspect || 0"
+          :prospect-id="visitProspect"
+          :role="role"
+          :portal="portal"
+          :request="request"
+          @busy="visitBusy = $event"
+          @close="visitsOpen = false"
+          @changed="
+            load();
+            activityPanel?.reload();
+          "
+      /></SidePanel>
+      <SidePanel
+        :open="!!selected && role === 'administrator'"
+        title="Affecter le prospect"
+        eyebrow="ISOLATION · ADMINISTRATION"
+        :close-disabled="busy"
+        @request-close="selected = null"
+        ><section v-if="selected">
+          <h4>Affectation : {{ selected.name || selected.raw_phone }}</h4>
+          <form @submit.prevent="run(() => directory())">
+            <label>Rechercher un setter Isolation actif<input v-model="peopleSearch" /></label
+            ><button class="secondary" :disabled="busy">Rechercher</button>
+          </form>
+          <form @submit.prevent="assign()">
+            <label
+              >Nouveau responsable<select v-model="target" required>
+                <option value="">Choisir un setter</option>
+                <option
+                  v-for="person in people"
+                  :key="person.id"
+                  :value="String(person.id)"
+                  :disabled="person.id === selected.assigned_setter?.id"
+                >
+                  {{ person.name }}
+                </option>
+              </select></label
+            >
+            <p>{{ peopleCount }} setter(s) · page {{ peoplePage }}</p>
+            <button
+              type="button"
+              class="secondary"
+              :disabled="busy || peoplePage === 1"
+              @click="run(() => directory(-1))"
+            >
+              Précédent</button
+            ><button
+              type="button"
+              class="secondary"
+              :disabled="busy || peoplePage * 25 >= peopleCount"
+              @click="run(() => directory(1))"
+            >
+              Suivant</button
+            ><label
+              >Motif obligatoire<textarea
+                v-model="reason"
+                required
+                maxlength="1000"
+              ></textarea></label
+            ><button class="primary" :disabled="busy || !target">Confirmer l’affectation</button
+            ><button
+              type="button"
+              class="secondary"
+              :disabled="busy || !selected.assigned_setter || !reason.trim()"
+              @click="assign(true)"
+            >
+              Retirer l’affectation</button
+            ><button type="button" class="secondary" :disabled="busy" @click="selected = null">
+              Fermer
+            </button>
+          </form>
+        </section></SidePanel
+      >
+      <SidePanel
+        :open="!!history"
+        title="Historique d’affectation"
+        eyebrow="ISOLATION · ADMINISTRATION"
+        :close-disabled="busy"
+        @request-close="history = null"
+        ><section v-if="history">
+          <h4>Historique d’affectation</h4>
+          <article v-for="entry in historyRows" :key="entry.id">
+            <small>{{
+              new Date(entry.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
+            }}</small>
+            <p>
+              {{ entry.metadata.before?.setter_name || 'Non affecté' }} →
+              {{ entry.metadata.after?.setter_name || 'Non affecté' }}
+            </p>
+            <p v-if="entry.metadata.reason">{{ entry.metadata.reason }}</p>
           </article>
           <button
-            v-if="column.next"
-            class="secondary more-prospects"
-            :disabled="column.busy"
-            @click="loadColumn(column, generation, true)"
-          >
-            {{ column.busy ? 'Chargement…' : 'Afficher plus' }} · {{ column.rows.length }} /
-            {{ column.count }}
-          </button>
-        </div>
-      </section>
-    </div>
-    <SidePanel
-      :open="!!activity"
-      :title="activity?.name || 'Fiche et suivi'"
-      eyebrow="ISOLATION"
-      :close-disabled="activityBusy || callPending"
-      @request-close="activityPanel?.close()"
-      ><CallAction
-        v-if="activity && ['setter', 'administrator'].includes(role)"
-        workspace="isolation"
-        :resource-id="activity.id"
-        :phone="activity.phone || activity.raw_phone"
-        :auto-open="workflow === 'call'"
-        :auto-send="session"
-        :before-open="
-          async () => {
-            activity = await request(`work-queue/${activity.id}/`);
-          }
-        "
-        :portal="portal"
-        :prepare="(id: string) => callIntent(activity, id)"
-        :disabled="activityBusy"
-        @busy="callPending = $event" /><IsolationProspectActivity
-        v-if="activity"
-        ref="activityPanel"
-        :key="activity.id"
-        :prospect-id="activity.id"
-        :role="role"
-        :portal="portal"
-        :request="request"
-        :session="session"
-        @busy="activityBusy = $event"
-        @close="activityClosed"
-        @saved="load"
-        @book="
-          visitProspect = activity.id;
-          visitsOpen = true;
-        "
-    /></SidePanel>
-    <SidePanel
-      :open="visitsOpen"
-      title="Qualification et visites"
-      eyebrow="ISOLATION"
-      :close-disabled="visitBusy"
-      @request-close="visitsPanel?.close()"
-      ><IsolationVisits
-        v-if="visitsOpen"
-        ref="visitsPanel"
-        :key="visitProspect || 0"
-        :prospect-id="visitProspect"
-        :role="role"
-        :portal="portal"
-        :request="request"
-        @busy="visitBusy = $event"
-        @close="visitsOpen = false"
-        @changed="
-          load();
-          activityPanel?.reload();
-        "
-    /></SidePanel>
-    <SidePanel
-      :open="!!selected && role === 'administrator'"
-      title="Affecter le prospect"
-      eyebrow="ISOLATION · ADMINISTRATION"
-      :close-disabled="busy"
-      @request-close="selected = null"
-      ><section v-if="selected">
-        <h4>Affectation : {{ selected.name || selected.raw_phone }}</h4>
-        <form @submit.prevent="run(() => directory())">
-          <label>Rechercher un setter Isolation actif<input v-model="peopleSearch" /></label
-          ><button class="secondary" :disabled="busy">Rechercher</button>
-        </form>
-        <form @submit.prevent="assign()">
-          <label
-            >Nouveau responsable<select v-model="target" required>
-              <option value="">Choisir un setter</option>
-              <option
-                v-for="person in people"
-                :key="person.id"
-                :value="String(person.id)"
-                :disabled="person.id === selected.assigned_setter?.id"
-              >
-                {{ person.name }}
-              </option>
-            </select></label
-          >
-          <p>{{ peopleCount }} setter(s) · page {{ peoplePage }}</p>
-          <button
-            type="button"
             class="secondary"
-            :disabled="busy || peoplePage === 1"
-            @click="run(() => directory(-1))"
+            :disabled="busy || historyPage === 1"
+            @click="
+              run(async () => {
+                historyPage--;
+                await loadHistory();
+              })
+            "
           >
             Précédent</button
           ><button
-            type="button"
             class="secondary"
-            :disabled="busy || peoplePage * 25 >= peopleCount"
-            @click="run(() => directory(1))"
+            :disabled="busy || historyPage * 25 >= historyCount"
+            @click="
+              run(async () => {
+                historyPage++;
+                await loadHistory();
+              })
+            "
           >
             Suivant</button
-          ><label
-            >Motif obligatoire<textarea
-              v-model="reason"
-              required
-              maxlength="1000"
-            ></textarea></label
-          ><button class="primary" :disabled="busy || !target">Confirmer l’affectation</button
-          ><button
-            type="button"
-            class="secondary"
-            :disabled="busy || !selected.assigned_setter || !reason.trim()"
-            @click="assign(true)"
-          >
-            Retirer l’affectation</button
-          ><button type="button" class="secondary" :disabled="busy" @click="selected = null">
-            Fermer
-          </button>
-        </form>
-      </section></SidePanel
-    >
-    <SidePanel
-      :open="!!history"
-      title="Historique d’affectation"
-      eyebrow="ISOLATION · ADMINISTRATION"
-      :close-disabled="busy"
-      @request-close="history = null"
-      ><section v-if="history">
-        <h4>Historique d’affectation</h4>
-        <article v-for="entry in historyRows" :key="entry.id">
-          <small>{{
-            new Date(entry.created_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
-          }}</small>
-          <p>
-            {{ entry.metadata.before?.setter_name || 'Non affecté' }} →
-            {{ entry.metadata.after?.setter_name || 'Non affecté' }}
-          </p>
-          <p v-if="entry.metadata.reason">{{ entry.metadata.reason }}</p>
-        </article>
-        <button
-          class="secondary"
-          :disabled="busy || historyPage === 1"
-          @click="
-            run(async () => {
-              historyPage--;
-              await loadHistory();
-            })
-          "
-        >
-          Précédent</button
-        ><button
-          class="secondary"
-          :disabled="busy || historyPage * 25 >= historyCount"
-          @click="
-            run(async () => {
-              historyPage++;
-              await loadHistory();
-            })
-          "
-        >
-          Suivant</button
-        ><button class="secondary" @click="history = null">Fermer l’historique</button>
-      </section></SidePanel
-    >
+          ><button class="secondary" @click="history = null">Fermer l’historique</button>
+        </section></SidePanel
+      >
+    </template>
   </section>
 </template>
 <style scoped>

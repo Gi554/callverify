@@ -9,6 +9,7 @@ from uuid import UUID
 from zipfile import ZipFile, BadZipFile
 from xml.etree.ElementTree import ParseError
 from django.db import transaction, IntegrityError
+from django.db.models import ProtectedError
 from django.db.models import F
 from .custom_fields import schema, validate_values, output as schema_output, Conflict
 from .models import ContactFieldSchema
@@ -282,3 +283,27 @@ def imports(request):
             return replay(existing)
         raise
     return Response(output(batch), status=201)
+
+
+@api_view(['DELETE'])
+def import_detail(request, batch_id):
+    """Remove one imported Assurance list and its contacts permanently."""
+    admin(request)
+    try:
+        batch = ContactImport.objects.get(pk=batch_id)
+    except ContactImport.DoesNotExist:
+        raise ValidationError('Import introuvable')
+    try:
+        with transaction.atomic():
+            batch.contacts.all().delete()
+            batch.delete()
+            BusinessAudit.objects.create(
+                actor_id=request.user.pk,
+                action='contacts.import_deleted',
+                object_id=batch_id,
+            )
+    except ProtectedError as error:
+        raise ValidationError(
+            'Impossible de supprimer cette liste : un rendez-vous utilise encore un contact.'
+        ) from error
+    return Response(status=204)
