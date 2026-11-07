@@ -3015,3 +3015,9 @@ La gestion « Listes et imports » Isolation est maintenant accessible directeme
 
 Vérifications : neuf tests ciblés d’import Assurance (dont suppression définitive), TypeScript/Vue (`vue-tsc --noEmit`) et formatage Prettier réussis. Aucun secret, fournisseur téléphonique ou donnée de production n’est ajouté ; la suppression est réservée à l’administrateur et auditée.
 
+## Fonctionnalité 75 — listes Assurance dans Prospects
+
+Assurance dispose désormais du même parcours de listes que Isolation dans « Prospects » : création d’une liste nommée, sélection de la liste cible avant import CSV/XLSX, aperçu et mappage de toutes les colonnes, export, vidage et suppression définitive. Les contacts importés sont rattachés à leur liste ; les contrôles Twilio restent propres à Isolation et ne sont pas ajoutés à Assurance.
+
+Vérifications : 10 tests métier Assurance ciblés, dont création, remplissage et vidage d’une liste ; TypeScript/Vue et Prettier réussis. Les listes liées à un rendez-vous sont protégées contre une suppression partielle et chaque action d’administration est auditée.
+

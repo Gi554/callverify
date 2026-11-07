@@ -39,7 +39,8 @@ const importing = ref(false),
   history = ref<any[]>([]),
   historyPage = ref(1),
   historyCount = ref(0),
-  selected = ref<any>(null);
+  selected = ref<any>(null),
+  selectedListId = ref('');
 const mapping = ref<Record<string, string>>({ name: '', phone: '', email: '' });
 const customMapping = ref<Record<string, string>>({});
 const filterDialog = ref<HTMLDialogElement | null>(null),
@@ -70,9 +71,24 @@ async function load() {
   }
 }
 async function loadHistory() {
-  const data = await props.request('imports/?page=' + historyPage.value);
+  const data = await props.request('lists/?page=' + historyPage.value);
   history.value = data.results;
   historyCount.value = data.count;
+}
+async function createList() {
+  const name = globalThis.prompt?.('Nom de la nouvelle liste Assurance :', 'Nouvelle liste');
+  if (!name?.trim()) return;
+  working.value = true;
+  error.value = '';
+  try {
+    const list = await props.request('lists/', { name: name.trim() }, 'POST');
+    selectedListId.value = String(list.id);
+    await loadHistory();
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    working.value = false;
+  }
 }
 async function deleteImport(batch: any) {
   if (
@@ -85,6 +101,20 @@ async function deleteImport(batch: any) {
   error.value = '';
   try {
     await props.request(`imports/${batch.id}/`, undefined, 'DELETE');
+    await Promise.all([load(), loadHistory()]);
+    report.value = null;
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    working.value = false;
+  }
+}
+async function clearList(batch: any) {
+  if (!globalThis.confirm?.(`Vider définitivement la liste « ${batch.filename} » ?`)) return;
+  working.value = true;
+  error.value = '';
+  try {
+    await props.request(`lists/${batch.id}/clear/`, {}, 'POST');
     await Promise.all([load(), loadHistory()]);
     report.value = null;
   } catch (e: any) {
@@ -154,6 +184,7 @@ async function confirm() {
     );
     body.append('schema_revision', String(preview.value.custom_schema.revision));
     body.append('request_id', requestId);
+    if (selectedListId.value) body.append('list_id', selectedListId.value);
     body.append(
       'mapping',
       JSON.stringify(
@@ -322,6 +353,14 @@ const mappingLabels: Record<string, string> = {
       <div class="contacts-toolbar">
         <h3><FileSpreadsheet :size="20" />Import Assurance</h3>
         <button
+          v-if="role === 'administrator'"
+          class="secondary"
+          :disabled="working"
+          @click="createList"
+        >
+          Nouvelle liste
+        </button>
+        <button
           class="secondary"
           :disabled="working"
           @click="
@@ -337,6 +376,14 @@ const mappingLabels: Record<string, string> = {
         téléphonique n’est lancé.
       </p>
       <div class="import-options">
+        <label v-if="role === 'administrator'"
+          >Liste cible<select v-model="selectedListId" :disabled="working">
+            <option value="">Créer une liste automatiquement</option>
+            <option v-for="batch in history" :key="batch.id" :value="String(batch.id)">
+              {{ batch.filename }}
+            </option>
+          </select></label
+        >
         <label
           >Fichier CSV ou Excel<input
             type="file"
@@ -453,6 +500,14 @@ const mappingLabels: Record<string, string> = {
               >{{ batch.filename
               }}<small>{{ new Date(batch.created_at).toLocaleString('fr-FR') }}</small></span
             ><span>{{ batch.imported }} importé(s) · {{ batch.rejected }} rejetée(s)</span>
+          </button>
+          <button
+            v-if="role === 'administrator'"
+            class="secondary history-item-delete"
+            :disabled="working"
+            @click="clearList(batch)"
+          >
+            Vider
           </button>
           <button
             v-if="role === 'administrator'"

@@ -5,7 +5,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 from zipfile import ZipFile, BadZipFile
 from xml.etree.ElementTree import ParseError
 from django.db import transaction, IntegrityError
@@ -125,6 +125,34 @@ def output(batch):
 
 
 @api_view(['GET', 'POST'])
+def lists(request):
+    """Assurance contact lists are represented by import batches."""
+    admin(request)
+    if request.method == 'GET':
+        pager = PageNumberPagination()
+        pager.page_size = 20
+        rows = pager.paginate_queryset(ContactImport.objects.order_by('-pk'), request)
+        return pager.get_paginated_response([output(row) for row in rows])
+    name = str(request.data.get('name', '')).strip()
+    if not name or len(name) > 250:
+        raise ValidationError('Le nom de la liste est requis (250 caractères maximum)')
+    batch = ContactImport.objects.create(
+        request_id=uuid4(),
+        fingerprint='',
+        filename=name,
+        created_by_id=request.user.pk,
+        total=0,
+        imported=0,
+        rejected=0,
+        report=[],
+        columns=[],
+        mapping={},
+    )
+    BusinessAudit.objects.create(actor_id=request.user.pk, action='contacts.list_created', object_id=batch.pk)
+    return Response(output(batch), status=201)
+
+
+@api_view(['GET', 'POST'])
 @parser_classes([MultiPartParser, FormParser])
 def imports(request):
     admin(request)
@@ -191,6 +219,15 @@ def imports(request):
         else [has_header, mapping, custom_mapping, int(revision)]
     )
     digest = hashlib.sha256(raw + json.dumps(canonical, sort_keys=True).encode()).hexdigest()
+    list_id = request.data.get('list_id', '')
+    target = None
+    if list_id:
+        try:
+            target = ContactImport.objects.get(pk=int(list_id))
+        except (ValueError, ContactImport.DoesNotExist):
+            raise ValidationError('Liste Assurance introuvable')
+        if target.created_by_id != request.user.pk:
+            raise PermissionDenied('Cette liste appartient à un autre administrateur')
 
     def replay(batch):
         if batch.created_by_id != request.user.pk or batch.fingerprint != digest:
@@ -257,20 +294,34 @@ def imports(request):
                 ContactFieldSchema.objects.filter(pk=1).update(revision=F('revision'))
                 if schema().revision != int(revision):
                     raise Conflict('Configuration métier modifiée : refaites l’aperçu')
-            batch = ContactImport.objects.create(
-                request_id=request_id,
-                fingerprint=digest,
-                filename=Path(upload.name).name[:250],
-                created_by_id=request.user.pk,
-                total=len(rows),
-                imported=len(accepted),
-                rejected=len(errors),
-                report=errors,
-                columns=columns,
-                mapping=mapping
-                if not custom_mapping
-                else {**mapping, 'custom_fields': custom_mapping, 'schema_revision': int(revision)},
-            )
+            if target:
+                batch = target
+                batch.total += len(rows)
+                batch.imported += len(accepted)
+                batch.rejected += len(errors)
+                batch.report = [*batch.report, *errors]
+                batch.columns = columns
+                batch.mapping = mapping if not custom_mapping else {
+                    **mapping,
+                    'custom_fields': custom_mapping,
+                    'schema_revision': int(revision),
+                }
+                batch.save(update_fields=['total', 'imported', 'rejected', 'report', 'columns', 'mapping'])
+            else:
+                batch = ContactImport.objects.create(
+                    request_id=request_id,
+                    fingerprint=digest,
+                    filename=Path(upload.name).name[:250],
+                    created_by_id=request.user.pk,
+                    total=len(rows),
+                    imported=len(accepted),
+                    rejected=len(errors),
+                    report=errors,
+                    columns=columns,
+                    mapping=mapping
+                    if not custom_mapping
+                    else {**mapping, 'custom_fields': custom_mapping, 'schema_revision': int(revision)},
+                )
             for contact in accepted:
                 contact.import_batch = batch
             Contact.objects.bulk_create(accepted, batch_size=200)
@@ -307,3 +358,22 @@ def import_detail(request, batch_id):
             'Impossible de supprimer cette liste : un rendez-vous utilise encore un contact.'
         ) from error
     return Response(status=204)
+
+
+@api_view(['POST'])
+def clear_list(request, batch_id):
+    admin(request)
+    try:
+        batch = ContactImport.objects.get(pk=batch_id)
+    except ContactImport.DoesNotExist:
+        raise ValidationError('Liste introuvable')
+    try:
+        with transaction.atomic():
+            batch.contacts.all().delete()
+            batch.total = batch.imported = batch.rejected = 0
+            batch.report = []
+            batch.save(update_fields=['total', 'imported', 'rejected', 'report'])
+            BusinessAudit.objects.create(actor_id=request.user.pk, action='contacts.list_cleared', object_id=batch.pk)
+    except ProtectedError as error:
+        raise ValidationError('Impossible de vider cette liste : un rendez-vous utilise encore un contact.') from error
+    return Response(output(batch))

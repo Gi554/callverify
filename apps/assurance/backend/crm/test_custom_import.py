@@ -178,3 +178,14 @@ class CustomImportTests(TestCase):
         self.assertEqual(self.client.delete(f'{self.url}{batch_id}/').status_code, 204)
         self.assertFalse(Contact.objects.exists())
         self.assertFalse(ContactImport.objects.exists())
+
+    def test_administrator_can_create_clear_and_fill_a_named_list(self):
+        created = self.client.post('/api/assurance/lists/', {'name': 'Campagne novembre'})
+        self.assertEqual(created.status_code, 201, created.data)
+        list_id = created.data['id']
+        imported = self.upload(list_id=str(list_id))
+        self.assertEqual(imported.status_code, 201, imported.data)
+        self.assertEqual(Contact.objects.get().import_batch_id, list_id)
+        self.assertEqual(self.client.post(f'/api/assurance/lists/{list_id}/clear/').status_code, 200)
+        self.assertFalse(Contact.objects.exists())
+        self.assertEqual(ContactImport.objects.get(pk=list_id).imported, 0)
