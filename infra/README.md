@@ -36,4 +36,4 @@ docker compose -f compose.yaml -f infra/compose.crm.yaml exec portal python mana
 docker compose -f compose.yaml -f infra/compose.crm.yaml exec assurance python manage.py migrate --settings=apps.assurance.backend.settings
 ```
 
-Les services utilisent des bases et identifiants PostgreSQL indépendants. Aucun port PostgreSQL n'est publié sur l'hôte. Ajouter compose.production.yaml et le domaine pour la configuration HTTPS. La production reste conditionnée aux exigences MFA, récupération, invitations, sauvegardes, contrôle des sessions et recette métier.
+Les services utilisent des bases et identifiants PostgreSQL indépendants. Aucun port PostgreSQL n'est publié sur l'hôte. Ajouter compose.production.yaml et le domaine pour la configuration HTTPS. La MFA est activée par défaut (`MFA_ENABLED=true`) ; sa désactivation (`false`) est réservée à un pilote explicitement accepté. La production reste conditionnée aux exigences de récupération, invitations, sauvegardes, contrôle des sessions et recette métier.

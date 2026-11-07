@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import struct
 import time
+from unittest.mock import patch
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -10,7 +11,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from .models import AccessAudit, Membership, PortalMFA
-from .mfa import decrypt_secret
+from .mfa import decrypt_secret, encrypt_secret
 
 
 @override_settings(
@@ -111,6 +112,27 @@ class PortalMFATests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['mfa_required'])
         self.assertTrue(response.data['workspaces'])
+
+    @override_settings(DEBUG=False, MFA_ENABLED=False)
+    @patch('packages.access.tickets.key_for', return_value='test-assurance-access-key')
+    def test_pilot_disables_portal_mfa_without_deleting_existing_factor(self, _key_for):
+        from django.utils import timezone
+
+        factor = PortalMFA.objects.create(
+            user=self.user,
+            secret=encrypt_secret('JBSWY3DPEHPK3PXP'),
+            enabled_at=timezone.now(),
+            backup_codes=['already-hashed-code'],
+        )
+        response = self.login()
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data['mfa_required'])
+        self.assertFalse(response.data['mfa_enabled'])
+        self.assertEqual(self.post('/api/portal/access/assurance/', {}).status_code, 200)
+        self.assertEqual(self.post('/api/portal/mfa/', {'action': 'enroll'}).status_code, 404)
+        factor.refresh_from_db()
+        self.assertTrue(factor.enabled_at)
+        self.assertEqual(factor.backup_codes, ['already-hashed-code'])
 
     def test_wrong_totp_and_extra_mfa_fields_do_not_enable_factor(self):
         self.login()

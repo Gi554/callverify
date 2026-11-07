@@ -17,7 +17,7 @@ Sur une nouvelle machine : `pnpm install`, puis `pnpm dev` dans ce dossier. Comp
 - `/#/dashboard`, `/#/campaigns`, `/#/imports`, `/#/results`, `/#/exports`, `/#/calls`, `/#/account` : pages authentifiées.
 - `/#/admins`, `/#/audit`, `/#/exclusions`, `/#/settings` : administration réservée au superadministrateur.
 
-Campagnes éditables et archivables, imports avec aperçu/feuille/mappage, résultats paginés et fiches détaillées, exports CSV/XLSX personnalisés, invitations et suspension, rôles, MFA/QR/codes de secours, paramètres et exclusions. Les alertes sont consultables par la cloche. Les listes de traitements se rafraîchissent toutes les 10 secondes et le dashboard toutes les 15 secondes lorsque la page est visible ; aucun rafraîchissement pendant un formulaire de traitement ouvert.
+Campagnes éditables et archivables, imports avec aperçu/feuille/mappage, résultats paginés et fiches détaillées, exports CSV/XLSX personnalisés, invitations et suspension, rôles, paramètres et exclusions. L’enrôlement MFA/QR et les codes de secours sont disponibles lorsque `MFA_ENABLED=true`; le mode pilote `false` masque l’enrôlement et contourne les challenges. Les alertes sont consultables par la cloche. Les listes de traitements se rafraîchissent toutes les 10 secondes et le dashboard toutes les 15 secondes lorsque la page est visible ; aucun rafraîchissement pendant un formulaire de traitement ouvert.
 
 Les modales supportent Escape et conservent le focus clavier. Le backend contrôle chaque permission ; la visibilité du menu ne remplace pas ces contrôles.
 

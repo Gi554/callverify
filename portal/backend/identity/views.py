@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
+from django.conf import settings
 from django.db import transaction
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect
@@ -61,7 +62,11 @@ def sign_in(request):
             user=user, workspace=workspace, active=True, role__in=ROLES[workspace]
         ).exists():
             return Response({'detail': 'Votre compte n’a pas accès à ce profil.'}, status=403)
-    factor = PortalMFA.objects.filter(user=user, enabled_at__isnull=False).first()
+    factor = (
+        PortalMFA.objects.filter(user=user, enabled_at__isnull=False).first()
+        if settings.MFA_ENABLED
+        else None
+    )
     if factor:
         with transaction.atomic():
             factor = PortalMFA.objects.select_for_update().get(pk=factor.pk)

@@ -105,6 +105,7 @@ DEFAULT_FROM_EMAIL = os.getenv('PORTAL_FROM_EMAIL', 'Orvia <orvia@localhost>')
 PASSWORD_RESET_TIMEOUT = 1800
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'].update(portal_recovery='5/hour', portal_reset='10/hour')
 MFA_ENCRYPTION_KEY = os.getenv('MFA_ENCRYPTION_KEY', '')
+MFA_ENABLED = os.getenv('MFA_ENABLED', 'true').lower() == 'true'
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['portal_mfa'] = '5/min'
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['portal_mfa_login'] = '5/min'
 PORTAL_CALENDAR_KEY = os.getenv('PORTAL_CALENDAR_KEY', '')

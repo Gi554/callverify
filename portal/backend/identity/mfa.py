@@ -65,11 +65,17 @@ def totp_step(secret, code, *, now=None):
 
 
 def admin_requires_mfa(user):
-    return Membership.objects.filter(user=user, active=True, role='administrator').exists()
+    return (
+        settings.MFA_ENABLED
+        and Membership.objects.filter(user=user, active=True, role='administrator').exists()
+    )
 
 
 def mfa_enabled(user):
-    return PortalMFA.objects.filter(user=user, enabled_at__isnull=False).exists()
+    return (
+        settings.MFA_ENABLED
+        and PortalMFA.objects.filter(user=user, enabled_at__isnull=False).exists()
+    )
 
 
 def backup_codes_remaining(user):
@@ -120,6 +126,8 @@ class MFAInput(serializers.Serializer):
 @api_view(['POST'])
 @throttle_classes([MFAActionThrottle])
 def manage_mfa(request):
+    if not settings.MFA_ENABLED:
+        return Response(status=404)
     serializer = MFAInput(data=request.data)
     serializer.is_valid(raise_exception=True)
     action = serializer.validated_data['action']

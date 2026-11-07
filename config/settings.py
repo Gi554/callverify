@@ -120,6 +120,7 @@ LOOKUP_CACHE_HOURS = 168
 LOOKUP_UNIT_COST = os.getenv('LOOKUP_UNIT_COST', '0.01')
 VOICE_ENABLED = False  # Activation requires the separate production compliance implementation.
 MFA_ENCRYPTION_KEY = os.getenv('MFA_ENCRYPTION_KEY', '')
+MFA_ENABLED = os.getenv('MFA_ENABLED', 'true').lower() == 'true'
 if not DEBUG and not MFA_ENCRYPTION_KEY:
     raise ImproperlyConfigured('MFA_ENCRYPTION_KEY required in production')
 LOOKUP_PACKAGES = os.getenv('LOOKUP_PACKAGES', '')
