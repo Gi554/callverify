@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import AssuranceContactEditor from './AssuranceContactEditor.vue';
+import ProspectExport from './ProspectExport.vue';
 import {
   Upload,
   Search,
@@ -11,6 +12,7 @@ import {
   X,
   SlidersHorizontal,
   RefreshCw,
+  Trash2,
 } from 'lucide-vue-next';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -71,6 +73,25 @@ async function loadHistory() {
   const data = await props.request('imports/?page=' + historyPage.value);
   history.value = data.results;
   historyCount.value = data.count;
+}
+async function deleteImport(batch: any) {
+  if (
+    !globalThis.confirm?.(
+      `Supprimer définitivement la liste « ${batch.filename} » et ses contacts ?`,
+    )
+  )
+    return;
+  working.value = true;
+  error.value = '';
+  try {
+    await props.request(`imports/${batch.id}/`, undefined, 'DELETE');
+    await Promise.all([load(), loadHistory()]);
+    report.value = null;
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    working.value = false;
+  }
 }
 async function openImport() {
   importing.value = true;
@@ -199,6 +220,12 @@ const mappingLabels: Record<string, string> = {
         <h2>Contacts</h2>
         <span class="active-tab">Liste des contacts</span
         ><button v-if="role === 'administrator'" @click="openImport">Imports et historique</button>
+        ><ProspectExport
+          v-if="role === 'administrator'"
+          :request="request"
+          path="contacts/export/"
+          :filters="{ search, status }"
+        />
       </header>
       <div class="contact-list-tabs">
         <button
@@ -420,17 +447,23 @@ const mappingLabels: Record<string, string> = {
       <h4>Historique des imports</h4>
       <p v-if="!history.length" class="subtle">Aucun import enregistré.</p>
       <div v-else class="import-history">
-        <button
-          v-for="batch in history"
-          :key="batch.id"
-          class="history-item"
-          @click="report = batch"
-        >
-          <span
-            >{{ batch.filename
-            }}<small>{{ new Date(batch.created_at).toLocaleString('fr-FR') }}</small></span
-          ><span>{{ batch.imported }} importé(s) · {{ batch.rejected }} rejetée(s)</span>
-        </button>
+        <div v-for="batch in history" :key="batch.id" class="history-item">
+          <button class="history-item-main" @click="report = batch">
+            <span
+              >{{ batch.filename
+              }}<small>{{ new Date(batch.created_at).toLocaleString('fr-FR') }}</small></span
+            ><span>{{ batch.imported }} importé(s) · {{ batch.rejected }} rejetée(s)</span>
+          </button>
+          <button
+            v-if="role === 'administrator'"
+            class="secondary history-item-delete"
+            :disabled="working"
+            :aria-label="`Supprimer ${batch.filename}`"
+            @click="deleteImport(batch)"
+          >
+            <Trash2 :size="15" />Supprimer
+          </button>
+        </div>
       </div>
       <div v-if="historyCount > 20" class="contacts-pagination">
         <button
@@ -612,13 +645,30 @@ const mappingLabels: Record<string, string> = {
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  text-align: left;
   padding: 16px;
   background: #fff;
   border: 1px solid #e1e3d4;
   border-radius: 10px;
+}
+.history-item-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  text-align: left;
+  border: 0;
+  background: none;
   color: inherit;
   cursor: pointer;
+  padding: 0;
+}
+.history-item-main small {
+  display: block;
+  margin-top: 4px;
+  color: #7c806d;
+}
+.history-item-delete {
+  flex: 0 0 auto;
 }
 .contacts-pagination {
   align-items: center;

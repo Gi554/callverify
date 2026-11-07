@@ -5,7 +5,7 @@ from .crm.admin_alerts import alerts as admin_alerts
 from .crm.journal import events as journal_events
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .crm.imports import imports
+from .crm.imports import imports, import_detail
 from .crm.custom_fields import definitions
 from .crm.pipeline import configuration
 from .crm.statistics import statistics
@@ -76,6 +76,7 @@ urlpatterns += [
     path('api/assurance/follow-up-policy/', follow_up_policy),
     path('api/assurance/follow-up-policy/history/', policy_history),
     path('api/assurance/imports/', imports),
+    path('api/assurance/imports/<int:batch_id>/', import_detail),
     path('api/assurance/lots/', lots),
     path('api/assurance/lots/release/', lots_release),
     path('api/assurance/dashboard/', dashboard),

@@ -24,7 +24,6 @@ import IsolationWorkQueue from './IsolationWorkQueue.vue';
 import IsolationClient from './IsolationClient.vue';
 import IsolationClientHome from './IsolationClientHome.vue';
 import IsolationClientFollowUps from './IsolationClientFollowUps.vue';
-import IsolationQualification from './IsolationQualification.vue';
 import AssuranceContacts from './AssuranceContacts.vue';
 import AssuranceProspects from './AssuranceProspects.vue';
 import AssuranceAgreementRegistry from './AssuranceAgreementRegistry.vue';
@@ -400,8 +399,6 @@ const navigation = computed(() => {
     if (['setter', 'administrator'].includes(role.value))
       items.push({ id: 'followups', label: 'Tâches de rappel', icon: 'followups' });
     items.push({ id: 'statistics', label: 'Statistiques', icon: 'statistics' });
-    if (role.value === 'administrator')
-      items.push({ id: 'qualification', label: 'Listes et imports', icon: 'qualification' });
   }
   // Setters and administrators call from a prospect card; administrators keep team history.
   if (role.value === 'administrator')
@@ -904,9 +901,6 @@ onMounted(async () => {
                       :request="isolation"
                       @navigate="selectModule"
                       @saved="refreshIsolation"
-                    /><IsolationQualification
-                      v-else-if="isolationModule === 'qualification' && role === 'administrator'"
-                      :request="isolation"
                     />
                     <CrmAppointmentsCalendar
                       v-else-if="
