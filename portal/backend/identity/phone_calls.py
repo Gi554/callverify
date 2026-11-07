@@ -24,6 +24,8 @@ from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
 from .call_journal import digest
 from .call_rules import refusal, rules, window
 
+CALL_COOLDOWN_SECONDS = 5
+
 
 class Conflict(APIException):
     status_code = 409
@@ -162,9 +164,12 @@ def calls(request, workspace='assurance'):
             )
             return Response({'detail': reason}, status=400)
         if PhoneCallAttempt.objects.filter(
-            user=request.user, created_at__gt=timezone.now() - timedelta(seconds=60)
+            user=request.user,
+            created_at__gt=timezone.now() - timedelta(seconds=CALL_COOLDOWN_SECONDS),
         ).exists():
-            raise Conflict('Attendez au moins 60 secondes entre deux commandes distinctes.')
+            raise Conflict(
+                f'Attendez au moins {CALL_COOLDOWN_SECONDS} secondes entre deux commandes distinctes.'
+            )
         try:
             with transaction.atomic():
                 row = PhoneCallAttempt.objects.create(
