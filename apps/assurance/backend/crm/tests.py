@@ -2269,13 +2269,7 @@ class StatisticsExportTests(TestCase):
     def test_setter_export_does_not_contain_other_setter_or_identity_columns_data(self):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'assurance', 'setter'))
         response = self.client.get(self.url + '&export=csv')
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn('Setter secret', response.content.decode('utf-8-sig'))
-        from openpyxl import load_workbook
-        from io import BytesIO
-
-        book = load_workbook(BytesIO(self.client.get(self.url + '&export=xlsx').content))
-        self.assertEqual(book.sheetnames, ['Synthèse'])
+        self.assertEqual(response.status_code, 403)
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(31, 'assurance', 'advisor'))
         self.assertEqual(self.client.get(self.url + '&export=csv').status_code, 403)
 

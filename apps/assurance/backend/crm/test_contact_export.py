@@ -5,7 +5,7 @@ from openpyxl import load_workbook
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from .models import Contact, ContactFieldSchema, BusinessAudit
+from .models import Contact, ContactFieldSchema
 
 
 @override_settings(DEBUG=True)

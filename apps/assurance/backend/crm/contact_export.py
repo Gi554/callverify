@@ -12,7 +12,9 @@ class ContactExportMixin:
     @action(detail=False, methods=['get'], url_path='export')
     def export(self, request):
         if request.user.role == 'setter':
-            raise PermissionDenied('Les exports sont réservés au client, conseiller ou administrateur.')
+            raise PermissionDenied(
+                'Les exports sont réservés au client, conseiller ou administrateur.'
+            )
         file = kind(request)
         rows = bounded(self.get_queryset(), file)
         labels = {stage['key']: stage['label'] for stage in pipeline().stages}
