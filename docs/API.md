@@ -2,7 +2,7 @@
 
 ## Authentification du portail CRM central
 
-Les routes centrales utilisent `/api/portal/` et sont distinctes de l’ancienne authentification CallVerify décrite ci-dessous. Les administrateurs centraux doivent activer une application TOTP avant d’ouvrir leur espace ; une connexion protégée demande le code TOTP à six chiffres. Chaque code TOTP ne peut être réutilisé. Dix codes de secours à usage unique sont remis lors de l’activation ; les secrets sont chiffrés avec `MFA_ENCRYPTION_KEY`, et les codes de secours sont hachés. Une nouvelle série exige le mot de passe et un nouveau code TOTP. Les autres rôles ne sont pas astreints à la MFA.
+Les routes centrales utilisent `/api/portal/` et sont distinctes de l’ancienne authentification CallVerify décrite ci-dessous. Lorsque `MFA_ENABLED=true` (défaut), les administrateurs centraux doivent activer une application TOTP avant d’ouvrir leur espace ; une connexion protégée demande le code TOTP à six chiffres. Chaque code TOTP ne peut être réutilisé. Dix codes de secours à usage unique sont remis lors de l’activation ; les secrets sont chiffrés avec `MFA_ENCRYPTION_KEY`, et les codes de secours sont hachés. Une nouvelle série exige le mot de passe et un nouveau code TOTP. `MFA_ENABLED=false` désactive les demandes MFA sur le portail et l’API d’enrôlement; les facteurs existants restent stockés pour une éventuelle réactivation.
 
 | Méthode | Route | Utilisation |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Base : `/api/`. Toutes les routes métier demandent un administrateur actif. Un 
 | Méthode | Route | Utilisation |
 | --- | --- | --- |
 | GET | auth/csrf/ | Cookie et token CSRF |
-| POST | auth/login/ | `{username, password, code?}` ; code TOTP obligatoire pour superadmin |
+| POST | auth/login/ | `{username, password, code?}` ; code TOTP obligatoire pour superadmin lorsque `MFA_ENABLED=true` |
 | GET | auth/session/ | Identité courante |
 | POST | auth/session/ | Déconnexion |
 | POST | auth/mfa/ | `{action: "enroll"}` puis `{code: "123456"}` |

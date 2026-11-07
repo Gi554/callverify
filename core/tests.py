@@ -331,6 +331,42 @@ class BackendTests(TestCase):
             401,
         )
 
+    @override_settings(MFA_ENABLED=False)
+    def test_pilot_disables_callverify_mfa_without_deleting_existing_factor(self):
+        admin = AdminUser.objects.create_superuser(
+            'pilot-super',
+            'pilot@example.com',
+            'test-password-long',
+            mfa_secret='JBSWY3DPEHPK3PXP',
+            mfa_enabled=True,
+        )
+        client = APIClient()
+        response = client.post(
+            '/api/auth/login/', {'username': 'pilot-super', 'password': 'test-password-long'}
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(client.get('/api/auth/session/').data['mfa_enabled'])
+        self.assertEqual(client.get('/api/auth/session/').data['backup_remaining'], 0)
+        client.force_authenticate(admin)
+        self.assertEqual(
+            client.post('/api/auth/mfa/', {'action': 'enroll'}, format='json').status_code,
+            404,
+        )
+        admin.refresh_from_db()
+        self.assertTrue(admin.mfa_enabled)
+        self.assertTrue(admin.mfa_secret.startswith('enc:'))
+
+    @override_settings(MFA_ENABLED=False)
+    def test_superadmin_promotion_does_not_require_mfa_during_pilot(self):
+        root = AdminUser.objects.create_superuser('pilot-root', 'root@example.com', 'password')
+        self.client.force_authenticate(root)
+        response = self.client.patch(
+            '/api/administrators/',
+            {'id': self.other.pk, 'role': 'superadministrator'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+
     def test_reset_is_single_use(self):
         token = default_token_generator.make_token(self.admin)
         payload = {

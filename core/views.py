@@ -11,7 +11,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Count, Sum, Q
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
@@ -124,7 +124,7 @@ def login_view(request):
     if not user or not user.is_staff or not user.is_active:
         audit(request.user, 'login.failed')
         return Response({'detail': 'Identifiants invalides'}, status=401)
-    if user.is_superuser or user.mfa_enabled:
+    if settings.MFA_ENABLED and (user.is_superuser or user.mfa_enabled):
         with transaction.atomic():
             user = AdminUser.objects.select_for_update().get(pk=user.pk)
             step = totp_step(user.mfa_secret, request.data.get('code'))
@@ -150,8 +150,8 @@ def session_view(request):
             'id': request.user.pk,
             'username': request.user.username,
             'superadmin': request.user.is_superuser,
-            'mfa_enabled': request.user.mfa_enabled,
-            'backup_remaining': len(request.user.backup_codes),
+            'mfa_enabled': settings.MFA_ENABLED and request.user.mfa_enabled,
+            'backup_remaining': len(request.user.backup_codes) if settings.MFA_ENABLED else 0,
         }
     )
 
@@ -706,13 +706,15 @@ def dashboard(request):
 @permission_classes([SuperAdminOnly])
 def administrators(request):
     if request.method == 'GET':
-        return Response(
-            list(
-                AdminUser.objects.filter(is_staff=True).values(
-                    'id', 'username', 'email', 'is_active', 'is_superuser', 'mfa_enabled'
-                )
+        rows = list(
+            AdminUser.objects.filter(is_staff=True).values(
+                'id', 'username', 'email', 'is_active', 'is_superuser', 'mfa_enabled'
             )
         )
+        if not settings.MFA_ENABLED:
+            for row in rows:
+                row['mfa_enabled'] = False
+        return Response(rows)
     if request.method == 'PATCH':
         from django.shortcuts import get_object_or_404
 
@@ -730,7 +732,7 @@ def administrators(request):
         if role is not None:
             if role not in ('administrator', 'superadministrator'):
                 raise ValidationError('Rôle invalide')
-            if role == 'superadministrator' and not user.mfa_enabled:
+            if settings.MFA_ENABLED and role == 'superadministrator' and not user.mfa_enabled:
                 raise ValidationError('Le compte doit activer son MFA avant la promotion')
             user.is_superuser = role == 'superadministrator'
             fields.append('is_superuser')
@@ -784,6 +786,8 @@ def administrators(request):
 
 @api_view(['POST'])
 def mfa(request):
+    if not settings.MFA_ENABLED:
+        raise Http404
     if request.data.get('action') == 'backup':
         with transaction.atomic():
             user = AdminUser.objects.select_for_update().get(pk=request.user.pk)

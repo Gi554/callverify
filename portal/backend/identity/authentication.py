@@ -26,7 +26,8 @@ class CentralSessionAuthentication(SessionAuthentication):
         is_admin = Membership.objects.filter(user=user, active=True, role='administrator').exists()
         has_mfa = PortalMFA.objects.filter(user=user, enabled_at__isnull=False).exists()
         if (
-            not settings.DEBUG
+            settings.MFA_ENABLED
+            and not settings.DEBUG
             and is_admin
             and not has_mfa
             and request.path
