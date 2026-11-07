@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .isolation_work import WorkAuthentication
@@ -116,6 +116,8 @@ def finish(row):
 def statistics(request):
     now = timezone.now()
     kind = request.query_params.get('export', '')
+    if kind and request.user.role == 'setter':
+        raise PermissionDenied('Les exports sont réservés au client, conseiller ou administrateur.')
     if kind not in ('', 'csv', 'xlsx', 'pdf'):
         raise ValidationError('Export CSV ou XLSX uniquement')
     start, end, lower, upper, zone = period(request.query_params, now)

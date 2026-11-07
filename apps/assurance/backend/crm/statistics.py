@@ -81,6 +81,8 @@ def statistics(request):
     if request.user.role not in ('administrator', 'setter'):
         raise PermissionDenied('Statistiques internes Assurance uniquement')
     kind = request.query_params.get('export', '')
+    if kind and request.user.role == 'setter':
+        raise PermissionDenied('Les exports sont réservés au client, conseiller ou administrateur.')
     if kind not in ('', 'csv', 'xlsx', 'pdf'):
         raise ValidationError('Export CSV ou XLSX uniquement')
     today = timezone.now().astimezone(ZONE).date()

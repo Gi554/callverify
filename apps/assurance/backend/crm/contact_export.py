@@ -1,6 +1,7 @@
 """Prospect export (CSV or Excel) over exactly the list's visibility and filters."""
 
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from packages.exports import kind, bounded, response
 from .custom_fields import schema
 from .models import BusinessAudit
@@ -10,6 +11,8 @@ from .pipeline import pipeline
 class ContactExportMixin:
     @action(detail=False, methods=['get'], url_path='export')
     def export(self, request):
+        if request.user.role == 'setter':
+            raise PermissionDenied('Les exports sont réservés au client, conseiller ou administrateur.')
         file = kind(request)
         rows = bounded(self.get_queryset(), file)
         labels = {stage['key']: stage['label'] for stage in pipeline().stages}
