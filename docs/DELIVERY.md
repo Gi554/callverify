@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Lots de contacts supérieurs à 1 000
+
+Les administrateurs peuvent désormais attribuer jusqu’à **10 000 contacts par lot** à un agent,
+dans Assurance comme dans Isolation. La sélection reste limitée aux contacts disponibles et non
+déjà attribués ; les contrôles d’espace, d’idempotence et de reprise des contacts non travaillés
+restent inchangés.
+
 ## Délai entre commandes d’appel
 
 Le délai minimal entre deux commandes d’appel distinctes du même compte est de **5 secondes**, pour
