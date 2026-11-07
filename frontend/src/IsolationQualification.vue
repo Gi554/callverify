@@ -105,6 +105,18 @@ async function deleteCampaign(campaign: any) {
     await load();
   });
 }
+async function clearCampaign(campaign: any) {
+  if (
+    !window.confirm(
+      `Vider la liste « ${campaign.name} » ? Les prospects importés seront supprimés.`,
+    )
+  )
+    return;
+  await run(async () => {
+    await props.request(`qualification/${campaign.id}/clear/`, {}, 'POST');
+    await load();
+  });
+}
 async function exportResults() {
   await run(async () => {
     if (!selected.value) throw new Error('Choisissez une liste');
@@ -131,6 +143,9 @@ async function download(job: any) {
 }
 function chooseFile(event: Event) {
   file.value = (event.target as HTMLInputElement).files?.[0] || null;
+}
+function focusCreate() {
+  (globalThis.document?.querySelector('.new-campaign input') as HTMLInputElement | null)?.focus();
 }
 onMounted(load);
 </script>
@@ -161,6 +176,15 @@ onMounted(load);
         ><Search :size="16" /><input v-model="search" placeholder="Rechercher une liste…" /></label
       ><button class="secondary" :disabled="loading" @click="load">
         <RefreshCw :size="16" :class="{ spin: loading }" />Actualiser</button
+      ><button v-if="tab === 'lists'" class="primary" :disabled="loading" @click="focusCreate">
+        <Plus :size="16" />Créer une liste</button
+      ><button
+        v-if="tab === 'lists'"
+        class="secondary"
+        :disabled="loading || !campaigns.length"
+        @click="tab = 'import'"
+      >
+        <FileUp :size="16" />Importer des contacts</button
       ><button
         v-if="tab === 'results'"
         class="primary"
@@ -261,6 +285,12 @@ onMounted(load);
                 >
                   Importer</button
                 ><button
+                  class="text-button"
+                  :disabled="loading || !campaign.progress.total"
+                  @click="clearCampaign(campaign)"
+                >
+                  Vider</button
+                ><button
                   class="text-button danger-button"
                   :disabled="loading"
                   @click="deleteCampaign(campaign)"
@@ -286,8 +316,9 @@ onMounted(load);
     >
       <h3><FileUp :size="20" />Importer une liste dans Isolation</h3>
       <p>
-        Le fichier est aperçu avant tout traitement. Le contrôle Lookup ne démarrera qu’après votre
-        action sur la liste.
+        Le fichier Excel ou CSV est lu en entier et aperçu avant traitement. Toutes les lignes sont
+        importées ; associez au minimum la colonne téléphone. Les colonnes supplémentaires restent
+        conservées dans l’historique de l’import.
       </p>
       <label
         >Liste cible<select v-model="selected" required>

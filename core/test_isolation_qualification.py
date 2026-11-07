@@ -65,6 +65,24 @@ class IsolationQualificationTests(TestCase):
             audit.assert_called_once()
             self.assertEqual(audit.call_args.args[1], 'isolation.qualification.campaign_deleted')
 
+    def test_administrator_can_clear_a_list_without_deleting_the_list(self):
+        from .models import ImportBatch
+
+        campaign = Campaign.objects.create(
+            owner=AdminUser.objects.create_user('clear-owner'),
+            portal_workspace='isolation',
+            portal_owner_id=41,
+            name='À vider',
+        )
+        phone = PhoneNumber.objects.create(e164='+14165550199')
+        Prospect.objects.create(campaign=campaign, phone=phone, raw_phone='4165550199')
+        ImportBatch.objects.create(campaign=campaign)
+        response = self.client.post(f'/api/qualification/{campaign.pk}/clear/', {}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(Campaign.objects.filter(pk=campaign.pk).exists())
+        self.assertFalse(Prospect.objects.filter(campaign=campaign).exists())
+        self.assertFalse(ImportBatch.objects.filter(campaign=campaign).exists())
+
     def test_setter_cannot_operate_the_qualification_process(self):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(42, 'isolation', 'setter'))
         self.assertEqual(self.client.get('/api/qualification/').status_code, 403)

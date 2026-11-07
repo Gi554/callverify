@@ -143,6 +143,26 @@ class QualificationViewSet(viewsets.GenericViewSet):
         return Response(status=204)
 
     @action(detail=True, methods=['post'])
+    def clear(self, request, pk=None):
+        campaign = self.campaign(pk)
+        with transaction.atomic():
+            for batch in campaign.imports.all():
+                if batch.original:
+                    batch.original.delete(save=False)
+            for job in campaign.exportjob_set.all():
+                if job.file:
+                    job.file.delete(save=False)
+            deleted, _ = campaign.prospects.all().delete()
+            campaign.imports.all().delete()
+            campaign.exportjob_set.all().delete()
+        audit(
+            request,
+            'isolation.qualification.campaign_cleared',
+            metadata={'campaign_id': campaign.pk, 'deleted_rows': deleted},
+        )
+        return Response(campaign_output(campaign))
+
+    @action(detail=True, methods=['post'])
     def lookup(self, request, pk=None):
         force = request.data.get('force', False)
         if not isinstance(force, bool):

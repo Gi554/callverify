@@ -401,7 +401,7 @@ const navigation = computed(() => {
       items.push({ id: 'followups', label: 'Tâches de rappel', icon: 'followups' });
     items.push({ id: 'statistics', label: 'Statistiques', icon: 'statistics' });
     if (role.value === 'administrator')
-      items.push({ id: 'qualification', label: 'Vérification des numéros', icon: 'qualification' });
+      items.push({ id: 'qualification', label: 'Listes et imports', icon: 'qualification' });
   }
   // Setters and administrators call from a prospect card; administrators keep team history.
   if (role.value === 'administrator')
