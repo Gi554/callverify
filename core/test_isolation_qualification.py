@@ -30,6 +30,41 @@ class IsolationQualificationTests(TestCase):
         self.assertFalse(campaign.owner.is_active)
         self.assertTrue(campaign.owner.password.startswith('!'))
 
+    def test_administrator_can_delete_an_isolation_list_and_its_private_files(self):
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from django.core.files.base import ContentFile
+        from .models import ExportJob, ImportBatch
+
+        with TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media):
+            campaign = Campaign.objects.create(
+                owner=AdminUser.objects.create_user('file-owner'),
+                portal_workspace='isolation',
+                portal_owner_id=41,
+                name='À supprimer',
+            )
+            batch = ImportBatch.objects.create(campaign=campaign)
+            batch.original.save('source.csv', ContentFile(b'name,phone\nDemo,+10000000001\n'))
+            job = ExportJob.objects.create(
+                campaign=campaign,
+                author=campaign.owner,
+                format='xlsx',
+                expires_at='2099-01-01T00:00:00Z',
+            )
+            job.file.save('result.xlsx', ContentFile(b'xlsx'))
+            import_path = batch.original.path
+            export_path = job.file.path
+            with patch('core.isolation_qualification.audit') as audit:
+                response = self.client.delete(f'/api/qualification/{campaign.pk}/')
+            self.assertEqual(response.status_code, 204)
+            self.assertFalse(Campaign.objects.filter(pk=campaign.pk).exists())
+            self.assertFalse(ImportBatch.objects.filter(pk=batch.pk).exists())
+            self.assertFalse(ExportJob.objects.filter(pk=job.pk).exists())
+            self.assertFalse(__import__('pathlib').Path(import_path).exists())
+            self.assertFalse(__import__('pathlib').Path(export_path).exists())
+            audit.assert_called_once()
+            self.assertEqual(audit.call_args.args[1], 'isolation.qualification.campaign_deleted')
+
     def test_setter_cannot_operate_the_qualification_process(self):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(42, 'isolation', 'setter'))
         self.assertEqual(self.client.get('/api/qualification/').status_code, 403)
