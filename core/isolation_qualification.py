@@ -87,7 +87,7 @@ class QualificationViewSet(viewsets.GenericViewSet):
     authentication_classes = [QualificationAuthentication]
     permission_classes = [IsAuthenticated]
     pagination_class = Pager
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def campaigns(self):
         return Campaign.objects.filter(portal_workspace=WORKSPACE).order_by('-created_at', '-pk')
@@ -121,6 +121,26 @@ class QualificationViewSet(viewsets.GenericViewSet):
         )
         audit(request, 'isolation.qualification.campaign_created', campaign)
         return Response(campaign_output(campaign), status=201)
+
+    def destroy(self, request, pk=None):
+        campaign = self.campaign(pk)
+        # FileField does not remove the underlying object when its parent row is
+        # deleted. Clean those private uploads before cascading the CRM rows.
+        for batch in campaign.imports.all():
+            if batch.original:
+                batch.original.delete(save=False)
+        for job in campaign.exportjob_set.all():
+            if job.file:
+                job.file.delete(save=False)
+        campaign_id = campaign.pk
+        campaign_name = campaign.name
+        campaign.delete()
+        audit(
+            request,
+            'isolation.qualification.campaign_deleted',
+            metadata={'campaign_id': campaign_id, 'campaign_name': campaign_name},
+        )
+        return Response(status=204)
 
     @action(detail=True, methods=['post'])
     def lookup(self, request, pk=None):

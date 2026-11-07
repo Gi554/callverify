@@ -3003,3 +3003,9 @@ Le contrôle de la production a trouvé une clé `MFA_ENCRYPTION_KEY` présente 
 6. Cycle administratif final des contrats (sans finances), statistiques métier, activation/rétention des sauvegardes hors site et test de restauration depuis l’objet distant.
 
 Les prochains éléments seront découpés en fonctionnalités plus petites, chacune avec sa PR fusionnée avant la suivante. Aucun de ces modules n'est déclaré terminé par la présence de son emplacement dans le dépôt.
+## Fonctionnalité 73 — Gestion des listes Isolation
+
+Le module Isolation permet de créer une liste, d’y importer un fichier CSV/XLSX avec aperçu et mappage téléphone/nom/référence, de demander un export Excel et de télécharger le résultat. Les administrateurs peuvent désormais supprimer définitivement une liste depuis le tableau des listes ; les prospects, imports, exports et fichiers privés associés sont supprimés avec elle. La suppression est limitée au périmètre Isolation. Le lancement Twilio Lookup reste séparé et peut être activé ultérieurement.
+
+Vérifications : tests ciblés `core.test_isolation_qualification` (8 tests réussis), contrôle Prettier du composant Isolation. Le contrôle TypeScript complet n’a pas pu être terminé localement car l’environnement pnpm a tenté de réinstaller des dépendances sans accès réseau ; la CI devra confirmer le build frontend.
+

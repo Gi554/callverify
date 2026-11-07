@@ -96,6 +96,15 @@ async function lookup(id: number) {
     await load();
   });
 }
+async function deleteCampaign(campaign: any) {
+  if (!window.confirm(`Supprimer définitivement la liste « ${campaign.name} » et ses prospects ?`))
+    return;
+  await run(async () => {
+    await props.request(`qualification/${campaign.id}/`, undefined, 'DELETE');
+    if (selected.value === String(campaign.id)) selected.value = '';
+    await load();
+  });
+}
 async function exportResults() {
   await run(async () => {
     if (!selected.value) throw new Error('Choisissez une liste');
@@ -250,7 +259,13 @@ onMounted(load);
                     tab = 'import';
                   "
                 >
-                  Importer
+                  Importer</button
+                ><button
+                  class="text-button danger-button"
+                  :disabled="loading"
+                  @click="deleteCampaign(campaign)"
+                >
+                  Supprimer
                 </button>
               </td>
             </tr>
