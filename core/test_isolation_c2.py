@@ -71,9 +71,11 @@ class IsolationC2Tests(TestCase):
             prospect=self.prospect,
             line=2,
             source={
-                'Adresse complète': '12 rue Test',
+                'FirstName': 'Jane',
+                'LastName': 'Doe',
+                'StreetAddress': '12 rue Test',
                 'Ville': 'Montréal',
-                'Code postal': 'h2x1y4',
+                'Postcode': 'h2x1y4',
                 'private_note': 'DO NOT SHARE',
             },
         )
@@ -84,7 +86,9 @@ class IsolationC2Tests(TestCase):
             duplicate=True,
             source={'Ville': 'Autre ville'},
         )
+        Prospect.objects.filter(pk=self.prospect.pk).update(name='')
         response = self.client.get(self.draft_url)
+        self.assertEqual(response.data['defaults']['full_name'], 'Jane Doe')
         self.assertEqual(response.data['defaults']['city'], 'Montréal')
         self.assertEqual(response.data['defaults']['address'], '12 rue Test')
         self.assertEqual(response.data['defaults']['postal_code'], 'H2X 1Y4')

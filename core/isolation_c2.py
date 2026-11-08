@@ -90,7 +90,15 @@ def defaults(prospect):
         return result
     aliases = {
         'email': ('email', 'courriel', 'adresseemail', 'adressecourriel'),
-        'address': ('address', 'adresse', 'adressecomplete', 'fulladdress'),
+        'address': (
+            'address',
+            'adresse',
+            'adressecomplete',
+            'fulladdress',
+            'streetaddress',
+            'street',
+            'rue',
+        ),
         'city': ('city', 'ville', 'municipalite'),
         'postal_code': ('postalcode', 'codepostal', 'postcode'),
     }
@@ -100,6 +108,24 @@ def defaults(prospect):
         return re.sub('[^a-z0-9]', '', value)
 
     source = {normalize(key): value for key, value in imported.source.items()}
+    first = next(
+        (
+            str(source[key]).strip()
+            for key in ('firstname', 'prenom', 'givenname')
+            if source.get(key)
+        ),
+        '',
+    )
+    last = next(
+        (
+            str(source[key]).strip()
+            for key in ('lastname', 'nom', 'familyname', 'surname')
+            if source.get(key)
+        ),
+        '',
+    )
+    if not result['full_name'] and (first or last):
+        result['full_name'] = ' '.join(part for part in (first, last) if part)[:250]
     for field, keys in aliases.items():
         found = [
             str(source[key]).strip()
