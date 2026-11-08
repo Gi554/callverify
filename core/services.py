@@ -1,6 +1,7 @@
 import csv
 import io
 import re
+import unicodedata
 from itertools import chain
 import zipfile
 from decimal import Decimal
@@ -46,6 +47,31 @@ def normalize(value):
         )
     except phonenumbers.NumberParseException:
         return None, '', 'Format non reconnu'
+
+
+def imported_display_name(row, mapped_name=''):
+    """Build the prospect label from common bilingual import columns."""
+    if mapped_name:
+        value = str(row.get(mapped_name, '') or '').strip()
+        if value:
+            return value[:250]
+
+    def key(value):
+        return re.sub(
+            r'[^a-z0-9]',
+            '',
+            unicodedata.normalize('NFKD', str(value)).encode('ascii', 'ignore').decode().lower(),
+        )
+
+    source = {key(column): str(value or '').strip() for column, value in row.items()}
+    first = next(
+        (source[name] for name in ('firstname', 'prenom', 'givenname') if source.get(name)), ''
+    )
+    last = next(
+        (source[name] for name in ('lastname', 'nom', 'familyname', 'surname') if source.get(name)),
+        '',
+    )
+    return ' '.join(part for part in (first, last) if part)[:250]
 
 
 def read_table(batch):
@@ -133,7 +159,7 @@ def process_import(batch_id):
                 campaign=batch.campaign,
                 phone=phone,
                 raw_phone=raw[:250],
-                name=row.get(batch.mapping.get('name', ''), '')[:250],
+                name=imported_display_name(row, batch.mapping.get('name', '')),
                 reference=row.get(batch.mapping.get('reference', ''), '')[:250],
                 validity='valid' if e164 else 'invalid',
                 reason=reason,

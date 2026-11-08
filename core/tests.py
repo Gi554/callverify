@@ -114,6 +114,21 @@ class BackendTests(TestCase):
         )
         self.assertEqual(process_import(batch.pk)['valid'], 1)
 
+    def test_import_builds_name_from_bilingual_homeowner_columns(self):
+        batch = ImportBatch.objects.create(
+            campaign=self.campaign,
+            original=SimpleUploadedFile(
+                'homeowner.csv',
+                b'FirstName,LastName,StreetAddress,City,Postcode,Phone\n'
+                b'Jane,Doe,12 Main Street,Montreal,H2X1Y4,5145550101\n',
+            ),
+            mapping={'phone': 'Phone'},
+        )
+        self.assertEqual(process_import(batch.pk)['valid'], 1)
+        prospect = Prospect.objects.get(campaign=self.campaign)
+        self.assertEqual(prospect.name, 'Jane Doe')
+        self.assertEqual(prospect.raw_phone, '5145550101')
+
     def test_import_rollback_invalid_mapping(self):
         batch = self.batch('other,name\n4165550123,A\n')
         with self.assertRaises(ValueError):
