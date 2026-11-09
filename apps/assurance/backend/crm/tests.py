@@ -102,7 +102,10 @@ class RawImportTests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.data['imported'], 1)
         self.assertEqual(response.data['rejected'], 1)
-        self.assertEqual(response.data['report'], [{'line': 3, 'reason': 'Numéro en double dans le fichier'}])
+        self.assertEqual(
+            response.data['report'],
+            [{'line': 3, 'reason': 'Numéro en double dans le fichier'}],
+        )
         self.assertEqual(list(Contact.objects.values_list('phone', flat=True)), [' 001 abc '])
         self.assertEqual(Contact.objects.first().source_values, ['Alice', ' 001 abc ', 'bad-email'])
         self.assertEqual(
