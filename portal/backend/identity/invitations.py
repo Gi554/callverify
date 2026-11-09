@@ -248,7 +248,9 @@ def invitation_action(request, workspace, pk):
             if not row:
                 return Response({'detail': 'Invitation introuvable'}, status=404)
             if row.accepted_at:
-                return Response({'detail': 'Une invitation acceptée ne peut pas être supprimée'}, status=409)
+                return Response(
+                    {'detail': 'Une invitation acceptée ne peut pas être supprimée'}, status=409
+                )
             AccessAudit.objects.create(
                 user=request.user,
                 workspace=workspace,
