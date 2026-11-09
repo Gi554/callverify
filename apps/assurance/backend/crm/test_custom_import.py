@@ -85,6 +85,23 @@ class CustomImportTests(TestCase):
         self.assertEqual([r['line'] for r in response.data['report']], [2, 3, 4])
         self.assertTrue(Contact.objects.get().custom_values['flag'])
 
+    def test_import_rejects_duplicate_phone_numbers_in_file(self):
+        response = self.upload(
+            'Phone;City;Flag;Date;Kind\n+1 (514) 555-0101;Paris;oui;2026-10-20;A\n5145550101;Laval;oui;2026-10-20;B\n'
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['imported'], 1)
+        self.assertEqual(response.data['rejected'], 1)
+        self.assertEqual(response.data['report'][0]['reason'], 'Numéro en double dans le fichier')
+
+    def test_import_rejects_phone_already_present_in_crm(self):
+        Contact.objects.create(name='Existing', phone='+1 (514) 555-0101', created_by_id=21)
+        response = self.upload('Phone;City;Flag;Date;Kind\n5145550101;Paris;oui;2026-10-20;A\n')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['imported'], 0)
+        self.assertEqual(response.data['rejected'], 1)
+        self.assertEqual(response.data['report'][0]['reason'], 'Numéro déjà présent dans le CRM')
+
     def test_raw_import_bypasses_business_required_but_partial_mapping_enforces_it(self):
         response = self.upload(custom_mapping='{}', schema_revision='')
         self.assertEqual(response.data['imported'], 1)

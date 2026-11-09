@@ -349,9 +349,15 @@ const mappingLabels: Record<string, string> = {
         </footer>
       </form>
     </dialog>
-    <section v-if="importing" class="import-panel" aria-label="Import des contacts Assurance">
+    <section
+      v-if="importing"
+      class="import-panel"
+      aria-label="Import des contacts Assurance"
+      :aria-busy="working"
+    >
       <div class="contacts-toolbar">
         <h3><FileSpreadsheet :size="20" />Import Assurance</h3>
+        <span v-if="working" class="busy-indicator" role="status">Traitement en cours…</span>
         <button
           v-if="role === 'administrator'"
           class="secondary"
@@ -372,8 +378,9 @@ const mappingLabels: Record<string, string> = {
         </button>
       </div>
       <p class="subtle">
-        Les valeurs sont conservées telles que lues. Les doublons restent présents. Aucun contrôle
-        téléphonique n’est lancé.
+        Les valeurs sont conservées telles que lues. Les doublons de numéro sont rejetés avant la
+        création des fiches, y compris ceux déjà présents dans le CRM. Aucun contrôle téléphonique
+        n’est lancé.
       </p>
       <div class="import-options">
         <label v-if="role === 'administrator'"
@@ -470,7 +477,7 @@ const mappingLabels: Record<string, string> = {
           taille acceptée seront signalées dans le rapport.
         </p>
         <button class="primary" :disabled="working || mapping.phone === ''" @click="confirm">
-          <CheckCircle2 :size="17" />Confirmer l’import
+          <CheckCircle2 :size="17" />{{ working ? 'Import en cours…' : 'Confirmer l’import' }}
         </button></template
       >
       <div v-if="report" role="status" class="import-result">
@@ -1013,6 +1020,16 @@ const mappingLabels: Record<string, string> = {
 }
 .import-panel {
   margin: 20px;
+}
+.busy-indicator {
+  color: #2467a8;
+  font-weight: 600;
+  animation: crm-pulse 1.2s ease-in-out infinite;
+}
+@keyframes crm-pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 @media (max-width: 800px) {
   .contact-actions {

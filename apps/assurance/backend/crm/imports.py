@@ -1,9 +1,10 @@
-"""Raw Assurance imports. No phone validation, deduplication or provider calls."""
+"""Assurance imports with phone-based duplicate protection."""
 
 import csv
 import hashlib
 import io
 import json
+import re
 from pathlib import Path
 from uuid import UUID, uuid4
 from zipfile import ZipFile, BadZipFile
@@ -24,6 +25,13 @@ MAX_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 10000
 MAX_COLUMNS = 100
 MAX_CELL = 10000
+
+
+def normalize_phone(value):
+    digits = re.sub(r'\D', '', str(value or ''))
+    if len(digits) == 11 and digits.startswith('1'):
+        digits = digits[1:]
+    return digits[:32]
 
 
 def admin(request):
@@ -272,9 +280,27 @@ def imports(request):
             raise ValidationError('Champ métier inconnu ou archivé')
     accepted = []
     errors = []
+    seen_numbers = set()
+    incoming_numbers = {
+        normalize_phone(values[mapping['phone']])
+        for _, values in rows
+        if normalize_phone(values[mapping['phone']])
+    }
+    existing_numbers = set(
+        Contact.objects.filter(phone_normalized__in=incoming_numbers).values_list(
+            'phone_normalized', flat=True
+        )
+    )
     for line, values in rows:
         fields = {field: values[index] for field, index in mapping.items()}
         reason = 'Téléphone manquant' if not fields['phone'].strip() else ''
+        normalized_phone = normalize_phone(fields['phone'])
+        if not reason and normalized_phone and normalized_phone in existing_numbers:
+            reason = 'Numéro déjà présent dans le CRM'
+        if not reason and normalized_phone and normalized_phone in seen_numbers:
+            reason = 'Numéro en double dans le fichier'
+        if not reason:
+            seen_numbers.add(normalized_phone)
         if any(len(value) > (254 if field == 'email' else 250) for field, value in fields.items()):
             reason = 'Champ trop long (nom/téléphone : 250 ; e-mail : 254 caractères)'
         custom = {}
@@ -307,6 +333,7 @@ def imports(request):
                 Contact(
                     name=fields.get('name', ''),
                     phone=fields['phone'],
+                    phone_normalized=normalized_phone,
                     email=fields.get('email', ''),
                     created_by_id=request.user.pk,
                     source_row=line,
