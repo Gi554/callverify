@@ -40,7 +40,7 @@ disponible.
 
 ## File d’appels automatique : retrait persistant des prospects traités
 
-**Livré sur staging.** Un résultat d’appel enregistré retire désormais le prospect de la file
+**Livré en production.** Un résultat d’appel enregistré retire désormais le prospect de la file
 active automatique dans Assurance et Isolation, sans supprimer sa fiche ni son historique. Un
 rappel futur reste masqué jusqu’à son échéance ; à l’échéance, il redevient appelable. La règle
 est appliquée côté serveur, donc elle reste valable après une pause, un rechargement ou une
@@ -48,8 +48,16 @@ reconnexion du setter. Les sessions existantes continuent à éviter les doublon
 déroulement.
 
 Vérifications : suites backend ciblées Assurance (13 tests) et Isolation (16 tests) réussies, ainsi
-que les tests frontend des deux tableaux (21 tests). La livraison production reste à faire après
-revue et fusion.
+que les tests frontend des deux tableaux (21 tests). CI complète, PostgreSQL et déploiement
+production validés.
+
+## Suppression sûre des listes Assurance contenant des rendez-vous
+
+**En cours de livraison.** Vider ou supprimer une liste importée ne bloque plus lorsqu’un de ses
+contacts est déjà utilisé par un rendez-vous. Le contact protégé est conservé dans le CRM mais
+détaché de la liste ; les contacts sans historique protégé sont supprimés normalement. Les
+rendez-vous, appels et historiques restent donc intacts, tandis que la liste peut être vidée ou
+supprimée définitivement.
 
 ## Activation des appels NEWT pour le pilote
 
