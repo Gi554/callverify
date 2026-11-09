@@ -238,9 +238,32 @@ def invitations(request, workspace):
     return Response({**output(row), 'mail_queued': True}, status=201)
 
 
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 def invitation_action(request, workspace, pk):
     require_admin(request.user, workspace)
+    if request.method == 'DELETE':
+        with transaction.atomic():
+            lock_admin(request.user, workspace)
+            row = Invitation.objects.select_for_update().filter(pk=pk, workspace=workspace).first()
+            if not row:
+                return Response({'detail': 'Invitation introuvable'}, status=404)
+            if row.accepted_at:
+                return Response(
+                    {'detail': 'Une invitation acceptée ne peut pas être supprimée'}, status=409
+                )
+            AccessAudit.objects.create(
+                user=request.user,
+                workspace=workspace,
+                action='invitation.deleted',
+                metadata={
+                    'invitation': str(row.pk),
+                    'username': row.username,
+                    'email': row.email,
+                    'role': row.role,
+                },
+            )
+            row.delete()
+        return Response(status=204)
     if set(request.data) != {'action'} or request.data['action'] not in ('revoke', 'resend'):
         raise ValidationError('Action invalide')
     token = secrets.token_urlsafe(32)
