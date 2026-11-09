@@ -33,7 +33,8 @@ const values = ref<any>({}),
   busy = ref(false),
   error = ref(''),
   message = ref(''),
-  baseline = ref('');
+  baseline = ref(''),
+  hasUnsavedDefaults = ref(false);
 const dirty = computed(() => loaded.value && JSON.stringify(values.value) !== baseline.value);
 watch(dirty, (value) => emit('dirty', value), { flush: 'sync' });
 watch(busy, (value) => emit('busy', value), { flush: 'sync' });
@@ -57,6 +58,9 @@ async function load() {
       ...row.c2,
     };
     revision.value = row.revision;
+    hasUnsavedDefaults.value = Object.keys(row.defaults).some(
+      (key) => values.value[key] !== row.c2[key],
+    );
     baseline.value = JSON.stringify(values.value);
     loaded.value = true;
     emit('saved', row.revision);
@@ -67,10 +71,10 @@ async function load() {
     busy.value = false;
   }
 }
-async function ensureSaved() {
+async function ensureSaved(includeDefaults = false) {
   if (!loaded.value) throw new Error('Chargez la qualification avant de réserver.');
   if (busy.value) throw new Error('Enregistrement de qualification en cours.');
-  if (!dirty.value) return;
+  if (!dirty.value && !(includeDefaults && hasUnsavedDefaults.value)) return;
   busy.value = true;
   error.value = '';
   message.value = '';
@@ -80,6 +84,7 @@ async function ensureSaved() {
       c2: values.value,
     });
     values.value = row.c2;
+    hasUnsavedDefaults.value = false;
     revision.value = row.revision;
     baseline.value = JSON.stringify(values.value);
     emit('saved', row.revision);
@@ -103,7 +108,7 @@ async function reload() {
 }
 async function save() {
   try {
-    await ensureSaved();
+    await ensureSaved(true);
   } catch {}
 }
 function unload(event: BeforeUnloadEvent) {
@@ -125,8 +130,8 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
       <span>ISOLATION · QUALIFICATION</span>
       <h3>Préparer la visite</h3>
       <p>
-        Enregistrez votre brouillon à tout moment. Tous les champs, sauf le courriel, le coût
-        d’électricité et l’âge, sont requis pour réserver.
+        Pour réserver, renseignez le nom, le téléphone, l’adresse, la ville et le code postal. Vous
+        pouvez enregistrer un brouillon à tout moment.
       </p>
     </header>
     <p v-if="error" role="alert">{{ error }}</p>
@@ -162,7 +167,7 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
                       : 250
             " /></label
         ><label
-          >Grenier accessible<select v-model="values.attic_accessible">
+          >Grenier accessible · facultatif<select v-model="values.attic_accessible">
             <option :value="null">Non renseigné</option>
             <option :value="true">Oui</option>
             <option :value="false">Non</option>
@@ -179,7 +184,7 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
                 values.monthly_electricity === '' ? null : values.monthly_electricity
             " /></label
         ><label
-          >Année de construction<input
+          >Année de construction · facultatif<input
             v-model.number="values.construction_year"
             type="number"
             min="1600"
@@ -199,7 +204,12 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
             @change="values.age = values.age === '' ? null : values.age"
         /></label>
       </div>
-      <button type="button" class="secondary" :disabled="!dirty" @click="save">
+      <button
+        type="button"
+        class="secondary"
+        :disabled="!dirty && !hasUnsavedDefaults"
+        @click="save"
+      >
         {{ busy ? 'Enregistrement…' : 'Enregistrer le brouillon de qualification' }}</button
       ><small v-if="dirty">Modifications à enregistrer</small
       ><button type="button" class="secondary" @click="reload">Recharger la qualification</button>

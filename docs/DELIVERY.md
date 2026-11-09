@@ -3132,3 +3132,7 @@ Un administrateur ayant plusieurs espaces retrouve le sélecteur CallVerify à d
 
 « Pas intéressé », « A demandé à être rappelé » et « Autre résultat » utilisent le passage au prospect suivant après enregistrement, avec le minuteur de la session. Un rappel exige toujours une date et une heure.
 
+## Qualification avant une visite Isolation
+
+Le grenier accessible et l’année de construction sont facultatifs. La réservation enregistre les données préremplies de la qualification et affiche les messages de validation détaillés.
+

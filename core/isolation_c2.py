@@ -59,7 +59,7 @@ def complete(value):
     missing = [
         key
         for key, value in data.items()
-        if key not in ('monthly_electricity', 'age', 'email') and (value is None or value == '')
+        if key in ('full_name', 'phone', 'address', 'city', 'postal_code') and not value
     ]
     if missing:
         raise ValidationError(
