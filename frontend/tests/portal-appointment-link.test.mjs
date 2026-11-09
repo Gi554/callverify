@@ -79,14 +79,17 @@ async function fixture({
   role = 'advisor',
   isolationRole = 'closer',
   isolationLink = false,
+  adminChooser = false,
 }) {
   const saved = new Map(
     ['location', 'history', 'localStorage', 'window', 'fetch'].map((key) => [key, globalThis[key]]),
   )
   const address = new URL(
-    isolationLink
-      ? 'https://orvia-crm.com/crm?workspace=isolation&visit=42'
-      : 'https://orvia-crm.com/crm?workspace=assurance&appointment=42',
+    adminChooser
+      ? 'https://orvia-crm.com/crm'
+      : isolationLink
+        ? 'https://orvia-crm.com/crm?workspace=isolation&visit=42'
+        : 'https://orvia-crm.com/crm?workspace=assurance&appointment=42',
   )
   const member = {
     username: 'advisor',
@@ -94,7 +97,7 @@ async function fixture({
       { workspace: 'isolation', role: isolationRole },
       { workspace: 'assurance', role },
     ],
-    admin_workspaces: [],
+    admin_workspaces: adminChooser ? ['assurance', 'isolation'] : [],
     landing: 'isolation',
   }
   let session = loggedIn
@@ -136,6 +139,33 @@ async function fixture({
   }
 }
 const find = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
+
+test('an administrator with both spaces sees the chooser before access management', async () => {
+  const f = await fixture({
+    loggedIn: true,
+    role: 'administrator',
+    isolationRole: 'administrator',
+    adminChooser: true,
+  })
+  try {
+    const chooser = find(f, 'PortalWorkspaceChooser')
+    assert.deepEqual(
+      chooser.props.spaces.map(({ workspace }) => workspace),
+      ['isolation', 'assurance'],
+    )
+    assert.equal(find(f, 'CrmShell'), undefined)
+    chooser.props.onEnter('assurance')
+    await flush()
+    const shell = find(f, 'CrmShell')
+    assert.equal(shell.props.workspace, 'assurance')
+    assert.equal(find(f, 'PortalAccess'), undefined)
+    shell.props.onAccess()
+    await flush()
+    assert.ok(find(f, 'PortalAccess'))
+  } finally {
+    f.close()
+  }
+})
 
 test('authenticated adviser reminder overrides the remembered workspace and opens the appointment', async () => {
   const f = await fixture({ loggedIn: true })
