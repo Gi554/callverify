@@ -154,7 +154,7 @@ function isolationDashboard(role: string) {
 function isolation(path: string, body?: any, method?: string) {
   return business(path, body, method, 'isolation');
 }
-// The last workspace is reopened on reload, so multi-space users skip the space chooser.
+// Restore the last workspace for users who do not need the administrator chooser.
 const LAST_WORKSPACE = 'amx-workspace';
 function rememberedWorkspace() {
   try {
@@ -455,6 +455,7 @@ function openAccount() {
   managing.value = false;
 }
 function openAccess() {
+  if (!ready.value || !workspace.value || !user.value?.admin_workspaces?.length) return;
   managing.value = !managing.value;
   passwordOpen.value = false;
 }
@@ -501,12 +502,13 @@ onMounted(async () => {
   try {
     user.value = await portal('session/');
     const allowed = user.value?.workspaces.map((item) => item.workspace) || [];
+    const chooseWorkspace = allowed.length > 1 && !!user.value?.admin_workspaces?.length;
     const target = [
       pendingIsolationVisit.value ? 'isolation' : '',
       pendingAppointment.value ? 'assurance' : '',
-      rememberedWorkspace(),
-      user.value?.landing || '',
-      allowed[0] || '',
+      chooseWorkspace ? '' : rememberedWorkspace(),
+      chooseWorkspace ? '' : user.value?.landing || '',
+      chooseWorkspace ? '' : allowed[0] || '',
     ].find((value) => value && allowed.includes(value));
     if (target && !user.value?.mfa_required) await enter(target);
   } catch {
@@ -553,8 +555,9 @@ onMounted(async () => {
       'contacts-layout': !!user && activeModule === 'contacts' && !passwordOpen && !managing,
     }"
   >
+    <p v-if="!ready" class="subtle" role="status">Chargement de votre espace…</p>
     <PortalLogin
-      v-if="ready && !user && !recoveryOpen && !inviteId"
+      v-else-if="!user && !recoveryOpen && !inviteId"
       :busy="busy"
       :error="error"
       :mfa-required="mfaPrompt"
@@ -571,7 +574,7 @@ onMounted(async () => {
       @complete="completeMfa"
     />
     <PortalWorkspaceChooser
-      v-else-if="ready && user && !workspace && !passwordOpen && !managing"
+      v-else-if="ready && user && !workspace && !passwordOpen"
       :username="user.username"
       :spaces="user.workspaces"
       :busy="busy"
@@ -590,7 +593,7 @@ onMounted(async () => {
       :page-title="pageTitle"
       :account-open="passwordOpen"
       :access-open="managing"
-      :can-manage="!!user?.admin_workspaces?.length"
+      :can-manage="!!workspace && !!user?.admin_workspaces?.length"
       @workspace="enter"
       @navigate="selectModule"
       @account="openAccount"
@@ -616,7 +619,6 @@ onMounted(async () => {
           @tasks="selectModule('followups')"
         />
         <p v-if="calendarNotice" role="status">{{ calendarNotice }}</p>
-        <p v-if="!ready" class="subtle">Chargement de votre espace…</p>
         <p v-if="error" role="alert" class="error">{{ error }}</p>
         <PortalInvitationAccept
           v-if="ready && inviteId"
