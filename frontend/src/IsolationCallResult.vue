@@ -95,9 +95,9 @@ async function save() {
         ><label>Note facultative<textarea v-model="note" maxlength="3000"></textarea></label
         ><button class="primary">
           {{
-            ['voicemail', 'invalid_number', 'disconnected'].includes(result)
-              ? 'Enregistrer et passer au suivant'
-              : 'Enregistrer le résultat'
+            result === 'callback'
+              ? 'Créer le rappel et passer au suivant'
+              : 'Enregistrer et passer au suivant'
           }}
         </button>
       </fieldset>

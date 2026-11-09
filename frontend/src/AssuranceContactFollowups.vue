@@ -48,6 +48,7 @@ const labels: Record<string, string> = {
 const resultChoices = Object.fromEntries(
   Object.entries(labels).filter(([key]) => key !== 'unreachable'),
 );
+const advances = computed(() => !!result.value && result.value !== 'appointment_booked');
 let outcomeId = crypto.randomUUID(),
   taskId = crypto.randomUUID();
 const dirty = computed(
@@ -106,7 +107,7 @@ async function run(action: () => Promise<void>) {
   }
 }
 async function record(appointmentId?: number) {
-  const quick = ['voicemail', 'invalid_number', 'disconnected'].includes(result.value);
+  const advance = advances.value;
   let saved = false;
   await run(async () => {
     await props.prepare();
@@ -134,7 +135,7 @@ async function record(appointmentId?: number) {
     saved = true;
     await load();
   });
-  if (saved && quick) {
+  if (saved && advance) {
     await nextTick();
     emit('advance');
   }
@@ -228,8 +229,8 @@ onMounted(refresh);
         >
           {{
             result === 'callback'
-              ? 'Enregistrer et créer le rappel'
-              : ['voicemail', 'invalid_number', 'disconnected'].includes(result)
+              ? 'Créer le rappel et passer au suivant'
+              : advances
                 ? 'Enregistrer et passer au suivant'
                 : 'Enregistrer le résultat'
           }}</button

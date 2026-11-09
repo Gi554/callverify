@@ -139,7 +139,14 @@ function fixture({ failReload = false } = {}) {
   return { root, app, closed, saved, requests }
 }
 const child = (f) => all(f.root).find((n) => n.props?.['data-component'] === 'IsolationCallResult')
-for (const outcome of ['voicemail', 'invalid_number', 'disconnected']) {
+for (const outcome of [
+  'voicemail',
+  'invalid_number',
+  'disconnected',
+  'not_interested',
+  'callback',
+  'other',
+]) {
   test(`${outcome} advances only after a successful refreshed file`, async () => {
     const f = fixture()
     try {
@@ -160,8 +167,8 @@ for (const outcome of ['voicemail', 'invalid_number', 'disconnected']) {
 test('reload failure and nonquick results leave the file open', async () => {
   for (const config of [
     { failReload: true, outcome: 'voicemail' },
-    { outcome: 'other' },
-    { outcome: 'callback' },
+    { failReload: true, outcome: 'callback' },
+    { outcome: 'appointment_booked' },
   ]) {
     const f = fixture(config)
     try {
