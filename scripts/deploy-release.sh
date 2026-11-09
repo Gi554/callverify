@@ -21,6 +21,25 @@ fi
 domain=$(sed -n 's/^CALLVERIFY_DOMAIN=//p' .env | tr -d '\r')
 [[ "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ && "$domain" == *.* ]] || { echo 'A configured HTTPS domain is required.' >&2; exit 1; }
 
+# Click-to-call is explicitly enabled for the current pilot. Keep the provider
+# credentials private on the server, but fail closed if they are missing.
+newt_username=$(sed -n 's/^NEWT_USERNAME=//p' .env | tr -d '\r')
+newt_password=$(sed -n 's/^NEWT_PASSWORD=//p' .env | tr -d '\r')
+[[ -n "$newt_username" && -n "$newt_password" ]] || {
+  echo 'NEWT credentials are required before enabling pilot calls.' >&2
+  exit 1
+}
+set_env_flag() {
+  local key=$1 value=$2
+  if grep -q "^${key}=" .env; then
+    sed -i "s/^${key}=.*/${key}=${value}/" .env
+  else
+    printf '%s=%s\n' "$key" "$value" >> .env
+  fi
+}
+set_env_flag NEWT_CALLS_ENABLED true
+set_env_flag NEWT_ISOLATION_CALLS_ENABLED true
+
 compose=(docker compose -f compose.yaml -f infra/compose.crm.yaml -f compose.production.yaml)
 "${compose[@]}" config -q
 # This pipeline updates a running installation; first provisioning remains explicit.
