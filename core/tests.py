@@ -122,7 +122,7 @@ class BackendTests(TestCase):
                 b'FirstName,LastName,StreetAddress,City,Postcode,Phone\n'
                 b'Jane,Doe,12 Main Street,Montreal,H2X1Y4,5145550101\n',
             ),
-            mapping={'phone': 'Phone'},
+            mapping={'phone': 'Phone', 'name': 'FirstName'},
         )
         self.assertEqual(process_import(batch.pk)['valid'], 1)
         prospect = Prospect.objects.get(campaign=self.campaign)
