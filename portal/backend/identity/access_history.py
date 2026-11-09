@@ -16,6 +16,7 @@ LABELS = {
     'invitation.created': 'Invitation créée',
     'invitation.resend': 'Invitation renouvelée',
     'invitation.revoke': 'Invitation révoquée',
+    'invitation.deleted': 'Invitation supprimée',
     'invitation.accepted': 'Invitation acceptée',
 }
 

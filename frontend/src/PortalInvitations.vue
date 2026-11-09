@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   UserRound,
+  Trash2,
 } from 'lucide-vue-next';
 const props = defineProps<{
   space: string;
@@ -71,13 +72,21 @@ async function create() {
   }
 }
 async function action(row: any, action: string) {
+  if (action === 'delete' && !window.confirm(`Supprimer définitivement l’invitation de ${row.username} ?`)) {
+    return;
+  }
   busy.value = true;
   error.value = '';
   message.value = '';
   try {
-    const result = await props.request(base() + row.id + '/', { action });
+    const result =
+      action === 'delete'
+        ? await props.request(base() + row.id + '/', undefined, 'DELETE')
+        : await props.request(base() + row.id + '/', { action });
     message.value =
-      action === 'revoke'
+      action === 'delete'
+        ? 'Invitation supprimée définitivement.'
+        : action === 'revoke'
         ? 'Invitation révoquée.'
         : result.mail_queued
           ? 'Nouveau lien mis en file ; le précédent est invalidé.'
@@ -210,8 +219,9 @@ onMounted(load);
               }}</span>
             </td>
             <td>
-              <div v-if="['pending', 'expired'].includes(row.status)" class="invitation-actions">
+              <div v-if="row.status !== 'accepted'" class="invitation-actions">
                 <button
+                  v-if="['pending', 'expired'].includes(row.status)"
                   class="secondary"
                   :disabled="busy || loading"
                   :aria-label="'Renvoyer l’invitation à ' + row.username"
@@ -219,12 +229,20 @@ onMounted(load);
                 >
                   <Send :size="15" />Renvoyer</button
                 ><button
+                  v-if="['pending', 'expired'].includes(row.status)"
                   class="secondary revoke"
                   :disabled="busy || loading"
                   :aria-label="'Révoquer l’invitation de ' + row.username"
                   @click="action(row, 'revoke')"
                 >
                   <X :size="15" />Révoquer
+                </button><button
+                  class="secondary danger"
+                  :disabled="busy || loading"
+                  :aria-label="'Supprimer définitivement l’invitation de ' + row.username"
+                  @click="action(row, 'delete')"
+                >
+                  <Trash2 :size="15" />Supprimer
                 </button>
               </div>
               <span v-else class="closed">Clôturée</span>
