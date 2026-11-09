@@ -96,14 +96,17 @@ class RawImportTests(TestCase):
         self.assertEqual(Contact.objects.count(), 0)
         self.assertEqual(ContactImport.objects.count(), 0)
 
-    def test_raw_duplicates_and_bad_format_are_imported_without_lookup(self):
+    def test_duplicate_phone_rows_are_rejected_before_creation(self):
         content = b'Nom;Telephone;Courriel\nAlice; 001 abc ;bad-email\nAlice; 001 abc ;bad-email\n'
         response = self.confirm(content)
         self.assertEqual(response.status_code, 201, response.data)
-        self.assertEqual(response.data['imported'], 2)
+        self.assertEqual(response.data['imported'], 1)
+        self.assertEqual(response.data['rejected'], 1)
         self.assertEqual(
-            list(Contact.objects.values_list('phone', flat=True)), [' 001 abc ', ' 001 abc ']
+            response.data['report'],
+            [{'line': 3, 'reason': 'Numéro en double dans le fichier'}],
         )
+        self.assertEqual(list(Contact.objects.values_list('phone', flat=True)), [' 001 abc '])
         self.assertEqual(Contact.objects.first().source_values, ['Alice', ' 001 abc ', 'bad-email'])
         self.assertEqual(
             Contact.objects.first().import_batch.mapping, {'name': 0, 'phone': 1, 'email': 2}
