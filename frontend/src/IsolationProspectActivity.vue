@@ -5,11 +5,14 @@ const names = ref<Record<number, string>>({});
 import PhoneHistory from './PhoneHistory.vue';
 import IsolationCallResult from './IsolationCallResult.vue';
 import IsolationFollowUps from './IsolationFollowUps.vue';
+import IsolationC2 from './IsolationC2.vue';
 const tab = ref('call');
 const callBusy = ref(false),
   taskBusy = ref(false),
+  c2Busy = ref(false),
   callDirty = ref(false),
-  taskDirty = ref(false);
+  taskDirty = ref(false),
+  c2Dirty = ref(false);
 const props = defineProps<{
   prospectId: number;
   role: string;
@@ -98,14 +101,14 @@ async function save() {
   }
 }
 watch(
-  [busy, callBusy, taskBusy],
-  () => emit('busy', busy.value || callBusy.value || taskBusy.value),
+  [busy, callBusy, taskBusy, c2Busy],
+  () => emit('busy', busy.value || callBusy.value || taskBusy.value || c2Busy.value),
   { flush: 'sync' },
 );
 function close() {
   if (busy.value || callBusy.value || taskBusy.value) return;
   if (
-    (body.value || callback.value || callDirty.value || taskDirty.value) &&
+    (body.value || callback.value || callDirty.value || taskDirty.value || c2Dirty.value) &&
     !window.confirm('Quitter sans enregistrer les saisies ?')
   )
     return;
@@ -148,6 +151,7 @@ const resultLabels: Record<string, string> = {
       <button
         v-for="item in [
           { id: 'call', label: 'Résultat d’appel' },
+          { id: 'qualification', label: 'Qualification' },
           { id: 'notes', label: 'Notes et statut' },
           { id: 'tasks', label: 'Rappels' },
           { id: 'history', label: 'Historique' },
@@ -170,6 +174,19 @@ const resultLabels: Record<string, string> = {
         @dirty="callDirty = $event"
         @saved="callSaved"
         @book="emit('book')"
+      />
+    </div>
+    <div class="sheet-section" v-show="tab === 'qualification'">
+      <IsolationC2
+        :prospect-id="prospectId"
+        :request="request"
+        :blocked="busy || callBusy || taskBusy"
+        @busy="c2Busy = $event"
+        @dirty="c2Dirty = $event"
+        @saved="
+          load();
+          emit('saved');
+        "
       />
     </div>
     <div class="sheet-section" v-show="tab === 'notes'">

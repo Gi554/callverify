@@ -1,5 +1,28 @@
 # Suivi des livraisons CRM AMX
 
+## Import Isolation : détection des colonnes de contact
+
+**Livré sur staging.** L’aperçu d’import détecte automatiquement les colonnes de téléphone,
+notamment `Phone`, `Téléphone`, `Tel`, `Numéro`, `Mobile` et `Cell`, et présente le champ comme
+« Nom complet ». Lorsqu’un fichier contient `FirstName`/`Prénom` et `LastName`/`Nom`, le traitement
+combine les deux valeurs pour créer le nom du prospect ; les colonnes inconnues restent conservées
+dans la source de l’import sans modifier le schéma de la base.
+
+Vérifications : build frontend Vite/vue-tsc réussi, 83 tests backend Isolation/Import réussis et CSV
+de recette de 118 lignes analysé sans ligne incomplète sur les champs minimaux. Le correctif attend
+encore sa fusion et son déploiement en production.
+
+## Fiche Isolation : qualification visible par l’administrateur
+
+**Livré sur staging.** Le panneau « Fiche et suivi » du prospect contient désormais un onglet
+« Qualification ». Il charge les valeurs issues de l’import (nom, téléphone, adresse, ville et
+code postal lorsqu’ils sont reconnus) ainsi que les champs C2, et permet à l’administrateur de les
+consulter ou de les enregistrer avec les mêmes contrôles de version que le parcours existant.
+L’onglet séparé « Qualification et visites » reste inchangé pour la réservation.
+
+Vérification : build frontend Vite/vue-tsc réussi. La recette visuelle navigateur reste à effectuer
+après déploiement.
+
 ## Lots de contacts supérieurs à 1 000
 
 Les administrateurs peuvent désormais attribuer jusqu’à **10 000 contacts par lot** à un agent,
