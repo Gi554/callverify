@@ -26,7 +26,6 @@ class QualificationTests(TestCase):
             'homeowner': True,
             'has_investments': True,
             'has_advisor': None,
-            'insurances': ['life', 'group'],
             'additional_notes': 'Disponibilité le matin',
             'advisor_notes': 'Préparer les protections existantes',
         }
@@ -63,7 +62,7 @@ class QualificationTests(TestCase):
         )
         self.assertEqual(self.save(revision=1).data['contact_revision'], 1)
 
-    def test_validation_rejects_unknown_choices_contradictions_and_bad_age(self):
+    def test_validation_rejects_unknown_fields_choices_and_bad_age(self):
         for changes in (
             {'age': -1},
             {'age': 121},
@@ -71,9 +70,7 @@ class QualificationTests(TestCase):
             {'profession': 'invented'},
             {'marital_status': 'invented'},
             {'has_investments': 'unknown'},
-            {'insurances': ['none_known', 'life']},
-            {'insurances': ['life', 'life']},
-            {'insurances': ['invented']},
+            {'insurances': ['life']},
             {'private_notes': 'Injected'},
             {'advisor_notes': 'x' * 3001},
         ):
@@ -82,7 +79,7 @@ class QualificationTests(TestCase):
         self.assertEqual(self.save({}).status_code, 200)
         self.contact.refresh_from_db()
         self.assertIsNone(self.contact.assurance_qualification['age'])
-        self.assertEqual(self.contact.assurance_qualification['insurances'], [])
+        self.assertNotIn('insurances', self.contact.assurance_qualification)
 
     def test_fresh_lease_and_revision_required_and_audit_failure_rolls_back(self):
         from uuid import uuid4

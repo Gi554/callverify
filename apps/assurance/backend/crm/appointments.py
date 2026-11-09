@@ -30,7 +30,7 @@ from .models import (
 from .leases import Conflict, writer, held, LEASE_SECONDS
 from .calendar_checks import check as external_check
 from .appointment_status import output as business_status, filter_status
-from .qualification import snapshot as qualification_snapshot, Qualification
+from .qualification import snapshot as qualification_snapshot, Qualification, visible_snapshot
 from .reports import ReportMixin
 from .advisor_workspace import AdvisorWorkspaceMixin
 from .advisor_availability import ensure_open, configuration as working_hours, closed_periods
@@ -203,7 +203,7 @@ def output(row, user):
         'calendar': row.calendar,
         'meeting_type': row.meeting_type,
         'external_booking_url': row.external_booking_url,
-        'qualification_snapshot': row.qualification_snapshot,
+        'qualification_snapshot': visible_snapshot(row.qualification_snapshot),
     }
     result.update(business_status(row))
     if row.calendar == 'external_link' and user.role in ('setter', 'administrator'):

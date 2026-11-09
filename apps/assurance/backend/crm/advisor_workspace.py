@@ -15,7 +15,7 @@ from .leases import Conflict
 from .models import Appointment, AppointmentReport, BusinessAudit, Contact, FollowUpTask
 from .notifications import notify
 from .policies import policy
-from .qualification import FIELDS, Qualification
+from .qualification import FIELDS, Qualification, visible_qualification
 from .reports import ReportInput
 
 PUBLIC_FIELDS = [field for field in FIELDS if field['key'] != 'additional_notes']
@@ -118,7 +118,10 @@ class AdvisorWorkspaceMixin:
                 if contact.lease_expires_at and contact.lease_expires_at > timezone.now():
                     raise Conflict('Fiche en cours de modification par un autre utilisateur.')
                 qualification = Qualification(
-                    data={**contact.assurance_qualification, **data['qualification']}
+                    data={
+                        **visible_qualification(contact.assurance_qualification),
+                        **data['qualification'],
+                    }
                 )
                 qualification.is_valid(raise_exception=True)
                 before = client_output(contact)
