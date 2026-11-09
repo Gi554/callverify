@@ -121,6 +121,16 @@ async function portal(path: string, body?: any, method?: string) {
   if (response.headers.get('Content-Disposition')?.includes('attachment')) return response.blob();
   return response.status === 204 ? null : response.json();
 }
+function errorMessages(value: unknown): string[] {
+  if (typeof value === 'string') return value.trim() ? [value] : [];
+  if (Array.isArray(value)) return value.flatMap(errorMessages);
+  if (!value || typeof value !== 'object') return [];
+  return Object.entries(value).flatMap(([field, detail]) =>
+    errorMessages(detail).map((message) =>
+      ['c2', 'detail', 'non_field_errors'].includes(field) ? message : `${field} — ${message}`,
+    ),
+  );
+}
 async function business(path: string, body?: any, method?: string, target = workspace.value) {
   const grant = await portal('access/' + target + '/', {});
   // A leading slash would give `/api/assurance//…`, which the services answer with a 404.
@@ -135,9 +145,7 @@ async function business(path: string, body?: any, method?: string, target = work
   if (!response.ok) {
     const result = await response.json().catch(() => ({}));
     const failure = new Error(
-      result.detail ||
-        (Array.isArray(result) ? result.join(' · ') : Object.values(result).join(' · ')) ||
-        'Service métier indisponible',
+      errorMessages(result?.detail ?? result).join(' · ') || 'Service métier indisponible',
     ) as Error & { status: number };
     failure.status = response.status;
     throw failure;

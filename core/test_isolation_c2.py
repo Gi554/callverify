@@ -147,17 +147,16 @@ class IsolationC2Tests(TestCase):
         self.assertEqual(data['monthly_electricity'], '0.00')
         self.assertEqual(self.book(revision=1).status_code, 201)
 
-    def test_every_required_field_blocks_new_booking_except_electricity_and_age(self):
-        for key in fixtures.C2_DATA:
-            if key in ('monthly_electricity', 'age', 'email'):
-                continue
+    def test_booking_requires_only_contact_and_address_fields(self):
+        required = ('full_name', 'phone', 'address', 'city', 'postal_code')
+        for key in required:
             self.prospect.c2 = {k: v for k, v in fixtures.C2_DATA.items() if k != key}
             self.prospect.save()
             response = self.book()
             self.assertEqual(response.status_code, 400, (key, response.data))
             self.prospect.refresh_from_db()
             self.assertEqual(self.prospect.assignment_revision, 0)
-        self.prospect.c2 = fixtures.C2_DATA.copy()
+        self.prospect.c2 = {key: fixtures.C2_DATA[key] for key in required}
         self.prospect.save()
         self.assertEqual(self.book().status_code, 201)
 

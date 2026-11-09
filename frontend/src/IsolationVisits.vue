@@ -212,7 +212,7 @@ async function save() {
       bookingEmail = props.clientFollowupId
         ? prospectEmail.value.trim()
         : c2.value.getEmail().trim();
-      if (!props.clientFollowupId) await c2.value.ensureSaved();
+      if (!props.clientFollowupId) await c2.value.ensureSaved(true);
     }
     const current = record
       ? await props.request(`work-queue/${record.prospect.id}/`)
