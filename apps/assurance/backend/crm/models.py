@@ -1,6 +1,7 @@
 from packages.alert_models import Review as AlertReviewBase
 from packages import payroll_models
 from datetime import time
+import re
 from django.db import models
 from django.utils import timezone
 
@@ -29,6 +30,7 @@ class Contact(models.Model):
     source_values = models.JSONField(default=list)
     name = models.CharField(max_length=250)
     phone = models.CharField(max_length=250)  # Original value; no technical normalization.
+    phone_normalized = models.CharField(max_length=32, blank=True, default='', db_index=True)
     email = models.EmailField(blank=True)
     status = models.CharField(max_length=40, default='to_contact')
     assigned_advisor_id = models.PositiveBigIntegerField(null=True, blank=True)
@@ -42,6 +44,15 @@ class Contact(models.Model):
     lease_owner_id = models.PositiveBigIntegerField(null=True, blank=True)
     lease_token = models.UUIDField(null=True, blank=True)
     lease_expires_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        digits = re.sub(r'\D', '', str(self.phone or ''))
+        if len(digits) == 11 and digits.startswith('1'):
+            digits = digits[1:]
+        self.phone_normalized = digits[:32]
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'phone_normalized'}
+        return super().save(*args, **kwargs)
 
 
 class AdvisorAssignment(models.Model):

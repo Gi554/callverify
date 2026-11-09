@@ -315,9 +315,11 @@ onMounted(load);
     <form
       v-else-if="tab === 'import'"
       class="import-panel"
+      :aria-busy="loading"
       @submit.prevent="preview ? confirm() : upload()"
     >
       <h3><FileUp :size="20" />Importer une liste dans Isolation</h3>
+      <p v-if="loading" class="busy-indicator" role="status">Traitement en cours…</p>
       <p>
         Le fichier Excel ou CSV est lu en entier et aperçu avant traitement. Toutes les lignes sont
         importées ; associez au minimum la colonne téléphone. Les colonnes supplémentaires restent
@@ -368,7 +370,13 @@ onMounted(load);
           >
         </div></template
       ><button class="primary" :disabled="loading">
-        {{ preview ? 'Confirmer l’import' : 'Apercevoir le fichier' }}
+        {{
+          loading
+            ? 'Traitement en cours…'
+            : preview
+              ? 'Confirmer l’import'
+              : 'Apercevoir le fichier'
+        }}
       </button>
     </form>
 
@@ -620,6 +628,16 @@ onMounted(load);
   color: #65758a;
   margin: 0;
   font-size: 13px;
+}
+.busy-indicator {
+  color: #2467a8;
+  font-weight: 600;
+  animation: isolation-pulse 1.2s ease-in-out infinite;
+}
+@keyframes isolation-pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 .mapping {
   display: grid;
