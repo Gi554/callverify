@@ -1,11 +1,13 @@
 import json
+from datetime import timedelta
 from uuid import uuid4
 from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from .models import Contact, ContactImport, ContactFieldSchema
+from django.utils import timezone
+from .models import Contact, ContactImport, ContactFieldSchema, Appointment, AdvisorAssignment
 
 
 @override_settings(DEBUG=True)
@@ -177,6 +179,32 @@ class CustomImportTests(TestCase):
         batch_id = response.data['id']
         self.assertEqual(self.client.delete(f'{self.url}{batch_id}/').status_code, 204)
         self.assertFalse(Contact.objects.exists())
+        self.assertFalse(ContactImport.objects.exists())
+
+    def test_list_delete_detaches_contact_used_by_an_appointment(self):
+        response = self.upload()
+        batch_id = response.data['id']
+        contact = Contact.objects.get()
+        assignment = AdvisorAssignment.objects.create(
+            setter_id=21, setter_name='Setter', advisor_id=31, advisor_name='Advisor'
+        )
+        Appointment.objects.create(
+            contact=contact,
+            assignment=assignment,
+            request_id=uuid4(),
+            fingerprint='import-protected',
+            setter_id=21,
+            setter_name='Setter',
+            advisor_id=31,
+            advisor_name='Advisor',
+            booked_by_id=21,
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+            timezone='UTC',
+        )
+        self.assertEqual(self.client.delete(f'{self.url}{batch_id}/').status_code, 204)
+        contact.refresh_from_db()
+        self.assertIsNone(contact.import_batch_id)
         self.assertFalse(ContactImport.objects.exists())
 
     def test_administrator_can_create_clear_and_fill_a_named_list(self):
