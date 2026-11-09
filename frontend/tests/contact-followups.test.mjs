@@ -163,7 +163,14 @@ test('appointment result opens qualification and waits for a successful booking'
 })
 
 test('non qualifying outcomes save before advancing and keep the seven requested choices', async () => {
-  for (const result of ['voicemail', 'invalid_number', 'disconnected']) {
+  for (const result of [
+    'voicemail',
+    'invalid_number',
+    'disconnected',
+    'not_interested',
+    'callback',
+    'other',
+  ]) {
     const f = fixture()
     try {
       await flush()
@@ -176,11 +183,18 @@ test('non qualifying outcomes save before advancing and keep the seven requested
       set(select, result)
       select.props.onChange(event)
       await flush()
+      if (result === 'callback') {
+        set(
+          all(f.root).find((n) => n.props?.type === 'datetime-local'),
+          '2027-01-15T10:00',
+        )
+      }
       await all(f.root)
         .find((n) => n.tag === 'form')
         .props.onSubmit(event)
       await flush()
       assert.equal(f.writes[0].body.result, result)
+      if (result === 'callback') assert.ok(f.writes[0].body.due_at)
       assert.ok(f.events.includes('advance'))
       assert.ok(!f.events.includes('qualify'))
     } finally {

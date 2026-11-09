@@ -68,7 +68,12 @@ async function load() {
 async function callSaved(result: string) {
   await load();
   emit('saved');
-  if (!error.value && ['voicemail', 'invalid_number', 'disconnected'].includes(result)) {
+  if (
+    !error.value &&
+    ['voicemail', 'invalid_number', 'disconnected', 'not_interested', 'callback', 'other'].includes(
+      result,
+    )
+  ) {
     await nextTick();
     close();
   }

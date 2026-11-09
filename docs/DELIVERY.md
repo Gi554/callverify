@@ -3128,3 +3128,7 @@ La fiche s’ouvre sur « Appel et rappel ». La sélection de « Rendez-vous pr
 
 Un administrateur ayant plusieurs espaces retrouve le sélecteur CallVerify à deux encarts à l’ouverture du CRM. La gestion des utilisateurs reste accessible après le choix de l’espace. Les liens directs vers les rendez-vous et visites restent prioritaires.
 
+## Enchaînement des appels Assurance et Isolation
+
+« Pas intéressé », « A demandé à être rappelé » et « Autre résultat » utilisent le passage au prospect suivant après enregistrement, avec le minuteur de la session. Un rappel exige toujours une date et une heure.
+
