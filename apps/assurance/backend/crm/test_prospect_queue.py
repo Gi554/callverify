@@ -82,7 +82,7 @@ class ProspectQueueTests(TestCase):
         self.assertNotIn('Declined synthetic', export.content.decode('utf-8-sig'))
         self.assertNotIn('Booked synthetic', export.content.decode('utf-8-sig'))
 
-    def test_new_explicit_result_reopens_decline_and_cancelled_booking_is_not_hidden(self):
+    def test_new_callback_result_stays_out_until_its_follow_up_is_due(self):
         ContactCallOutcome.objects.create(
             contact=self.declined,
             setter_id=21,
@@ -93,7 +93,7 @@ class ProspectQueueTests(TestCase):
         self.appointment.status = 'cancelled'
         self.appointment.save()
         self.assertEqual(
-            self.client.get('/api/assurance/contacts/', {'queue': 'active'}).data['count'], 3
+            self.client.get('/api/assurance/contacts/', {'queue': 'active'}).data['count'], 2
         )
         self.assertEqual(
             self.client.get('/api/assurance/contacts/', {'queue': 'bad'}).status_code, 400
