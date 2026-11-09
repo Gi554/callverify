@@ -98,6 +98,27 @@ class InvitationTests(TestCase):
         self.assertIn(f'#invite={body["id"]}:{body["token"]}', html)
         self.assertEqual(self.accept(body).status_code, 400)
 
+    def test_admin_can_delete_unaccepted_invitation_and_reuse_identifier(self):
+        self.assertEqual(self.create().status_code, 201)
+        invitation_id = Invitation.objects.get().pk
+        response = self.client.delete(
+            self.base + str(invitation_id) + '/', HTTP_X_CSRFTOKEN=self.csrf
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Invitation.objects.exists())
+        self.assertTrue(AccessAudit.objects.filter(action='invitation.deleted').exists())
+        self.assertEqual(self.create().status_code, 201)
+
+    def test_admin_cannot_delete_accepted_invitation(self):
+        self.assertEqual(self.create().status_code, 201)
+        self.assertEqual(self.accept(self.payload()).status_code, 204)
+        invitation_id = Invitation.objects.get().pk
+        response = self.client.delete(
+            self.base + str(invitation_id) + '/', HTTP_X_CSRFTOKEN=self.csrf
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(Invitation.objects.filter(pk=invitation_id).exists())
+
     def test_assurance_advisor_receives_martinien_invitation_template(self):
         response = self.create(username='camille.tremblay')
         self.assertEqual(response.status_code, 201)

@@ -53,11 +53,12 @@ production validés.
 
 ## Suppression sûre des listes Assurance contenant des rendez-vous
 
-**En cours de livraison.** Vider ou supprimer une liste importée ne bloque plus lorsqu’un de ses
-contacts est déjà utilisé par un rendez-vous. Le contact protégé est conservé dans le CRM mais
-détaché de la liste ; les contacts sans historique protégé sont supprimés normalement. Les
-rendez-vous, appels et historiques restent donc intacts, tandis que la liste peut être vidée ou
-supprimée définitivement.
+**Livré en production.** Vider ou supprimer une liste importée traite les contacts par lots. Un
+contact déjà utilisé par un rendez-vous est conservé dans le CRM mais détaché de la liste ; les
+contacts sans historique protégé sont supprimés en bloc. Les rendez-vous, appels et historiques
+restent donc intacts, tandis que la liste peut être vidée ou supprimée définitivement. Cette
+exécution évite le délai qui pouvait laisser le bouton grisé sur les listes volumineuses (par
+exemple 15 000 contacts). CI staging/main et déploiement production validés.
 
 ## Activation des appels NEWT pour le pilote
 
