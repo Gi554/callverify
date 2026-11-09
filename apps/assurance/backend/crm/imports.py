@@ -32,6 +32,23 @@ def admin(request):
         raise PermissionDenied('Import réservé aux administrateurs Assurance')
 
 
+def remove_import_contacts(batch):
+    """Delete disposable contacts and detach contacts protected by CRM history."""
+    deleted = 0
+    preserved = 0
+    for contact in list(batch.contacts.all()):
+        try:
+            # Use a savepoint so one protected contact does not roll back the whole list.
+            with transaction.atomic():
+                contact.delete()
+        except ProtectedError:
+            Contact.objects.filter(pk=contact.pk).update(import_batch=None)
+            preserved += 1
+        else:
+            deleted += 1
+    return deleted, preserved
+
+
 def read_table(upload, has_header):
     if not upload or upload.size > MAX_BYTES:
         raise ValidationError('Fichier requis, limité à 5 Mo')
@@ -356,19 +373,15 @@ def import_detail(request, batch_id):
         batch = ContactImport.objects.get(pk=batch_id)
     except ContactImport.DoesNotExist:
         raise ValidationError('Import introuvable')
-    try:
-        with transaction.atomic():
-            batch.contacts.all().delete()
-            batch.delete()
-            BusinessAudit.objects.create(
-                actor_id=request.user.pk,
-                action='contacts.import_deleted',
-                object_id=batch_id,
-            )
-    except ProtectedError as error:
-        raise ValidationError(
-            'Impossible de supprimer cette liste : un rendez-vous utilise encore un contact.'
-        ) from error
+    with transaction.atomic():
+        deleted, preserved = remove_import_contacts(batch)
+        batch.delete()
+        BusinessAudit.objects.create(
+            actor_id=request.user.pk,
+            action='contacts.import_deleted',
+            object_id=batch_id,
+            metadata={'contacts_deleted': deleted, 'contacts_preserved': preserved},
+        )
     return Response(status=204)
 
 
@@ -379,17 +392,15 @@ def clear_list(request, batch_id):
         batch = ContactImport.objects.get(pk=batch_id)
     except ContactImport.DoesNotExist:
         raise ValidationError('Liste introuvable')
-    try:
-        with transaction.atomic():
-            batch.contacts.all().delete()
-            batch.total = batch.imported = batch.rejected = 0
-            batch.report = []
-            batch.save(update_fields=['total', 'imported', 'rejected', 'report'])
-            BusinessAudit.objects.create(
-                actor_id=request.user.pk, action='contacts.list_cleared', object_id=batch.pk
-            )
-    except ProtectedError as error:
-        raise ValidationError(
-            'Impossible de vider cette liste : un rendez-vous utilise encore un contact.'
-        ) from error
+    with transaction.atomic():
+        deleted, preserved = remove_import_contacts(batch)
+        batch.total = batch.imported = batch.rejected = 0
+        batch.report = []
+        batch.save(update_fields=['total', 'imported', 'rejected', 'report'])
+        BusinessAudit.objects.create(
+            actor_id=request.user.pk,
+            action='contacts.list_cleared',
+            object_id=batch.pk,
+            metadata={'contacts_deleted': deleted, 'contacts_preserved': preserved},
+        )
     return Response(output(batch))
