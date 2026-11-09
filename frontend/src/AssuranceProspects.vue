@@ -165,7 +165,7 @@ async function loadColumn(column: Column, version: number, append = false) {
   column.error = '';
   try {
     const data = await props.request(
-      `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}&queue=${includeProcessed.value ? 'all' : 'active'}`,
+      `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}&queue=${includeProcessed.value ? 'all' : 'active'}${props.role === 'setter' ? '&mine=true' : ''}`,
     );
     if (version !== generation || disposed) return;
     column.rows = append ? [...column.rows, ...data.results] : data.results;
