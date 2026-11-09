@@ -71,8 +71,12 @@ async function upload() {
     preview.value = await props.request('qualification/imports/', body);
     const headers = preview.value.headers || [];
     mapping.value = {
-      phone: headers.find((value: string) => /phone|tel|num/i.test(value)) || headers[0] || '',
-      name: headers.find((value: string) => /name|nom/i.test(value)) || '',
+      phone:
+        headers.find((value: string) => /phone|tel|num|mobile|cell/i.test(value)) ||
+        headers[0] ||
+        '',
+      name:
+        headers.find((value: string) => /full.?name|nom.?complet|name|nom/i.test(value)) || '',
       reference: '',
     };
   });
@@ -344,7 +348,9 @@ onMounted(load);
               <option v-for="header in preview.headers" :key="header">{{ header }}</option>
             </select></label
           ><label
-            >Nom<select v-model="mapping.name">
+            >Nom complet
+            <small>Prénom + nom sont combinés automatiquement si les deux colonnes existent.</small
+            ><select v-model="mapping.name">
               <option value="">— Aucun —</option>
               <option v-for="header in preview.headers" :key="header">{{ header }}</option>
             </select></label

@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Import Isolation : détection des colonnes de contact
+
+**Livré sur staging.** L’aperçu d’import détecte automatiquement les colonnes de téléphone,
+notamment `Phone`, `Téléphone`, `Tel`, `Numéro`, `Mobile` et `Cell`, et présente le champ comme
+« Nom complet ». Lorsqu’un fichier contient `FirstName`/`Prénom` et `LastName`/`Nom`, le traitement
+combine les deux valeurs pour créer le nom du prospect ; les colonnes inconnues restent conservées
+dans la source de l’import sans modifier le schéma de la base.
+
+Vérifications : build frontend Vite/vue-tsc réussi, 83 tests backend Isolation/Import réussis et CSV
+de recette de 118 lignes analysé sans ligne incomplète sur les champs minimaux. Le correctif attend
+encore sa fusion et son déploiement en production.
+
 ## Lots de contacts supérieurs à 1 000
 
 Les administrateurs peuvent désormais attribuer jusqu’à **10 000 contacts par lot** à un agent,
