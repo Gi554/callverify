@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import CallAction from './CallAction.vue';
-import PhoneHistory from './PhoneHistory.vue';
 import AssuranceContactFollowups from './AssuranceContactFollowups.vue';
 import AssuranceQualification from './AssuranceQualification.vue';
 import {
@@ -516,14 +515,7 @@ onBeforeUnmount(() => {
         </section>
       </div>
       <div v-show="flowTab === 'exchange'" class="drawer-view">
-        <PhoneHistory
-          v-if="role === 'setter'"
-          workspace="assurance"
-          :resource-id="current.id"
-          :request="request"
-          :portal="portal"
-          :blocked="blocked"
-        /><AssuranceContactFollowups
+        <AssuranceContactFollowups
           ref="followups"
           :contact-id="current.id"
           :revision="current.revision"
@@ -897,13 +889,6 @@ onBeforeUnmount(() => {
             :contact-id="current.id"
             :request="request"
             :portal="portal"
-          /><PhoneHistory
-            v-if="role === 'setter'"
-            workspace="assurance"
-            :resource-id="current.id"
-            :request="request"
-            :portal="portal"
-            :blocked="blocked"
           />
         </div>
       </main>
