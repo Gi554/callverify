@@ -48,8 +48,6 @@ class IsolationQuickCallTests(TestCase):
             campaign=campaign, phone=phone, raw_phone='4165550124', assigned_setter_id=21
         )
         self.auth(21, 'setter')
-        self.assertEqual(self.dial('4165550124').status_code, 400)
-        Prospect.objects.filter(pk=waiting.pk).update(compliance='allowed')
         self.assertEqual(self.dial('4165550124').data, {'id': waiting.pk, 'created': False})
         self.auth(22, 'setter')
         self.assertEqual(self.dial('4165550124').status_code, 403)

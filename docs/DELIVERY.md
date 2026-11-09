@@ -3136,3 +3136,7 @@ Un administrateur ayant plusieurs espaces retrouve le sélecteur CallVerify à d
 
 Le grenier accessible et l’année de construction sont facultatifs. La réservation enregistre les données préremplies de la qualification et affiche les messages de validation détaillés.
 
+## Appels Isolation
+
+Un prospect Isolation attribué dont le statut est « À vérifier » peut être appelé depuis sa fiche ou le composeur. Les interdictions explicites, exclusions et contrôles de numéro restent appliqués.
+
