@@ -175,8 +175,8 @@ onMounted(() =>
       la rencontre.
     </p>
     <p v-else-if="!appointmentId && !historyOnly" class="subtle">
-      Pour transmettre une nouvelle rencontre, utilisez « Qualification et rendez-vous » dans la
-      fiche du prospect après sa réservation externe.
+      Pour transmettre une nouvelle rencontre, utilisez « Coordonnées, qualification et rendez-vous
+      » dans la fiche du prospect après sa réservation externe.
     </p>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-if="message" role="status" class="booking-feedback">{{ message }}</p>

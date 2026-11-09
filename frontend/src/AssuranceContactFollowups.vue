@@ -218,8 +218,8 @@ onMounted(refresh);
             @input="outcomeEdited"
         /></label>
         <p v-if="result === 'appointment_booked'" class="outcome-hint">
-          Réservez via le lien du conseiller puis complétez « Qualification et rendez-vous ». Le
-          résultat sera enregistré avec la transmission.
+          Complétez la rubrique « Coordonnées, qualification et rendez-vous ». Le résultat sera
+          enregistré avec la transmission.
         </p>
         <button
           v-if="result !== 'appointment_booked' || pendingAppointment"

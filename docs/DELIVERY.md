@@ -3120,3 +3120,7 @@ Les parcours d’import Assurance et Isolation affichent maintenant un état « 
 
 Vérifications locales : tests ciblés d’import, suite CRM Assurance, `makemigrations --check`, Ruff, TypeScript/Vue et Prettier. La validation de production doit confirmer le message de rapport et le comportement sur un fichier réel avant ouverture large.
 
+# Fiche prospect Assurance en trois rubriques
+
+La fiche s’ouvre sur « Appel et rappel ». La sélection de « Rendez-vous pris » ouvre directement « Coordonnées, qualification et rendez-vous », qui contient aussi les notes utiles au conseiller. L’historique constitue la troisième rubrique. Le type d’assurance détenue a été retiré du formulaire et des données de qualification exposées, y compris pour les anciens rendez-vous.
+

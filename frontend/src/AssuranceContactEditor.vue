@@ -96,7 +96,7 @@ const dirty = computed(() =>
       draft.value[key as keyof typeof draft.value] !== base.value[key as keyof typeof base.value],
   ),
 );
-const flowTab = ref(props.workflow === 'call' ? 'exchange' : 'contact'),
+const flowTab = ref('exchange'),
   flowBody = ref<HTMLElement | null>(null),
   closePrompt = ref(false);
 const qualification = ref<InstanceType<typeof AssuranceQualification> | null>(null),
@@ -393,25 +393,18 @@ onBeforeUnmount(() => {
   >
     <nav class="drawer-tabs" aria-label="Rubriques de la fiche">
       <button
-        :aria-current="flowTab === 'contact' ? 'page' : undefined"
-        :disabled="blocked"
-        @click="changeFlow('contact')"
-      >
-        <UserRound :size="17" />Coordonnées
-      </button>
-      <button
         :aria-current="flowTab === 'exchange' ? 'page' : undefined"
         :disabled="blocked"
         @click="changeFlow('exchange')"
       >
-        <Phone :size="17" />Appels et rappels
+        <Phone :size="17" />Appel et rappel
       </button>
       <button
         :aria-current="flowTab === 'booking' ? 'page' : undefined"
         :disabled="blocked"
         @click="changeFlow('booking')"
       >
-        <CalendarDays :size="17" />Qualification et rendez-vous
+        <CalendarDays :size="17" />Coordonnées, qualification et rendez-vous
       </button>
       <button
         :aria-current="flowTab === 'history' ? 'page' : undefined"
@@ -435,7 +428,7 @@ onBeforeUnmount(() => {
           Reprendre la fiche
         </button>
       </div>
-      <div class="drawer-call-card">
+      <div v-show="flowTab === 'exchange'" class="drawer-call-card">
         <div class="call-number">
           <span class="call-icon"><Phone :size="19" /></span>
           <div>
@@ -531,7 +524,7 @@ onBeforeUnmount(() => {
           @advance="close"
         />
       </div>
-      <div v-show="flowTab === 'contact'" class="drawer-view">
+      <div v-show="flowTab === 'booking'" class="drawer-view">
         <div class="drawer-section-heading">
           <span class="section-icon blue"><UserRound :size="19" /></span>
           <div>
@@ -634,25 +627,20 @@ onBeforeUnmount(() => {
       </div>
       <div class="drawer-action-row">
         <button
-          v-if="flowTab !== 'contact'"
+          v-if="flowTab !== 'exchange'"
           class="secondary"
           :disabled="blocked"
-          @click="changeFlow(flowTab === 'booking' ? 'exchange' : 'contact')"
+          @click="changeFlow(flowTab === 'history' ? 'booking' : 'exchange')"
         >
           <ArrowLeft :size="15" />Retour</button
         ><button v-else class="secondary" :disabled="blocked" @click="close">Fermer</button
         ><button
-          v-if="flowTab !== 'booking'"
+          v-if="flowTab !== 'history'"
           class="primary"
           :disabled="blocked"
-          @click="changeFlow(flowTab === 'contact' ? 'exchange' : 'booking')"
+          @click="changeFlow(flowTab === 'exchange' ? 'booking' : 'history')"
         >
-          {{
-            flowTab === 'contact'
-              ? 'Résultat et rappel'
-              : flowTab === 'exchange'
-                ? 'Qualification et rendez-vous'
-                : 'Préparer le rendez-vous'
+          {{ flowTab === 'exchange' ? 'Coordonnées, qualification et rendez-vous' : 'Historique'
           }}<ArrowRight :size="16" /></button
         ><button v-else class="primary" :disabled="blocked" @click="close">
           {{ autoCall ? 'Terminer · prospect suivant' : 'Terminer' }}<CheckCircle2 :size="16" />

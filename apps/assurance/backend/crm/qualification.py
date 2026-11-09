@@ -23,13 +23,6 @@ MARITAL = {
     'common_law': 'Conjoint de fait',
     'other': 'Autre / préfère ne pas répondre',
 }
-INSURANCES = {
-    'life': 'Assurance vie',
-    'disability': 'Assurance invalidité',
-    'critical_illness': 'Assurance maladies graves',
-    'group': 'Assurances collectives',
-    'none_known': 'Aucune assurance connue',
-}
 FIELDS = [
     {'key': 'age', 'label': 'Âge', 'type': 'number', 'min': 0, 'max': 120},
     {'key': 'profession', 'label': 'Profession', 'type': 'choice', 'choices': PROFESSIONS},
@@ -48,12 +41,6 @@ FIELDS = [
             ('has_advisor', 'Possède actuellement un conseiller en sécurité financière'),
         ]
     ],
-    {
-        'key': 'insurances',
-        'label': 'Types d’assurances détenues',
-        'type': 'multiple',
-        'choices': INSURANCES,
-    },
     {'key': 'additional_notes', 'label': 'Notes complémentaires', 'type': 'text'},
     {'key': 'advisor_notes', 'label': 'Notes utiles pour le conseiller', 'type': 'text'},
 ]
@@ -67,9 +54,6 @@ class Qualification(serializers.Serializer):
     homeowner = serializers.BooleanField(allow_null=True, default=None)
     has_investments = serializers.BooleanField(allow_null=True, default=None)
     has_advisor = serializers.BooleanField(allow_null=True, default=None)
-    insurances = serializers.ListField(
-        child=serializers.ChoiceField(choices=INSURANCES), max_length=5, default=list
-    )
     additional_notes = serializers.CharField(max_length=3000, allow_blank=True, default='')
     advisor_notes = serializers.CharField(max_length=3000, allow_blank=True, default='')
 
@@ -77,15 +61,6 @@ class Qualification(serializers.Serializer):
         if isinstance(data, dict) and set(data) - set(self.fields):
             raise serializers.ValidationError('Champs de qualification inconnus.')
         return super().to_internal_value(data)
-
-    def validate(self, data):
-        if len(data['insurances']) != len(set(data['insurances'])):
-            raise serializers.ValidationError('Sélectionnez chaque assurance une seule fois.')
-        if 'none_known' in data['insurances'] and len(data['insurances']) > 1:
-            raise serializers.ValidationError(
-                'Aucune assurance connue ne peut pas être combinée avec une autre assurance.'
-            )
-        return data
 
 
 class Input(serializers.Serializer):
@@ -99,12 +74,25 @@ class Input(serializers.Serializer):
         return data
 
 
+def visible_qualification(values):
+    return {key: value for key, value in values.items() if key != 'insurances'}
+
+
+def visible_snapshot(value):
+    result = deepcopy(value)
+    if 'fields' in result:
+        result['fields'] = [field for field in result['fields'] if field['key'] != 'insurances']
+    if 'qualification' in result:
+        result['qualification'] = visible_qualification(result['qualification'])
+    return result
+
+
 def snapshot(contact):
     return {
         'version': 1,
         'fields': deepcopy(FIELDS),
         'contact': {'name': contact.name, 'phone': contact.phone, 'email': contact.email},
-        'qualification': deepcopy(contact.assurance_qualification),
+        'qualification': visible_qualification(contact.assurance_qualification),
         'contact_revision': contact.revision,
         'captured_at': timezone.now().isoformat(),
     }
@@ -127,7 +115,7 @@ class QualificationMixin:
                 {
                     'fields': FIELDS,
                     'source': 'appointment_snapshot',
-                    'snapshot': row.qualification_snapshot if row else None,
+                    'snapshot': visible_snapshot(row.qualification_snapshot) if row else None,
                     'appointment_id': row.pk if row else None,
                 }
             )
@@ -158,7 +146,7 @@ class QualificationMixin:
             response = Response(
                 {
                     'fields': FIELDS,
-                    'qualification': contact.assurance_qualification,
+                    'qualification': visible_qualification(contact.assurance_qualification),
                     'contact_revision': contact.revision,
                     'source': 'contact',
                 }
