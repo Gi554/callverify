@@ -60,6 +60,13 @@ restent donc intacts, tandis que la liste peut être vidée ou supprimée défin
 exécution évite le délai qui pouvait laisser le bouton grisé sur les listes volumineuses (par
 exemple 15 000 contacts). CI staging/main et déploiement production validés.
 
+## Nettoyage des invitations non acceptées
+
+**Livré.** Depuis Administration → Invitations, un administrateur peut supprimer une invitation
+en attente, expirée ou révoquée. Le lien d’activation est invalidé, l’identifiant et l’adresse
+e-mail sont libérés pour une nouvelle invitation, et l’opération est inscrite dans le journal
+d’accès. Une invitation déjà acceptée ne peut pas être supprimée par cette action.
+
 ## Activation des appels NEWT pour le pilote
 
 **Livré dans le déploiement production.** Le script de release vérifie la présence des identifiants
