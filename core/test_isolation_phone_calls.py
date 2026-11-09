@@ -11,7 +11,7 @@ from .test_isolation_activity import assigned_fixture
 class IsolationCallIntentTests(TestCase):
     def setUp(self):
         self.row = assigned_fixture()
-        self.row.compliance = 'allowed'
+        self.row.compliance = 'review'
         self.row.save()
         self.client = APIClient()
         self.auth(21, 'setter')
@@ -62,7 +62,7 @@ class IsolationCallIntentTests(TestCase):
         self.assertEqual(self.client.get(self.base + 'call-intent/').status_code, 405)
 
     def test_compliance_suppression_and_missing_phone_fail_closed(self):
-        self.row.compliance = 'review'
+        self.row.compliance = 'forbidden'
         self.row.save()
         self.assertEqual(self.post().status_code, 400)
         self.row.compliance = 'allowed'

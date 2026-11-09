@@ -1,4 +1,4 @@
-"""Explicit single-call authorization for an assigned, administratively allowed prospect."""
+"""Single-call authorization for an accessible Isolation prospect."""
 
 import re
 from django.core import signing
@@ -24,8 +24,8 @@ class Input(serializers.Serializer):
 
 
 def destination(row):
-    if row.compliance != 'allowed':
-        raise ValidationError('Autorisation administrative d’appel requise.')
+    if row.compliance not in ('allowed', 'review'):
+        raise ValidationError('Appel interdit pour ce prospect.')
     if row.validity == 'invalid' or not row.phone_id:
         raise ValidationError('Numéro technique utilisable requis.')
     value = row.phone.e164
@@ -78,10 +78,7 @@ class IsolationPhoneCallMixin(HistoryMixin):
             mine = [row for row in known if visible(request.user).filter(pk=row.pk).exists()]
             if mine:
                 row = mine[0]
-                if row.compliance != 'allowed':
-                    raise ValidationError(
-                        'Cette fiche attend l’autorisation d’appel d’un administrateur.'
-                    )
+                destination(row)
                 return Response({'id': row.pk, 'created': False})
             if known:
                 raise PermissionDenied(
