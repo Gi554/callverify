@@ -2,7 +2,6 @@
 import { ref, onMounted, watch, nextTick } from 'vue';
 import { actorNames } from './actor-names';
 const names = ref<Record<number, string>>({});
-import PhoneHistory from './PhoneHistory.vue';
 import IsolationCallResult from './IsolationCallResult.vue';
 import IsolationFollowUps from './IsolationFollowUps.vue';
 import IsolationC2 from './IsolationC2.vue';
@@ -240,14 +239,6 @@ const resultLabels: Record<string, string> = {
       />
     </div>
     <div class="sheet-section" v-show="tab === 'history'">
-      <PhoneHistory
-        v-if="prospect && role === 'setter'"
-        workspace="isolation"
-        :resource-id="prospectId"
-        :request="request"
-        :portal="portal"
-        :blocked="busy || callBusy || taskBusy"
-      />
       <h4>Historique des observations</h4>
       <article v-for="row in rows" :key="row.id">
         <small
