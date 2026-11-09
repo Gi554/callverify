@@ -94,6 +94,13 @@ class ContactViewSet(
 @api_view(['GET'])
 def dashboard(request):
     qs = visible_contacts(request.user)
+    if request.user.role == 'setter':
+        # Never expose the global pool size in the Setter home dashboard. The value is the
+        # assigned lot (plus contacts manually created by this Setter), even before the first lot
+        # has been distributed.
+        qs = Contact.objects.filter(
+            Q(assigned_setter_id=request.user.pk) | Q(created_by_id=request.user.pk)
+        )
     tasks = FollowUpTask.objects.filter(closed_at__isnull=True)
     if request.user.role == 'setter':
         tasks = tasks.filter(setter_id=request.user.pk)

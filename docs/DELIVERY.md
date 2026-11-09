@@ -46,6 +46,16 @@ NEWT déjà conservés sur le VPS, force `NEWT_CALLS_ENABLED=true` et
 actifs : poste associé au compte, numéro autorisé, conformité, idempotence et délai minimal entre
 deux commandes. Aucun identifiant fournisseur n’est copié dans Git ou affiché dans les logs.
 
+## Confidentialité des compteurs Setter
+
+**Livré.** Le compteur du tableau de bord et la liste de prospection affichée à un Setter Assurance
+limitent désormais le périmètre aux contacts explicitement attribués à son compte, ainsi qu’aux
+fiches qu’il a créées lui-même. Les administrateurs conservent la vue complète et l’attribution des
+lots. Isolation appliquait déjà ce cloisonnement côté serveur.
+
+Vérification ciblée : 8 tests `apps.assurance.backend.crm.test_lots` réussis, dont la régression
+« aucun contact visible avant attribution » et la conservation des fiches saisies manuellement.
+
 ## Invitation Assurance personnalisée pour les conseillers
 
 Les invitations destinées aux conseillers Assurance utilisent maintenant l’en-tête « Bienvenue
