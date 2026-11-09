@@ -1,6 +1,7 @@
 """Active prospecting is a view of recorded facts, never a deletion."""
 
 from django.db.models import Exists, OuterRef, Subquery, Case, When, Value, F, CharField
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from .models import Appointment, ContactCallOutcome
 
@@ -15,14 +16,19 @@ def apply_queue(qs, mode):
     )
     booking = Appointment.objects.filter(contact_id=OuterRef('pk'), status='scheduled')
     qs = qs.annotate(
-        _queue_result=Subquery(last.values('result')[:1]), _queue_booking=Exists(booking)
+        _queue_result=Subquery(last.values('result')[:1]),
+        _queue_callback_due=Subquery(last.values('task__due_at')[:1]),
+        _queue_booking=Exists(booking),
     )
     qs = qs.annotate(
         _queue_reason=Case(
             When(_queue_booking=True, then=Value('appointment_booked')),
             When(
-                _queue_result__in=('appointment_booked', 'not_interested'), then=F('_queue_result')
+                _queue_result='callback',
+                _queue_callback_due__gt=timezone.now(),
+                then=Value('callback_pending'),
             ),
+            When(_queue_result__isnull=False, then=F('_queue_result')),
             default=Value(''),
             output_field=CharField(),
         )

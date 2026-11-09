@@ -155,6 +155,11 @@ class FollowUpTests(TestCase):
         self.assertEqual(ProspectActivity.objects.filter(kind='call_result').count(), 6)
         self.assertFalse(IsolationFollowUp.objects.exists())
         self.assertFalse(IsolationVisit.objects.exists())
+        # A completed call result is removed from the active automatic-call queue,
+        # while the append-only activity remains available in the history.
+        active = self.client.get('/api/work-queue/?queue=active')
+        self.assertEqual(active.status_code, 200, active.data)
+        self.assertNotIn(self.prospect.pk, [row['id'] for row in active.data['results']])
 
     def test_callback_is_atomic_and_idempotent(self):
         body = self.call_payload(result='callback', due_at=self.due.isoformat(), note='Après-midi')
