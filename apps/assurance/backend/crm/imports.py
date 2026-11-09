@@ -8,8 +8,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from zipfile import ZipFile, BadZipFile
 from xml.etree.ElementTree import ParseError
-from django.db import transaction, IntegrityError
-from django.db.models import ProtectedError
+from django.db import models, transaction, IntegrityError
 from django.db.models import F
 from .custom_fields import schema, validate_values, output as schema_output, Conflict
 from .models import ContactFieldSchema
@@ -34,18 +33,26 @@ def admin(request):
 
 def remove_import_contacts(batch):
     """Delete disposable contacts and detach contacts protected by CRM history."""
-    deleted = 0
-    preserved = 0
-    for contact in list(batch.contacts.all()):
-        try:
-            # Use a savepoint so one protected contact does not roll back the whole list.
-            with transaction.atomic():
-                contact.delete()
-        except ProtectedError:
-            Contact.objects.filter(pk=contact.pk).update(import_batch=None)
-            preserved += 1
-        else:
-            deleted += 1
+    contacts = batch.contacts.all()
+    contact_ids = list(contacts.values_list('pk', flat=True))
+    if not contact_ids:
+        return 0, 0
+
+    protected_ids = set()
+    for relation in Contact._meta.related_objects:
+        if relation.on_delete is not models.PROTECT:
+            continue
+        field_name = relation.field.name
+        protected_ids.update(
+            relation.related_model.objects.filter(**{f'{field_name}__in': contact_ids}).values_list(
+                field_name, flat=True
+            )
+        )
+
+    preserved = contacts.filter(pk__in=protected_ids).update(import_batch=None)
+    deletable = contacts.exclude(pk__in=protected_ids)
+    deleted = deletable.count()
+    deletable.delete()
     return deleted, preserved
 
 
