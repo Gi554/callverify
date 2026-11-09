@@ -72,7 +72,10 @@ async function create() {
   }
 }
 async function action(row: any, action: string) {
-  if (action === 'delete' && !window.confirm(`Supprimer définitivement l’invitation de ${row.username} ?`)) {
+  if (
+    action === 'delete' &&
+    !window.confirm(`Supprimer définitivement l’invitation de ${row.username} ?`)
+  ) {
     return;
   }
   busy.value = true;
@@ -87,10 +90,10 @@ async function action(row: any, action: string) {
       action === 'delete'
         ? 'Invitation supprimée définitivement.'
         : action === 'revoke'
-        ? 'Invitation révoquée.'
-        : result.mail_queued
-          ? 'Nouveau lien mis en file ; le précédent est invalidé.'
-          : 'Envoi échoué ; réessayez.';
+          ? 'Invitation révoquée.'
+          : result.mail_queued
+            ? 'Nouveau lien mis en file ; le précédent est invalidé.'
+            : 'Envoi échoué ; réessayez.';
     await load();
   } catch (e: any) {
     error.value = e.message;
@@ -235,8 +238,8 @@ onMounted(load);
                   :aria-label="'Révoquer l’invitation de ' + row.username"
                   @click="action(row, 'revoke')"
                 >
-                  <X :size="15" />Révoquer
-                </button><button
+                  <X :size="15" />Révoquer</button
+                ><button
                   class="secondary danger"
                   :disabled="busy || loading"
                   :aria-label="'Supprimer définitivement l’invitation de ' + row.username"
