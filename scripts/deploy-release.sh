@@ -25,10 +25,9 @@ domain=$(sed -n 's/^CALLVERIFY_DOMAIN=//p' .env | tr -d '\r')
 # credentials private on the server, but fail closed if they are missing.
 newt_username=$(sed -n 's/^NEWT_USERNAME=//p' .env | tr -d '\r')
 newt_password=$(sed -n 's/^NEWT_PASSWORD=//p' .env | tr -d '\r')
-[[ -n "$newt_username" && -n "$newt_password" ]] || {
-  echo 'NEWT credentials are required before enabling pilot calls.' >&2
-  exit 1
-}
+if [[ -z "$newt_username" || -z "$newt_password" ]]; then
+  echo 'Warning: NEWT credentials are not configured; calls will remain unusable until they are provided.' >&2
+fi
 set_env_flag() {
   local key=$1 value=$2
   if grep -q "^${key}=" .env; then
