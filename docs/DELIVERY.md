@@ -38,6 +38,19 @@ pour le même compte ; la relecture d’une commande existante avec son identifi
 Ce délai réduit l’attente opérationnelle sans constituer une preuve que le poste ou le destinataire est
 disponible.
 
+## File d’appels automatique : retrait persistant des prospects traités
+
+**Livré sur staging.** Un résultat d’appel enregistré retire désormais le prospect de la file
+active automatique dans Assurance et Isolation, sans supprimer sa fiche ni son historique. Un
+rappel futur reste masqué jusqu’à son échéance ; à l’échéance, il redevient appelable. La règle
+est appliquée côté serveur, donc elle reste valable après une pause, un rechargement ou une
+reconnexion du setter. Les sessions existantes continuent à éviter les doublons pendant leur
+déroulement.
+
+Vérifications : suites backend ciblées Assurance (13 tests) et Isolation (16 tests) réussies, ainsi
+que les tests frontend des deux tableaux (21 tests). La livraison production reste à faire après
+revue et fusion.
+
 ## Activation des appels NEWT pour le pilote
 
 **Livré dans le déploiement production.** Le script de release vérifie la présence des identifiants

@@ -163,8 +163,15 @@ class WorkViewSet(
         if mode:
             if mode not in ('active', 'all'):
                 raise ValidationError('File de prospection invalide.')
-            from django.db.models import Exists, OuterRef, Case, When, Value, CharField
-            from .models import IsolationVisit, IsolationUnqualified, IsolationClientFollowUp
+            from django.db.models import Exists, OuterRef, Subquery, Case, When, Value, CharField
+            from django.db.models.fields.json import KeyTextTransform
+            from .models import (
+                IsolationVisit,
+                IsolationUnqualified,
+                IsolationClientFollowUp,
+                IsolationFollowUp,
+                ProspectActivity,
+            )
 
             qs = qs.annotate(
                 _queue_client_followup=Exists(
@@ -181,6 +188,17 @@ class WorkViewSet(
                         prospect_id=OuterRef('pk'), status='scheduled'
                     ).exclude(result__performed=False)
                 ),
+                _queue_call_result=Subquery(
+                    ProspectActivity.objects.filter(prospect_id=OuterRef('pk'), kind='call_result')
+                    .order_by('-created_at', '-pk')
+                    .annotate(_result=KeyTextTransform('result', 'changes'))
+                    .values('_result')[:1]
+                ),
+                _queue_callback_due=Subquery(
+                    IsolationFollowUp.objects.filter(prospect_id=OuterRef('pk'))
+                    .order_by('-created_at', '-pk')
+                    .values('due_at')[:1]
+                ),
             )
             qs = qs.annotate(
                 _queue_reason=Case(
@@ -188,6 +206,12 @@ class WorkViewSet(
                     When(_queue_client_followup=True, then=Value('client_followup')),
                     When(_queue_unqualified=True, then=Value('unqualified')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
+                    When(
+                        _queue_call_result='callback',
+                        _queue_callback_due__gt=timezone.now(),
+                        then=Value('callback_pending'),
+                    ),
+                    When(_queue_call_result__isnull=False, then=F('_queue_call_result')),
                     default=Value(''),
                     output_field=CharField(),
                 )
