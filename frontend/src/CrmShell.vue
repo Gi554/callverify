@@ -185,14 +185,14 @@ function navigate(id: string) {
           @keydown.esc="profileOpen = false"
         >
           <label v-if="spaces.length > 1"
-            >Espace de travail<select
+            >Espace actuel<select
               :value="workspace"
               @change="
                 emit('workspace', ($event.target as HTMLSelectElement).value);
                 profileOpen = false;
               "
             >
-              <option disabled value="">Choisir un espace</option>
+              <option disabled value="">Sélectionner un espace</option>
               <option v-for="space in spaces" :key="space.workspace" :value="space.workspace">
                 {{ space.workspace === 'assurance' ? 'Assurance' : 'Isolation' }}
               </option>
@@ -281,14 +281,14 @@ function navigate(id: string) {
         ><small>CRM</small></a
       >
       <div class="crm-space-switch">
-        <label :for="spaces.length > 1 ? 'crm-space' : undefined">ESPACE DE TRAVAIL</label>
+        <label :for="spaces.length > 1 ? 'crm-space' : undefined">ESPACE ACTUEL</label>
         <div v-if="spaces.length > 1">
           <select
             id="crm-space"
             :value="workspace"
             @change="emit('workspace', ($event.target as HTMLSelectElement).value)"
           >
-            <option disabled value="">Choisir un espace</option>
+            <option disabled value="">Sélectionner un espace</option>
             <option v-for="space in spaces" :key="space.workspace" :value="space.workspace">
               {{ space.workspace === 'assurance' ? 'Assurance' : 'Isolation' }}
             </option></select
