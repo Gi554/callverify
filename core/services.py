@@ -51,6 +51,7 @@ def normalize(value):
 
 def imported_display_name(row, mapped_name=''):
     """Build the prospect label from common bilingual import columns."""
+
     def key(value):
         return re.sub(
             r'[^a-z0-9]',
@@ -67,12 +68,17 @@ def imported_display_name(row, mapped_name=''):
         '',
     )
     mapped_key = key(mapped_name) if mapped_name else ''
-    if mapped_key not in ('firstname', 'prenom', 'givenname') and mapped_key not in (
-        'lastname',
-        'nom',
-        'familyname',
-        'surname',
-    ) and mapped_name:
+    if (
+        mapped_key not in ('firstname', 'prenom', 'givenname')
+        and mapped_key
+        not in (
+            'lastname',
+            'nom',
+            'familyname',
+            'surname',
+        )
+        and mapped_name
+    ):
         value = str(row.get(mapped_name, '') or '').strip()
         if value:
             return value[:250]

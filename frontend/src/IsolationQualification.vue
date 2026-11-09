@@ -75,8 +75,7 @@ async function upload() {
         headers.find((value: string) => /phone|tel|num|mobile|cell/i.test(value)) ||
         headers[0] ||
         '',
-      name:
-        headers.find((value: string) => /full.?name|nom.?complet|name|nom/i.test(value)) || '',
+      name: headers.find((value: string) => /full.?name|nom.?complet|name|nom/i.test(value)) || '',
       reference: '',
     };
   });
