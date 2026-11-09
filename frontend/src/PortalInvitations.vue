@@ -110,6 +110,7 @@ const labels: Record<string, string> = {
 onMounted(load);
 </script>
 <template>
+  <!-- Les invitations non acceptées peuvent être nettoyées par un administrateur. -->
   <section class="invitations">
     <header class="invitation-heading">
       <div>
