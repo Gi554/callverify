@@ -38,6 +38,14 @@ pour le même compte ; la relecture d’une commande existante avec son identifi
 Ce délai réduit l’attente opérationnelle sans constituer une preuve que le poste ou le destinataire est
 disponible.
 
+## Activation des appels NEWT pour le pilote
+
+**Livré dans le déploiement production.** Le script de release vérifie la présence des identifiants
+NEWT déjà conservés sur le VPS, force `NEWT_CALLS_ENABLED=true` et
+`NEWT_ISOLATION_CALLS_ENABLED=true`, puis recrée les services. Les garde-fous métier restent
+actifs : poste associé au compte, numéro autorisé, conformité, idempotence et délai minimal entre
+deux commandes. Aucun identifiant fournisseur n’est copié dans Git ou affiché dans les logs.
+
 ## Invitation Assurance personnalisée pour les conseillers
 
 Les invitations destinées aux conseillers Assurance utilisent maintenant l’en-tête « Bienvenue
