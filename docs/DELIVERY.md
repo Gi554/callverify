@@ -3112,3 +3112,11 @@ Les exports de prospects Isolation et Assurance sont désormais refusés côté 
 
 Vérifications : tests ciblés Isolation et Assurance export réussis, TypeScript/Vue et formatage réussis. Le contrôle est appliqué par permission backend et ne dépend donc pas du navigateur.
 
+## Fonctionnalité 76 — dédoublonnage des imports et retours de traitement
+
+Les imports Assurance dédoublonnent désormais les contacts sur le numéro de téléphone normalisé avant la création des fiches : une ligne déjà présente dans le CRM ou répétée dans le même fichier est rejetée et inscrite dans le rapport d’import. Les numéros sont comparés après retrait des séparateurs et de l’indicatif nord-américain `1` lorsqu’il est présent. Les valeurs qui ne contiennent pas de numéro exploitable restent importables, mais ne peuvent pas être dédoublonnées automatiquement. Le champ normalisé est indexé et rétro-rempli par migration pour les fiches existantes.
+
+Les parcours d’import Assurance et Isolation affichent maintenant un état « Traitement en cours… » pendant l’aperçu, la confirmation ou l’export concerné ; les boutons sont désactivés pendant l’action afin d’éviter les doubles soumissions et de rendre l’attente visible.
+
+Vérifications locales : tests ciblés d’import, suite CRM Assurance, `makemigrations --check`, Ruff, TypeScript/Vue et Prettier. La validation de production doit confirmer le message de rapport et le comportement sur un fichier réel avant ouverture large.
+
