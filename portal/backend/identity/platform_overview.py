@@ -4,17 +4,26 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Max, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import serializers
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from .mfa import mfa_enabled
 from .management_api import AccessPagination
-from .models import AccessAudit, Membership, PhoneCallAttempt, PortalMail, ROLES, SessionGeneration
+from .models import (
+    AccessAudit,
+    Membership,
+    PhoneCallAttempt,
+    PlatformIncident,
+    PortalMail,
+    ROLES,
+    SessionGeneration,
+)
 
 
 def require_superadmin(request):
@@ -66,6 +75,12 @@ def overview(request):
                 'mail': list(
                     mail_incidents.values('workspace', 'status').annotate(count=Count('pk'))
                 ),
+                'technical': list(
+                    PlatformIncident.objects.filter(created_at__gte=since)
+                    .values('area', 'kind', 'status')
+                    .annotate(count=Count('pk'), last_seen=Max('created_at'))
+                    .order_by('-last_seen')
+                ),
             },
             'recent_actions': [
                 {
@@ -84,6 +99,31 @@ def overview(request):
         },
         headers={'Cache-Control': 'no-store'},
     )
+
+
+class IncidentThrottle(UserRateThrottle):
+    rate = '20/hour'
+    scope = 'platform_incident'
+
+
+class IncidentInput(serializers.Serializer):
+    area = serializers.ChoiceField(choices=('portal', *ROLES))
+    kind = serializers.ChoiceField(choices=('http', 'network', 'interface'))
+    status = serializers.IntegerField(min_value=500, max_value=599, required=False)
+
+    def validate(self, data):
+        if (data['kind'] == 'http') != ('status' in data):
+            raise ValidationError('Statut HTTP invalide.')
+        return data
+
+
+@api_view(['POST'])
+@throttle_classes([IncidentThrottle])
+def report_platform_incident(request):
+    serializer = IncidentInput(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    PlatformIncident.objects.create(**serializer.validated_data)
+    return Response(status=204)
 
 
 class AdminAction(serializers.Serializer):

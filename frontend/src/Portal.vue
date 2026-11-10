@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onErrorCaptured } from 'vue';
 import PortalLogin from './PortalLogin.vue';
 import PortalMfaSetup from './PortalMfaSetup.vue';
 import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
@@ -99,17 +99,46 @@ async function refreshAssurance() {
 }
 let csrf = '',
   workspaceVersion = 0;
+const lastIncident = new Map<string, number>();
+function reportIncident(area: string, kind: 'http' | 'network' | 'interface', status?: number) {
+  if (!user.value || !['portal', 'assurance', 'isolation'].includes(area)) return;
+  const key = `${area}:${kind}:${status ?? ''}`;
+  const now = Date.now();
+  if (now - (lastIncident.get(key) || 0) < 300_000) return;
+  lastIncident.set(key, now);
+  void portal('platform/incidents/', { area, kind, ...(status ? { status } : {}) }).catch(() => {});
+}
+onErrorCaptured(() => {
+  reportIncident(workspace.value || 'portal', 'interface');
+});
+
+async function monitoredFetch(url: string, options: Parameters<typeof fetch>[1], area: string) {
+  try {
+    const response = await fetch(url, options);
+    if (response.status >= 500) reportIncident(area, 'http', response.status);
+    return response;
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === 'AbortError'))
+      reportIncident(area, 'network');
+    throw error;
+  }
+}
 async function portal(path: string, body?: any, method?: string) {
   if (body !== undefined && !csrf) {
     const response = await fetch('/api/portal/csrf/', { credentials: 'include' });
     csrf = (await response.json()).csrfToken;
   }
-  const response = await fetch('/api/portal/' + path, {
+  const options = {
     method: method || (body !== undefined ? 'POST' : 'GET'),
-    credentials: 'include',
+    credentials: 'include' as const,
     headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRFToken': csrf } : {}) },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  });
+  };
+  const url = '/api/portal/' + path;
+  const response =
+    path === 'platform/incidents/'
+      ? await fetch(url, options)
+      : await monitoredFetch(url, options, 'portal');
   if (!response.ok) {
     const result = await response.json().catch(() => ({}));
     const failure = new Error(
@@ -138,14 +167,20 @@ function errorMessages(value: unknown): string[] {
 async function business(path: string, body?: any, method?: string, target = workspace.value) {
   const grant = await portal('access/' + target + '/', {});
   // A leading slash would give `/api/assurance//…`, which the services answer with a 404.
-  const response = await fetch('/api/' + target + '/' + path.replace(/^\/+/, ''), {
-    method: method || (body !== undefined ? 'POST' : 'GET'),
-    headers: {
-      Authorization: 'Bearer ' + grant.token,
-      ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+  const response = await monitoredFetch(
+    '/api/' + target + '/' + path.replace(/^\/+/, ''),
+    {
+      method: method || (body !== undefined ? 'POST' : 'GET'),
+      headers: {
+        Authorization: 'Bearer ' + grant.token,
+        ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      },
+      ...(body !== undefined
+        ? { body: body instanceof FormData ? body : JSON.stringify(body) }
+        : {}),
     },
-    ...(body !== undefined ? { body: body instanceof FormData ? body : JSON.stringify(body) } : {}),
-  });
+    target,
+  );
   if (!response.ok) {
     const result = await response.json().catch(() => ({}));
     const failure = new Error(

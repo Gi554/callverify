@@ -3,6 +3,7 @@ from .identity.actor_names import names as actor_names
 from .identity import views
 from .identity.platform_overview import overview as platform_overview
 from .identity.platform_overview import platform_accounts, platform_account_action
+from .identity.platform_overview import report_platform_incident
 from .identity.mfa import manage_mfa
 from .identity import management_api
 from .identity import invitations
@@ -30,6 +31,7 @@ urlpatterns = [
     path('api/portal/mfa/', manage_mfa),
     path('api/portal/session/', views.session),
     path('api/portal/platform-overview/', platform_overview),
+    path('api/portal/platform/incidents/', report_platform_incident),
     path('api/portal/platform/accounts/', platform_accounts),
     path('api/portal/platform/accounts/<int:pk>/actions/', platform_account_action),
     path('api/portal/access/<str:workspace>/', views.access),
