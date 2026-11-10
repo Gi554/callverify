@@ -18,6 +18,13 @@ type Overview = {
   incidents: {
     calls: { workspace: string; state: string; count: number }[];
     mail: { workspace: string; status: string; count: number }[];
+    technical?: {
+      area: string;
+      kind: string;
+      status: number | null;
+      count: number;
+      last_seen: string;
+    }[];
   };
   recent_actions: {
     id: number;
@@ -175,8 +182,14 @@ onMounted(load);
       <PlatformAccounts :request="request" @changed="load" />
       <section v-if="data" class="platform-card">
         <h2>Incidents observés · dernières 24 heures</h2>
-        <p>Signalements enregistrés par la téléphonie et la file d’envoi des courriels.</p>
-        <ul v-if="data.incidents.calls.length || data.incidents.mail.length">
+        <p>Appels, courriels et erreurs signalées par le CRM pendant une session.</p>
+        <ul
+          v-if="
+            data.incidents.calls.length ||
+            data.incidents.mail.length ||
+            data.incidents.technical?.length
+          "
+        >
           <li v-for="row in data.incidents.calls" :key="row.workspace + row.state">
             {{ incidentLabels[row.state] }} ·
             {{ spaces.find((space) => space.key === row.workspace)?.label || 'Portail' }} ·
@@ -187,8 +200,22 @@ onMounted(load);
             {{ spaces.find((space) => space.key === row.workspace)?.label || 'Portail' }} ·
             {{ row.count }}
           </li>
+          <li
+            v-for="row in data.incidents.technical"
+            :key="`${row.area}:${row.kind}:${row.status}`"
+          >
+            {{ spaces.find((space) => space.key === row.area)?.label || 'Portail' }} ·
+            {{
+              row.status
+                ? `HTTP ${row.status}`
+                : row.kind === 'network'
+                  ? 'Connexion réseau'
+                  : 'Erreur d’interface'
+            }}
+            · {{ row.count }} · Dernier signalement {{ auditDate.format(new Date(row.last_seen)) }}
+          </li>
         </ul>
-        <p v-else>Aucun incident de ces deux services sur la période.</p>
+        <p v-else>Aucun incident enregistré sur la période.</p>
       </section>
       <section v-if="data" class="platform-card">
         <h2>Dernières actions du superadmin</h2>
