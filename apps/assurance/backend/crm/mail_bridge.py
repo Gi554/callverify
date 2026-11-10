@@ -6,7 +6,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from packages.access.mail_bridge import verify
-from .models import TaskNotification
+from django.db.models import F
+from .models import AppointmentNotification, TaskNotification
 
 
 def authorize(request, operation, **claims):
@@ -17,6 +18,49 @@ def authorize(request, operation, **claims):
         verify(token[7:], operation, **claims)
     except (signing.BadSignature, ValueError, TypeError):
         raise PermissionDenied('Échange serveur invalide ou expiré')
+
+
+def booking_candidates():
+    return AppointmentNotification.objects.filter(
+        kind='appointment_transmitted',
+        event_key__startswith='booked:',
+        role='advisor',
+        recipient_id=F('appointment__advisor_id'),
+        appointment__status='scheduled',
+        appointment__starts_at__gt=timezone.now(),
+        created_at__gte=timezone.now() - timedelta(days=7),
+    )
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def booking_events(request):
+    try:
+        after = int(request.query_params.get('after', '0'))
+    except (ValueError, TypeError):
+        raise ValidationError('Curseur invalide') from None
+    if not 0 <= after <= 9223372036854775807:
+        raise ValidationError('Curseur invalide')
+    authorize(request, 'booking_events', after=after)
+    rows = (
+        booking_candidates()
+        .filter(pk__gt=after)
+        .order_by('pk')
+        .values('id', 'created_at', 'recipient_id', 'role', 'appointment_id')
+    )
+    return Response({'events': list(rows[:100])}, headers={'Cache-Control': 'no-store'})
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def booking_eligible(request, pk, user_id):
+    authorize(request, 'booking_eligible', event=pk, user=user_id)
+    return Response(
+        {'eligible': booking_candidates().filter(pk=pk, recipient_id=user_id).exists()},
+        headers={'Cache-Control': 'no-store'},
+    )
 
 
 def candidates():

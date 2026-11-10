@@ -16,6 +16,13 @@ from .models import Membership, AssuranceMailRelay, AssuranceMailCursor
 from .email_layout import layout
 
 STREAMS = {
+    'bookings': (
+        4,
+        'booking-mail-events',
+        'booking_events',
+        'booking_eligible',
+        'assurance_booking',
+    ),
     'incidents': (1, 'mail-events', 'events', 'eligible', 'assurance_follow_up'),
     'reminders': (
         2,
@@ -87,7 +94,11 @@ def sync(stream='incidents'):
         event_id = event.get('id')
         user_id = event.get('setter_id') if stream == 'incidents' else event.get('recipient_id')
         role = 'setter' if stream == 'incidents' else event.get('role')
-        if role not in (('administrator',) if stream == 'escalations' else ('setter', 'advisor')):
+        roles = {
+            'bookings': ('advisor',),
+            'escalations': ('administrator',),
+        }.get(stream, ('setter', 'advisor'))
+        if role not in roles:
             raise ValueError('Invalid recipient role')
         if (
             type(event_id) is not int
@@ -102,6 +113,10 @@ def sync(stream='incidents'):
         appointment = None
         prospect = None
         starts = None
+        if stream == 'bookings':
+            appointment = event.get('appointment_id')
+            if type(appointment) is not int or not 0 < appointment <= 9223372036854775807:
+                raise ValueError('Invalid appointment')
         if stream == 'reminders' and event.get('kind') == 'report_missing':
             appointment = event.get('appointment_id')
             if (
@@ -140,6 +155,25 @@ def sync(stream='incidents'):
             for recipient in recipients
         )
     for event_id, user_id, created, role, appointment, prospect, starts in expanded:
+        if stream == 'bookings':
+            from .assurance_sms import send_alert
+
+            member = (
+                Membership.objects.select_related('user')
+                .filter(
+                    user_id=user_id,
+                    workspace='assurance',
+                    role='advisor',
+                    active=True,
+                    user__is_active=True,
+                )
+                .first()
+            )
+            if member and send_alert(
+                stream, event_id, member.user, {'appointment_id': appointment}
+            ):
+                counts.setdefault('sms_queued', 0)
+                counts['sms_queued'] += 1
         with transaction.atomic():
             user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
             if (
@@ -177,6 +211,7 @@ def sync(stream='incidents'):
             if stream == 'escalations':
                 intro = 'Une situation durablement en attente nécessite votre supervision dans votre espace Assurance.'
             title = {
+                'bookings': 'Un nouveau rendez-vous vous a été transmis',
                 'reminders': 'Votre prochain suivi vous attend',
                 'incidents': 'Un suivi nécessite votre attention',
                 'escalations': 'Une situation attend votre supervision',
@@ -185,7 +220,14 @@ def sync(stream='incidents'):
             url = f'{public_url()}/crm'
             action = 'Consulter mon espace'
             details = (('Espace', 'Assurance'),)
-            if appointment:
+            if stream == 'bookings':
+                intro = 'Un rendez-vous a été programmé dans votre espace Assurance.'
+                action = 'Consulter le rendez-vous'
+                url += f'?workspace=assurance&appointment={appointment}'
+                notice = (
+                    'Connectez-vous à Orvia pour consulter la date et les détails du rendez-vous.'
+                )
+            elif appointment:
                 when = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
                 details += (('Prospect', prospect), ('Rendez-vous', when + ' (heure du Québec)'))
                 title = 'Un petit retour sur votre rendez-vous ?'
@@ -222,7 +264,7 @@ def sync(stream='incidents'):
             relay.save(update_fields=['mail'])
             from .assurance_sms import send_alert
 
-            if send_alert(stream, event_id, user, event):
+            if stream != 'bookings' and send_alert(stream, event_id, user, event):
                 counts.setdefault('sms_queued', 0)
                 counts['sms_queued'] += 1
             counts['queued'] += 1

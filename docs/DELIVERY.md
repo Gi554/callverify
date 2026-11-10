@@ -3180,3 +3180,7 @@ Prospects et le composeur reconnaissent un numéro nord-américain avec ou sans 
 
 La fiche d’un rendez-vous sans compte rendu s’ouvre avec son état normal. L’API renvoie un statut 204 en l’absence de compte rendu, ce qui évite l’erreur de lecture JSON.
 
+## Notification au conseiller à chaque nouveau rendez-vous Assurance
+
+Chaque nouvelle réservation planifiée alimente le relais Assurance. Le conseiller affecté reçoit un e-mail avec un lien vers sa fiche dans Orvia. Un SMS est aussi envoyé si le mobile est renseigné et l’envoi automatique activé. Le relais vérifie que le rendez-vous est encore planifié pour ce conseiller et déduplique chaque envoi. Les anciennes réservations ne sont pas reprises.
+
