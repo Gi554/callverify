@@ -66,6 +66,8 @@ def eligible(guard, recipient):
         'assurance_escalation',
         'assurance_booking',
     ):
+        if not settings.ASSURANCE_ALERT_EMAIL_ENABLED:
+            return False
         from .assurance_mail import eligible as source_eligible
 
         user = (
