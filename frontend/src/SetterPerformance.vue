@@ -28,11 +28,15 @@ const from = ref(now.slice(0, 8) + '01'),
 let version = 0;
 const admin = computed(() => props.role === 'administrator');
 const metrics = [
+  { key: 'booked', label: 'Rendez-vous pris pendant la période' },
+  { key: 'upcoming', label: 'Rendez-vous à présenter' },
+  { key: 'in_progress', label: 'Rendez-vous en cours' },
   { key: 'assigned_now', label: 'Prospects affectés actuellement' },
   { key: 'current_assignments_in_period', label: 'Affectations actuelles reçues sur la période' },
   { key: 'qualified', label: 'Fiches qualifiées dans les rendez-vous' },
   { key: 'scheduled', label: 'Rendez-vous planifiés' },
-  { key: 'held', label: 'Rendez-vous tenus' },
+  { key: 'held', label: 'Rendez-vous présentés' },
+  { key: 'cancelled', label: 'Rendez-vous annulés' },
   { key: 'closed', label: 'Ventes conclues' },
   { key: 'not_closed', label: 'Ventes non conclues' },
   { key: 'not_held', label: 'Rendez-vous non tenus' },
@@ -130,6 +134,21 @@ onBeforeUnmount(() => version++);
           :value="data.totals[item.key]"
         />
       </div>
+      <section v-if="data.outcomes" class="iso-panel">
+        <h2>Résultats d’appel déclarés pendant la période</h2>
+        <div class="performance-kpis">
+          <StatKpi
+            v-for="item in data.outcomes"
+            :key="item.key"
+            :label="item.label"
+            :value="item.count"
+          />
+        </div>
+        <p class="performance-definition">
+          Les résultats déclarés comptent les actions enregistrées. Les rendez-vous pris comptent
+          les réservations effectivement créées.
+        </p>
+      </section>
       <section class="iso-panel">
         <h2>Appels Orvia</h2>
         <p v-if="callError" role="alert" class="error">{{ callError }}</p>

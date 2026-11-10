@@ -191,6 +191,11 @@ onMounted(load);
     <template v-if="result">
       <div class="stats-kpis">
         <StatKpi
+          label="Rendez-vous pris pendant la période"
+          :value="value('booked')"
+          hint="Selon la date de création, quelle que soit la date prévue."
+        />
+        <StatKpi
           label="Rendez-vous"
           :value="value('appointments')"
           :trend="change('appointments')"
