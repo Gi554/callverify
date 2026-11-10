@@ -6,7 +6,6 @@ import PortalSms from './PortalSms.vue';
 import PortalCallRules from './PortalCallRules.vue';
 import PortalAccessHistory from './PortalAccessHistory.vue';
 import SidePanel from './SidePanel.vue';
-const activeSection = ref('users');
 const sections = [
   { key: 'users', label: 'Utilisateurs' },
   { key: 'invitations', label: 'Invitations' },
@@ -18,10 +17,17 @@ const sections = [
 import { UserPlus, Pause, Play, Save, ChevronLeft, ChevronRight, Trash2 } from 'lucide-vue-next';
 const props = defineProps<{
   spaces: string[];
+  initialSpace?: string;
+  initialSection?: string;
   username: string;
   request: (path: string, body?: any, method?: string) => Promise<any>;
 }>();
-const space = ref(props.spaces[0] || ''),
+const activeSection = ref(props.initialSection || 'users');
+const space = ref(
+    props.initialSpace && props.spaces.includes(props.initialSpace)
+      ? props.initialSpace
+      : props.spaces[0] || '',
+  ),
   search = ref(''),
   page = ref(1),
   rows = ref<any[]>([]),

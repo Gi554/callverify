@@ -67,7 +67,10 @@ def totp_step(secret, code, *, now=None):
 def admin_requires_mfa(user):
     return (
         settings.MFA_ENABLED
-        and Membership.objects.filter(user=user, active=True, role='administrator').exists()
+        and (
+            user.is_superuser
+            or Membership.objects.filter(user=user, active=True, role='administrator').exists()
+        )
     )
 
 
