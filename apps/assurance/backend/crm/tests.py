@@ -1252,10 +1252,12 @@ class ReportTests(TestCase):
     def test_missing_report_is_pending_not_a_negative_report(self):
         from .models import FollowUpTask
 
+        self.assertEqual(self.client.get(self.url).status_code, 204)
         data = self.client.get('/api/assurance/dashboard/').data
         self.assertEqual(data['reports_due'], 1)
         self.assertFalse(FollowUpTask.objects.exists())
         self.report()
+        self.assertEqual(self.client.get(self.url).status_code, 200)
         self.assertEqual(self.client.get('/api/assurance/dashboard/').data['reports_due'], 0)
 
     def test_other_advisor_and_setter_cannot_submit(self):

@@ -3176,3 +3176,7 @@ Après un refus explicite avant envoi, la fiche affiche le motif et permet de pr
 
 Prospects et le composeur reconnaissent un numéro nord-américain avec ou sans indicatif 1, y compris lorsqu’il est copié avec des espaces insécables ou des tirets typographiques. Une recherche par numéro complet affiche aussi les fiches traitées. Le composeur réutilise la fiche correspondante selon les droits de l’agent.
 
+## Fiche rendez-vous Assurance sans compte rendu
+
+La fiche d’un rendez-vous sans compte rendu s’ouvre avec son état normal. L’API renvoie un statut 204 en l’absence de compte rendu, ce qui évite l’erreur de lecture JSON.
+
