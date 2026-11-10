@@ -112,7 +112,7 @@ onErrorCaptured(() => {
   reportIncident(workspace.value || 'portal', 'interface');
 });
 
-async function monitoredFetch(url: string, options: RequestInit, area: string) {
+async function monitoredFetch(url: string, options: Parameters<typeof fetch>[1], area: string) {
   try {
     const response = await fetch(url, options);
     if (response.status >= 500) reportIncident(area, 'http', response.status);
@@ -128,7 +128,7 @@ async function portal(path: string, body?: any, method?: string) {
     const response = await fetch('/api/portal/csrf/', { credentials: 'include' });
     csrf = (await response.json()).csrfToken;
   }
-  const options: RequestInit = {
+  const options = {
     method: method || (body !== undefined ? 'POST' : 'GET'),
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRFToken': csrf } : {}) },
