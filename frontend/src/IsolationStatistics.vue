@@ -34,6 +34,7 @@ const canCompare = computed(
 );
 const groups = computed(() => result.value?.[result.value.group + 's']);
 const labels: Record<string, string> = {
+  booked: 'Rendez-vous pris pendant la période',
   visits: 'Rendez-vous réservés',
   performed: 'Rendez-vous tenus',
   not_performed: 'Non tenus déclarés',
@@ -92,6 +93,7 @@ const series = (key: string) => daily.value.map((row) => row[key]);
 const percent = (value: any) =>
   value === null || value === undefined ? '—' : number(value) + ' %';
 const details = [
+  'booked',
   'not_performed',
   'unqualified',
   'results_due',

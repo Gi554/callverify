@@ -7,6 +7,17 @@ from rest_framework.response import Response
 from .quebec_period import ZONE, period
 from .stats_series import daily
 
+OUTCOMES = {
+    'appointment_booked': 'Rendez-vous pris',
+    'voicemail': 'Répondeur',
+    'invalid_number': 'Numéro non attribué',
+    'disconnected': 'Appel coupé',
+    'not_interested': 'Pas intéressé',
+    'callback': 'A demandé à être rappelé',
+    'unreachable': 'Injoignable',
+    'other': 'Autre résultat',
+}
+
 
 def performance(store, request, agent=None):
     if request.user.role not in ('administrator', 'setter'):
@@ -48,10 +59,15 @@ def performance(store, request, agent=None):
     meetings = store.Meeting.objects.filter(
         setter_id=agent, starts_at__gte=lower, starts_at__lt=upper
     )
-    valid = Q(status='scheduled', ends_at__lte=timezone.now())
+    now = timezone.now()
+    valid = Q(status='scheduled', ends_at__lte=now)
     held = valid & Q(**{store.result + '__performed': True})
     metrics = {
         'scheduled': Count('pk', filter=Q(status='scheduled')),
+        'upcoming': Count('pk', filter=Q(status='scheduled', starts_at__gte=now)),
+        'in_progress': Count(
+            'pk', filter=Q(status='scheduled', starts_at__lt=now, ends_at__gt=now)
+        ),
         'cancelled': Count('pk', filter=Q(status='cancelled')),
         'held': Count('pk', filter=held),
         'closed': Count('pk', filter=held & Q(**{store.result + '__' + store.closed_field: True})),
@@ -65,6 +81,16 @@ def performance(store, request, agent=None):
         'awaiting_result': Count('pk', filter=valid & Q(**{store.result + '__isnull': True})),
     }
     totals = meetings.aggregate(**metrics)
+    totals['booked'] = store.Meeting.objects.filter(
+        setter_id=agent, created_at__gte=lower, created_at__lt=upper
+    ).count()
+    outcomes = dict(
+        store.outcomes(agent, lower, upper)
+        .order_by()
+        .values('result')
+        .annotate(count=Count('pk'))
+        .values_list('result', 'count')
+    )
     totals['assigned_now'] = inventory.count()
     totals['current_assignments_in_period'] = inventory.filter(
         assigned_at__gte=lower, assigned_at__lt=upper
@@ -85,7 +111,11 @@ def performance(store, request, agent=None):
             'timezone': 'America/Toronto',
             'totals': totals,
             'daily': series,
-            'definition': 'Rendez-vous selon leur début au Québec et leur setter à la réservation. Présences et ventes selon les résultats déclarés, uniquement après la fin d’un rendez-vous encore planifié. Inventaire affecté : état actuel, sans reconstitution des anciennes affectations. Qualifiés : fiches distinctes avec qualification capturée dans un rendez-vous de la période.',
+            'outcomes': [
+                {'key': key, 'label': label, 'count': outcomes.get(key, 0)}
+                for key, label in OUTCOMES.items()
+            ],
+            'definition': 'Rendez-vous pris selon leur date de création au Québec, même si leur date prévue est hors période. Les autres compteurs de rendez-vous suivent leur date prévue dans la période et le setter à la réservation. À présenter : début à venir. Présentés et non tenus : résultat déclaré après la fin. Résultats attendus : rendez-vous terminé sans compte rendu. Les résultats d’appel suivent leur date de saisie et leur auteur. Inventaire affecté : état actuel. Qualifiés : fiches distinctes avec qualification capturée dans un rendez-vous de la période.',
         }
     )
     result['Cache-Control'] = 'no-store'
