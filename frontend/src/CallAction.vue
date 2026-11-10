@@ -87,7 +87,11 @@ async function send() {
     result.value = await props.portal(`${props.workspace}/calls/`, { proof: intent.proof });
   } catch (e: any) {
     error.value = e.message;
-    if (!submitted) remember('');
+    // These API refusals occur before a command can be sent to Phonetico.
+    const refused =
+      ([400, 401, 403, 409, 429].includes(e.status) && !!e.payload?.detail) ||
+      (e.status === 503 && e.payload?.detail === 'Appels Phonetico non activés.');
+    if (!submitted || refused) remember('');
   } finally {
     pending.value = false;
   }

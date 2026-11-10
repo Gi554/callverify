@@ -73,11 +73,14 @@ def eligible(user, workspace, claims, proof):
         if workspace == 'assurance'
         else f'/api/work-queue/{claims["resource"]}/phone-history-check/'
     )
+    headers = {'Authorization': 'Bearer ' + issue(user.pk, workspace, 'setter')}
+    if workspace == 'isolation':
+        headers['X-Forwarded-Proto'] = 'https'
     try:
         with requests.post(
             base + path,
             json={'proof': proof},
-            headers={'Authorization': 'Bearer ' + issue(user.pk, workspace, 'setter')},
+            headers=headers,
             timeout=(5, 5),
             allow_redirects=False,
             stream=True,
