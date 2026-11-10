@@ -41,7 +41,9 @@ def overview(request):
             days[day][row['workspace']] = row['count']
     return Response(
         {
-            'memberships': list(memberships.values('workspace', 'role').annotate(count=Count('pk'))),
+            'memberships': list(
+                memberships.values('workspace', 'role').annotate(count=Count('pk'))
+            ),
             'days': [{'day': date, **values} for date, values in days.items()],
         },
         headers={'Cache-Control': 'no-store'},
