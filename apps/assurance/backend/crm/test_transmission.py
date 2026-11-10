@@ -58,6 +58,9 @@ class TransmissionTests(TestCase):
         self.assertEqual(Appointment.objects.count(), 1)
         self.assertEqual(ContactCallOutcome.objects.get().result, 'appointment_booked')
         self.assertEqual(AppointmentNotification.objects.get().recipient_id, 31)
+        from .mail_bridge import booking_candidates
+
+        self.assertEqual(booking_candidates().get().appointment_id, response.data['id'])
         self.contact.refresh_from_db()
         row = Appointment.objects.get()
         self.assertEqual(row.calendar, 'external_link')

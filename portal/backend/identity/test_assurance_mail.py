@@ -66,6 +66,35 @@ class AssuranceMailTests(TestCase):
         self.assertEqual(self.sync()['already_queued'], 1)
         self.assertEqual(SmsAttempt.objects.count(), 1)
 
+    @override_settings(
+        NEWT_SMS_ENABLED=True,
+        NEWT_SMS_CALLER_ID='4387388939',
+        NEWT_USERNAME='newt-user',
+        NEWT_PASSWORD='newt-password',
+        NEWT_SMS_AUTOMATIC_FROM='2026-01-01T00:00:00Z',
+    )
+    @patch('portal.backend.identity.assurance_sms.sms.send', return_value='accepted')
+    def test_booking_relays_once_to_the_advisor(self, send):
+        self.grant.role = 'advisor'
+        self.grant.save(update_fields=['role'])
+        ReminderPhone.objects.create(user=self.user, mobile='4387388944')
+        event = {
+            'id': 1,
+            'recipient_id': self.user.pk,
+            'role': 'advisor',
+            'appointment_id': 42,
+            'created_at': timezone.now().isoformat(),
+        }
+        with (
+            patch('portal.backend.identity.assurance_mail.fetch', return_value={'events': [event]}),
+            patch('portal.backend.identity.assurance_mail.eligible', return_value=True),
+        ):
+            self.assertEqual(sync('bookings')['queued'], 1)
+            self.assertEqual(sync('bookings')['already_queued'], 1)
+        self.assertEqual(AssuranceMailRelay.objects.get().mail.user, self.user)
+        send.assert_called_once()
+        self.assertIn('appointment=42', send.call_args.args[4])
+
     def test_queue_is_idempotent_and_content_is_minimal(self):
         self.assertEqual(self.sync()['queued'], 1)
         self.assertEqual(self.sync()['already_queued'], 1)

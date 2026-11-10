@@ -10,7 +10,9 @@ class Command(BaseCommand):
         parser.add_argument('--loop', action='store_true')
         parser.add_argument('--interval', type=int, default=30)
         parser.add_argument(
-            '--stream', choices=['all', 'incidents', 'reminders', 'escalations'], default='all'
+            '--stream',
+            choices=['all', 'incidents', 'reminders', 'escalations', 'bookings'],
+            default='all',
         )
 
     def handle(self, *args, **options):
@@ -20,7 +22,7 @@ class Command(BaseCommand):
             while True:
                 try:
                     for stream in (
-                        ['incidents', 'reminders', 'escalations']
+                        ['incidents', 'reminders', 'escalations', 'bookings']
                         if options['stream'] == 'all'
                         else [options['stream']]
                     ):
