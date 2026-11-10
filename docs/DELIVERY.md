@@ -3152,3 +3152,7 @@ La Super administration permet d’attribuer ou de suspendre l’accès administ
 
 Le panneau d’incidents regroupe aussi les réponses HTTP 5xx, erreurs réseau et erreurs Vue signalées par le CRM authentifié. Seuls l’espace, la catégorie, le code HTTP éventuel et l’heure sont conservés. Le volume est limité par le navigateur et par l’API. Les pannes qui empêchent le portail de recevoir les signalements et les erreurs hors session nécessitent toujours les journaux serveur.
 
+## Lisibilité de la Super administration
+
+La gestion des comptes distingue l’état global, les accès par espace et les comptes protégés. Les incidents des dernières 24 heures sont classés par volume et affichent leur espace et leur dernière observation lorsque disponible. Le journal sépare les dates, les actions et les motifs. Les trois blocs s’adaptent aux écrans étroits et s’appuient sur les données et les permissions existantes.
+
