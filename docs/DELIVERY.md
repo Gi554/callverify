@@ -3164,3 +3164,7 @@ Chaque carte ouvre un journal paginé des événements du groupe sur 24 heures. 
 
 La vérification interne avant composition transmet le protocole HTTPS attendu par Isolation. Elle évite ainsi la redirection qui transformait une commande valide en « Appel bloqué par les contrôles ». Les appels déjà bloqués restent dans l’historique et une nouvelle commande est nécessaire.
 
+## Reprise après un refus d’appel et historique Isolation
+
+Après un refus explicite avant envoi, la fiche affiche le motif et permet de préparer une nouvelle commande sans rester bloquée sur une référence absente du journal. Un résultat incertain conserve sa référence pour vérification. La consultation de l’historique Isolation transmet le protocole HTTPS attendu sur le lien interne.
+

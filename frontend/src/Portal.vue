@@ -147,8 +147,9 @@ async function portal(path: string, body?: any, method?: string) {
           .map(([key, value]) => key + ': ' + String(value))
           .join(' · ') ||
         'Accès indisponible',
-    ) as Error & { payload?: any };
+    ) as Error & { payload?: any; status?: number };
     failure.payload = result;
+    failure.status = response.status;
     throw failure;
   }
   if (response.headers.get('Content-Disposition')?.includes('attachment')) return response.blob();

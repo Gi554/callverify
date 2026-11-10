@@ -183,5 +183,6 @@ class PhoneHistoryTests(TestCase):
             )
             self.assertFalse(http.call_args.kwargs['allow_redirects'])
             self.assertTrue(http.call_args.kwargs['headers']['Authorization'].startswith('Bearer '))
+            self.assertEqual(http.call_args.kwargs['headers']['X-Forwarded-Proto'], 'https')
             response.raw.read.return_value = b'x' * 1025
             self.assertFalse(eligible(self.user, 'isolation', claims, self.body['proof']))
