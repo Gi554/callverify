@@ -3160,3 +3160,7 @@ La gestion des comptes distingue l’état global, les accès par espace et les 
 
 Chaque carte ouvre un journal paginé des événements du groupe sur 24 heures. Il affiche les dates au Québec, les références d’appel et le poste, ou le nombre de tentatives pour le courrier. Le lien vers une fiche d’appel exige un accès administrateur dans l’espace concerné. Le journal utilise les événements déjà collectés par Orvia et ne donne pas accès aux journaux bruts du serveur.
 
+## Appels Isolation en production
+
+La vérification interne avant composition transmet le protocole HTTPS attendu par Isolation. Elle évite ainsi la redirection qui transformait une commande valide en « Appel bloqué par les contrôles ». Les appels déjà bloqués restent dans l’historique et une nouvelle commande est nécessaire.
+

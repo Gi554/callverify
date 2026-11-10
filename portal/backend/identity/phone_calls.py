@@ -85,14 +85,18 @@ def eligible(user, claims, proof, workspace='assurance'):
         if workspace == 'assurance'
         else f'/api/work-queue/{claims["contact"]}/call-intent-check/'
     )
+    headers = {
+        'Authorization': 'Bearer '
+        + access_ticket(user.pk, workspace, caller_access(user, workspace).role)
+    }
+    if workspace == 'isolation':
+        # The private HTTP hop reaches Django directly, outside the HTTPS proxy.
+        headers['X-Forwarded-Proto'] = 'https'
     try:
         with requests.post(
             base + path,
             json={'proof': proof},
-            headers={
-                'Authorization': 'Bearer '
-                + access_ticket(user.pk, workspace, caller_access(user, workspace).role)
-            },
+            headers=headers,
             timeout=(5, 5),
             allow_redirects=False,
             stream=True,
