@@ -75,9 +75,13 @@ class ContactViewSet(
         qs = visible_contacts(self.request.user).order_by('-pk')
         term = self.request.query_params.get('search', '').strip()[:250]
         if term:
-            qs = qs.filter(
-                Q(name__icontains=term) | Q(phone__icontains=term) | Q(email__icontains=term)
-            )
+            from packages.access.phone_history import lookup_number
+
+            matches = Q(name__icontains=term) | Q(phone__icontains=term) | Q(email__icontains=term)
+            digits = lookup_number(term)
+            if digits:
+                matches |= Q(phone_normalized=digits[1:])
+            qs = qs.filter(matches)
         if self.request.query_params.get('mine') == 'true':
             qs = qs.filter(assigned_setter_id=self.request.user.pk)
         status = self.request.query_params.get('status', '')

@@ -23,6 +23,10 @@ let code = compileScript(
   },
 ).content
 code = code
+  .replace(
+    "from './phone-number'",
+    `from '${new URL('../src/phone-number.ts', import.meta.url).href}'`,
+  )
   .replace(/import \{([^}]+)\} from 'lucide-vue-next'/g, (_, names) =>
     names
       .split(',')

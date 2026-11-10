@@ -151,11 +151,14 @@ class QuickCallTests(TestCase):
     def test_known_number_in_another_format_reuses_the_file(self):
         known = Contact.objects.create(name='Alice', phone='+1 (514) 555-0101', created_by_id=1)
         self.auth(21, 'setter')
-        response = self.dial('5145550101')
+        pasted = '+1\u202f514\u00a0555‑0101'
+        response = self.dial(pasted)
         self.assertEqual(
             (response.status_code, response.data), (200, {'id': known.pk, 'created': False})
         )
         self.assertEqual(Contact.objects.count(), 1)
+        search = self.client.get('/api/assurance/contacts/', {'search': pasted})
+        self.assertEqual([row['id'] for row in search.data['results']], [known.pk])
 
     def test_number_of_another_setters_lot_is_refused_but_own_creation_stays_visible(self):
         Contact.objects.create(

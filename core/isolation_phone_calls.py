@@ -9,6 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from packages.access.phone_calls import issue, verify
+from packages.access.phone_history import lookup_number
 from .models import Campaign, PhoneNumber, Prospect, Suppression, AuditEvent
 from packages.access.history_actions import HistoryMixin
 
@@ -46,12 +47,8 @@ class QuickCall(serializers.Serializer):
 
 
 def dial_digits(raw):
-    if not re.fullmatch(r'\+?[0-9 ().-]+', raw):
-        raise ValidationError('Numéro nord-américain sans extension requis pour composer.')
-    digits = re.sub(r'[ ().-]', '', raw).removeprefix('+')
-    if len(digits) == 10:
-        digits = '1' + digits
-    if not re.fullmatch(r'1[2-9][0-9]{2}[2-9][0-9]{6}', digits):
+    digits = lookup_number(raw)
+    if not digits:
         raise ValidationError('Numéro nord-américain composable requis.')
     return digits
 

@@ -6,7 +6,7 @@ from .tickets import key_for
 
 
 def number(raw):
-    if not isinstance(raw, str) or not re.fullmatch(r'\+?[0-9 ().-]+', raw):
+    if not isinstance(raw, str) or not re.fullmatch(r'\+?[0-9\s().\-‐‑‒–—]+', raw.strip()):
         raise ValueError('Numéro nord-américain requis.')
     digits = re.sub(r'[^0-9]', '', raw)
     if len(digits) == 10:
@@ -14,6 +14,13 @@ def number(raw):
     if not re.fullmatch(r'1[2-9][0-9]{2}[2-9][0-9]{6}', digits):
         raise ValueError('Numéro nord-américain requis.')
     return digits
+
+
+def lookup_number(raw):
+    try:
+        return number(raw)
+    except ValueError:
+        return ''
 
 
 def issue(actor, resource, revision, destination, workspace):
