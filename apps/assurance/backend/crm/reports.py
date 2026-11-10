@@ -148,12 +148,12 @@ class ReportMixin:
         original = self.get_object()
         if request.method == 'GET':
             row = AppointmentReport.objects.filter(appointment=original).first()
+            if row is None:
+                return Response(status=204)
             from .appointment_status import report_outcome, LABELS
 
             return Response(
-                None
-                if not row
-                else {
+                {
                     'performed': row.performed,
                     'sale_concluded': row.sale_concluded,
                     'outcome': report_outcome(row),
