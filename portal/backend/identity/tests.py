@@ -46,6 +46,21 @@ class PortalTests(TestCase):
         self.user.save()
         self.assertEqual(self.client.post('/api/portal/access/assurance/').status_code, 403)
 
+    @override_settings(MFA_ENABLED=False)
+    def test_platform_overview_requires_global_superuser(self):
+        path = '/api/portal/platform-overview/'
+        Membership.objects.create(user=self.user, workspace='assurance', role='administrator')
+        self.assertEqual(self.client.get(path).status_code, 403)
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_superuser'])
+        response = self.client.get(path)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['days']), 30)
+        self.assertEqual(
+            response.data['memberships'],
+            [{'workspace': 'assurance', 'role': 'administrator', 'count': 1}],
+        )
+
     def test_login_requires_csrf(self):
         client = APIClient(enforce_csrf_checks=True)
         self.assertEqual(
