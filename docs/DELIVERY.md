@@ -3140,3 +3140,7 @@ Le grenier accessible et l’année de construction sont facultatifs. La réserv
 
 Un prospect Isolation attribué dont le statut est « À vérifier » peut être appelé depuis sa fiche ou le composeur. Les interdictions explicites, exclusions et contrôles de numéro restent appliqués.
 
+## Super administration
+
+Le superadministrateur dispose d’une vue centrale aux couleurs du portail. Elle présente les accès actifs par rôle et les tentatives d’appel Assurance et Isolation sur 30 jours. Les raccourcis ouvrent les écrans existants uniquement dans les espaces où le compte est administrateur.
+

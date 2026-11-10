@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import PortalLogin from './PortalLogin.vue';
 import PortalMfaSetup from './PortalMfaSetup.vue';
 import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
+import PlatformOverview from './PlatformOverview.vue';
 import ClientFolders from './ClientFolders.vue';
 import CrmShell from './CrmShell.vue';
 import CrmOverview from './CrmOverview.vue';
@@ -51,6 +52,7 @@ const appointmentFocus = ref<number | null>(null);
 type Membership = { workspace: string; role: string };
 const user = ref<{
   username: string;
+  superadmin?: boolean;
   workspaces: Membership[];
   admin_workspaces: string[];
   landing: string | null;
@@ -76,6 +78,8 @@ function closeRecovery() {
 const passwordOpen = ref(false),
   calendarNotice = ref('');
 const managing = ref(false),
+  showPlatform = ref(true),
+  accessSection = ref('users'),
   assuranceModule = ref('overview'),
   isolationModule = ref('overview');
 const summary = ref<any>(null);
@@ -240,6 +244,7 @@ async function login(credentials: { username: string; password: string; code: st
     mfaPrompt.value = false;
     authVersion.value++;
     user.value = authenticated;
+    showPlatform.value = true;
     if (authenticated.mfa_required) return;
     // A single authorised space opens directly; several are listed in « Mes espaces ».
     if (
@@ -256,7 +261,7 @@ async function login(credentials: { username: string; password: string; code: st
       )
     )
       await enter('assurance');
-    else if (authenticated.workspaces.length === 1)
+    else if (!authenticated.superadmin && authenticated.workspaces.length === 1)
       await enter(authenticated.workspaces[0].workspace);
   } catch (e: any) {
     error.value = e.message;
@@ -272,7 +277,8 @@ async function completeMfa() {
   try {
     const authenticated = await portal('session/');
     user.value = authenticated;
-    if (authenticated.workspaces.length === 1) await enter(authenticated.workspaces[0].workspace);
+    if (!authenticated.superadmin && authenticated.workspaces.length === 1)
+      await enter(authenticated.workspaces[0].workspace);
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -464,8 +470,16 @@ function openAccount() {
 }
 function openAccess() {
   if (!ready.value || !workspace.value || !user.value?.admin_workspaces?.length) return;
+  accessSection.value = 'users';
   managing.value = !managing.value;
   passwordOpen.value = false;
+}
+async function openPlatformAction(target: string, section: string) {
+  if (!user.value?.admin_workspaces.includes(target)) return;
+  await enter(target);
+  if (workspace.value !== target) return;
+  accessSection.value = section;
+  managing.value = true;
 }
 const title = (value: string) => (value === 'assurance' ? 'Assurance' : 'Isolation');
 onMounted(async () => {
@@ -510,7 +524,8 @@ onMounted(async () => {
   try {
     user.value = await portal('session/');
     const allowed = user.value?.workspaces.map((item) => item.workspace) || [];
-    const chooseWorkspace = allowed.length > 1 && !!user.value?.admin_workspaces?.length;
+    const chooseWorkspace =
+      !!user.value?.superadmin || (allowed.length > 1 && !!user.value?.admin_workspaces?.length);
     const target = [
       pendingIsolationVisit.value ? 'isolation' : '',
       pendingAppointment.value ? 'assurance' : '',
@@ -580,6 +595,15 @@ onMounted(async () => {
       v-else-if="ready && user?.mfa_required && !user?.mfa_enabled"
       :portal="portal"
       @complete="completeMfa"
+    />
+    <PlatformOverview
+      v-else-if="user?.superadmin && !workspace && !passwordOpen && showPlatform"
+      :username="user.username"
+      :admin-spaces="user.admin_workspaces"
+      :request="portal"
+      @spaces="showPlatform = false"
+      @action="openPlatformAction"
+      @logout="logout"
     />
     <PortalWorkspaceChooser
       v-else-if="ready && user && !workspace && !passwordOpen"
@@ -687,6 +711,8 @@ onMounted(async () => {
             class="crm-settings-page"
             v-else-if="managing"
             :spaces="user.admin_workspaces"
+            :initial-space="workspace"
+            :initial-section="accessSection"
             :username="user.username"
             :request="portal"
           />

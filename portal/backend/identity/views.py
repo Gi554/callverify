@@ -102,6 +102,7 @@ def session_payload(user, setup_required=None):
     return Response(
         {
             'username': user.username,
+            'superadmin': user.is_superuser,
             'workspaces': memberships,
             'admin_workspaces': [
                 row['workspace'] for row in memberships if row['role'] == 'administrator'
