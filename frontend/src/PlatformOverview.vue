@@ -4,16 +4,30 @@ import { ArrowRight, LogOut, RefreshCw } from 'lucide-vue-next';
 import StatBars from './StatBars.vue';
 import StatDonut from './StatDonut.vue';
 import StatKpi from './StatKpi.vue';
+import PlatformAccounts from './PlatformAccounts.vue';
 
 const props = defineProps<{
   username: string;
   adminSpaces: string[];
-  request: (path: string) => Promise<Overview>;
+  request: (path: string, body?: unknown) => Promise<any>;
 }>();
 const emit = defineEmits<{ spaces: []; action: [space: string, section: string]; logout: [] }>();
 type Overview = {
   memberships: { workspace: string; role: string; count: number }[];
   days: { day: string; assurance: number; isolation: number }[];
+  incidents: {
+    calls: { workspace: string; state: string; count: number }[];
+    mail: { workspace: string; status: string; count: number }[];
+  };
+  recent_actions: {
+    id: number;
+    action: string;
+    workspace: string;
+    actor: string;
+    target: number;
+    reason: string;
+    created_at: string;
+  }[];
 };
 const data = ref<Overview>();
 const busy = ref(false);
@@ -50,6 +64,25 @@ const accessSegments = computed(() =>
       .reduce((total, row) => total + row.count, 0),
   })),
 );
+const incidentLabels: Record<string, string> = {
+  rejected: 'Appels refusés par le fournisseur',
+  unknown: 'Appels au résultat technique inconnu',
+  blocked: 'Appels bloqués par les règles',
+  failed: 'Courriels en échec',
+  expired: 'Courriels expirés',
+};
+const auditLabels: Record<string, string> = {
+  'platform.suspend': 'Compte suspendu',
+  'platform.reactivate': 'Compte réactivé',
+  'platform.revoke_sessions': 'Sessions révoquées',
+  'platform.grant_admin': 'Accès administrateur accordé',
+  'platform.suspend_admin': 'Accès administrateur suspendu',
+};
+const auditDate = new Intl.DateTimeFormat('fr-CA', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  timeZone: 'America/Toronto',
+});
 async function load() {
   if (busy.value) return;
   busy.value = true;
@@ -139,6 +172,35 @@ onMounted(load);
           </div>
         </section>
       </div>
+      <PlatformAccounts :request="request" @changed="load" />
+      <section v-if="data" class="platform-card">
+        <h2>Incidents observés · dernières 24 heures</h2>
+        <p>Signalements enregistrés par la téléphonie et la file d’envoi des courriels.</p>
+        <ul v-if="data.incidents.calls.length || data.incidents.mail.length">
+          <li v-for="row in data.incidents.calls" :key="row.workspace + row.state">
+            {{ incidentLabels[row.state] }} ·
+            {{ spaces.find((space) => space.key === row.workspace)?.label || 'Portail' }} ·
+            {{ row.count }}
+          </li>
+          <li v-for="row in data.incidents.mail" :key="row.workspace + row.status">
+            {{ incidentLabels[row.status] }} ·
+            {{ spaces.find((space) => space.key === row.workspace)?.label || 'Portail' }} ·
+            {{ row.count }}
+          </li>
+        </ul>
+        <p v-else>Aucun incident de ces deux services sur la période.</p>
+      </section>
+      <section v-if="data" class="platform-card">
+        <h2>Dernières actions du superadmin</h2>
+        <p v-if="!data.recent_actions.length">Aucune action enregistrée.</p>
+        <ul v-else>
+          <li v-for="row in data.recent_actions" :key="row.id">
+            {{ auditDate.format(new Date(row.created_at)) }} ·
+            {{ auditLabels[row.action] || row.action }} · Compte #{{ row.target }} ·
+            {{ row.actor }} · {{ row.reason }}
+          </li>
+        </ul>
+      </section>
     </main>
   </div>
 </template>

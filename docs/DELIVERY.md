@@ -3144,3 +3144,7 @@ Un prospect Isolation attribué dont le statut est « À vérifier » peut être
 
 Le superadministrateur dispose d’une vue centrale aux couleurs du portail. Elle présente les accès actifs par rôle et les tentatives d’appel Assurance et Isolation sur 30 jours. Les raccourcis ouvrent les écrans existants uniquement dans les espaces où le compte est administrateur.
 
+## Contrôles centraux du superadministrateur
+
+La Super administration permet d’attribuer ou de suspendre l’accès administrateur d’un compte existant par espace, de suspendre ou réactiver le compte global et de révoquer ses sessions du portail. Chaque action exige un motif et crée une entrée d’audit. Les comptes système sont protégés. La vue affiche aussi les incidents d’appel et de courrier enregistrés durant les dernières 24 heures. Elle ne collecte pas encore les exceptions navigateur ou serveur.
+
