@@ -95,6 +95,31 @@ class AssuranceMailTests(TestCase):
         send.assert_called_once()
         self.assertIn('appointment=42', send.call_args.args[4])
 
+    @override_settings(
+        ASSURANCE_ALERT_EMAIL_ENABLED=False,
+        NEWT_SMS_ENABLED=True,
+        NEWT_SMS_CALLER_ID='4387388939',
+        NEWT_USERNAME='newt-user',
+        NEWT_PASSWORD='newt-password',
+        NEWT_SMS_AUTOMATIC_FROM='2026-01-01T00:00:00Z',
+    )
+    @patch('portal.backend.identity.assurance_sms.sms.send', return_value='accepted')
+    def test_sms_only_does_not_require_email_or_enqueue_mail(self, send):
+        self.user.email = ''
+        self.user.save(update_fields=['email'])
+        ReminderPhone.objects.create(user=self.user, mobile='4387388944')
+        with patch('portal.backend.identity.assurance_mail.eligible', return_value=True):
+            self.assertEqual(self.sync()['sms_queued'], 1)
+            self.assertNotIn('sms_queued', self.sync())
+        send.assert_called_once()
+        self.assertFalse(PortalMail.objects.exists())
+
+    def test_disabling_alert_email_expires_queued_alerts(self):
+        self.sync()
+        with override_settings(ASSURANCE_ALERT_EMAIL_ENABLED=False):
+            self.assertEqual(dispatch()['expired'], 1)
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_queue_is_idempotent_and_content_is_minimal(self):
         self.assertEqual(self.sync()['queued'], 1)
         self.assertEqual(self.sync()['already_queued'], 1)

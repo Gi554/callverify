@@ -141,6 +141,7 @@ if os.getenv('TRUST_PROXY', 'false').lower() == 'true':
     REST_FRAMEWORK['NUM_PROXIES'] = 1
 
 NEWT_SMS_ENABLED = os.getenv('NEWT_SMS_ENABLED', 'false').lower() == 'true'
+ASSURANCE_ALERT_EMAIL_ENABLED = os.getenv('ASSURANCE_ALERT_EMAIL_ENABLED', 'true').lower() == 'true'
 NEWT_SMS_CALLER_ID = os.getenv('NEWT_SMS_CALLER_ID', '')
 
 NEWT_SMS_AUTOMATIC_FROM = os.getenv('NEWT_SMS_AUTOMATIC_FROM', '')

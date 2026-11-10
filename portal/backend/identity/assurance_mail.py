@@ -155,6 +155,28 @@ def sync(stream='incidents'):
             for recipient in recipients
         )
     for event_id, user_id, created, role, appointment, prospect, starts in expanded:
+        if not settings.ASSURANCE_ALERT_EMAIL_ENABLED:
+            from .assurance_sms import send_alert
+
+            member = (
+                Membership.objects.select_related('user')
+                .filter(
+                    user_id=user_id,
+                    workspace='assurance',
+                    role=role,
+                    active=True,
+                    user__is_active=True,
+                )
+                .first()
+            )
+            if member and eligible(event_id, user_id, stream=stream):
+                event = next(item for item in events if item['id'] == event_id)
+                if send_alert(stream, event_id, member.user, event):
+                    counts.setdefault('sms_queued', 0)
+                    counts['sms_queued'] += 1
+            else:
+                counts['skipped'] += 1
+            continue
         if stream == 'bookings':
             from .assurance_sms import send_alert
 

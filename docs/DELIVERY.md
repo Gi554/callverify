@@ -3184,6 +3184,10 @@ La fiche d’un rendez-vous sans compte rendu s’ouvre avec son état normal. L
 
 Chaque nouvelle réservation planifiée alimente le relais Assurance. Le conseiller affecté reçoit un e-mail avec un lien vers sa fiche dans Orvia. Un SMS est aussi envoyé si le mobile est renseigné et l’envoi automatique activé. Le relais vérifie que le rendez-vous est encore planifié pour ce conseiller et déduplique chaque envoi. Les anciennes réservations ne sont pas reprises.
 
+### Alertes Assurance par SMS uniquement
+
+La production désactive les e-mails d’alerte Assurance avec `ASSURANCE_ALERT_EMAIL_ENABLED=false`. Le relais conserve les SMS des réservations, rappels, incidents et escalades pour les mobiles renseignés. Les courriels d’alerte encore en attente expirent au contrôle précédant leur envoi. Les invitations et la récupération de compte gardent leur circuit existant.
+
 ## Performance des setters Assurance et Isolation
 
 La performance compte les rendez-vous pris selon la date de création, y compris pour une date prévue hors de la période affichée. Elle distingue les rendez-vous à présenter, en cours, présentés, non tenus, annulés et sans résultat. Les résultats d’appel déclarés sont affichés séparément par résultat et par date de saisie, sous les droits du setter ou de l’administrateur.
