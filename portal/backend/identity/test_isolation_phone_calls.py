@@ -103,6 +103,7 @@ class IsolationCallsTests(TestCase):
                 post.call_args.args[0], 'http://isolation:8000/api/work-queue/12/call-intent-check/'
             )
             self.assertFalse(post.call_args.kwargs['allow_redirects'])
+            self.assertEqual(post.call_args.kwargs['headers']['X-Forwarded-Proto'], 'https')
 
     def test_ineligible_and_ambiguous_results_are_not_resent(self):
         self.checker.return_value = False
