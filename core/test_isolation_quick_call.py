@@ -48,7 +48,10 @@ class IsolationQuickCallTests(TestCase):
             campaign=campaign, phone=phone, raw_phone='4165550124', assigned_setter_id=21
         )
         self.auth(21, 'setter')
-        self.assertEqual(self.dial('4165550124').data, {'id': waiting.pk, 'created': False})
+        pasted = '+1\u202f416\u00a0555‑0124'
+        self.assertEqual(self.dial(pasted).data, {'id': waiting.pk, 'created': False})
+        search = self.client.get('/api/work-queue/', {'search': pasted})
+        self.assertEqual([row['id'] for row in search.data['results']], [waiting.pk])
         self.auth(22, 'setter')
         self.assertEqual(self.dial('4165550124').status_code, 403)
         self.auth(91, 'administrator')

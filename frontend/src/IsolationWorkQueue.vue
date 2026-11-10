@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isDialableNumber } from './phone-number';
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
   CalendarDays,
@@ -129,7 +130,9 @@ async function load() {
   const version = ++generation;
   busy.value = true;
   error.value = '';
-  applied.value = { search: search.value.trim(), owner: owner.value, due: dueOnly.value };
+  const term = search.value.trim();
+  if (term !== applied.value.search && isDialableNumber(term)) includeProcessed.value = true;
+  applied.value = { search: term, owner: owner.value, due: dueOnly.value };
   columns.value = statuses.map(([key, label]) => ({
     key,
     label,

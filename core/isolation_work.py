@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from packages.access.tickets import verify
+from packages.access.phone_history import lookup_number
 from packages.access.isolation import verify_owner
 from .models import Prospect, AuditEvent
 from .isolation_activity import ActivityMixin, STATUSES
@@ -130,11 +131,15 @@ class WorkViewSet(
         qs = visible(self.request.user).order_by('-pk')
         term = self.request.query_params.get('search', '').strip()[:250]
         if term:
-            qs = qs.filter(
+            matches = (
                 Q(name__icontains=term)
                 | Q(raw_phone__icontains=term)
                 | Q(reference__icontains=term)
             )
+            digits = lookup_number(term)
+            if digits:
+                matches |= Q(phone__e164='+' + digits)
+            qs = qs.filter(matches)
         owner = self.request.query_params.get('owner', '')
         if owner:
             if owner == 'unassigned':

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isDialableNumber } from './phone-number';
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import {
   Search,
@@ -182,7 +183,9 @@ async function load() {
   const version = ++generation;
   busy.value = true;
   error.value = '';
-  applied.value = search.value.trim();
+  const term = search.value.trim();
+  if (term !== applied.value && isDialableNumber(term)) includeProcessed.value = true;
+  applied.value = term;
   try {
     const data = await props.request('pipeline/');
     if (version !== generation || disposed) return;

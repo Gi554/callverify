@@ -1,12 +1,12 @@
 """Authorize one explicit call from a currently leased contact; no provider access."""
 
-import re
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from packages.access.phone_calls import issue, verify
+from packages.access.phone_history import lookup_number
 from django.core import signing
 from django.utils import timezone
 from .leases import held
@@ -29,12 +29,8 @@ class Intent(serializers.Serializer):
 
 def dial_number(raw):
     # Dial formatting only; never changes the source or determines line validity.
-    if not isinstance(raw, str) or not re.fullmatch(r'\+?[0-9 ().-]+', raw):
-        raise ValidationError('Numéro nord-américain sans extension requis pour composer.')
-    digits = re.sub(r'[ ().-]', '', raw).removeprefix('+')
-    if len(digits) == 10:
-        digits = '1' + digits
-    if not re.fullmatch(r'1[2-9][0-9]{2}[2-9][0-9]{6}', digits):
+    digits = lookup_number(raw)
+    if not digits:
         raise ValidationError('Numéro nord-américain composable requis ; corrigez la fiche.')
     return digits
 
@@ -46,13 +42,6 @@ class QuickCall(serializers.Serializer):
         if set(self.initial_data) - set(self.fields):
             raise ValidationError('Seul le numéro est accepté.')
         return data
-
-
-def same_number(contact, digits):
-    try:
-        return dial_number(contact.phone) == digits
-    except ValidationError:
-        return False
 
 
 class PhoneCallMixin(HistoryMixin):
@@ -69,8 +58,7 @@ class PhoneCallMixin(HistoryMixin):
         digits = dial_number(raw)
         national = digits[1:]
         with transaction.atomic():
-            candidates = Contact.objects.filter(phone__contains=national[-4:])
-            known = [row for row in candidates if same_number(row, digits)]
+            known = Contact.objects.filter(phone_normalized=national).order_by('pk')
             mine = [
                 row for row in known if visible_contacts(request.user).filter(pk=row.pk).exists()
             ]
