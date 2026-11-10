@@ -63,6 +63,13 @@ class AccessAudit(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class PlatformIncident(models.Model):
+    area = models.CharField(max_length=20)
+    kind = models.CharField(max_length=20)
+    status = models.PositiveSmallIntegerField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+
 class SessionGeneration(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True

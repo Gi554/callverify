@@ -62,6 +62,20 @@ class PortalTests(TestCase):
         )
 
     @override_settings(MFA_ENABLED=False)
+    def test_technical_incident_is_aggregated_without_request_contents(self):
+        path = '/api/portal/platform/incidents/'
+        incident = {'area': 'isolation', 'kind': 'http', 'status': 502}
+        self.assertIn(APIClient().post(path, incident).status_code, (401, 403))
+        self.assertEqual(self.client.post(path, incident).status_code, 204)
+        self.assertEqual(self.client.post(path, {**incident, 'status': 400}).status_code, 400)
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_superuser'])
+        data = self.client.get('/api/portal/platform-overview/').data['incidents']['technical']
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['status'], 502)
+        self.assertEqual(data[0]['count'], 1)
+
+    @override_settings(MFA_ENABLED=False)
     def test_platform_actions_manage_admin_and_protect_superadmins(self):
         from .models import AccessAudit, SessionGeneration
 

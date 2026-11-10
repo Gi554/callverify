@@ -3148,3 +3148,7 @@ Le superadministrateur dispose d’une vue centrale aux couleurs du portail. Ell
 
 La Super administration permet d’attribuer ou de suspendre l’accès administrateur d’un compte existant par espace, de suspendre ou réactiver le compte global et de révoquer ses sessions du portail. Chaque action exige un motif et crée une entrée d’audit. Les comptes système sont protégés. La vue affiche aussi les incidents d’appel et de courrier enregistrés durant les dernières 24 heures. Elle ne collecte pas encore les exceptions navigateur ou serveur.
 
+## Signalements techniques du CRM
+
+Le panneau d’incidents regroupe aussi les réponses HTTP 5xx, erreurs réseau et erreurs Vue signalées par le CRM authentifié. Seuls l’espace, la catégorie, le code HTTP éventuel et l’heure sont conservés. Le volume est limité par le navigateur et par l’API. Les pannes qui empêchent le portail de recevoir les signalements et les erreurs hors session nécessitent toujours les journaux serveur.
+
