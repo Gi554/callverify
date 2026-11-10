@@ -117,6 +117,47 @@ class IncidentInput(serializers.Serializer):
         return data
 
 
+@api_view(['GET'])
+def incident_details(request):
+    require_superadmin(request)
+    since = timezone.now() - timedelta(hours=24)
+    params = request.query_params
+    area, category, kind = (params.get(key) for key in ('area', 'category', 'kind'))
+    date_field = 'created_at'
+    if category == 'call' and area in ROLES and kind in ('blocked', 'rejected', 'unknown'):
+        rows = PhoneCallAttempt.objects.filter(
+            workspace=area, state=kind, created_at__gte=since
+        ).values('request_id', 'created_at', 'contact_id', 'extension', 'journal_status')
+    elif category == 'mail' and kind in ('failed', 'expired'):
+        date_field = 'finished_at'
+        rows = PortalMail.objects.filter(
+            workspace=area, status=kind, finished_at__gte=since
+        ).values('id', 'finished_at', 'attempts')
+    elif category == 'technical':
+        serializer = IncidentInput(
+            data={
+                'area': area,
+                'kind': kind,
+                **({'status': params['status']} if 'status' in params else {}),
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        filters = {'status': None, **serializer.validated_data}
+        rows = PlatformIncident.objects.filter(created_at__gte=since, **filters).values(
+            'id', 'created_at', 'status'
+        )
+    else:
+        raise ValidationError('Catégorie d’incident invalide.')
+
+    pager = AccessPagination()
+    page = pager.paginate_queryset(rows.order_by(f'-{date_field}', '-pk'), request)
+    response = pager.get_paginated_response(
+        [{'observed_at': row.pop(date_field), **row} for row in page]
+    )
+    response['Cache-Control'] = 'no-store'
+    return response
+
+
 @api_view(['POST'])
 @throttle_classes([IncidentThrottle])
 def report_platform_incident(request):
