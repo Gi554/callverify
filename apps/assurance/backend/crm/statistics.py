@@ -112,10 +112,12 @@ def statistics(request):
             )
         return rows
 
-    def scoped(first, upper):
+    def scoped(first, upper, date_field='starts_at'):
         rows = Appointment.objects.filter(
-            starts_at__gte=datetime.combine(first, time.min, ZONE),
-            starts_at__lt=datetime.combine(upper, time.min, ZONE),
+            **{
+                date_field + '__gte': datetime.combine(first, time.min, ZONE),
+                date_field + '__lt': datetime.combine(upper, time.min, ZONE),
+            }
         )
         return filtered(
             rows.filter(setter_id=request.user.pk) if request.user.role == 'setter' else rows
@@ -123,6 +125,7 @@ def statistics(request):
 
     qs = scoped(start, exclusive)
     totals = finish(qs.aggregate(**metrics(now)))
+    totals['booked'] = scoped(start, exclusive, 'created_at').count()
     result = {
         'from': start,
         'to': end,

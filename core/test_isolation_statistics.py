@@ -106,7 +106,7 @@ class IsolationStatisticsTests(TestCase):
         self.assertNotIn('SECRET', str(result.data))
         self.assertEqual(result['Cache-Control'], 'no-store')
 
-    def test_setter_scope_excludes_other_origins_and_transferred_prospects(self):
+    def test_setter_scope_keeps_original_credit_after_transfer(self):
         self.visit()
         self.visit(setter=22)
         self.auth(21, 'setter')
@@ -114,7 +114,7 @@ class IsolationStatisticsTests(TestCase):
         self.assertEqual(data['totals']['visits'], 1)
         self.assertNotIn('setters', data)
         Prospect.objects.filter(pk=self.prospect.pk).update(assigned_setter_id=22)
-        self.assertEqual(self.client.get(self.url).data['totals']['visits'], 0)
+        self.assertEqual(self.client.get(self.url).data['totals']['visits'], 1)
         self.auth(91, 'administrator')
         self.assertEqual(self.client.get(self.url).data['totals']['visits'], 2)
 
