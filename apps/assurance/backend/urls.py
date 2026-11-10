@@ -16,6 +16,7 @@ from .crm.mail_bridge import events as mail_events, eligible as mail_eligible
 from .crm.reminders import reminders, configuration as reminder_configuration
 from .crm.mail_bridge import reminder_events, reminder_eligible
 from .crm.mail_bridge import escalation_events, escalation_eligible
+from .crm.mail_bridge import booking_events, booking_eligible
 from .crm.assignments import AssignmentViewSet
 from .crm.appointments import AppointmentViewSet
 from .crm import calendly
@@ -69,6 +70,8 @@ urlpatterns += [
 urlpatterns += [
     path('api/assurance/internal/mail-events/', mail_events),
     path('api/assurance/internal/mail-events/<int:pk>/<int:user_id>/', mail_eligible),
+    path('api/assurance/internal/booking-mail-events/', booking_events),
+    path('api/assurance/internal/booking-mail-events/<int:pk>/<int:user_id>/', booking_eligible),
 ]
 urlpatterns += [
     path('api/assurance/contact-fields/', definitions),

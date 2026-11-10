@@ -60,7 +60,12 @@ def enqueue(*, user, workspace='', subject, body, recipient, guard, expires_at, 
 
 
 def eligible(guard, recipient):
-    if guard['kind'] in ('assurance_follow_up', 'assurance_reminder', 'assurance_escalation'):
+    if guard['kind'] in (
+        'assurance_follow_up',
+        'assurance_reminder',
+        'assurance_escalation',
+        'assurance_booking',
+    ):
         from .assurance_mail import eligible as source_eligible
 
         user = (
@@ -71,6 +76,8 @@ def eligible(guard, recipient):
         role = guard.get('role', 'setter') if guard['kind'] == 'assurance_reminder' else 'setter'
         if guard['kind'] == 'assurance_escalation':
             role = 'administrator'
+        if guard['kind'] == 'assurance_booking':
+            role = 'advisor'
         if role not in ('setter', 'advisor', 'administrator'):
             return False
         if guard['kind'] == 'assurance_reminder' and role == 'administrator':
@@ -86,6 +93,8 @@ def eligible(guard, recipient):
             return False
         if guard['kind'] == 'assurance_escalation':
             return source_eligible(guard['event'], user.pk, stream='escalations')
+        if guard['kind'] == 'assurance_booking':
+            return source_eligible(guard['event'], user.pk, stream='bookings')
         return (
             source_eligible(guard['event'], user.pk, stream='reminders')
             if guard['kind'] == 'assurance_reminder'

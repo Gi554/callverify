@@ -13,6 +13,11 @@ from .newt_sms import configured
 
 
 def _message(stream, event):
+    if stream == 'bookings':
+        from .recovery import public_url
+
+        url = f'{public_url()}/crm?workspace=assurance&appointment={event["appointment_id"]}'
+        return f'Orvia Assurance : un nouveau rendez-vous vous a été transmis. {url}'
     if stream == 'reminders' and event.get('kind') == 'report_missing':
         prospect = str(event.get('prospect_name') or 'un prospect')
         return f'Orvia Assurance : le compte rendu du rendez-vous avec {prospect} n’est pas encore renseigné. Consultez votre espace ORVIA.'
@@ -32,6 +37,11 @@ def send_alert(stream, event_id, user, event):
     identifier = uuid5(NAMESPACE_URL, f'orvia/assurance/sms/{stream}/{event_id}/{user.pk}')
     if SmsAttempt.objects.filter(pk=identifier).exists():
         return False
+    if stream == 'bookings':
+        from .assurance_mail import eligible
+
+        if not eligible(event_id, user.pk, stream='bookings'):
+            return False
     message = _message(stream, event)
     caller_id = settings.NEWT_SMS_CALLER_ID
     attempt, created = SmsAttempt.objects.get_or_create(

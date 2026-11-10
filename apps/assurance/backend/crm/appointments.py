@@ -167,6 +167,14 @@ def snapshot(row):
 
 
 def audit(user, row, action, before=None, reason='', external=None):
+    if action == 'appointment.booked' and row.status == 'scheduled':
+        AppointmentNotification.objects.create(
+            event_key=f'booked:{row.pk}:{row.advisor_id}',
+            appointment=row,
+            recipient_id=row.advisor_id,
+            role='advisor',
+            kind='appointment_transmitted',
+        )
     BusinessAudit.objects.create(
         actor_id=user.pk,
         object_id=row.pk,
@@ -406,13 +414,6 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                         fingerprint=fingerprint,
                         result='appointment_booked',
                         appointment=row,
-                    )
-                    AppointmentNotification.objects.create(
-                        appointment=row,
-                        recipient_id=row.advisor_id,
-                        role='advisor',
-                        kind='appointment_transmitted',
-                        event_key=f'transmitted:{row.pk}:{row.advisor_id}',
                     )
         except IntegrityError:
             existing = (
