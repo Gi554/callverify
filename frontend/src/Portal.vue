@@ -516,6 +516,11 @@ async function openPlatformAction(target: string, section: string) {
   accessSection.value = section;
   managing.value = true;
 }
+async function openPlatformProspect(target: string, id: number) {
+  if (!user.value?.admin_workspaces.includes(target)) return;
+  await enter(target);
+  if (workspace.value === target) openProspect({ id, mode: 'edit' });
+}
 const title = (value: string) => (value === 'assurance' ? 'Assurance' : 'Isolation');
 onMounted(async () => {
   const oauth = location.pathname.match(/^\/crm\/oauth\/(google|microsoft|calendly)$/);
@@ -638,6 +643,7 @@ onMounted(async () => {
       :request="portal"
       @spaces="showPlatform = false"
       @action="openPlatformAction"
+      @prospect="openPlatformProspect"
       @logout="logout"
     />
     <PortalWorkspaceChooser

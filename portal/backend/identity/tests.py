@@ -76,6 +76,26 @@ class PortalTests(TestCase):
         self.assertEqual(data[0]['count'], 1)
 
     @override_settings(MFA_ENABLED=False)
+    def test_incident_details_require_superadmin_and_filter_group(self):
+        from .models import PlatformIncident
+
+        path = '/api/portal/platform-overview/incidents/'
+        filters = {'area': 'isolation', 'category': 'technical', 'kind': 'http', 'status': 502}
+        self.assertEqual(self.client.get(path, filters).status_code, 403)
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_superuser'])
+        incident = PlatformIncident.objects.create(area='isolation', kind='http', status=502)
+        PlatformIncident.objects.create(area='assurance', kind='http', status=502)
+        PlatformIncident.objects.create(area='isolation', kind='http', status=503)
+        response = self.client.get(path, filters)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Cache-Control'], 'no-store')
+        self.assertEqual(
+            response.data['results'],
+            [{'id': incident.pk, 'observed_at': incident.created_at, 'status': 502}],
+        )
+
+    @override_settings(MFA_ENABLED=False)
     def test_platform_actions_manage_admin_and_protect_superadmins(self):
         from .models import AccessAudit, SessionGeneration
 

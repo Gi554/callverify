@@ -3156,3 +3156,7 @@ Le panneau d’incidents regroupe aussi les réponses HTTP 5xx, erreurs réseau 
 
 La gestion des comptes distingue l’état global, les accès par espace et les comptes protégés. Les incidents des dernières 24 heures sont classés par volume et affichent leur espace et leur dernière observation lorsque disponible. Le journal sépare les dates, les actions et les motifs. Les trois blocs s’adaptent aux écrans étroits et s’appuient sur les données et les permissions existantes.
 
+## Détail des incidents de la Super administration
+
+Chaque carte ouvre un journal paginé des événements du groupe sur 24 heures. Il affiche les dates au Québec, les références d’appel et le poste, ou le nombre de tentatives pour le courrier. Le lien vers une fiche d’appel exige un accès administrateur dans l’espace concerné. Le journal utilise les événements déjà collectés par Orvia et ne donne pas accès aux journaux bruts du serveur.
+

@@ -11,7 +11,12 @@ const props = defineProps<{
   adminSpaces: string[];
   request: (path: string, body?: unknown) => Promise<any>;
 }>();
-const emit = defineEmits<{ spaces: []; action: [space: string, section: string]; logout: [] }>();
+const emit = defineEmits<{
+  spaces: [];
+  action: [space: string, section: string];
+  prospect: [space: string, id: number];
+  logout: [];
+}>();
 type Overview = {
   memberships: { workspace: string; role: string; count: number }[];
   days: { day: string; assurance: number; isolation: number }[];
@@ -97,6 +102,9 @@ const incidentRows = computed(() => {
     ...incidents.calls.map((row) => ({
       key: `call-${row.workspace}-${row.state}`,
       area: row.workspace,
+      category: 'call',
+      kind: row.state,
+      status: null,
       label: incidentLabels[row.state],
       count: row.count,
       lastSeen: '',
@@ -104,6 +112,9 @@ const incidentRows = computed(() => {
     ...incidents.mail.map((row) => ({
       key: `mail-${row.workspace}-${row.status}`,
       area: row.workspace,
+      category: 'mail',
+      kind: row.status,
+      status: null,
       label: incidentLabels[row.status],
       count: row.count,
       lastSeen: '',
@@ -111,6 +122,9 @@ const incidentRows = computed(() => {
     ...(incidents.technical || []).map((row) => ({
       key: `technical-${row.area}-${row.kind}-${row.status}`,
       area: row.area,
+      category: 'technical',
+      kind: row.kind,
+      status: row.status,
       label: row.status
         ? `HTTP ${row.status}`
         : row.kind === 'network'
@@ -121,6 +135,51 @@ const incidentRows = computed(() => {
     })),
   ].sort((first, second) => second.count - first.count);
 });
+type IncidentGroup = (typeof incidentRows.value)[number];
+type IncidentDetail = {
+  id?: string | number;
+  request_id?: string;
+  observed_at: string;
+  contact_id?: number;
+  extension?: string;
+  journal_status?: string;
+  attempts?: number;
+};
+const selectedIncident = ref<IncidentGroup>();
+const incidentDetails = ref<IncidentDetail[]>([]);
+const detailPage = ref(1);
+const moreDetails = ref(false);
+const detailBusy = ref(false);
+const detailError = ref('');
+let detailRequest = 0;
+
+async function openIncident(group: IncidentGroup, page = 1) {
+  const currentRequest = ++detailRequest;
+  selectedIncident.value = group;
+  detailPage.value = page;
+  incidentDetails.value = [];
+  moreDetails.value = false;
+  detailError.value = '';
+  detailBusy.value = true;
+  const query = new URLSearchParams({
+    area: group.area,
+    category: group.category,
+    kind: group.kind,
+    page: String(page),
+  });
+  if (group.status !== null) query.set('status', String(group.status));
+  try {
+    const result = await props.request(`platform-overview/incidents/?${query}`);
+    if (currentRequest !== detailRequest) return;
+    incidentDetails.value = result.results;
+    moreDetails.value = Boolean(result.next);
+  } catch (cause) {
+    if (currentRequest !== detailRequest) return;
+    detailError.value = cause instanceof Error ? cause.message : 'Détail indisponible.';
+  } finally {
+    if (currentRequest === detailRequest) detailBusy.value = false;
+  }
+}
 async function load() {
   if (busy.value) return;
   busy.value = true;
@@ -230,9 +289,79 @@ onMounted(load);
             <small v-if="row.lastSeen"
               >Dernier signalement {{ auditDate.format(new Date(row.lastSeen)) }}</small
             >
+            <button type="button" class="secondary" @click="openIncident(row)">
+              Voir le détail
+            </button>
           </li>
         </ul>
         <p v-else class="panel-empty">Aucun incident enregistré sur la période.</p>
+        <section v-if="selectedIncident" class="incident-details" :aria-busy="detailBusy">
+          <header class="section-heading">
+            <div>
+              <h3>{{ selectedIncident.label }}</h3>
+              <p>
+                Heure du Québec ·
+                {{
+                  spaces.find((space) => space.key === selectedIncident?.area)?.label || 'Portail'
+                }}
+              </p>
+            </div>
+            <button type="button" class="secondary" @click="selectedIncident = undefined">
+              Fermer
+            </button>
+          </header>
+          <p v-if="detailBusy" role="status">Chargement des événements…</p>
+          <p v-else-if="detailError" role="alert">{{ detailError }}</p>
+          <p v-else-if="!incidentDetails.length" class="panel-empty">
+            Aucun événement sur cette page.
+          </p>
+          <ol v-else class="audit-list">
+            <li v-for="item in incidentDetails" :key="item.request_id ?? item.id">
+              <div>
+                <strong v-if="item.contact_id"
+                  >Fiche n° {{ item.contact_id }} · Poste {{ item.extension }}</strong
+                >
+                <strong v-else>{{ selectedIncident.label }}</strong>
+                <span v-if="item.attempts !== undefined">{{ item.attempts }} tentative(s)</span>
+                <span v-if="item.request_id">Référence d’appel {{ item.request_id }}</span>
+                <button
+                  v-if="item.contact_id && adminSpaces.includes(selectedIncident.area)"
+                  type="button"
+                  class="secondary"
+                  @click="emit('prospect', selectedIncident.area, item.contact_id)"
+                >
+                  Ouvrir la fiche
+                </button>
+              </div>
+              <time :datetime="item.observed_at">{{
+                auditDate.format(new Date(item.observed_at))
+              }}</time>
+            </li>
+          </ol>
+          <nav
+            v-if="detailPage > 1 || moreDetails"
+            class="incident-pagination"
+            aria-label="Pages du journal technique"
+          >
+            <button
+              type="button"
+              class="secondary"
+              :disabled="detailBusy || detailPage === 1"
+              @click="openIncident(selectedIncident, detailPage - 1)"
+            >
+              Précédent
+            </button>
+            <span>Page {{ detailPage }}</span>
+            <button
+              type="button"
+              class="secondary"
+              :disabled="detailBusy || !moreDetails"
+              @click="openIncident(selectedIncident, detailPage + 1)"
+            >
+              Suivant
+            </button>
+          </nav>
+        </section>
       </section>
       <section v-if="data" class="platform-card">
         <header class="section-heading">
@@ -261,6 +390,18 @@ onMounted(load);
 </template>
 
 <style scoped>
+.incident-details {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dbe5f1;
+}
+.incident-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
 .platform-overview {
   width: min(1120px, calc(100% - 32px));
   margin: 36px auto;
