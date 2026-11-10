@@ -61,6 +61,38 @@ class PortalTests(TestCase):
             [{'workspace': 'assurance', 'role': 'administrator', 'count': 1}],
         )
 
+    @override_settings(MFA_ENABLED=False)
+    def test_platform_actions_manage_admin_and_protect_superadmins(self):
+        from .models import AccessAudit, SessionGeneration
+
+        target = get_user_model().objects.create_user('workspace-admin')
+        path = f'/api/portal/platform/accounts/{target.pk}/actions/'
+        grant = {'action': 'grant_admin', 'workspace': 'isolation', 'reason': 'Attribution test'}
+        self.assertEqual(self.client.post(path, grant).status_code, 403)
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_superuser'])
+        self.assertEqual(self.client.post(path, grant).status_code, 204)
+        membership = Membership.objects.get(user=target, workspace='isolation')
+        self.assertEqual(membership.role, 'administrator')
+        self.assertTrue(membership.active)
+        self.assertEqual(
+            self.client.post(path, {'action': 'suspend', 'reason': 'Incident test'}).status_code,
+            204,
+        )
+        target.refresh_from_db()
+        self.assertFalse(target.is_active)
+        self.assertEqual(SessionGeneration.objects.get(user=target).generation, 1)
+        self.assertTrue(
+            AccessAudit.objects.filter(user=self.user, action='platform.suspend').exists()
+        )
+        own_path = f'/api/portal/platform/accounts/{self.user.pk}/actions/'
+        self.assertEqual(
+            self.client.post(
+                own_path, {'action': 'suspend', 'reason': 'Incident test'}
+            ).status_code,
+            403,
+        )
+
     def test_login_requires_csrf(self):
         client = APIClient(enforce_csrf_checks=True)
         self.assertEqual(
