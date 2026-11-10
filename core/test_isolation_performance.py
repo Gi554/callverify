@@ -104,7 +104,7 @@ class PerformanceTests(TestCase):
         self.assertEqual(data['closers']['results'][1]['closer_id'], 99)
         self.assertEqual(data['closers']['results'][1]['closed'], 1)
 
-    def test_setter_scope_still_excludes_transferred_prospects(self):
+    def test_setter_statistics_preserve_credit_after_transfer(self):
         self.report(performed=True, closed=True)
         self.report(setter=22, closer=88)
         self.auth(21, 'setter')
@@ -112,7 +112,7 @@ class PerformanceTests(TestCase):
         self.assertEqual(data['totals']['closed'], 1)
         self.assertNotIn('closers', data)
         Prospect.objects.filter(pk=self.prospect.pk).update(assigned_setter_id=22)
-        self.assertEqual(self.client.get(self.url).data['totals']['visits'], 0)
+        self.assertEqual(self.client.get(self.url).data['totals']['visits'], 1)
 
     def test_closer_exports_include_all_groups_and_safe_names(self):
         for index in range(27):
