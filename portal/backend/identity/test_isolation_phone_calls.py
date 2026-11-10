@@ -123,6 +123,16 @@ class IsolationCallsTests(TestCase):
         )
         self.assertEqual(self.provider.call_count, 1)
 
+    def test_status_reports_a_journal_match_without_resending_the_call(self):
+        self.provider.return_value = 'unknown'
+        self.assertNotIn('journal_matched', self.post().data)
+        PhoneCallAttempt.objects.filter(pk=self.key).update(journal_status='matched')
+
+        result = self.client.get(self.url + str(self.key) + '/')
+        self.assertEqual(result.data['state'], 'unknown')
+        self.assertTrue(result.data['journal_matched'])
+        self.provider.assert_called_once()
+
     def test_options_never_send_and_reveal_no_extension(self):
         with override_settings(NEWT_ISOLATION_CALLS_ENABLED=False):
             response = self.client.get(self.url + 'options/')
