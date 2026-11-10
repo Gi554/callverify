@@ -23,11 +23,8 @@ def overview(request):
     zone = ZoneInfo('America/Toronto')
     today = timezone.localdate(timezone=zone)
     first = today - timedelta(days=29)
-    memberships = Membership.objects.filter(
-        workspace__in=ROLES, active=True, user__is_active=True
-    ).exclude(
-        role='closer',
-    )
+    memberships = Membership.objects.filter(workspace__in=ROLES, active=True, user__is_active=True)
+    memberships = memberships.exclude(role='closer')
     attempts = PhoneCallAttempt.objects.filter(
         workspace__in=ROLES,
         created_at__gte=datetime.combine(first, time.min, zone),
