@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isDialableNumber } from './phone-number';
 // Calls module: setters and administrators dial through a prospect card; everyone in
 // charge reads the call history. Real dialing stays governed by the telephony settings.
 import { ref, computed, onMounted } from 'vue';
@@ -28,9 +29,7 @@ const query = ref(''),
   searching = ref(false),
   error = ref('');
 // A typed number is dialed directly; the CRM finds or creates the file behind it.
-const canDial = computed(
-  () => /^\+?[0-9 ().-]+$/.test(query.value.trim()) && query.value.replace(/\D/g, '').length >= 10,
-);
+const canDial = computed(() => isDialableNumber(query.value));
 const dialing = ref(false);
 const history = ref<any[]>([]),
   count = ref(0),

@@ -3172,3 +3172,7 @@ Après un refus explicite avant envoi, la fiche affiche le motif et permet de pr
 
 « Vérifier la commande » indique quand le rapprochement avec le journal Phonetico a retrouvé un appel au résultat indéterminé. L’agent peut alors préparer une commande manuellement. Les références absentes ou dont le résultat reste incertain nécessitent encore une procédure de reprise dédiée.
 
+## Recherche par numéro entrant dans Assurance et Isolation
+
+Prospects et le composeur reconnaissent un numéro nord-américain avec ou sans indicatif 1, y compris lorsqu’il est copié avec des espaces insécables ou des tirets typographiques. Une recherche par numéro complet affiche aussi les fiches traitées. Le composeur réutilise la fiche correspondante selon les droits de l’agent.
+
