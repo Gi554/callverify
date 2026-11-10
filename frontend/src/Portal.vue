@@ -130,7 +130,7 @@ async function portal(path: string, body?: any, method?: string) {
   }
   const options = {
     method: method || (body !== undefined ? 'POST' : 'GET'),
-    credentials: 'include',
+    credentials: 'include' as const,
     headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRFToken': csrf } : {}) },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   };
