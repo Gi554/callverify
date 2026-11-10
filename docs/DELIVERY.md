@@ -3168,3 +3168,7 @@ La vérification interne avant composition transmet le protocole HTTPS attendu p
 
 Après un refus explicite avant envoi, la fiche affiche le motif et permet de préparer une nouvelle commande sans rester bloquée sur une référence absente du journal. Un résultat incertain conserve sa référence pour vérification. La consultation de l’historique Isolation transmet le protocole HTTPS attendu sur le lien interne.
 
+## Reprise d’un appel retrouvé dans le journal
+
+« Vérifier la commande » indique quand le rapprochement avec le journal Phonetico a retrouvé un appel au résultat indéterminé. L’agent peut alors préparer une commande manuellement. Les références absentes ou dont le résultat reste incertain nécessitent encore une procédure de reprise dédiée.
+

@@ -35,7 +35,10 @@ const labels: Record<string, string> = {
   dispatching: 'Commande réservée, résultat à vérifier',
 };
 const unresolved = computed(
-  () => !!requestId.value && !['accepted', 'rejected', 'blocked'].includes(result.value?.state),
+  () =>
+    !!requestId.value &&
+    !result.value?.journal_matched &&
+    !['accepted', 'rejected', 'blocked'].includes(result.value?.state),
 );
 function remember(id: string) {
   requestId.value = id;
@@ -150,7 +153,11 @@ onMounted(() => {
     </div>
     <p v-if="pending" role="status" class="call-note">Traitement de la demande…</p>
     <p v-if="result" role="status" class="call-note">
-      {{ labels[result.state] || 'État inconnu' }}.
+      {{
+        result.journal_matched
+          ? 'Appel retrouvé dans le journal Phonetico'
+          : labels[result.state] || 'État inconnu'
+      }}.
       {{ result.definition || 'Une acceptation ne prouve ni sonnerie distante ni décrochage.' }}
     </p>
     <p v-if="error" role="alert" class="call-note call-error">{{ error }}</p>
