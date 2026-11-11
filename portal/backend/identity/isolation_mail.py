@@ -177,7 +177,7 @@ def sync():
         prepared.append((pk, user, visit, name, row['kind'], *stamps, sections))
         previous = pk
     counts = {'queued': 0, 'existing': 0, 'skipped': 0}
-    reminders = []
+    client_texts = []
 
     def valid_address(email):
         try:
@@ -264,17 +264,19 @@ def sync():
                     )
                     relay.save(update_fields=['mail'])
                     counts['queued'] += 1
-                    if kind == 'result_due':
-                        reminders.append((user, pk, starts))
+                    client_texts.append((kind, user, pk, visit, starts))
     IsolationMailCursor.objects.filter(pk=1, after_id=cursor.after_id).update(
         after_id=previous if len(rows) == 100 else 0
     )
-    for user, event, starts in reminders:
+    for kind, user, event, visit, starts in client_texts:
         try:
-            from .isolation_sms import remind_client
+            from .isolation_sms import confirm_client_booking, remind_client
 
-            remind_client(user, event, starts)
+            if kind == 'booked':
+                confirm_client_booking(user, event, visit, starts)
+            else:
+                remind_client(user, event, starts)
         except Exception:
-            # A failed reminder SMS never blocks the e-mail queue; no exception text is kept.
+            # A failed SMS never blocks the e-mail queue; no exception text is kept.
             pass
     return counts
