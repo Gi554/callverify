@@ -14,6 +14,7 @@ from .models import SmsAttempt
     NEWT_USERNAME='test',
     NEWT_PASSWORD='test',
     NEWT_SMS_AUTOMATIC_FROM='2026-01-01T00:00:00Z',
+    ISOLATION_PROSPECT_SMS_ENABLED=True,
 )
 class AutomaticSmsTests(TestCase):
     def setUp(self):
@@ -24,6 +25,15 @@ class AutomaticSmsTests(TestCase):
             'created_at': (now - timedelta(days=2)).isoformat(),
             'starts_at': (now + timedelta(hours=23)).isoformat(),
         }
+
+    @override_settings(ISOLATION_PROSPECT_SMS_ENABLED=False)
+    @patch('portal.backend.identity.isolation_sms.sms.send')
+    @patch('portal.backend.identity.isolation_sms.load')
+    def test_disabling_prospect_sms_skips_the_queue_even_when_newt_is_configured(self, load, send):
+        self.assertEqual(sync(), 0)
+        load.assert_not_called()
+        send.assert_not_called()
+        self.assertFalse(SmsAttempt.objects.exists())
 
     @patch('portal.backend.identity.isolation_sms.sms.send', return_value='unknown')
     @patch('portal.backend.identity.isolation_sms.load')
