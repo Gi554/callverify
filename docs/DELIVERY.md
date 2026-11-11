@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Session d’appels Isolation
+
+La session automatique charge le lot actif du compte connecté, page par page. Les rappels,
+la recherche et l’affichage des fiches traitées restent des filtres du tableau Prospects.
+Après chaque fiche, la session relit le lot actif avant de proposer le décompte du prochain
+appel. Les tests frontend simulent un tableau filtré vide et un lot actif sur plusieurs
+pages. La commande Phonetico reste à valider avec un poste réel en production.
+
 ## Coordonnées du lot Isolation
 
 La qualification reconnaît `addresses_address1`, `villes` et `addresses_zip` dans les lignes d’import déjà enregistrées. Ces valeurs préremplissent l’adresse, la ville et le code postal avec les contrôles existants, sans réimporter la liste ni écraser les brouillons.
