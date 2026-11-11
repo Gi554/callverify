@@ -103,6 +103,30 @@ class IsolationC2Tests(TestCase):
         self.auth(22, 'setter')
         self.assertEqual(self.client.get(self.draft_url).status_code, 404)
 
+    def test_existing_import_with_exported_address_columns_prefills_the_draft(self):
+        from .models import ImportBatch, ImportRow
+
+        batch = ImportBatch.objects.create(
+            campaign=self.prospect.campaign, original='synthetic.csv'
+        )
+        ImportRow.objects.create(
+            batch=batch,
+            prospect=self.prospect,
+            line=2,
+            source={
+                'addresses_address1': '12 rue Test',
+                'villes': 'Montréal',
+                'addresses_zip': 'h2x1y4',
+            },
+        )
+        Prospect.objects.filter(pk=self.prospect.pk).update(c2={})
+        response = self.client.get(self.draft_url)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['defaults']['address'], '12 rue Test')
+        self.assertEqual(response.data['defaults']['city'], 'Montréal')
+        self.assertEqual(response.data['defaults']['postal_code'], 'H2X 1Y4')
+        self.assertEqual(response.data['c2'], {})
+
     def test_partial_draft_keeps_unknown_answers_and_does_not_touch_lookup(self):
         response = self.client.post(
             self.draft_url, {'revision': 0, 'c2': {'city': 'Québec'}}, format='json'
