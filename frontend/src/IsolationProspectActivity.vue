@@ -5,6 +5,8 @@ const names = ref<Record<number, string>>({});
 import IsolationCallResult from './IsolationCallResult.vue';
 import IsolationFollowUps from './IsolationFollowUps.vue';
 import IsolationC2 from './IsolationC2.vue';
+import CallAction from './CallAction.vue';
+import type { FollowUpReference } from './follow-up';
 const tab = ref('call');
 const callBusy = ref(false),
   taskBusy = ref(false),
@@ -19,8 +21,16 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   // Call session: closing the file moves on to the next prospect.
   session?: boolean;
+  followUp?: FollowUpReference;
+  taskReadOnly?: boolean;
 }>();
-const emit = defineEmits<{ saved: []; close: []; book: []; busy: [value: boolean] }>();
+const emit = defineEmits<{
+  saved: [];
+  close: [];
+  book: [];
+  taskCompleted: [];
+  busy: [value: boolean];
+}>();
 const prospect = ref<any>(null),
   rows = ref<any[]>([]),
   page = ref(1),
@@ -31,6 +41,7 @@ const prospect = ref<any>(null),
   body = ref(''),
   status = ref('in_progress'),
   callback = ref('');
+const commandBusy = ref(false);
 const statuses: Record<string, string> = {
   to_contact: 'À contacter',
   in_progress: 'En cours',
@@ -66,6 +77,10 @@ async function load() {
   }
 }
 async function callSaved(result: string) {
+  if (props.followUp) {
+    emit('taskCompleted');
+    return;
+  }
   await load();
   emit('saved');
   if (
@@ -77,6 +92,16 @@ async function callSaved(result: string) {
     await nextTick();
     close();
   }
+}
+async function refreshContact() {
+  prospect.value = await props.request(`work-queue/${props.prospectId}/`);
+}
+async function prepareTaskCall(id: string) {
+  await refreshContact();
+  return props.request(`work-queue/${props.prospectId}/call-intent/`, {
+    revision: prospect.value.revision,
+    request_id: id,
+  });
 }
 async function save() {
   if (!prospect.value) return;
@@ -105,20 +130,26 @@ async function save() {
   }
 }
 watch(
-  [busy, callBusy, taskBusy, c2Busy],
-  () => emit('busy', busy.value || callBusy.value || taskBusy.value || c2Busy.value),
+  [busy, callBusy, taskBusy, c2Busy, commandBusy],
+  () =>
+    emit(
+      'busy',
+      busy.value || callBusy.value || taskBusy.value || c2Busy.value || commandBusy.value,
+    ),
   { flush: 'sync' },
 );
-function close() {
-  if (busy.value || callBusy.value || taskBusy.value) return;
-  if (
-    (body.value || callback.value || callDirty.value || taskDirty.value || c2Dirty.value) &&
-    !window.confirm('Quitter sans enregistrer les saisies ?')
-  )
-    return;
-  emit('close');
+function canClose() {
+  if (busy.value || callBusy.value || taskBusy.value || c2Busy.value || commandBusy.value)
+    return false;
+  return (
+    !(body.value || callback.value || callDirty.value || taskDirty.value || c2Dirty.value) ||
+    window.confirm('Quitter sans enregistrer les saisies ?')
+  );
 }
-defineExpose({ close, reload: load });
+function close() {
+  if (canClose()) emit('close');
+}
+defineExpose({ close, canClose, reload: load });
 onMounted(load);
 const activityLabels: Record<string, string> = {
   note: 'Note',
@@ -151,6 +182,22 @@ const resultLabels: Record<string, string> = {
           : 'Aucun rappel programmé'
       }}</small>
     </div>
+    <div v-if="followUp && prospect" class="sheet-section">
+      <strong>{{ prospect.name || 'Prospect sans nom' }}</strong>
+      <p>{{ prospect.phone || prospect.raw_phone || 'Numéro non renseigné' }}</p>
+      <CallAction
+        v-if="!taskReadOnly"
+        workspace="isolation"
+        :resource-id="prospectId"
+        :phone="prospect.phone || prospect.raw_phone"
+        label="Appeler le prospect"
+        :portal="portal"
+        :prepare="prepareTaskCall"
+        :before-open="refreshContact"
+        :disabled="busy || callBusy || taskBusy || c2Busy"
+        @busy="commandBusy = $event"
+      />
+    </div>
     <nav class="sheet-tabs" aria-label="Rubriques du prospect">
       <button
         v-for="item in [
@@ -168,23 +215,24 @@ const resultLabels: Record<string, string> = {
         {{ item.label }}
       </button>
     </nav>
-    <div class="sheet-section" v-show="tab === 'call'">
+    <div v-if="!taskReadOnly" v-show="tab === 'call'" class="sheet-section">
       <IsolationCallResult
         v-if="prospect"
         :prospect="prospect"
         :request="request"
-        :blocked="busy || taskBusy"
+        :follow-up="followUp"
+        :blocked="busy || taskBusy || commandBusy"
         @busy="callBusy = $event"
         @dirty="callDirty = $event"
         @saved="callSaved"
-        @book="emit('book')"
+        @book="(!followUp || canClose()) && emit('book')"
       />
     </div>
     <div class="sheet-section" v-show="tab === 'qualification'">
       <IsolationC2
         :prospect-id="prospectId"
         :request="request"
-        :blocked="busy || callBusy || taskBusy"
+        :blocked="busy || callBusy || taskBusy || commandBusy || taskReadOnly"
         @busy="c2Busy = $event"
         @dirty="c2Dirty = $event"
         @saved="
@@ -194,7 +242,12 @@ const resultLabels: Record<string, string> = {
       />
     </div>
     <div class="sheet-section" v-show="tab === 'notes'">
-      <form v-if="prospect" @submit.prevent="save" @input="changed" @change="changed">
+      <form
+        v-if="prospect && !taskReadOnly"
+        @submit.prevent="save"
+        @input="changed"
+        @change="changed"
+      >
         <fieldset :disabled="busy || callBusy || taskBusy">
           <label
             >Action<select v-model="kind">
@@ -234,7 +287,7 @@ const resultLabels: Record<string, string> = {
       <IsolationFollowUps
         :prospect-id="prospectId"
         :request="request"
-        :blocked="busy || callBusy"
+        :blocked="busy || callBusy || commandBusy || taskReadOnly"
         @busy="taskBusy = $event"
         @dirty="taskDirty = $event"
         @saved="

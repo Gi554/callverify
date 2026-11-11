@@ -22,18 +22,22 @@ import AssuranceContactNotes from './AssuranceContactNotes.vue';
 import AssuranceContactDocuments from './AssuranceContactDocuments.vue';
 import AssuranceCustomValues from './AssuranceCustomValues.vue';
 import AssuranceSharedFields from './AssuranceSharedFields.vue';
+import type { FollowUpReference } from './follow-up';
 const props = defineProps<{
   contact: any;
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   workflow?: 'edit' | 'call';
+  followUp?: FollowUpReference;
+  taskReadOnly?: boolean;
   // Call session: the call starts by itself and closing the file moves on to the next prospect.
   autoCall?: boolean;
 }>();
 const emit = defineEmits<{
   close: [];
   changed: [];
+  taskCompleted: [advance: boolean];
   busy: [value: boolean];
   summary: [value: any];
 }>();
@@ -56,7 +60,9 @@ const history = ref<any[]>([]),
   historyPage = ref(1),
   historyCount = ref(0),
   showHistory = ref(false);
-const canWrite = computed(() => ['setter', 'administrator'].includes(props.role));
+const canWrite = computed(
+  () => !props.taskReadOnly && ['setter', 'administrator'].includes(props.role),
+);
 const pipeline = ref<any>(null),
   nextStatus = ref(current.value.status),
   statusReason = ref('');
@@ -277,8 +283,21 @@ function qualificationPayload() {
 async function transmitted(row: any) {
   current.value.revision = row.contact_revision;
   qualification.value?.markSaved();
+  if (props.followUp) {
+    await completeTask(false);
+    return;
+  }
   await followups.value?.booked(row);
   emit('changed');
+}
+async function completeTask(advance: boolean) {
+  busy.value = true;
+  try {
+    await release();
+    emit('taskCompleted', advance);
+  } finally {
+    busy.value = false;
+  }
 }
 async function callIntent(id: string) {
   if (saveTimer) clearTimeout(saveTimer);
@@ -416,7 +435,7 @@ onBeforeUnmount(() => {
     </nav>
     <div ref="flowBody" class="drawer-scroll">
       <p v-if="error" role="alert" class="drawer-feedback drawer-error">{{ error }}</p>
-      <div v-if="!token" class="drawer-access">
+      <div v-if="!token && canWrite" class="drawer-access">
         <p>
           {{
             blocked
@@ -445,6 +464,7 @@ onBeforeUnmount(() => {
           workspace="assurance"
           :resource-id="current.id"
           :phone="current.phone"
+          :label="followUp ? 'Appeler le prospect' : undefined"
           :portal="portal"
           :prepare="callIntent"
           :before-open="prepareCall"
@@ -514,6 +534,7 @@ onBeforeUnmount(() => {
           :contact-id="current.id"
           :revision="current.revision"
           :token="token"
+          :follow-up="followUp"
           :blocked="busy || saving || bookingBusy || callBusy"
           :request="request"
           :prepare="prepareCall"
@@ -522,7 +543,7 @@ onBeforeUnmount(() => {
           @qualify="changeFlow('booking')"
           @review="flowTab = 'exchange'"
           @saved="emit('changed')"
-          @advance="close"
+          @advance="followUp ? completeTask(true) : close()"
         />
       </div>
       <div v-show="flowTab === 'booking'" class="drawer-view">
@@ -581,6 +602,7 @@ onBeforeUnmount(() => {
           "
         />
         <AssuranceTransmission
+          v-if="!taskReadOnly"
           :contact-id="current.id"
           :contact-revision="current.revision"
           :lease-token="token"
@@ -590,6 +612,7 @@ onBeforeUnmount(() => {
           :blocked="busy || saving || callBusy || qualificationBusy"
           :prepare="prepareBooking"
           :qualification="qualificationPayload"
+          :follow-up="followUp"
           @busy="bookingBusy = $event"
           @dirty="transmissionDirty = $event"
           @booked="transmitted"

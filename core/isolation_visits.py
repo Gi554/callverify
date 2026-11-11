@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from packages.access.isolation_visits import verify_booking
 from packages.access.calendar_window import calendar_window
+from packages.access.follow_up import FollowUpReference
 from .models import (
     Prospect,
     IsolationVisit,
@@ -59,6 +60,7 @@ class SlotInput(serializers.Serializer):
 
 
 class BookingInput(SlotInput):
+    follow_up = FollowUpReference(required=False)
     prospect_email = serializers.EmailField(max_length=254, required=False, allow_blank=True)
     client_followup_id = serializers.IntegerField(min_value=1, required=False)
     unqualified_id = serializers.IntegerField(min_value=1, required=False)
@@ -405,6 +407,8 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
         serializer = BookingInput(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if request.user.role == 'client' and 'follow_up' in data:
+            raise PermissionDenied('Tâche réservée à l’équipe Isolation.')
         if request.user.role == 'client' and data['publication'] != 'google':
             raise PermissionDenied('La reprise client doit être publiée dans son agenda Google.')
         prospect = booking_subject(
@@ -431,6 +435,8 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
             canonical['unqualified_id'] = data['unqualified_id']
         if 'client_followup_id' in data:
             canonical['client_followup_id'] = data['client_followup_id']
+        if 'follow_up' in data:
+            canonical['follow_up'] = data['follow_up']
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
 
         def replay(row):
@@ -547,6 +553,12 @@ class IsolationVisitViewSet(SharingMixin, ResultMixin, viewsets.GenericViewSet):
             if not created:
                 transaction.set_rollback(True)
                 return replay(row)
+            if reference := data.get('follow_up'):
+                from .isolation_followups import finish_follow_up
+
+                finish_follow_up(
+                    prospect, request.user, reference, f'Visite programmée · n° {row.pk}'
+                )
             if pending:
                 pending.active = False
                 pending.programmed_visit = row

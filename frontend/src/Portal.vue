@@ -946,7 +946,6 @@ onMounted(async () => {
                       :request="assurance"
                       @changed="refreshAssurance"
                       @navigate="selectModule"
-                      @open-prospect="openProspect"
                     />
                     <AssuranceFollowUps
                       v-else-if="assuranceModule === 'followups' && role !== 'advisor'"
@@ -1001,6 +1000,7 @@ onMounted(async () => {
                         ['setter', 'administrator'].includes(role)
                       "
                       :role="role"
+                      :portal="portal"
                       :request="isolation"
                       @navigate="selectModule"
                       @saved="refreshIsolation"

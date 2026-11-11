@@ -281,6 +281,7 @@ def task_output(row, user=None):
         'reason': row.reason,
         'priority': row.priority,
         'due_at': row.due_at,
+        'created_at': row.created_at,
         'closed_at': row.closed_at,
         'resolution': row.resolution,
         'revision': row.revision,

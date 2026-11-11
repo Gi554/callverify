@@ -7,6 +7,7 @@ import { visitName, initials, visitStatus, visitTone } from './isolation-visit-d
 import IsolationC2 from './IsolationC2.vue';
 import IsolationC2Snapshot from './IsolationC2Snapshot.vue';
 import { bookingInterval } from './booking-time';
+import type { FollowUpReference } from './follow-up';
 import AvailabilitySlots from './AvailabilitySlots.vue';
 import IsolationVisitResult from './IsolationVisitResult.vue';
 import IsolationSharedActivities from './IsolationSharedActivities.vue';
@@ -22,6 +23,7 @@ const props = defineProps<{
   prospectId?: number;
   reactivationId?: number;
   clientFollowupId?: number;
+  followUp?: FollowUpReference;
   role: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -55,7 +57,13 @@ function visitDate(value: string) {
     timeStyle: 'short',
   }).format(new Date(value));
 }
-const emit = defineEmits<{ close: []; changed: []; busy: [value: boolean]; updated: [row: any] }>();
+const emit = defineEmits<{
+  close: [];
+  changed: [];
+  busy: [value: boolean];
+  updated: [row: any];
+  taskCompleted: [publicationWarning: string];
+}>();
 const c2 = ref<any>(null),
   c2Busy = ref(false),
   c2Dirty = ref(false),
@@ -234,9 +242,19 @@ async function save() {
       if (props.reactivationId) body.unqualified_id = props.reactivationId;
       if (props.clientFollowupId) body.client_followup_id = props.clientFollowupId;
       if (previousVisit.value) body.previous_visit_id = previousVisit.value.id;
+      if (props.followUp) body.follow_up = props.followUp;
       saved = await props.request('visits/', body);
     }
     await publish(saved);
+    if (props.followUp && !record) {
+      emit(
+        'taskCompleted',
+        publicationMessage.value
+          ? 'La visite est enregistrée dans Orvia. Vérifiez son état de publication Google dans les visites.'
+          : '',
+      );
+      return;
+    }
     editing.value = null;
     previousVisit.value = null;
     changed();
@@ -459,7 +477,7 @@ onMounted(() => run(load));
       </fieldset>
     </form>
     <button
-      v-if="prospect && ['setter', 'administrator'].includes(role) && !editing"
+      v-if="prospect && ['setter', 'administrator'].includes(role) && !editing && !followUp"
       class="secondary"
       :disabled="busy || c2Busy"
       @click="nonqualified = true"

@@ -41,7 +41,7 @@ code =
 code = code.replace(
   /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
   (_, name) =>
-    `const ${name}={props:['open','title','autoOpen','role','initialClose'],setup(p,{slots}){return()=>(${JSON.stringify(name)}==='SidePanel'&&!p.open)?null:stubH('div',{'data-component':${JSON.stringify(name)},'data-title':p.title,'data-auto-open':p.autoOpen,'data-initial-close':p.initialClose},slots.default?.())}}`,
+    `const ${name}={props:['open','title','autoOpen','role','initialClose','prospectId','followUp'],emits:['book'],setup(p,{slots,emit}){return()=>(${JSON.stringify(name)}==='SidePanel'&&!p.open)?null:stubH('div',{'data-component':${JSON.stringify(name)},'data-title':p.title,'data-auto-open':p.autoOpen,'data-initial-close':p.initialClose,'data-prospect-id':p.prospectId,'data-follow-up':p.followUp,onBook:()=>emit('book')},slots.default?.())}}`,
 )
 code = "import {h as stubH} from '" + pathToFileURL(require.resolve('vue')).href + "';" + code
 const component = (await import(url(code))).default
@@ -113,12 +113,14 @@ function fixture(role = 'setter') {
     prospect_id: 7,
     prospect_name: 'Prospect Démo',
     due_at: '2030-01-01T15:00:00Z',
+    created_at: '2029-12-31T15:00:00Z',
     note: 'Rappel de démonstration',
     closed_at: null,
     revision: 2,
   }
   const app = renderer.createApp(component, {
     role,
+    portal: async () => ({}),
     request: async (path, body) => {
       requests.push({ path, body })
       if (!path.startsWith('follow-ups/?')) return task
@@ -165,6 +167,30 @@ test('Isolation task board loads scoped buckets and opens finishing in the right
       f.requests.some((r) => r.body !== undefined),
       false,
     )
+  } finally {
+    f.app.unmount()
+  }
+})
+test('Isolation opens qualification for the same task and prospect without a write', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    await all(f.root)
+      .find((n) => n.tag === 'button' && text(n).trim() === 'Ouvrir')
+      .props.onClick()
+    await flush()
+    assert.ok(text(f.root).includes('Créé le'))
+    const activity = all(f.root).find(
+      (n) => n.props?.['data-component'] === 'IsolationProspectActivity',
+    )
+    assert.equal(activity.props['data-prospect-id'], 7)
+    assert.deepEqual(activity.props['data-follow-up'], { id: 5, revision: 2 })
+    activity.props.onBook()
+    await flush()
+    const booking = all(f.root).find((n) => n.props?.['data-component'] === 'IsolationVisits')
+    assert.equal(booking.props['data-prospect-id'], 7)
+    assert.deepEqual(booking.props['data-follow-up'], { id: 5, revision: 2 })
+    assert.ok(f.requests.every((r) => r.body === undefined))
   } finally {
     f.app.unmount()
   }
