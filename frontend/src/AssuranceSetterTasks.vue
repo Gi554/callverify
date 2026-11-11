@@ -584,19 +584,12 @@ onBeforeUnmount(() => {
           : ''
       "
       :close-disabled="saving || adminBusy || prospectBusy"
+      :back-label="linkedProspect ? 'Retour à la tâche' : undefined"
+      :scrollable="!linkedProspect"
       @request-close="
         linkedProspect || role !== 'administrator' ? closePanel() : adminEditor?.close()
       "
     >
-      <section v-if="selected && linkedProspect" class="task-detail-block">
-        <h3>Le suivi à réaliser</h3>
-        <p>{{ selected.reason }}</p>
-        <p v-if="selected.created_at">Créée le {{ date(selected.created_at) }} · Montréal</p>
-        <p>Échéance le {{ date(selected.due_at) }} · Montréal</p>
-        <button class="tasks-filter" :disabled="prospectBusy" @click="closePanel">
-          Retour à la tâche
-        </button>
-      </section>
       <section
         v-if="selected && !linkedProspect && role === 'administrator' && portal"
         class="task-detail-block"
@@ -774,7 +767,7 @@ onBeforeUnmount(() => {
           Actualiser la tâche
         </button>
       </div>
-      <template #footer
+      <template v-if="!linkedProspect" #footer
         ><div v-if="role === 'administrator'" class="task-detail-footer">
           <button class="tasks-filter" :disabled="adminBusy" @click="adminEditor?.close()">
             Fermer

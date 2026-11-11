@@ -41,7 +41,7 @@ code =
 code = code.replace(
   /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
   (_, name) =>
-    `const ${name}={props:['open','title','autoOpen','role','taskId'],setup(p,{slots}){return()=>(${JSON.stringify(name)}==='SidePanel'&&!p.open)?null:stubH('div',{'data-component':${JSON.stringify(name)},'data-title':p.title,'data-auto-open':p.autoOpen,'data-task-id':p.taskId},slots.default?.())}}`,
+    `const ${name}={props:['open','title','autoOpen','role','taskId','scrollable','backLabel'],setup(p,{slots}){return()=>(${JSON.stringify(name)}==='SidePanel'&&!p.open)?null:stubH('div',{'data-component':${JSON.stringify(name)},'data-title':p.title,'data-auto-open':p.autoOpen,'data-task-id':p.taskId,'data-scrollable':p.scrollable,'data-back-label':p.backLabel,'data-footer':!!slots.footer},slots.default?.())}}`,
 )
 code = "import {h as stubH} from '" + pathToFileURL(require.resolve('vue')).href + "';" + code
 code = code.replace(
@@ -178,7 +178,11 @@ test('opening an Assurance task loads its prospect within the same drawer withou
       all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceFollowUps'),
       false,
     )
-    assert.ok(text(f.root).includes('Le suivi à réaliser'))
+    assert.equal(text(f.root).includes('Le suivi à réaliser'), false)
+    const panel = all(f.root).find((n) => n.props?.['data-component'] === 'SidePanel')
+    assert.equal(panel.props['data-back-label'], 'Retour à la tâche')
+    assert.equal(panel.props['data-scrollable'], false)
+    assert.equal(panel.props['data-footer'], false)
     assert.ok(f.reads.includes('contacts/42/'))
     assert.ok(all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceContactEditor'))
     assert.equal(f.writes.length, 0)

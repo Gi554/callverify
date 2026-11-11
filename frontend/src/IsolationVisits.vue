@@ -892,7 +892,7 @@ onMounted(() => run(load));
         Suivant</button
       ><button class="secondary" @click="history = null">Fermer l’historique</button>
     </section>
-    <button v-if="!listView" class="secondary" :disabled="busy" @click="close">
+    <button v-if="!listView && !followUp" class="secondary" :disabled="busy" @click="close">
       Fermer les visites
     </button>
   </section>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount, useId } from 'vue';
-import { X, PanelRight } from 'lucide-vue-next';
+import { ArrowLeft, X, PanelRight } from 'lucide-vue-next';
 const props = withDefaults(
   defineProps<{
     open: boolean;
@@ -9,6 +9,7 @@ const props = withDefaults(
     eyebrow?: string;
     closeDisabled?: boolean;
     scrollable?: boolean;
+    backLabel?: string;
   }>(),
   { eyebrow: 'MON ESPACE', scrollable: true },
 );
@@ -33,17 +34,30 @@ onBeforeUnmount(() => dialog.value?.close());
   <dialog
     ref="dialog"
     class="side-panel"
+    :class="{ 'panel-with-back': backLabel }"
     :aria-labelledby="headingId"
     @cancel.prevent="requestClose"
   >
-    <header class="side-panel-heading">
-      <div class="panel-heading-icon"><PanelRight :size="21" /></div>
+    <header class="side-panel-heading" :class="{ 'panel-heading-compact': backLabel }">
+      <button
+        v-if="backLabel"
+        type="button"
+        class="panel-close"
+        :disabled="closeDisabled"
+        :aria-label="backLabel"
+        :title="backLabel"
+        @click="requestClose"
+      >
+        <ArrowLeft :size="21" aria-hidden="true" />
+      </button>
+      <div v-else class="panel-heading-icon"><PanelRight :size="21" /></div>
       <div class="panel-heading-text">
         <span>{{ eyebrow }}</span>
         <h2 :id="headingId">{{ title }}</h2>
         <p v-if="subtitle">{{ subtitle }}</p>
       </div>
       <button
+        v-if="!backLabel"
         type="button"
         class="panel-close"
         :disabled="closeDisabled"
@@ -84,6 +98,9 @@ onBeforeUnmount(() => dialog.value?.close());
   background: #162d4938;
   animation: panel-shade 0.18s ease-out;
 }
+.side-panel.panel-with-back {
+  width: min(720px, 100vw);
+}
 .side-panel-heading {
   display: flex;
   align-items: center;
@@ -103,6 +120,9 @@ onBeforeUnmount(() => dialog.value?.close());
   background: #fff;
   color: #7388d7;
   border-radius: 13px;
+}
+.side-panel-heading.panel-heading-compact {
+  padding-block: 12px;
 }
 .panel-heading-text {
   flex: 1;

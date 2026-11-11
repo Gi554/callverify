@@ -3214,3 +3214,5 @@ Le panneau de tâche indique le motif, la date de création et l’échéance à
 
 « Rendez-vous pris » ouvre la qualification et le formulaire de réservation existant. La transmission Assurance au conseiller ou l’enregistrement de la visite Isolation clôture la tâche d’origine dans la même transaction. Les droits, les notifications et la publication Google continuent de suivre le parcours de réservation de chaque espace.
 
+Le panneau de fiche Assurance utilise un seul défilement, sous les onglets, sans commandes de navigation en double. La flèche dans son en-tête ramène au détail du rappel. Dans Isolation, le retour depuis la réservation ou la modification du rappel utilise la même flèche.
+

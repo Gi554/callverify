@@ -314,17 +314,20 @@ onBeforeUnmount(() => {
       :title="selected?.prospect_name || 'Rappel du prospect'"
       eyebrow="ISOLATION · SUIVI"
       :close-disabled="detailBusy"
+      :back-label="pane === 'work' ? undefined : 'Retour à la tâche'"
       @request-close="requestClose"
     >
-      <section v-if="selected" class="task-detail-block">
+      <section v-if="selected && pane === 'work'" class="task-detail-block">
         <h3>{{ selected.closed_at ? 'Rappel terminé' : 'Le suivi à réaliser' }}</h3>
         <p>{{ selected.note || 'Rappel du prospect' }}</p>
         <p v-if="selected.absence_visit_id">Visite non tenue n° {{ selected.absence_visit_id }}</p>
-        <p v-if="selected.created_at">Créé le {{ date(selected.created_at) }} · Montréal</p>
-        <p>Échéance le {{ date(selected.due_at) }} · Montréal</p>
+        <p>
+          <span v-if="selected.created_at">Créé le {{ date(selected.created_at) }} · </span>
+          Échéance le {{ date(selected.due_at) }} · Montréal
+        </p>
         <p v-if="selected.closed_at">{{ selected.resolution }}</p>
         <button
-          v-if="!selected.closed_at && pane === 'work'"
+          v-if="!selected.closed_at"
           type="button"
           class="secondary"
           :disabled="detailBusy"

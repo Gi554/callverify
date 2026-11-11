@@ -406,6 +406,7 @@ onBeforeUnmount(() => {
   <section
     v-if="workflow || canWrite"
     class="guided-editor"
+    :class="{ 'task-prospect-editor': followUp }"
     aria-label="Fiche prospect"
     @pointerdown="activity"
     @keydown="activity"
@@ -619,7 +620,10 @@ onBeforeUnmount(() => {
         />
       </div>
     </div>
-    <footer class="drawer-actions">
+    <footer
+      v-if="!followUp || closePrompt || saving || busy || pendingDrafts || dirty"
+      class="drawer-actions"
+    >
       <div v-if="closePrompt" class="drawer-unsaved" role="alert">
         <p>
           Des modifications ne sont pas encore enregistrées. Vous pouvez les conserver en gardant
@@ -627,7 +631,7 @@ onBeforeUnmount(() => {
         </p>
         <button class="secondary" @click="closePrompt = false">Rester sur la fiche</button
         ><button class="drawer-discard" :disabled="blocked" @click="discardAndClose">
-          Fermer sans ces saisies
+          {{ followUp ? 'Revenir sans ces saisies' : 'Fermer sans ces saisies' }}
         </button>
       </div>
       <div v-else class="drawer-save-state" role="status">
@@ -649,7 +653,7 @@ onBeforeUnmount(() => {
                     : 'Coordonnées à jour'
         }}</span>
       </div>
-      <div class="drawer-action-row">
+      <div v-if="!followUp" class="drawer-action-row">
         <button
           v-if="flowTab !== 'exchange'"
           class="secondary"
@@ -1238,6 +1242,17 @@ onBeforeUnmount(() => {
   border: 1px solid #dceee4;
   border-radius: 13px;
   margin-bottom: 24px;
+}
+.task-prospect-editor .drawer-scroll {
+  padding-block: 14px 20px;
+}
+.task-prospect-editor .drawer-actions {
+  padding-block: 8px;
+  box-shadow: none;
+}
+.task-prospect-editor .drawer-save-state,
+.task-prospect-editor .drawer-unsaved {
+  margin-bottom: 0;
 }
 .call-number {
   display: flex;

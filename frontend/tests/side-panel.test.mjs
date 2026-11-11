@@ -65,9 +65,9 @@ const all = (node) => [node, ...(node.children || []).flatMap(all)]
 async function flush() {
   for (let i = 0; i < 4; i++) await nextTick()
 }
-async function fixture() {
+async function fixture(backLabel) {
   const root = { children: [] },
-    state = reactive({ open: true, closeDisabled: false })
+    state = reactive({ open: true, closeDisabled: false, backLabel })
   let requests = 0
   const app = renderer.createApp({
     setup: () => () =>
@@ -121,4 +121,17 @@ test('parent controls opening, closing and teardown', async () => {
   assert.equal(f.dialog.open, true)
   f.app.unmount()
   assert.equal(f.dialog.open, false)
+})
+test('back mode shows only the labelled return control and leaves navigation to the parent', async () => {
+  const f = await fixture('Retour à la tâche')
+  try {
+    const buttons = all(f.dialog).filter((node) => node.tag === 'button')
+    assert.equal(buttons.length, 1)
+    assert.equal(buttons[0].props['aria-label'], 'Retour à la tâche')
+    buttons[0].props.onClick()
+    assert.equal(f.requests(), 1)
+    assert.equal(f.dialog.open, true)
+  } finally {
+    f.app.unmount()
+  }
 })
