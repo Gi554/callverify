@@ -136,9 +136,10 @@ function fixture(role = 'setter', ownLot = false) {
         if (q.get('owner') === 'me')
           return {
             count: 2,
-            next: null,
-            results: ownLot ? [row(1, 'to_contact'), row(2, 'to_contact')] : [],
+            next: page === 1 ? 'next' : null,
+            results: role === 'setter' || ownLot ? [row(page, 'to_contact')] : [],
           }
+        if (q.get('due') === 'true') return { count: 0, next: null, results: [] }
         return status === 'to_contact'
           ? {
               count: 27,
@@ -272,11 +273,21 @@ test('administrator opens the weekly lot panel; setter does not get it', async (
 const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
 const labelled = (f, label) =>
   all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
-test('setter runs a call session with a countdown between prospects', async () => {
+test('setter calls from the paginated active lot even when the reminders filter is empty', async () => {
   const f = fixture('setter')
   try {
     await flush()
-    labelled(f, 'Lancer une session d’appels').props.onClick()
+    const reminders = all(f.root).find(
+      (n) => n.tag === 'label' && text(n).includes('Rappels à traiter'),
+    )
+    const checkbox = all(reminders).find((n) => n.tag === 'input')
+    checkbox.props['onUpdate:modelValue'](true)
+    await checkbox.props.onChange()
+    await flush()
+    assert.match(text(f.root), /0 prospect\(s\)/)
+    const start = labelled(f, 'Lancer une session d’appels')
+    assert.equal(start.props.disabled, false)
+    await start.props.onClick()
     await flush()
     const first = component_(f, 'IsolationProspectActivity')
     assert.equal(first.props.session, true)
@@ -288,6 +299,8 @@ test('setter runs a call session with a countdown between prospects', async () =
     await flush()
     assert.ok(component_(f, 'IsolationProspectActivity'))
     assert.equal(f.requests.filter((r) => r.path === 'work-queue/2/').length > 0, true)
+    assert.ok(f.requests.some((r) => r.path === 'work-queue/?owner=me&queue=active&page=2'))
+    assert.match(text(f.root), /0 prospect\(s\)/)
   } finally {
     f.app.unmount()
   }
