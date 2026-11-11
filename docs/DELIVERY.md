@@ -3204,3 +3204,7 @@ Les files d’appels Assurance et Isolation proposent de passer au prospect suiv
 
 La Super administration affiche le compte opérateur, le compte utilisé, l’espace, le motif et les dates de session. Le détail regroupe les tentatives de modification du portail et de l’espace métier avec leur code de réponse HTTP, lorsqu’il a été enregistré. Les nouvelles sessions disposent de ce détail. Les sessions antérieures gardent leur entrée d’ouverture.
 
+## Accès à la fiche depuis une tâche Assurance
+
+Le setter peut ouvrir la fiche prospect liée depuis le détail de sa tâche, avant ou après son échéance. La fiche applique les droits habituels du setter. L’ouverture laisse le rappel dans son état actuel et permet d’appeler depuis la fiche.
+
