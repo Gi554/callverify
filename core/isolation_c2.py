@@ -96,11 +96,12 @@ def defaults(prospect):
             'adressecomplete',
             'fulladdress',
             'streetaddress',
+            'addressesaddress1',
             'street',
             'rue',
         ),
-        'city': ('city', 'ville', 'municipalite'),
-        'postal_code': ('postalcode', 'codepostal', 'postcode'),
+        'city': ('city', 'ville', 'villes', 'municipalite'),
+        'postal_code': ('postalcode', 'codepostal', 'postcode', 'addresseszip'),
     }
 
     def normalize(key):

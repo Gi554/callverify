@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Coordonnées du lot Isolation
+
+La qualification reconnaît `addresses_address1`, `villes` et `addresses_zip` dans les lignes d’import déjà enregistrées. Ces valeurs préremplissent l’adresse, la ville et le code postal avec les contrôles existants, sans réimporter la liste ni écraser les brouillons.
+
 ## Import Isolation : détection des colonnes de contact
 
 **Livré sur staging.** L’aperçu d’import détecte automatiquement les colonnes de téléphone,
