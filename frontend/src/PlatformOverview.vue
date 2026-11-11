@@ -84,6 +84,9 @@ const incidentLabels: Record<string, string> = {
   expired: 'Courriels expirés',
 };
 const auditLabels: Record<string, string> = {
+  'platform.support_started': 'Session d’assistance ouverte',
+  'platform.support_ended': 'Session d’assistance terminée',
+  'platform.support_action': 'Action tentée en assistance',
   'platform.suspend': 'Compte suspendu',
   'platform.reactivate': 'Compte réactivé',
   'platform.revoke_sessions': 'Sessions révoquées',

@@ -38,4 +38,9 @@ class CentralSessionAuthentication(SessionAuthentication):
             )
         ):
             raise AuthenticationFailed('Activez la MFA pour accéder à votre espace administrateur.')
+        from .support_sessions import KEY, STOP_PATH, authenticate_support
+
+        context = request.session.get(KEY)
+        if context is not None and request.path != STOP_PATH:
+            return authenticate_support(request, user, context)
         return authenticated

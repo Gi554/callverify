@@ -3192,3 +3192,7 @@ La production désactive les e-mails d’alerte Assurance avec `ASSURANCE_ALERT_
 
 La performance compte les rendez-vous pris selon la date de création, y compris pour une date prévue hors de la période affichée. Elle distingue les rendez-vous à présenter, en cours, présentés, non tenus, annulés et sans résultat. Les résultats d’appel déclarés sont affichés séparément par résultat et par date de saisie, sous les droits du setter ou de l’administrateur.
 
+## Session d’assistance du superadmin
+
+Depuis la gestion d’un compte actif, le superadmin peut ouvrir une session d’assistance pour un espace après avoir saisi un motif. Pendant 15 minutes, le CRM applique les droits métier de ce compte. Le bandeau permet de revenir au compte superadmin. Les réglages de sécurité du compte sont réservés à sa propre session. Le début, la fin et les tentatives d’action sont journalisés avec l’identité du superadmin. Les jetons métier délivrés en assistance expirent au plus tard 30 secondes après émission.
+

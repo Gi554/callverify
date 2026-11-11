@@ -27,4 +27,13 @@ class WorkspaceAuthentication(BaseAuthentication):
             claims = verify(header[1].decode(), 'assurance')
         except (signing.BadSignature, UnicodeDecodeError, ValueError, TypeError):
             raise AuthenticationFailed('Accès Assurance invalide ou expiré')
+        if 'support_actor' in claims and request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            from .models import BusinessAudit
+
+            BusinessAudit.objects.create(
+                actor_id=claims['support_actor'],
+                object_id=int(claims['sub']),
+                action='platform.support_action',
+                metadata={'method': request.method, 'path': request.path[:200]},
+            )
         return Identity(pk=int(claims['sub']), role=claims['role']), claims

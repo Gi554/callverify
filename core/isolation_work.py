@@ -18,6 +18,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from packages.access.tickets import verify
 from packages.access.phone_history import lookup_number
+from .workspace_access import audit_support
 from packages.access.isolation import verify_owner
 from .models import Prospect, AuditEvent
 from .isolation_activity import ActivityMixin, STATUSES
@@ -53,6 +54,7 @@ class WorkAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Accès Isolation invalide ou expiré')
         if claims['role'] not in self.roles:
             raise PermissionDenied('Rôle non autorisé pour cette ressource Isolation')
+        audit_support(request, claims)
         return Identity(int(claims['sub']), claims['role']), claims
 
 
