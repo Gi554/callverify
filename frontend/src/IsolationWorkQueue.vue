@@ -163,30 +163,28 @@ async function load() {
 const COUNTDOWN = 10;
 const session = ref(false),
   countdown = ref<number | null>(null),
+  nextInSession = ref<any>(null),
   sessionNote = ref('');
 const visited = new Set<number>();
-// An administrator calls the prospects of their own lot; a setter's board already is their lot.
-const mine = ref<any[]>([]);
+let sessionId = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
-async function loadMine() {
-  const rows: any[] = [];
-  for (let page = 1; page <= 8; page++) {
-    const data = await props.request(`work-queue/?owner=me&queue=active&page=${page}`);
-    rows.push(...data.results);
-    if (!data.next) break;
-  }
-  mine.value = rows.sort((a, b) => a.id - b.id);
+function isCurrentSession(id: number) {
+  return session.value && id === sessionId && !disposed;
 }
-function nextProspect() {
-  const pool = props.role === 'administrator' ? mine.value : columns.value.flatMap((c) => c.rows);
-  return (
-    pool.find(
-      (row) =>
+async function nextProspect(id: number) {
+  // The session reads the active lot independently of the board's filters and loaded pages.
+  for (let page = 1; isCurrentSession(id); page++) {
+    const data = await props.request(`work-queue/?owner=me&queue=active&page=${page}`);
+    const candidate = data.results.find(
+      (row: any) =>
         !visited.has(row.id) &&
         row.commercial_status !== 'not_interested' &&
         String(row.phone || row.raw_phone || '').trim(),
-    ) || null
-  );
+    );
+    if (candidate) return candidate;
+    if (!data.next) break;
+  }
+  return null;
 }
 function stopTimer() {
   if (timer) clearInterval(timer);
@@ -195,50 +193,54 @@ function stopTimer() {
 }
 async function advance() {
   stopTimer();
-  const row = nextProspect();
-  if (!row) {
-    session.value = false;
-    sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
-    return;
-  }
+  const id = sessionId;
+  const row = nextInSession.value;
+  nextInSession.value = null;
+  if (!row || !isCurrentSession(id)) return;
   visited.add(row.id);
-  await openActivity(row, 'call');
-  if (!activity.value) {
+  await openActivity(row, 'call', id);
+  if (isCurrentSession(id) && !activity.value) {
     session.value = false;
     sessionNote.value = error.value || 'Session interrompue.';
   }
 }
 async function startSession() {
+  if (session.value || busy.value || activity.value) return;
   visited.clear();
   sessionNote.value = '';
-  if (props.role === 'administrator') {
-    try {
-      await loadMine();
-    } catch (e: any) {
-      sessionNote.value = e.message;
-      return;
-    }
-    if (!nextProspect()) {
-      sessionNote.value =
-        'Aucun prospect dans votre lot : attribuez-vous un lot avec « Lot de la semaine ».';
-      return;
-    }
-  }
+  sessionId++;
   session.value = true;
-  void advance();
+  await prepareNext(true);
 }
 function stopSession() {
   stopTimer();
+  nextInSession.value = null;
   session.value = false;
   sessionNote.value = 'Session arrêtée.';
 }
+async function prepareNext(first = false) {
+  const id = sessionId;
+  try {
+    const row = await nextProspect(id);
+    if (!isCurrentSession(id)) return;
+    if (row) {
+      nextInSession.value = row;
+      if (first) await advance();
+      else startCountdown();
+      return;
+    }
+    session.value = false;
+    sessionNote.value = first
+      ? 'Aucun prospect dans votre lot actif.'
+      : 'Session terminée : plus aucun prospect à appeler.';
+  } catch (e: any) {
+    if (!isCurrentSession(id)) return;
+    session.value = false;
+    sessionNote.value = e.message || 'Impossible de charger votre lot actif.';
+  }
+}
 function startCountdown() {
   stopTimer();
-  if (!nextProspect()) {
-    session.value = false;
-    sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
-    return;
-  }
   countdown.value = COUNTDOWN;
   timer = setInterval(() => {
     if (countdown.value === null) return;
@@ -246,20 +248,21 @@ function startCountdown() {
     else countdown.value -= 1;
   }, 1000);
 }
-async function openActivity(row: any, mode: 'edit' | 'call' = 'edit') {
-  if (activity.value) return;
+async function openActivity(row: any, mode: 'edit' | 'call' = 'edit', id?: number) {
+  if (activity.value || (session.value && id === undefined)) return;
   await run(async () => {
+    const prospect = await props.request(`work-queue/${row.id}/`);
+    if (disposed || (id !== undefined && !isCurrentSession(id))) return;
     workflow.value = mode;
-    activity.value = await props.request(`work-queue/${row.id}/`);
+    activity.value = prospect;
   });
 }
 function activityClosed() {
   if (callPending.value) return;
   activity.value = null;
   callPending.value = false;
-  void load().then(() => {
-    if (session.value && !disposed) startCountdown();
-  });
+  void load();
+  if (session.value && !disposed) void prepareNext();
 }
 async function directory(step = 0) {
   peoplePage.value = step ? peoplePage.value + step : 1;
@@ -341,7 +344,7 @@ onBeforeUnmount(() => {
         <button
           v-if="['setter', 'administrator'].includes(role) && !session"
           class="primary"
-          :disabled="busy || !total"
+          :disabled="busy || !!activity"
           @click="startSession"
         >
           <PhoneForwarded :size="16" />Lancer une session d’appels
@@ -429,7 +432,7 @@ onBeforeUnmount(() => {
       <CallCountdownModal
         v-if="session && countdown !== null"
         :seconds="countdown"
-        :prospect="nextProspect()?.name"
+        :prospect="nextInSession?.name"
         @stop="stopSession"
       >
         <span class="session-countdown-status" role="status"
@@ -438,6 +441,9 @@ onBeforeUnmount(() => {
         <button class="primary" @click="advance">Appeler maintenant</button>
         <button class="secondary" @click="stopSession">Arrêter la session</button>
       </CallCountdownModal>
+      <p v-else-if="session && !activity" class="call-session" role="status">
+        Chargement du prochain prospect…
+      </p>
       <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
       <IsolationLots
         v-if="lotsOpen && role === 'administrator'"
