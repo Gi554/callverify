@@ -440,6 +440,7 @@ onBeforeUnmount(() => {
           v-if="canWrite && token"
           :auto-open="workflow === 'call'"
           :auto-send="autoCall"
+          @skip="close"
           @busy="callBusy = $event"
           workspace="assurance"
           :resource-id="current.id"
