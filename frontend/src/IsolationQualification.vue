@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { Download, FileUp, Plus, RefreshCw, Search, ShieldCheck, Table2 } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
+import { Download, FileUp, Plus, RefreshCw, Search, ShieldCheck } from 'lucide-vue-next';
 
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -17,7 +17,37 @@ const selected = ref(''),
   file = ref<File | null>(null),
   preview = ref<any>(null);
 const draft = ref({ name: '', purpose: '', source: '', budget: 0 }),
-  mapping = ref({ phone: '', name: '', reference: '' });
+  mapping = ref({
+    phone: '',
+    name: '',
+    first_name: '',
+    last_name: '',
+    address: '',
+    city: '',
+    postal_code: '',
+    email: '',
+    reference: '',
+  });
+const importFields = [
+  ['phone', 'Téléphone'],
+  ['name', 'Nom complet'],
+  ['first_name', 'Prénom'],
+  ['last_name', 'Nom de famille'],
+  ['address', 'Adresse complète'],
+  ['city', 'Ville'],
+  ['postal_code', 'Code postal'],
+  ['email', 'Courriel'],
+  ['reference', 'Référence'],
+] as const;
+const previewFields = computed(() => importFields.filter(([key]) => mapping.value[key]));
+function changeMapping(key: (typeof importFields)[number][0]) {
+  if (key === 'name' && mapping.value.name) {
+    mapping.value.first_name = '';
+    mapping.value.last_name = '';
+  } else if ((key === 'first_name' || key === 'last_name') && mapping.value[key]) {
+    mapping.value.name = '';
+  }
+}
 const lineLabel = (value: string) =>
   (
     ({ reachable: 'Joignable', unreachable: 'Non joignable', unknown: 'Indéterminée' }) as Record<
@@ -69,29 +99,25 @@ async function upload() {
     body.append('campaign', selected.value);
     body.append('file', file.value);
     preview.value = await props.request('qualification/imports/', body);
-    const headers = preview.value.headers || [];
-    mapping.value = {
-      phone:
-        headers.find((value: string) => /phone|tel|num|mobile|cell/i.test(value)) ||
-        headers[0] ||
-        '',
-      name: headers.find((value: string) => /full.?name|nom.?complet|name|nom/i.test(value)) || '',
-      reference: '',
-    };
+    for (const [key] of importFields) {
+      mapping.value[key] = preview.value.suggested_mapping?.[key] || '';
+    }
   });
 }
 async function confirm() {
   await run(async () => {
     if (!preview.value) throw new Error('Importez un fichier avant de confirmer');
-    const payload: any = { phone: mapping.value.phone };
-    if (mapping.value.name) payload.name = mapping.value.name;
-    if (mapping.value.reference) payload.reference = mapping.value.reference;
-    await props.request(`qualification/imports/${preview.value.id}/confirm/`, { mapping: payload });
-    preview.value = null;
-    file.value = null;
+    await props.request(`qualification/imports/${preview.value.id}/confirm/`, {
+      mapping: { ...mapping.value },
+    });
+    resetImport();
     tab.value = 'lists';
     await load();
   });
+}
+function resetImport() {
+  preview.value = null;
+  file.value = null;
 }
 async function lookup(id: number) {
   await run(async () => {
@@ -282,6 +308,7 @@ onMounted(load);
                 ><button
                   class="text-button"
                   @click="
+                    if (selected !== String(campaign.id)) resetImport();
                     selected = String(campaign.id);
                     tab = 'import';
                   "
@@ -321,12 +348,11 @@ onMounted(load);
       <h3><FileUp :size="20" />Importer une liste dans Isolation</h3>
       <p v-if="loading" class="busy-indicator" role="status">Traitement en cours…</p>
       <p>
-        Le fichier Excel ou CSV est lu en entier et aperçu avant traitement. Toutes les lignes sont
-        importées ; associez au minimum la colonne téléphone. Les colonnes supplémentaires restent
-        conservées dans l’historique de l’import.
+        Associez la colonne téléphone et les coordonnées à utiliser dans les fiches. Les autres
+        colonnes restent conservées avec l’import.
       </p>
       <label
-        >Liste cible<select v-model="selected" required>
+        >Liste cible<select v-model="selected" :disabled="!!preview || loading" required>
           <option value="" disabled>Choisir une liste</option>
           <option v-for="campaign in campaigns" :key="campaign.id" :value="String(campaign.id)">
             {{ campaign.name }}
@@ -343,32 +369,44 @@ onMounted(load);
           <strong>{{ preview.rows }}</strong> ligne(s) détectée(s). Vérifiez les colonnes avant
           confirmation.
         </p>
-        <div class="mapping">
-          <label
-            >Numéro<select v-model="mapping.phone" required>
-              <option v-for="header in preview.headers" :key="header">{{ header }}</option>
-            </select></label
-          ><label
-            >Nom complet
-            <small>Prénom + nom sont combinés automatiquement si les deux colonnes existent.</small
-            ><select v-model="mapping.name">
-              <option value="">— Aucun —</option>
-              <option v-for="header in preview.headers" :key="header">{{ header }}</option>
-            </select></label
-          ><label
-            >Référence<select v-model="mapping.reference">
-              <option value="">— Aucune —</option>
-              <option v-for="header in preview.headers" :key="header">{{ header }}</option>
-            </select></label
-          >
+        <p>Choisissez une colonne de nom complet ou associez le prénom et le nom séparément.</p>
+        <fieldset class="mapping" :disabled="loading">
+          <label v-for="[key, label] in importFields" :key="key">
+            {{ label }}
+            <select v-model="mapping[key]" :required="key === 'phone'" @change="changeMapping(key)">
+              <option value="" :disabled="key === 'phone'">
+                {{ key === 'phone' ? 'Choisir la colonne téléphone' : '— Ne pas associer —' }}
+              </option>
+              <option v-for="header in preview.headers" :key="header" :value="header">
+                {{ header }}
+              </option>
+            </select>
+          </label>
+        </fieldset>
+        <div v-if="previewFields.length" class="preview">
+          <table>
+            <caption>
+              Aperçu des colonnes sélectionnées
+            </caption>
+            <thead>
+              <tr>
+                <th v-for="[key, label] in previewFields" :key="key" scope="col">{{ label }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in preview.preview.slice(0, 3)" :key="index">
+                <td v-for="[key] in previewFields" :key="key">{{ row[mapping[key]] || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="preview">
-          <Table2 :size="16" /><span
-            v-for="row in preview.preview.slice(0, 3)"
-            :key="JSON.stringify(row)"
-            >{{ row[mapping.phone] }}</span
-          >
-        </div></template
+        <p>
+          Les coordonnées vides et les courriels ou codes postaux invalides restent vides sur la
+          fiche.
+        </p>
+        <button type="button" class="secondary" :disabled="loading" @click="resetImport">
+          Changer de fichier
+        </button> </template
       ><button class="primary" :disabled="loading">
         {{
           loading
@@ -641,21 +679,33 @@ onMounted(load);
 }
 .mapping {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 .preview {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   color: #526579;
   background: #f5f8fc;
   padding: 11px;
   overflow: auto;
   font-size: 12px;
 }
-.preview span {
-  white-space: nowrap;
+.preview table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.preview caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 8px;
+}
+.preview th,
+.preview td {
+  text-align: left;
+  padding: 7px 9px;
+  overflow-wrap: anywhere;
 }
 .crm-badge {
   display: inline-flex;

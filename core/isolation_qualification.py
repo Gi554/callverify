@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .delivery import enqueue
+from .import_columns import ISOLATION_COLUMNS, suggested_columns
 from .isolation_work import Pager, WorkAuthentication
 from .models import AdminUser, AuditEvent, Campaign, ExportJob, ImportBatch, LookupCheck, Prospect
 from .serializers import ExportSerializer, ImportSerializer, ProspectSerializer
@@ -204,6 +205,7 @@ class QualificationViewSet(viewsets.GenericViewSet):
                 'id': batch.pk,
                 'campaign': campaign.pk,
                 'headers': headers,
+                'suggested_mapping': suggested_columns(headers),
                 'preview': rows[:10],
                 'rows': len(rows),
                 'sheets': sheets,
@@ -234,6 +236,7 @@ class QualificationViewSet(viewsets.GenericViewSet):
             {
                 'id': batch.pk,
                 'headers': headers,
+                'suggested_mapping': suggested_columns(headers),
                 'preview': rows[:10],
                 'rows': len(rows),
                 'sheets': sheets,
@@ -255,11 +258,16 @@ class QualificationViewSet(viewsets.GenericViewSet):
             headers, _, _ = read_table(batch)
             if (
                 not isinstance(mapping, dict)
-                or set(mapping) - {'phone', 'name', 'reference'}
+                or set(mapping) - set(ISOLATION_COLUMNS)
                 or mapping.get('phone') not in headers
-                or any(value not in headers for value in mapping.values())
+                or any(
+                    not isinstance(value, str) or (value and value not in headers)
+                    for value in mapping.values()
+                )
             ):
                 raise ValidationError('Mappage invalide ; téléphone obligatoire')
+            if mapping.get('name') and (mapping.get('first_name') or mapping.get('last_name')):
+                raise ValidationError('Choisissez le nom complet ou les colonnes prénom et nom.')
             batch.mapping = mapping
             batch.status = 'queued'
             batch.save(update_fields=['mapping', 'status'])

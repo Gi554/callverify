@@ -1,7 +1,6 @@
 """Isolation-only qualification. Drafts are internal; booked copies are immutable."""
 
 import re
-import unicodedata
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -10,6 +9,14 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from .models import Prospect, AuditEvent, ImportRow
+from .import_columns import (
+    COORDINATE_COLUMNS,
+    FIRST_NAMES,
+    LAST_NAMES,
+    has_explicit_columns,
+    header_key,
+    selected_value,
+)
 
 
 class C2Input(serializers.Serializer):
@@ -78,56 +85,48 @@ def captured(prospect):
     }
 
 
+def validated_coordinate(field, value):
+    serializer = C2Input(data={field: value})
+    if value and serializer.is_valid():
+        return serializer.validated_data[field]
+    return ''
+
+
+def mapped_coordinates(row, mapping):
+    return {
+        field: validated_coordinate(field, selected_value(row, mapping[field]))
+        for field in COORDINATE_COLUMNS
+        if field in mapping
+    }
+
+
 def defaults(prospect):
-    """Only recognized columns from the original nonduplicate import, never guess a value."""
+    """Read the approved columns from the original import, with legacy aliases for older lots."""
     result = {'full_name': prospect.name, 'phone': prospect.raw_phone}
     imported = (
         ImportRow.objects.filter(prospect=prospect, duplicate=False, error='')
+        .select_related('batch')
         .order_by('pk')
         .first()
     )
     if not imported or not isinstance(imported.source, dict):
         return result
-    aliases = {
-        'email': ('email', 'courriel', 'adresseemail', 'adressecourriel'),
-        'address': (
-            'address',
-            'adresse',
-            'adressecomplete',
-            'fulladdress',
-            'streetaddress',
-            'addressesaddress1',
-            'street',
-            'rue',
-        ),
-        'city': ('city', 'ville', 'villes', 'municipalite'),
-        'postal_code': ('postalcode', 'codepostal', 'postcode', 'addresseszip'),
-    }
-
-    def normalize(key):
-        value = unicodedata.normalize('NFKD', str(key)).encode('ascii', 'ignore').decode().lower()
-        return re.sub('[^a-z0-9]', '', value)
-
-    source = {normalize(key): value for key, value in imported.source.items()}
+    mapping = imported.batch.mapping
+    source = {header_key(key): value for key, value in imported.source.items()}
     first = next(
-        (
-            str(source[key]).strip()
-            for key in ('firstname', 'prenom', 'givenname')
-            if source.get(key)
-        ),
+        (str(source[key]).strip() for key in FIRST_NAMES if source.get(key)),
         '',
     )
     last = next(
-        (
-            str(source[key]).strip()
-            for key in ('lastname', 'nom', 'familyname', 'surname')
-            if source.get(key)
-        ),
+        (str(source[key]).strip() for key in LAST_NAMES if source.get(key)),
         '',
     )
-    if not result['full_name'] and (first or last):
+    if not has_explicit_columns(mapping) and not result['full_name'] and (first or last):
         result['full_name'] = ' '.join(part for part in (first, last) if part)[:250]
-    for field, keys in aliases.items():
+    result.update(mapped_coordinates(imported.source, mapping))
+    for field, keys in COORDINATE_COLUMNS.items():
+        if field in mapping:
+            continue
         found = [
             str(source[key]).strip()
             for key in keys
@@ -136,9 +135,8 @@ def defaults(prospect):
         # Conflicting columns are left empty for human review.
         if not found or len(set(found)) != 1:
             continue
-        serializer = C2Input(data={field: found[0]})
-        if serializer.is_valid():
-            result[field] = serializer.validated_data[field]
+        if value := validated_coordinate(field, found[0]):
+            result[field] = value
     return result
 
 
