@@ -112,8 +112,10 @@ const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
 function fixture(role) {
   const root = { children: [] },
     writes = [],
+    openedProspects = [],
     row = {
       id: 5,
+      contact_id: 42,
       contact_name: 'Prospect',
       due_at: '2030-01-01T15:00:00Z',
       reason: 'Suivi',
@@ -122,6 +124,7 @@ function fixture(role) {
     }
   const app = renderer.createApp(component, {
     role,
+    onOpenProspect: (value) => openedProspects.push(value),
     portal: async () => ({}),
     request: async (path, body) => {
       if (body) writes.push({ path, body })
@@ -132,7 +135,7 @@ function fixture(role) {
     },
   })
   app.mount(root)
-  return { root, writes, app }
+  return { root, writes, openedProspects, app }
 }
 test('Assurance administration opens full management controls and policy without changing data', async () => {
   const f = fixture('administrator')
@@ -160,7 +163,7 @@ test('Assurance administration opens full management controls and policy without
     f.app.unmount()
   }
 })
-test('setter keeps the existing task detail without administrator policy or reassignment controls', async () => {
+test('setter can open the linked prospect from a task without closing the follow-up', async () => {
   const f = fixture('setter')
   try {
     await flush()
@@ -175,6 +178,22 @@ test('setter keeps the existing task detail without administrator policy or reas
       false,
     )
     assert.ok(text(f.root).includes('Le suivi à réaliser'))
+    const openProspect = all(f.root).find(
+      (n) => n.tag === 'button' && text(n).trim() === 'Ouvrir la fiche prospect',
+    )
+    assert.ok(openProspect)
+    await all(f.root)
+      .find((n) => n.tag === 'button' && text(n).trim() === 'Modifier le rappel')
+      .props.onClick()
+    await flush()
+    assert.equal(openProspect.props.disabled, true)
+    await all(f.root)
+      .find((n) => n.tag === 'button' && text(n).trim() === 'Annuler la modification')
+      .props.onClick()
+    await flush()
+    assert.equal(openProspect.props.disabled, false)
+    openProspect.props.onClick()
+    assert.deepEqual(f.openedProspects, [{ id: 42, mode: 'edit' }])
     assert.equal(f.writes.length, 0)
   } finally {
     f.app.unmount()
