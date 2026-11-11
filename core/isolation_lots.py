@@ -12,7 +12,13 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from packages.access.isolation import verify_lot
-from .models import AuditEvent, IsolationAssignmentBatch, IsolationVisit, Prospect
+from .models import (
+    AuditEvent,
+    IsolationAssignmentBatch,
+    IsolationFollowUp,
+    IsolationVisit,
+    Prospect,
+)
 
 MAX_LOT = 10000
 
@@ -180,10 +186,16 @@ class LotMixin:
             )
             if not created:
                 return replay(batch)
-            # Only prospects nobody has worked yet go back to the pool.
+            # Only untouched prospects without an open reminder go back to the pool.
+            # An open reminder must remain visible to its setter after a lot refresh.
+            open_follow_up = IsolationFollowUp.objects.filter(
+                prospect_id=OuterRef('pk'), closed_at__isnull=True
+            )
             ids = list(
                 active(Prospect.objects.filter(assigned_setter_id=data['setter_id']))
                 .filter(commercial_status='to_contact')
+                .annotate(_lot_open_follow_up=Exists(open_follow_up))
+                .filter(_lot_open_follow_up=False)
                 .values_list('pk', flat=True)
             )
             count = Prospect.objects.filter(pk__in=ids).update(

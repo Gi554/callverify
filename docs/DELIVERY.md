@@ -1,5 +1,11 @@
 # Suivi des livraisons CRM AMX
 
+## Retrait d’un lot Isolation et rappels ouverts
+
+Le retrait d’un lot ne libère plus les prospects qui disposent d’un rappel Isolation ouvert.
+Ils restent affectés au setter jusqu’à la clôture du rappel. Les contacts sans rappel ouvert
+continuent à retourner dans le pool disponible. La règle est couverte par un test backend dédié.
+
 ## Session d’appels Isolation
 
 La session automatique charge le lot actif du compte connecté, page par page. Les rappels,
