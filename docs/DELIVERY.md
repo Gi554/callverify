@@ -3196,3 +3196,7 @@ La performance compte les rendez-vous pris selon la date de création, y compris
 
 Depuis la gestion d’un compte actif, le superadmin peut ouvrir une session d’assistance pour un espace après avoir saisi un motif. Pendant 15 minutes, le CRM applique les droits métier de ce compte. Le bandeau permet de revenir au compte superadmin. Les réglages de sécurité du compte sont réservés à sa propre session. Le début, la fin et les tentatives d’action sont journalisés avec l’identité du superadmin. Les jetons métier délivrés en assistance expirent au plus tard 30 secondes après émission.
 
+## Reprise de la file après un appel incertain
+
+Les files d’appels Assurance et Isolation proposent de passer au prospect suivant tout en conservant la référence à vérifier. Un même agent ne peut pas émettre une nouvelle commande vers le même numéro pendant les 15 minutes qui suivent une tentative incertaine, sauf si le journal la retrouve. Une commande dont la réservation est restée en attente peut être rapprochée après ce délai.
+

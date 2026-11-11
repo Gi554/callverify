@@ -13,7 +13,7 @@ const props = defineProps<{
   prepare: (id: string) => Promise<{ proof: string }>;
   portal: (path: string, body?: any) => Promise<any>;
 }>();
-const emit = defineEmits<{ busy: [value: boolean] }>();
+const emit = defineEmits<{ busy: [value: boolean]; skip: [] }>();
 const key = `amx-call:${props.workspace}:${props.resourceId}`;
 const pending = ref(false),
   confirming = ref(false),
@@ -21,6 +21,7 @@ const pending = ref(false),
   result = ref<any>(null),
   requestId = ref('');
 const confirmedPhone = ref('');
+const numberPendingReview = ref(false);
 watch(pending, (value) => emit('busy', value), { flush: 'sync' });
 try {
   requestId.value = sessionStorage.getItem(key) || '';
@@ -51,6 +52,7 @@ async function open() {
   if (pending.value) return;
   pending.value = true;
   error.value = '';
+  numberPendingReview.value = false;
   let launch = false;
   try {
     await props.beforeOpen?.();
@@ -91,6 +93,7 @@ async function send() {
   } catch (e: any) {
     error.value = e.message;
     // These API refusals occur before a command can be sent to Phonetico.
+    numberPendingReview.value = e.payload?.reason === 'call_pending_review';
     const refused =
       ([400, 401, 403, 409, 429].includes(e.status) && !!e.payload?.detail) ||
       (e.status === 503 && e.payload?.detail === 'Appels Phonetico non activés.');
@@ -173,6 +176,15 @@ onMounted(() => {
         Préparer un nouvel appel
       </button>
     </template>
+    <button
+      v-if="autoSend && (unresolved || numberPendingReview)"
+      type="button"
+      class="secondary"
+      :disabled="pending || disabled"
+      @click="emit('skip')"
+    >
+      Passer au prospect suivant
+    </button>
   </div>
 </template>
 <style scoped>

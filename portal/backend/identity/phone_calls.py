@@ -21,7 +21,7 @@ from packages.access.phone_calls import verify
 from packages.access.tickets import issue as access_ticket
 from packages.newt.calls import place
 from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
-from .call_journal import digest
+from .call_journal import SETTLE, digest
 from .call_rules import refusal, rules, window
 
 CALL_COOLDOWN_SECONDS = 5
@@ -54,7 +54,7 @@ def output(row):
         'state': row.state,
         **(
             {'journal_matched': True}
-            if row.state == 'unknown' and row.journal_status == 'matched'
+            if row.state in ('unknown', 'dispatching') and row.journal_status == 'matched'
             else {}
         ),
         'created_at': row.created_at,
@@ -172,9 +172,27 @@ def calls(request, workspace='assurance'):
                 metadata={'request_id': claims['request_id'], 'reason': reason[:80]},
             )
             return Response({'detail': reason}, status=400)
+        destination_digest = digest(claims['destination'])
+        now = timezone.now()
+        if (
+            PhoneCallAttempt.objects.filter(
+                user=request.user,
+                destination_digest=destination_digest,
+                state__in=('unknown', 'dispatching'),
+                created_at__gt=now - SETTLE,
+            )
+            .exclude(journal_status='matched')
+            .exists()
+        ):
+            raise Conflict(
+                {
+                    'detail': 'Une commande récente vers ce numéro reste à vérifier.',
+                    'reason': 'call_pending_review',
+                }
+            )
         if PhoneCallAttempt.objects.filter(
             user=request.user,
-            created_at__gt=timezone.now() - timedelta(seconds=CALL_COOLDOWN_SECONDS),
+            created_at__gt=now - timedelta(seconds=CALL_COOLDOWN_SECONDS),
         ).exists():
             raise Conflict(
                 f'Attendez au moins {CALL_COOLDOWN_SECONDS} secondes entre deux commandes distinctes.'
@@ -189,7 +207,7 @@ def calls(request, workspace='assurance'):
                     contact_label=claims['label'],
                     extension=link.extension,
                     fingerprint=fingerprint,
-                    destination_digest=digest(claims['destination']),
+                    destination_digest=destination_digest,
                 )
         except IntegrityError:
             raise Conflict('Identifiant déjà réservé ; aucune nouvelle commande envoyée.') from None

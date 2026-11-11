@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import APIException
@@ -109,7 +109,8 @@ def run(workspace, actor=None, now=None):
         PhoneDirectoryGate.objects.filter(pk=1).update(revision=F('revision'))
         attempts = list(
             PhoneCallAttempt.objects.select_for_update()
-            .filter(workspace=workspace, state__in=STATES, created_at__gte=since)
+            .filter(workspace=workspace, created_at__gte=since)
+            .filter(Q(state__in=STATES) | Q(state='dispatching', created_at__lte=now - SETTLE))
             .exclude(journal_status='matched')
             .exclude(destination_digest='')
             .order_by('created_at')
