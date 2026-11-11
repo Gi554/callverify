@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from unittest.mock import patch
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
@@ -36,6 +37,7 @@ class SupportSessionTests(TestCase):
         action = AccessAudit.objects.get(action='platform.support_action')
         self.assertEqual(action.user_id, self.actor.pk)
         self.assertEqual(action.metadata['subject'], self.target.pk)
+        self.assertEqual(action.metadata['status'], 400)
         self.assertEqual(self.client.post(self.path, self.data).status_code, 403)
         self.assertEqual(self.client.post(STOP_PATH).status_code, 204)
         self.assertEqual(
@@ -47,10 +49,35 @@ class SupportSessionTests(TestCase):
             ).count(),
             3,
         )
+        history = '/api/portal/platform/support/journal/'
+        row = self.client.get(history).data['results'][0]
+        self.assertEqual(row['username'], self.target.username)
+        self.assertEqual(row['reason'], self.data['reason'])
+        with patch(
+            'portal.backend.identity.support_journal.fetch_business',
+            return_value={
+                'actions': [
+                    {
+                        'id': 10,
+                        'created_at': action.created_at.isoformat(),
+                        'method': 'POST',
+                        'path': '/api/work-queue/quick-call/',
+                        'status': 201,
+                    }
+                ]
+            },
+        ):
+            journal = self.client.get(f'{history}{row["id"]}/').data
+        self.assertIsNotNone(journal['ended_at'])
+        self.assertEqual(
+            {item['source']: item['status'] for item in journal['actions']},
+            {'portal': 400, 'isolation': 201},
+        )
 
     def test_only_superadmin_can_start_and_expiration_never_grants_access(self):
         self.client.force_login(self.target)
         self.assertEqual(self.client.post(self.path, self.data).status_code, 403)
+        self.assertEqual(self.client.get('/api/portal/platform/support/journal/').status_code, 403)
         self.client.force_login(self.actor)
         self.assertEqual(self.client.post(self.path, self.data).status_code, 200)
         stored = self.client.session

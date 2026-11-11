@@ -3,6 +3,7 @@ from django.core import signing
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 from packages.access.tickets import verify
+from packages.support_audit import record_attempt
 
 
 @dataclass(frozen=True)
@@ -30,10 +31,11 @@ class WorkspaceAuthentication(BaseAuthentication):
         if 'support_actor' in claims and request.method not in ('GET', 'HEAD', 'OPTIONS'):
             from .models import BusinessAudit
 
-            BusinessAudit.objects.create(
+            record_attempt(
+                request,
+                BusinessAudit,
                 actor_id=claims['support_actor'],
                 object_id=int(claims['sub']),
-                action='platform.support_action',
-                metadata={'method': request.method, 'path': request.path[:200]},
+                session_id=claims.get('support_session'),
             )
         return Identity(pk=int(claims['sub']), role=claims['role']), claims

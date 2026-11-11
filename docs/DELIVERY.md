@@ -3200,3 +3200,7 @@ Depuis la gestion d’un compte actif, le superadmin peut ouvrir une session d�
 
 Les files d’appels Assurance et Isolation proposent de passer au prospect suivant tout en conservant la référence à vérifier. Un même agent ne peut pas émettre une nouvelle commande vers le même numéro pendant les 15 minutes qui suivent une tentative incertaine, sauf si le journal la retrouve. Une commande dont la réservation est restée en attente peut être rapprochée après ce délai.
 
+## Journal des sessions d’assistance
+
+La Super administration affiche le compte opérateur, le compte utilisé, l’espace, le motif et les dates de session. Le détail regroupe les tentatives de modification du portail et de l’espace métier avec leur code de réponse HTTP, lorsqu’il a été enregistré. Les nouvelles sessions disposent de ce détail. Les sessions antérieures gardent leur entrée d’ouverture.
+

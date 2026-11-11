@@ -4,10 +4,23 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from .models import AdminUser, AuditEvent, Campaign, PhoneNumber, Prospect, Suppression
+from packages.support_audit import issue_read
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
 class IsolationQuickCallTests(TestCase):
+    def test_support_action_result_is_available_only_to_the_signed_journal_reader(self):
+        token = issue(21, 'isolation', 'setter', support_actor=90, support_session=42)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+        self.assertEqual(self.dial('4165550126').status_code, 201)
+        url = '/api/internal/support-journal/'
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue_read('isolation', 42))
+        result = self.client.get(url)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data['actions'][0]['status'], 201)
+        self.assertEqual(result.data['actions'][0]['path'], self.url)
+
     def setUp(self):
         cache.clear()
         self.owner = AdminUser.objects.create_user('legacy-admin', is_staff=True)
