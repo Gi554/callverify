@@ -4,6 +4,7 @@ from .identity import views
 from .identity.platform_overview import overview as platform_overview
 from .identity.platform_overview import platform_accounts, platform_account_action
 from .identity.support_sessions import start_support, stop_support
+from .identity.support_journal import sessions as support_sessions, session_actions
 from .identity.platform_overview import incident_details, report_platform_incident
 from .identity.mfa import manage_mfa
 from .identity import management_api
@@ -38,6 +39,8 @@ urlpatterns = [
     path('api/portal/platform/accounts/<int:pk>/actions/', platform_account_action),
     path('api/portal/platform/accounts/<int:pk>/support/', start_support),
     path('api/portal/platform/support/stop/', stop_support),
+    path('api/portal/platform/support/journal/', support_sessions),
+    path('api/portal/platform/support/journal/<int:pk>/', session_actions),
     path('api/portal/access/<str:workspace>/', views.access),
 ]
 urlpatterns += [

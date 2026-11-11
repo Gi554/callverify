@@ -17,13 +17,14 @@ def key_for(workspace):
     return key
 
 
-def issue(user_id, workspace, role, *, support_actor=None):
+def issue(user_id, workspace, role, *, support_actor=None, support_session=None):
     return signing.dumps(
         {
             'sub': str(user_id),
             'aud': workspace,
             'role': role,
             **({'support_actor': support_actor} if support_actor is not None else {}),
+            **({'support_session': support_session} if support_session is not None else {}),
         },
         key=key_for(workspace),
         salt='amx.workspace.v1',

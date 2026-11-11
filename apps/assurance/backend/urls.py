@@ -4,6 +4,8 @@ from .crm.payable import appointments as payable_appointments
 from .crm.admin_alerts import alerts as admin_alerts
 from .crm.journal import events as journal_events
 from django.urls import path, include
+from packages.support_audit import business_journal_view
+from .crm.models import BusinessAudit
 from rest_framework.routers import DefaultRouter
 from .crm.imports import imports, import_detail, lists, clear_list
 from .crm.custom_fields import definitions
@@ -37,6 +39,9 @@ router.register('assignments', AssignmentViewSet, basename='assurance-assignment
 router.register('contacts', ContactViewSet, basename='assurance-contact')
 router.register('notifications', TaskNotificationViewSet, basename='assurance-notification')
 urlpatterns = [
+    path(
+        'api/assurance/internal/support-journal/', business_journal_view('assurance', BusinessAudit)
+    ),
     path('api/assurance/admin-search/', admin_search),
     path('api/assurance/setter-performance/', setter_performance),
     path('api/assurance/payable-appointments/', payable_appointments),

@@ -5,6 +5,7 @@ import StatBars from './StatBars.vue';
 import StatDonut from './StatDonut.vue';
 import StatKpi from './StatKpi.vue';
 import PlatformAccounts from './PlatformAccounts.vue';
+import PlatformSupportJournal from './PlatformSupportJournal.vue';
 
 const props = defineProps<{
   username: string;
@@ -273,6 +274,7 @@ onMounted(load);
         </section>
       </div>
       <PlatformAccounts :request="request" @changed="load" />
+      <PlatformSupportJournal class="platform-card" :request="request" />
       <section v-if="data" class="platform-card">
         <header class="section-heading">
           <span class="section-icon warning"><Activity :size="20" /></span>
