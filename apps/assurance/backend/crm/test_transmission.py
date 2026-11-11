@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from unittest.mock import patch
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.db import connection, close_old_connections
+from django.utils import timezone
 from unittest import skipUnless
 from concurrent.futures import ThreadPoolExecutor
 from rest_framework.test import APIClient
@@ -15,6 +16,7 @@ from .models import (
     AppointmentNotification,
     ContactCallOutcome,
     Contact,
+    FollowUpTask,
 )
 
 
@@ -69,6 +71,23 @@ class TransmissionTests(TestCase):
         self.assertEqual(row.qualification_snapshot['contact_revision'], self.contact.revision)
         self.assertEqual(response.data['contact_revision'], self.contact.revision)
         self.assertTrue(response.data['call_outcome_recorded'])
+
+    def test_task_closes_only_with_a_successful_transmission(self):
+        task = FollowUpTask.objects.create(
+            contact=self.contact, setter_id=21, due_at=timezone.now()
+        )
+        payload = {**self.payload(), 'follow_up': {'id': task.pk, 'revision': 1}}
+        self.assertEqual(self.client.post(self.url, payload, format='json').status_code, 409)
+        self.assertFalse(Appointment.objects.exists())
+        task.refresh_from_db()
+        self.assertIsNone(task.closed_at)
+        payload['follow_up']['revision'] = 0
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        task.refresh_from_db()
+        self.assertIsNotNone(task.closed_at)
+        self.assertEqual(self.client.post(self.url, payload, format='json').status_code, 200)
+        self.assertEqual(Appointment.objects.count(), 1)
 
     def test_failed_notification_rolls_back_qualification_appointment_and_outcome(self):
         with patch(

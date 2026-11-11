@@ -2,12 +2,14 @@
 import { computed, onMounted, ref, watch, nextTick } from 'vue';
 import { bookingInterval } from './booking-time';
 import AssuranceAppointments from './AssuranceAppointments.vue';
+import type { FollowUpReference } from './follow-up';
 const props = defineProps<{
   contactId: number;
   contactRevision: number;
   leaseToken: string;
   role: string;
   blocked?: boolean;
+  followUp?: FollowUpReference;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
   prepare: () => Promise<void>;
@@ -98,6 +100,7 @@ async function submit() {
       qualification: props.qualification(),
       meeting_type: meeting.value,
       external_confirmed: confirmed.value,
+      ...(props.followUp ? { follow_up: props.followUp } : {}),
     });
     base.value = draft.value;
     emit('dirty', false);

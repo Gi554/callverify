@@ -2,11 +2,13 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { bookingInterval } from './booking-time';
 import { Phone, Plus, CheckCircle2 } from 'lucide-vue-next';
+import type { FollowUpReference } from './follow-up';
 const props = defineProps<{
   contactId: number;
   revision: number;
   token: string;
   blocked?: boolean;
+  followUp?: FollowUpReference;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   prepare: () => Promise<void>;
 }>();
@@ -48,6 +50,7 @@ const labels: Record<string, string> = {
 const resultChoices = Object.fromEntries(
   Object.entries(labels).filter(([key]) => key !== 'unreachable'),
 );
+const taskChoices = { ...resultChoices, unreachable: 'Ne répond pas' };
 const advances = computed(() => !!result.value && result.value !== 'appointment_booked');
 let outcomeId = crypto.randomUUID(),
   taskId = crypto.randomUUID();
@@ -117,6 +120,7 @@ async function record(appointmentId?: number) {
       request_id: outcomeId,
       result: result.value,
       note: note.value,
+      ...(props.followUp ? { follow_up: props.followUp } : {}),
     };
     if (result.value === 'callback')
       body.due_at = bookingInterval(due.value, 'America/Toronto', 30).starts_at;
@@ -133,7 +137,7 @@ async function record(appointmentId?: number) {
     message.value = 'Résultat enregistré dans l’historique du contact.';
     emit('saved');
     saved = true;
-    await load();
+    if (!props.followUp) await load();
   });
   if (saved && advance) {
     await nextTick();
@@ -200,7 +204,11 @@ onMounted(refresh);
         <label
           >Résultat de l’appel<select v-model="result" required @change="changed">
             <option value="">Choisir le résultat</option>
-            <option v-for="(label, key) in resultChoices" :key="key" :value="key">
+            <option
+              v-for="(label, key) in followUp ? taskChoices : resultChoices"
+              :key="key"
+              :value="key"
+            >
               {{ label }}
             </option>
           </select></label

@@ -16,6 +16,7 @@ import {
 import SidePanel from './SidePanel.vue';
 import AssuranceFollowUps from './AssuranceFollowUps.vue';
 import AssuranceFollowUpPolicy from './AssuranceFollowUpPolicy.vue';
+import AssuranceContactEditor from './AssuranceContactEditor.vue';
 import { bookingInterval } from './booking-time';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -30,7 +31,6 @@ const adminEditor = ref<any>(null),
 const emit = defineEmits<{
   changed: [];
   navigate: [value: string];
-  openProspect: [value: { id: number; mode: 'edit' }];
 }>();
 type Column = {
   key: string;
@@ -108,6 +108,11 @@ const selected = ref<any>(null),
 const hasDraft = computed(
   () => !selected.value?.closed_at && (editing.value || !!resolution.value.trim()),
 );
+const linkedProspect = ref<any>(null);
+const prospectEditor = ref<InstanceType<typeof AssuranceContactEditor> | null>(null);
+const prospectBusy = ref(false);
+const loadingProspect = ref(false);
+const taskStatus = ref('');
 const busy = computed(() => summaryBusy.value || columns.value.some((c) => c.busy));
 const percentage = computed(() =>
   summary.value?.total ? Math.round((100 * summary.value.closed) / summary.value.total) : null,
@@ -191,7 +196,7 @@ async function load() {
     ...columns.value.map((column) => loadColumn(column, version)),
   ]);
 }
-async function open(row: any) {
+async function open(row: any, showProspect = props.role === 'setter') {
   if (opening.value || selected.value) return;
   opening.value = true;
   boardMessage.value = '';
@@ -204,6 +209,7 @@ async function open(row: any) {
     discard.value = false;
     confirmed.value = false;
     detailError.value = '';
+    if (showProspect && props.portal) await openLinkedProspect();
   } catch (e: any) {
     boardMessage.value = e.message;
   } finally {
@@ -211,6 +217,10 @@ async function open(row: any) {
   }
 }
 function closePanel() {
+  if (linkedProspect.value) {
+    void prospectEditor.value?.close();
+    return;
+  }
   if (saving.value) return;
   if (hasDraft.value) {
     discard.value = true;
@@ -220,10 +230,34 @@ function closePanel() {
   resolution.value = '';
   discard.value = false;
 }
-function openLinkedProspect() {
+async function openLinkedProspect() {
   const id = selected.value?.contact_id;
-  if (!id || saving.value || hasDraft.value) return;
-  emit('openProspect', { id, mode: 'edit' });
+  if (!id || saving.value || hasDraft.value || loadingProspect.value) return;
+  if (adminEditor.value && !adminEditor.value.canLeave()) return;
+  const taskId = selected.value.id;
+  loadingProspect.value = true;
+  detailError.value = '';
+  try {
+    const contact = await props.request(`contacts/${id}/`);
+    if (!disposed && selected.value?.id === taskId) linkedProspect.value = contact;
+  } catch (e: any) {
+    detailError.value = e.message;
+  } finally {
+    loadingProspect.value = false;
+  }
+}
+async function taskCompleted(advance: boolean) {
+  const upcoming = new Set(columns.value[0].rows.map((row) => row.id));
+  linkedProspect.value = null;
+  prospectBusy.value = false;
+  selected.value = null;
+  emit('changed');
+  await load();
+  if (disposed) return;
+  const next =
+    columns.value[1].rows[0] || columns.value[0].rows.find((row) => upcoming.has(row.id));
+  if (advance && next) await open(next, true);
+  taskStatus.value = 'Tâche clôturée. Le résultat a été enregistré.';
 }
 async function reloadSelected() {
   if (saving.value || !selected.value) return;
@@ -347,6 +381,7 @@ onBeforeUnmount(() => {
       Règles des suivis
     </button>
     <p v-if="boardMessage" role="alert" class="tasks-error">{{ boardMessage }}</p>
+    <p v-if="taskStatus" role="status">{{ taskStatus }}</p>
     <div class="tasks-layout">
       <div
         class="tasks-columns"
@@ -548,10 +583,54 @@ onBeforeUnmount(() => {
           ? `Tâche #${selected.id}${selected.appointment_id ? ' · RDV #' + selected.appointment_id : ' · Rappel contact'}`
           : ''
       "
-      :close-disabled="saving || adminBusy"
-      @request-close="role === 'administrator' ? adminEditor?.close() : closePanel()"
-      ><AssuranceFollowUps
-        v-if="selected && role === 'administrator' && portal"
+      :close-disabled="saving || adminBusy || prospectBusy"
+      @request-close="
+        linkedProspect || role !== 'administrator' ? closePanel() : adminEditor?.close()
+      "
+    >
+      <section v-if="selected && linkedProspect" class="task-detail-block">
+        <h3>Le suivi à réaliser</h3>
+        <p>{{ selected.reason }}</p>
+        <p v-if="selected.created_at">Créée le {{ date(selected.created_at) }} · Montréal</p>
+        <p>Échéance le {{ date(selected.due_at) }} · Montréal</p>
+        <button class="tasks-filter" :disabled="prospectBusy" @click="closePanel">
+          Retour à la tâche
+        </button>
+      </section>
+      <section
+        v-if="selected && !linkedProspect && role === 'administrator' && portal"
+        class="task-detail-block"
+      >
+        <p v-if="detailError" role="alert">{{ detailError }}</p>
+        <p v-if="selected.created_at">Créée le {{ date(selected.created_at) }} · Montréal</p>
+        <button
+          class="tasks-filter"
+          :disabled="adminBusy || loadingProspect"
+          @click="openLinkedProspect"
+        >
+          {{ loadingProspect ? 'Ouverture…' : 'Ouvrir la fiche prospect' }}
+        </button>
+      </section>
+      <AssuranceContactEditor
+        v-if="selected && linkedProspect && portal"
+        ref="prospectEditor"
+        :key="selected.id"
+        :contact="linkedProspect"
+        :role="role || 'setter'"
+        :portal="portal"
+        :request="request"
+        workflow="edit"
+        :follow-up="{ id: selected.id, revision: selected.revision }"
+        :task-read-only="!!selected.closed_at"
+        @busy="prospectBusy = $event"
+        @close="
+          linkedProspect = null;
+          prospectBusy = false;
+        "
+        @task-completed="taskCompleted"
+      />
+      <AssuranceFollowUps
+        v-else-if="selected && role === 'administrator' && portal"
         ref="adminEditor"
         :key="selected.id"
         role="administrator"
@@ -595,6 +674,11 @@ onBeforeUnmount(() => {
         </div>
         <dl>
           <div>
+            <dt>Créée le</dt>
+            <dd v-if="selected.created_at">{{ date(selected.created_at) }} · Montréal</dd>
+            <dd v-else>—</dd>
+          </div>
+          <div>
             <dt>Échéance</dt>
             <dd>{{ date(selected.due_at) }} · Montréal</dd>
           </div>
@@ -613,13 +697,14 @@ onBeforeUnmount(() => {
           <h3>Le suivi à réaliser</h3>
           <p>{{ selected.reason }}</p>
           <button
-            v-if="role === 'setter' && selected.contact_id"
+            v-if="role === 'setter' && selected.contact_id && portal"
             type="button"
             class="tasks-filter"
-            :disabled="saving || hasDraft"
+            :disabled="saving || hasDraft || loadingProspect"
             @click="openLinkedProspect"
           >
-            Ouvrir la fiche prospect <ArrowUpRight :size="15" />
+            {{ loadingProspect ? 'Ouverture…' : 'Ouvrir la fiche prospect' }}
+            <ArrowUpRight :size="15" />
           </button>
           <small v-if="role === 'setter' && selected.contact_id && hasDraft">
             Enregistrez ou effacez votre saisie avant de quitter cette tâche.

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { bookingInterval } from './booking-time';
+import type { FollowUpReference } from './follow-up';
 const props = defineProps<{
   prospect: any;
   request: (path: string, body?: any) => Promise<any>;
   blocked?: boolean;
+  followUp?: FollowUpReference;
 }>();
 const emit = defineEmits<{
   saved: [result: string];
@@ -28,6 +30,7 @@ const labels: Record<string, string> = {
   callback: 'A demandé à être rappelé',
   other: 'Autre résultat',
 };
+const taskLabels = { ...labels, unreachable: 'Ne répond pas' };
 let requestId = crypto.randomUUID();
 function changed() {
   requestId = crypto.randomUUID();
@@ -53,6 +56,7 @@ async function save() {
       revision: props.prospect.revision,
       result: result.value,
       note: note.value,
+      ...(props.followUp ? { follow_up: props.followUp } : {}),
     };
     if (result.value === 'callback')
       body.due_at = bookingInterval(local.value, zone.value, 15).starts_at;
@@ -82,7 +86,9 @@ async function save() {
         <label
           >Résultat<select v-model="result" required @change="chooseResult">
             <option value="">Choisir un résultat</option>
-            <option v-for="(label, key) in labels" :key="key" :value="key">{{ label }}</option>
+            <option v-for="(label, key) in followUp ? taskLabels : labels" :key="key" :value="key">
+              {{ label }}
+            </option>
           </select></label
         ><template v-if="result === 'callback'"
           ><label

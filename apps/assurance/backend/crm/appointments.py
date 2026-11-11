@@ -17,6 +17,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from packages.access.assignments import verify_booking
+from packages.access.follow_up import FollowUpReference
+from .contact_followups import finish_follow_up
 from .models import (
     Appointment,
     AdvisorAssignment,
@@ -78,6 +80,7 @@ class RescheduleInput(IntervalInput):
 
 
 class TransmissionInput(BookingInput):
+    follow_up = FollowUpReference(required=False)
     contact_revision = serializers.IntegerField(min_value=0)
     qualification = Qualification()
     meeting_type = serializers.ChoiceField(choices=['video', 'phone'])
@@ -415,6 +418,10 @@ class AppointmentViewSet(AdvisorWorkspaceMixin, ReportMixin, viewsets.GenericVie
                         result='appointment_booked',
                         appointment=row,
                     )
+                    if reference := data.get('follow_up'):
+                        finish_follow_up(
+                            contact, request.user, reference, f'Rendez-vous transmis · n° {row.pk}'
+                        )
         except IntegrityError:
             existing = (
                 Appointment.objects.select_related('contact')

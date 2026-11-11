@@ -112,7 +112,7 @@ const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
 function fixture(role) {
   const root = { children: [] },
     writes = [],
-    openedProspects = [],
+    reads = [],
     row = {
       id: 5,
       contact_id: 42,
@@ -124,10 +124,11 @@ function fixture(role) {
     }
   const app = renderer.createApp(component, {
     role,
-    onOpenProspect: (value) => openedProspects.push(value),
     portal: async () => ({}),
     request: async (path, body) => {
       if (body) writes.push({ path, body })
+      else reads.push(path)
+      if (path === 'contacts/42/') return { id: 42, name: 'Prospect' }
       if (path.startsWith('follow-ups/summary/'))
         return { total: 3, open: 2, closed: 1, overdue: 1, open_priorities: { normal: 2 } }
       if (path.startsWith('follow-ups/5/')) return row
@@ -135,7 +136,7 @@ function fixture(role) {
     },
   })
   app.mount(root)
-  return { root, writes, openedProspects, app }
+  return { root, writes, reads, app }
 }
 test('Assurance administration opens full management controls and policy without changing data', async () => {
   const f = fixture('administrator')
@@ -163,7 +164,7 @@ test('Assurance administration opens full management controls and policy without
     f.app.unmount()
   }
 })
-test('setter can open the linked prospect from a task without closing the follow-up', async () => {
+test('opening an Assurance task loads its prospect within the same drawer without a write', async () => {
   const f = fixture('setter')
   try {
     await flush()
@@ -178,22 +179,8 @@ test('setter can open the linked prospect from a task without closing the follow
       false,
     )
     assert.ok(text(f.root).includes('Le suivi à réaliser'))
-    const openProspect = all(f.root).find(
-      (n) => n.tag === 'button' && text(n).trim() === 'Ouvrir la fiche prospect',
-    )
-    assert.ok(openProspect)
-    await all(f.root)
-      .find((n) => n.tag === 'button' && text(n).trim() === 'Modifier le rappel')
-      .props.onClick()
-    await flush()
-    assert.equal(openProspect.props.disabled, true)
-    await all(f.root)
-      .find((n) => n.tag === 'button' && text(n).trim() === 'Annuler la modification')
-      .props.onClick()
-    await flush()
-    assert.equal(openProspect.props.disabled, false)
-    openProspect.props.onClick()
-    assert.deepEqual(f.openedProspects, [{ id: 42, mode: 'edit' }])
+    assert.ok(f.reads.includes('contacts/42/'))
+    assert.ok(all(f.root).some((n) => n.props?.['data-component'] === 'AssuranceContactEditor'))
     assert.equal(f.writes.length, 0)
   } finally {
     f.app.unmount()

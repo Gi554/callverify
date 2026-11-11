@@ -89,6 +89,38 @@ class ContactCallbackTests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(FollowUpTask.objects.get().reason, '')
 
+    def test_task_result_creates_one_successor_and_closes_the_original(self):
+        task = FollowUpTask.objects.create(
+            contact=self.contact, setter_id=21, due_at=timezone.now(), reason='Premier rappel'
+        )
+        body = self.payload(
+            result='callback', due_at=self.due, follow_up={'id': task.pk, 'revision': 0}
+        )
+        response = self.client.post(self.base + 'call-outcomes/', body, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(
+            self.client.post(self.base + 'call-outcomes/', body, format='json').status_code, 200
+        )
+        task.refresh_from_db()
+        self.assertIsNotNone(task.closed_at)
+        self.assertEqual(FollowUpTask.objects.exclude(pk=task.pk).get().contact_id, self.contact.pk)
+        self.assertEqual(ContactCallOutcome.objects.count(), 1)
+        body['request_id'] = str(uuid4())
+        self.assertEqual(
+            self.client.post(self.base + 'call-outcomes/', body, format='json').status_code, 409
+        )
+        self.assertEqual(FollowUpTask.objects.count(), 2)
+
+    def test_cannot_finish_another_setters_task(self):
+        task = FollowUpTask.objects.create(
+            contact=self.contact, setter_id=22, due_at=timezone.now()
+        )
+        body = self.payload(result='unreachable', follow_up={'id': task.pk, 'revision': 0})
+        self.assertEqual(
+            self.client.post(self.base + 'call-outcomes/', body, format='json').status_code, 409
+        )
+        self.assertFalse(ContactCallOutcome.objects.exists())
+
     def test_manual_task_can_be_edited_closed_and_seen_in_contact_history(self):
         body = self.payload(reason='Rappeler le contact', due_at=self.due, priority='high')
         first = self.client.post(self.base + 'follow-ups/', body, format='json')
