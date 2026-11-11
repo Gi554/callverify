@@ -24,7 +24,10 @@ const selected = ref<Account>();
 const action = ref('');
 const reason = ref('');
 const workspace = ref('assurance');
-const scoped = computed(() => ['grant_admin', 'suspend_admin'].includes(action.value));
+const scoped = computed(() => ['grant_admin', 'suspend_admin', 'support'].includes(action.value));
+const supportGrants = computed(
+  () => selected.value?.memberships.filter((grant) => grant.active) || [],
+);
 const spaces: Record<string, string> = { assurance: 'Assurance', isolation: 'Isolation' };
 
 async function load(next = 1) {
@@ -63,6 +66,14 @@ function apply() {
   const target = selected.value;
   if (!target || !action.value) return;
   void run(async () => {
+    if (action.value === 'support') {
+      await props.request(`platform/accounts/${target.id}/support/`, {
+        workspace: workspace.value,
+        reason: reason.value.trim(),
+      });
+      window.location.assign('/crm');
+      return;
+    }
     await props.request(`platform/accounts/${target.id}/actions/`, {
       action: action.value,
       reason: reason.value.trim(),
@@ -151,11 +162,18 @@ onMounted(() => run(() => load()));
     <form v-if="selected" class="controls action-form" @submit.prevent="apply">
       <strong>{{ selected.username }}</strong>
       <label
-        >Action<select v-model="action" required>
+        >Action<select
+          v-model="action"
+          required
+          @change="action === 'support' && (workspace = supportGrants[0]?.workspace || '')"
+        >
           <option disabled value="">Sélectionner</option>
           <option value="grant_admin">Attribuer ou réactiver un accès administrateur</option>
           <option value="suspend_admin">Suspendre un accès administrateur</option>
           <option value="revoke_sessions">Révoquer les sessions du compte</option>
+          <option v-if="selected.active && supportGrants.length" value="support">
+            Se connecter en tant que
+          </option>
           <option v-if="selected.active" value="suspend">
             Suspendre le compte dans tous les espaces
           </option>
@@ -164,7 +182,14 @@ onMounted(() => run(() => load()));
       >
       <label v-if="scoped"
         >Espace<select v-model="workspace">
-          <option v-for="(label, key) in spaces" :key="key" :value="key">{{ label }}</option>
+          <template v-if="action === 'support'">
+            <option v-for="grant in supportGrants" :key="grant.workspace" :value="grant.workspace">
+              {{ spaces[grant.workspace] }}
+            </option>
+          </template>
+          <template v-else>
+            <option v-for="(label, key) in spaces" :key="key" :value="key">{{ label }}</option>
+          </template>
         </select></label
       >
       <label>Motif<input v-model="reason" required minlength="3" maxlength="500" /></label>

@@ -4,7 +4,20 @@ from django.core import signing
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 from packages.access.tickets import verify
-from .models import AdminUser
+from .models import AdminUser, AuditEvent
+
+
+def audit_support(request, claims):
+    if 'support_actor' in claims and request.method not in ('GET', 'HEAD', 'OPTIONS'):
+        AuditEvent.objects.create(
+            action='platform.support_action',
+            object_id=claims['sub'],
+            metadata={
+                'actor_portal_id': claims['support_actor'],
+                'method': request.method,
+                'path': request.path[:200],
+            },
+        )
 
 
 class WorkspaceAuthentication(BaseAuthentication):
@@ -30,4 +43,5 @@ class WorkspaceAuthentication(BaseAuthentication):
             user.save(update_fields=['password'])
         if not user.is_active:
             raise AuthenticationFailed('Compte suspendu')
+        audit_support(request, claims)
         return user, claims

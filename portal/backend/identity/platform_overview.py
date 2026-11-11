@@ -89,7 +89,10 @@ def overview(request):
                     'workspace': row.workspace,
                     'actor': row.user.username if row.user else '',
                     'target': row.metadata.get('subject'),
-                    'reason': row.metadata.get('reason', ''),
+                    'reason': row.metadata.get('reason')
+                    or ' '.join(
+                        filter(None, (row.metadata.get('method'), row.metadata.get('path')))
+                    ),
                     'created_at': row.created_at.isoformat(),
                 }
                 for row in AccessAudit.objects.filter(action__startswith='platform.')

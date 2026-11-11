@@ -17,9 +17,14 @@ def key_for(workspace):
     return key
 
 
-def issue(user_id, workspace, role):
+def issue(user_id, workspace, role, *, support_actor=None):
     return signing.dumps(
-        {'sub': str(user_id), 'aud': workspace, 'role': role},
+        {
+            'sub': str(user_id),
+            'aud': workspace,
+            'role': role,
+            **({'support_actor': support_actor} if support_actor is not None else {}),
+        },
         key=key_for(workspace),
         salt='amx.workspace.v1',
     )
@@ -27,6 +32,8 @@ def issue(user_id, workspace, role):
 
 def verify(token, workspace):
     claims = signing.loads(token, key=key_for(workspace), salt='amx.workspace.v1', max_age=120)
+    if 'support_actor' in claims:
+        signing.loads(token, key=key_for(workspace), salt='amx.workspace.v1', max_age=30)
     roles = {
         'assurance': {'administrator', 'setter', 'advisor'},
         'isolation': {'administrator', 'setter', 'client'},

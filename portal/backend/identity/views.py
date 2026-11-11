@@ -93,12 +93,11 @@ def sign_in(request):
     )
 
 
-def session_payload(user, setup_required=None):
-    memberships = list(
-        Membership.objects.filter(user=user, active=True)
-        .exclude(role='closer')
-        .values('workspace', 'role')
-    )
+def session_payload(user, setup_required=None, support=None):
+    grants = Membership.objects.filter(user=user, active=True).exclude(role='closer')
+    if support:
+        grants = grants.filter(workspace=support['workspace'])
+    memberships = list(grants.values('workspace', 'role'))
     return Response(
         {
             'username': user.username,
@@ -110,10 +109,11 @@ def session_payload(user, setup_required=None):
             'landing': memberships[0]['workspace'] if len(memberships) == 1 else None,
             'mfa_enabled': mfa_enabled(user),
             'mfa_required': (
-                admin_requires_mfa(user) and not mfa_enabled(user)
+                not support and admin_requires_mfa(user) and not mfa_enabled(user)
                 if setup_required is None
                 else setup_required
             ),
+            **({'support': {'expires': support['expires']}} if support else {}),
         }
     )
 
@@ -124,7 +124,9 @@ def session(request):
         AccessAudit.objects.create(user=request.user, action='session.logout')
         logout(request)
         return Response(status=204)
-    return session_payload(request.user)
+    from .support_sessions import KEY
+
+    return session_payload(request.user, support=request.session.get(KEY))
 
 
 @api_view(['POST'])
@@ -136,6 +138,13 @@ def access(request, workspace):
         return Response({'detail': 'Accès non autorisé à cet espace'}, status=403)
     membership.full_clean()
     AccessAudit.objects.create(user=request.user, action='workspace.access', workspace=workspace)
+    from .support_sessions import KEY
+
+    support = request.session.get(KEY)
+    actor = request.auth['actor'] if support else None
     return Response(
-        {'token': issue(request.user.pk, workspace, membership.role), 'expires_in': 120}
+        {
+            'token': issue(request.user.pk, workspace, membership.role, support_actor=actor),
+            'expires_in': 30 if support else 120,
+        }
     )

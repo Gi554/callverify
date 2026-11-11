@@ -58,11 +58,14 @@ const user = ref<{
   landing: string | null;
   mfa_enabled: boolean;
   mfa_required: boolean;
+  support?: { expires: number };
 } | null>(null);
 const workspace = ref(''),
   error = ref(''),
   busy = ref(false),
   ready = ref(false);
+const supportError = ref('');
+const stoppingSupport = ref(false);
 const recoveryOpen = ref(false),
   resetUid = ref(''),
   resetToken = ref('');
@@ -353,6 +356,7 @@ async function refreshIsolation() {
   }
 }
 async function logout() {
+  if (user.value?.support) return stopSupport();
   await portal('session/', {});
   workspaceVersion++;
   try {
@@ -364,6 +368,19 @@ async function logout() {
   summary.value = null;
   passwordOpen.value = false;
   csrf = '';
+}
+
+async function stopSupport() {
+  if (stoppingSupport.value) return;
+  stoppingSupport.value = true;
+  supportError.value = '';
+  try {
+    await portal('platform/support/stop/', {});
+    window.location.assign('/crm');
+  } catch (cause) {
+    supportError.value = cause instanceof Error ? cause.message : 'Retour indisponible.';
+    stoppingSupport.value = false;
+  }
 }
 
 const role = computed(
@@ -582,6 +599,13 @@ onMounted(async () => {
 });
 </script>
 <template>
+  <aside v-if="user?.support" class="portal-support-banner" aria-label="Session d’assistance">
+    <strong>Assistance · {{ user.username }}</strong>
+    <button type="button" class="secondary" :disabled="stoppingSupport" @click="stopSupport">
+      Revenir au compte superadmin
+    </button>
+    <span v-if="supportError" role="alert">{{ supportError }}</span>
+  </aside>
   <div
     class="amx-root"
     :class="{
@@ -1063,6 +1087,19 @@ onMounted(async () => {
   </div>
 </template>
 <style>
+.portal-support-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #fff1cc;
+  color: #563b00;
+}
 .amx-root {
   min-height: 100vh;
   background: #f6f5ed;
