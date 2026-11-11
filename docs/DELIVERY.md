@@ -4,6 +4,8 @@
 
 La qualification reconnaît `addresses_address1`, `villes` et `addresses_zip` dans les lignes d’import déjà enregistrées. Ces valeurs préremplissent l’adresse, la ville et le code postal avec les contrôles existants, sans réimporter la liste ni écraser les brouillons.
 
+Dans l’aperçu d’import Isolation, l’administrateur valide les colonnes du téléphone, du nom, des coordonnées et de la référence. Orvia propose les en-têtes reconnus, laisse les correspondances ambiguës à choisir et affiche les premières valeurs sélectionnées. Le lot conserve les choix exacts, y compris les champs écartés. Les nouvelles fiches enregistrent les coordonnées validées et le lot conserve les lignes sources. La déduplication conserve la fiche existante.
+
 ## Import Isolation : détection des colonnes de contact
 
 **Livré sur staging.** L’aperçu d’import détecte automatiquement les colonnes de téléphone,

@@ -203,6 +203,71 @@ class IsolationQualificationTests(TestCase):
             self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(42, 'isolation', 'setter'))
             self.assertEqual(self.client.get(url).status_code, 403)
 
+    def test_import_uses_confirmed_columns_and_keeps_the_first_prospect_on_duplicate(self):
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import ImportBatch, ImportRow
+        from .services import process_import
+
+        with (
+            TemporaryDirectory() as media,
+            override_settings(MEDIA_ROOT=media),
+            patch('core.isolation_qualification.enqueue'),
+        ):
+            campaign = self.client.post('/api/qualification/', {'name': 'Import exact'}).data['id']
+            content = (
+                b'phone,first_name,last_name,Display,Address,Delivery,City,Ville,ZIPCustom,email\n'
+                b'5145550123,Legacy,Name,Chosen Name,Old address,New address,Old town,Other town,H2X1Y4,example@example.test\n'
+                b'5145550123,Duplicate,Name,Duplicate,Old address,Other address,Old town,Other town,H3Z2Y7,other@example.test\n'
+            )
+            preview = self.client.post(
+                '/api/qualification/imports/',
+                {
+                    'campaign': campaign,
+                    'file': SimpleUploadedFile('import.csv', content, content_type='text/csv'),
+                },
+                format='multipart',
+            )
+            self.assertEqual(preview.status_code, 201, preview.data)
+            self.assertEqual(preview.data['suggested_mapping']['address'], 'Address')
+            self.assertNotIn('city', preview.data['suggested_mapping'])
+            batch = preview.data['id']
+            url = f'/api/qualification/imports/{batch}/confirm/'
+            mapping = {
+                'phone': 'phone',
+                'name': 'Display',
+                'address': 'Delivery',
+                'city': '',
+                'postal_code': 'ZIPCustom',
+                'email': '',
+            }
+            rejected = self.client.post(
+                url, {'mapping': {**mapping, 'address': 'Inconnue'}}, format='json'
+            )
+            self.assertEqual(rejected.status_code, 400, rejected.data)
+            confirmed = self.client.post(url, {'mapping': mapping}, format='json')
+            self.assertEqual(confirmed.status_code, 202, confirmed.data)
+            self.assertEqual(ImportBatch.objects.get(pk=batch).mapping, mapping)
+            self.assertEqual(process_import(batch)['duplicates'], 1)
+            source = ImportRow.objects.get(batch_id=batch, duplicate=False)
+            prospect = source.prospect
+            self.assertEqual(prospect.name, 'Chosen Name')
+            self.assertEqual(
+                prospect.c2,
+                {
+                    'address': 'New address',
+                    'city': '',
+                    'postal_code': 'H2X 1Y4',
+                    'email': '',
+                },
+            )
+            self.assertEqual(source.source['Address'], 'Old address')
+            result = self.client.get(f'/api/work-queue/{prospect.pk}/c2/')
+            self.assertEqual(result.status_code, 200, result.data)
+            self.assertEqual(result.data['defaults']['city'], '')
+            self.assertEqual(result.data['defaults']['address'], 'New address')
+
     def test_results_do_not_expose_legacy_campaigns(self):
         legacy_owner = AdminUser.objects.create_user('legacy-owner', is_staff=True)
         legacy = Campaign.objects.create(owner=legacy_owner, name='Legacy', purpose='', source='')
