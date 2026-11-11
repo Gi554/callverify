@@ -490,7 +490,7 @@ const navigation = computed(() => {
     items.push({ id: 'earnings', label: 'Mes gains et mon objectif', icon: 'statistics' });
   return items;
 });
-// Prospect card to open on arrival in Prospects (from the calls module).
+// Prospect card to open on arrival in Prospects.
 const prospectFocus = ref<{ id: number; mode: 'edit' | 'call' } | null>(null);
 function openProspect(value: { id: number; mode: 'edit' | 'call' }) {
   prospectFocus.value = value;
@@ -946,6 +946,7 @@ onMounted(async () => {
                       :request="assurance"
                       @changed="refreshAssurance"
                       @navigate="selectModule"
+                      @open-prospect="openProspect"
                     />
                     <AssuranceFollowUps
                       v-else-if="assuranceModule === 'followups' && role !== 'advisor'"

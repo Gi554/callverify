@@ -27,7 +27,11 @@ const adminEditor = ref<any>(null),
   policyOpen = ref(false),
   policyBusy = ref(false),
   policyEditor = ref<any>(null);
-const emit = defineEmits<{ changed: []; navigate: [value: string] }>();
+const emit = defineEmits<{
+  changed: [];
+  navigate: [value: string];
+  openProspect: [value: { id: number; mode: 'edit' }];
+}>();
 type Column = {
   key: string;
   label: string;
@@ -101,6 +105,9 @@ const selected = ref<any>(null),
   resolution = ref(''),
   discard = ref(false),
   confirmed = ref(false);
+const hasDraft = computed(
+  () => !selected.value?.closed_at && (editing.value || !!resolution.value.trim()),
+);
 const busy = computed(() => summaryBusy.value || columns.value.some((c) => c.busy));
 const percentage = computed(() =>
   summary.value?.total ? Math.round((100 * summary.value.closed) / summary.value.total) : null,
@@ -205,13 +212,18 @@ async function open(row: any) {
 }
 function closePanel() {
   if (saving.value) return;
-  if ((editing.value || resolution.value.trim()) && !selected.value?.closed_at) {
+  if (hasDraft.value) {
     discard.value = true;
     return;
   }
   selected.value = null;
   resolution.value = '';
   discard.value = false;
+}
+function openLinkedProspect() {
+  const id = selected.value?.contact_id;
+  if (!id || saving.value || hasDraft.value) return;
+  emit('openProspect', { id, mode: 'edit' });
 }
 async function reloadSelected() {
   if (saving.value || !selected.value) return;
@@ -600,6 +612,18 @@ onBeforeUnmount(() => {
         <section class="task-detail-block">
           <h3>Le suivi à réaliser</h3>
           <p>{{ selected.reason }}</p>
+          <button
+            v-if="role === 'setter' && selected.contact_id"
+            type="button"
+            class="tasks-filter"
+            :disabled="saving || hasDraft"
+            @click="openLinkedProspect"
+          >
+            Ouvrir la fiche prospect <ArrowUpRight :size="15" />
+          </button>
+          <small v-if="role === 'setter' && selected.contact_id && hasDraft">
+            Enregistrez ou effacez votre saisie avant de quitter cette tâche.
+          </small>
         </section>
         <section v-if="selected.latest_incident" class="task-detail-block incident">
           <h3>Dernier signalement</h3>
