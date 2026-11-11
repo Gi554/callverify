@@ -1,12 +1,13 @@
 import uuid
 from datetime import timedelta
+from uuid import uuid4
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from packages.access.isolation import issue_lot
-from .models import AdminUser, AuditEvent, Campaign, Prospect
+from .models import AdminUser, AuditEvent, Campaign, IsolationFollowUp, Prospect
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
@@ -87,6 +88,27 @@ class IsolationLotTests(TestCase):
         self.assertEqual(response.data['released'], 2)
         self.assertEqual(Prospect.objects.filter(assigned_setter_id=21).count(), 1)
         self.assertEqual(Prospect.objects.filter(assigned_setter_id__isnull=True).count(), 4)
+
+    def test_release_keeps_a_contact_with_an_open_reminder(self):
+        self.assign(3)
+        protected = Prospect.objects.filter(assigned_setter_id=21).first()
+        IsolationFollowUp.objects.create(
+            prospect=protected,
+            request_id=uuid4(),
+            fingerprint='open-reminder',
+            note='Rappeler demain',
+            due_at=timezone.now() + timedelta(hours=2),
+        )
+        self.auth(91, 'administrator')
+        response = self.client.post(
+            self.base + 'release/',
+            {'request_id': str(uuid4()), 'setter_id': 21},
+            format='json',
+        )
+        self.assertEqual(response.data['released'], 2)
+        protected.refresh_from_db()
+        self.assertEqual(protected.assigned_setter_id, 21)
+        self.assertIsNone(IsolationFollowUp.objects.get(prospect=protected).closed_at)
 
     def test_setters_proofs_of_other_actors_and_other_roles_are_refused(self):
         self.assertEqual(self.assign(1, actor=92).status_code, 400)
