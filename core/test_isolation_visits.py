@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from packages.access.isolation import issue_owner
 from packages.access.isolation_visits import issue_booking
-from .models import Prospect, IsolationVisit, AuditEvent
+from .models import Prospect, IsolationVisit, IsolationFollowUp, AuditEvent
 from .test_isolation_activity import assigned_fixture
 
 C2_DATA = {
@@ -75,6 +75,23 @@ class IsolationVisitTests(TestCase):
         self.assertEqual(events.get().changes['result'], 'appointment_booked')
         self.assertEqual(events.get().changes['appointment_id'], response.data['id'])
         self.assertEqual(events.get().author_portal_id, 21)
+
+    def test_booking_closes_only_the_requested_current_task(self):
+        task = IsolationFollowUp.objects.create(
+            prospect=self.prospect, request_id=uuid4(), created_by_id=21, due_at=timezone.now()
+        )
+        response = self.book(follow_up={'id': task.pk, 'revision': 1})
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertFalse(IsolationVisit.objects.exists())
+        task.refresh_from_db()
+        self.assertIsNone(task.closed_at)
+        reference = {'id': task.pk, 'revision': 0}
+        response = self.book(follow_up=reference)
+        self.assertEqual(response.status_code, 201, response.data)
+        task.refresh_from_db()
+        self.assertIsNotNone(task.closed_at)
+        self.assertEqual(self.book(follow_up=reference).status_code, 200)
+        self.assertEqual(IsolationVisit.objects.count(), 1)
 
     def test_legacy_booking_with_a_closer_is_rejected_before_creating_a_visit(self):
         from packages.access.isolation_visits import issue_booking

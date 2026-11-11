@@ -11,7 +11,13 @@ import {
 } from 'lucide-vue-next';
 import SidePanel from './SidePanel.vue';
 import IsolationFollowUps from './IsolationFollowUps.vue';
-const props = defineProps<{ role: string; request: (path: string, body?: any) => Promise<any> }>();
+import IsolationProspectActivity from './IsolationProspectActivity.vue';
+import IsolationVisits from './IsolationVisits.vue';
+const props = defineProps<{
+  role: string;
+  portal: (path: string, body?: any) => Promise<any>;
+  request: (path: string, body?: any) => Promise<any>;
+}>();
 const emit = defineEmits<{ saved: []; navigate: [value: string] }>();
 type Column = {
   key: string;
@@ -70,11 +76,12 @@ const columns = ref<Column[]>([
 const search = ref(''),
   applied = ref(''),
   selected = ref<any>(null),
-  closing = ref(false),
+  pane = ref<'work' | 'book' | 'edit' | 'close'>('work'),
   opening = ref(false),
   detailBusy = ref(false),
   error = ref(''),
-  editor = ref<any>(null);
+  editor = ref<any>(null),
+  status = ref('');
 const busy = computed(() => columns.value.some((c) => c.busy)),
   complete = computed(() => columns.value.every((c) => !c.busy && !c.error));
 const total = computed(() => columns.value.reduce((n, c) => n + c.count, 0)),
@@ -134,7 +141,7 @@ async function open(row: any, finish = false) {
     const data = await props.request(`follow-ups/${row.id}/?state=all`);
     if (disposed) return;
     selected.value = data;
-    closing.value = finish;
+    pane.value = finish ? 'close' : 'work';
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -145,6 +152,22 @@ function saved() {
   selected.value = null;
   emit('saved');
   void load();
+}
+function requestClose() {
+  if (editor.value) editor.value.close();
+  else selected.value = null;
+}
+async function taskCompleted(advance: boolean, warning = '') {
+  const upcoming = new Set(columns.value[0].rows.map((row) => row.id));
+  selected.value = null;
+  detailBusy.value = false;
+  emit('saved');
+  await load();
+  if (disposed) return;
+  const next =
+    columns.value[1].rows[0] || columns.value[0].rows.find((row) => upcoming.has(row.id));
+  if (advance && next) await open(next);
+  status.value = warning || 'Tâche terminée. Le résultat a été enregistré.';
 }
 onMounted(load);
 onBeforeUnmount(() => {
@@ -178,6 +201,7 @@ onBeforeUnmount(() => {
       >
     </form>
     <p v-if="error" class="tasks-error" role="alert">{{ error }}</p>
+    <p v-if="status" role="status">{{ status }}</p>
     <div class="tasks-layout">
       <div
         class="tasks-columns"
@@ -220,7 +244,7 @@ onBeforeUnmount(() => {
               <p v-if="row.closed_at" class="task-description">{{ row.resolution }}</p>
               <footer>
                 <button :disabled="opening" @click="open(row)">
-                  {{ row.closed_at ? 'Consulter' : 'Modifier' }}</button
+                  {{ row.closed_at ? 'Consulter' : 'Ouvrir' }}</button
                 ><button v-if="!row.closed_at" :disabled="opening" @click="open(row, true)">
                   Terminer<ArrowUpRight :size="14" />
                 </button>
@@ -290,26 +314,65 @@ onBeforeUnmount(() => {
       :title="selected?.prospect_name || 'Rappel du prospect'"
       eyebrow="ISOLATION · SUIVI"
       :close-disabled="detailBusy"
-      @request-close="selected?.closed_at ? (selected = null) : editor?.close()"
-      ><IsolationFollowUps
-        v-if="selected && !selected.closed_at"
+      @request-close="requestClose"
+    >
+      <section v-if="selected" class="task-detail-block">
+        <h3>{{ selected.closed_at ? 'Rappel terminé' : 'Le suivi à réaliser' }}</h3>
+        <p>{{ selected.note || 'Rappel du prospect' }}</p>
+        <p v-if="selected.absence_visit_id">Visite non tenue n° {{ selected.absence_visit_id }}</p>
+        <p v-if="selected.created_at">Créé le {{ date(selected.created_at) }} · Montréal</p>
+        <p>Échéance le {{ date(selected.due_at) }} · Montréal</p>
+        <p v-if="selected.closed_at">{{ selected.resolution }}</p>
+        <button
+          v-if="!selected.closed_at && pane === 'work'"
+          type="button"
+          class="secondary"
+          :disabled="detailBusy"
+          @click="editor?.canClose() && (pane = 'edit')"
+        >
+          Modifier le rappel
+        </button>
+      </section>
+      <IsolationProspectActivity
+        v-if="selected && pane === 'work'"
+        ref="editor"
+        :key="selected.id"
+        :prospect-id="selected.prospect_id"
+        :role="role"
+        :portal="portal"
+        :request="request"
+        :follow-up="{ id: selected.id, revision: selected.revision }"
+        :task-read-only="!!selected.closed_at"
+        @busy="detailBusy = $event"
+        @book="pane = 'book'"
+        @task-completed="taskCompleted(true)"
+        @close="selected = null"
+      />
+      <IsolationVisits
+        v-else-if="selected && pane === 'book'"
+        ref="editor"
+        :prospect-id="selected.prospect_id"
+        :role="role"
+        :portal="portal"
+        :request="request"
+        :follow-up="{ id: selected.id, revision: selected.revision }"
+        @busy="detailBusy = $event"
+        @task-completed="taskCompleted(false, $event)"
+        @close="pane = 'work'"
+      />
+      <IsolationFollowUps
+        v-else-if="selected"
         ref="editor"
         :key="selected.id"
         :editor-only="true"
         :initial-task="selected"
-        :initial-close="closing"
+        :initial-close="pane === 'close'"
         :request="request"
         @busy="detailBusy = $event"
         @saved="saved"
-        @close="selected = null"
+        @close="pane = 'work'"
       />
-      <div v-else-if="selected" class="resolved-task">
-        <h3>Rappel terminé</h3>
-        <p>{{ selected.note }}</p>
-        <p>{{ selected.resolution }}</p>
-        <button class="secondary" @click="selected = null">Fermer</button>
-      </div></SidePanel
-    >
+    </SidePanel>
   </section>
 </template>
 

@@ -3,13 +3,14 @@
 import hashlib
 import json
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from packages.access.follow_up import FollowUpReference
 from .models import ContactCallOutcome, FollowUpTask, Appointment, BusinessAudit
 from .agreements import lock_contact
 from .leases import Conflict
@@ -18,12 +19,12 @@ from .notifications import notify
 RESULTS = dict(ContactCallOutcome._meta.get_field('result').choices)
 
 
-def explicit_future(value):
+def explicit_future(value, *, future=True):
     try:
         parsed = parse_datetime(str(value))
     except (ValueError, TypeError):
         parsed = None
-    if parsed is None or timezone.is_naive(parsed) or parsed <= timezone.now():
+    if parsed is None or timezone.is_naive(parsed) or (future and parsed <= timezone.now()):
         raise ValidationError('Date et heure futures avec décalage explicite requises.')
 
 
@@ -58,6 +59,7 @@ class TaskEdit(TaskFields):
 
 
 class OutcomeInput(Strict):
+    follow_up = FollowUpReference(required=False)
     token = serializers.UUIDField(write_only=True)
     contact_revision = serializers.IntegerField(min_value=0)
     request_id = serializers.UUIDField()
@@ -71,7 +73,7 @@ class OutcomeInput(Strict):
         if data['result'] == 'callback':
             if 'due_at' not in data:
                 raise ValidationError('Date et heure du rappel requises.')
-            explicit_future(self.initial_data['due_at'])
+            explicit_future(self.initial_data['due_at'], future=False)
         elif 'due_at' in data:
             raise ValidationError('Échéance réservée au résultat Rappel.')
         if (data['result'] == 'appointment_booked') != ('appointment_id' in data):
@@ -121,6 +123,26 @@ def audit_task(row, user, action, metadata):
     )
 
 
+def finish_follow_up(contact, user, reference, resolution):
+    tasks = FollowUpTask.objects.filter(
+        Q(contact=contact) | Q(appointment__contact=contact),
+        pk=reference['id'],
+        revision=reference['revision'],
+        closed_at__isnull=True,
+    )
+    if user.role == 'setter':
+        tasks = tasks.filter(setter_id=user.pk)
+    original = tasks.first()
+    if original is None or not tasks.update(
+        closed_at=timezone.now(),
+        closed_by_id=user.pk,
+        resolution=resolution,
+        revision=F('revision') + 1,
+    ):
+        raise Conflict('Tâche indisponible, modifiée ou déjà clôturée : actualisez.')
+    audit_task(original, user, 'follow_up_closed', {'resolution': resolution})
+
+
 class ContactFollowUpMixin:
     @action(detail=True, methods=['get', 'post'], url_path='call-outcomes')
     def call_outcomes(self, request, pk=None):
@@ -157,7 +179,10 @@ class ContactFollowUpMixin:
                 appointment = appointments.first()
                 if appointment is None:
                     raise ValidationError('Rendez-vous planifié et autorisé de ce contact requis.')
+            if reference := data.get('follow_up'):
+                finish_follow_up(current, request.user, reference, RESULTS[data['result']])
             if data['result'] == 'callback':
+                explicit_future(request.data['due_at'])
                 task = FollowUpTask.objects.create(
                     contact=contact,
                     setter_id=request.user.pk,
@@ -180,7 +205,12 @@ class ContactFollowUpMixin:
                 actor_id=request.user.pk,
                 object_id=contact.pk,
                 action='contact.call_outcome_recorded',
-                metadata={'outcome_id': row.pk, 'result': row.result, 'task_id': row.task_id},
+                metadata={
+                    'outcome_id': row.pk,
+                    'result': row.result,
+                    'task_id': row.task_id,
+                    **({'completed_task_id': reference['id']} if reference else {}),
+                },
             )
             return Response(
                 {**outcome_output(row), 'contact_revision': current.revision}, status=201

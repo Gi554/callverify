@@ -53,6 +53,30 @@ class FollowUpTests(TestCase):
             self.base + 'follow-ups/', self.task_payload(**changes), format='json'
         )
 
+    def test_task_result_closes_the_original_and_keeps_one_successor(self):
+        task = self.task().data
+        body = self.call_payload(
+            revision=1,
+            result='callback',
+            due_at=self.due.isoformat(),
+            follow_up={'id': task['id'], 'revision': task['revision']},
+        )
+        response = self.client.post(self.base + 'call-result/', body, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(
+            self.client.post(self.base + 'call-result/', body, format='json').status_code, 200
+        )
+        original = IsolationFollowUp.objects.get(pk=task['id'])
+        successor = IsolationFollowUp.objects.exclude(pk=task['id']).get()
+        self.assertIsNotNone(original.closed_at)
+        self.assertEqual(successor.prospect_id, original.prospect_id)
+        self.assertIsNone(successor.closed_at)
+        self.prospect.refresh_from_db()
+        self.assertEqual(self.prospect.callback_at, successor.due_at)
+        response = self.call(revision=2, follow_up=body['follow_up'])
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(IsolationFollowUp.objects.count(), 2)
+
     def test_latest_due_order_detects_crossed_deadlines_without_exposing_foreign_or_closed_tasks(
         self,
     ):

@@ -12,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from packages.access.follow_up import FollowUpReference
 from .models import Prospect, ProspectActivity, IsolationFollowUp, IsolationVisit, AuditEvent
 
 RESULTS = {
@@ -72,7 +73,9 @@ def output(row):
         'id': row.pk,
         'prospect_id': row.prospect_id,
         'prospect_name': row.prospect.name,
+        'absence_visit_id': row.absence_visit_id,
         'due_at': row.due_at,
+        'created_at': row.created_at,
         'owner_name': row.prospect.assigned_setter_name,
         'note': row.note,
         'revision': row.revision,
@@ -117,6 +120,7 @@ class TaskInput(Strict):
 
 
 class CallInput(Strict):
+    follow_up = FollowUpReference(required=False)
     request_id = serializers.UUIDField()
     revision = serializers.IntegerField(min_value=0)
     result = serializers.ChoiceField(choices=list(RESULTS))
@@ -137,6 +141,24 @@ class CallInput(Strict):
                 'Rendez-vous pris : liez une réservation existante ; aucun autre résultat ne reçoit de rendez-vous.'
             )
         return data
+
+
+def finish_follow_up(prospect, user, reference, resolution):
+    tasks = IsolationFollowUp.objects.filter(
+        prospect=prospect,
+        pk=reference['id'],
+        revision=reference['revision'],
+        closed_at__isnull=True,
+    )
+    if not tasks.update(
+        closed_at=timezone.now(),
+        closed_by_id=user.pk,
+        resolution=resolution,
+        revision=F('revision') + 1,
+    ):
+        raise Conflict('Rappel indisponible, modifié ou déjà terminé : actualisez.')
+    event(prospect, user, 'callback_closed', resolution, {'task_id': reference['id']})
+    sync(prospect)
 
 
 class FollowUpMixin:
@@ -224,7 +246,7 @@ class FollowUpMixin:
                 ):
                     raise Conflict('Identifiant de résultat déjà utilisé.')
                 return Response(activity_output(old))
-            if prospect.assignment_revision != data['revision']:
+            if current.assignment_revision - 1 != data['revision']:
                 raise Conflict('Prospect modifié : actualisez.')
             if data['result'] == 'appointment_booked':
                 visits = IsolationVisit.objects.filter(
@@ -239,6 +261,9 @@ class FollowUpMixin:
             changes = {'result': data['result'], 'fingerprint': value, 'phone': current.raw_phone}
             if 'appointment_id' in data:
                 changes['appointment_id'] = data['appointment_id']
+            if reference := data.get('follow_up'):
+                finish_follow_up(current, request.user, reference, RESULTS[data['result']])
+                changes['completed_task_id'] = reference['id']
             if data['result'] == 'callback':
                 explicit(data['due_at'], request.data['due_at'])
                 task = IsolationFollowUp.objects.create(
@@ -246,7 +271,7 @@ class FollowUpMixin:
                     request_id=uuid4(),
                     fingerprint=value,
                     created_by_id=request.user.pk,
-                    note=data['note'],
+                    note=data['note'] or 'Rappel demandé par le prospect',
                     due_at=data['due_at'],
                 )
                 changes.update(task_id=task.pk, due_at=task.due_at.isoformat())

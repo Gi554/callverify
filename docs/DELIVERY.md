@@ -3208,3 +3208,9 @@ La Super administration affiche le compte opérateur, le compte utilisé, l’es
 
 Le setter peut ouvrir la fiche prospect liée depuis le détail de sa tâche, avant ou après son échéance. La fiche applique les droits habituels du setter. L’ouverture laisse le rappel dans son état actuel et permet d’appeler depuis la fiche.
 
+## Traitement des tâches Assurance et Isolation
+
+Le panneau de tâche indique le motif, la date de création et l’échéance à l’heure de Montréal. Il donne accès aux coordonnées, à la qualification, à l’historique et à la commande d’appel habituelle. Enregistrer un résultat simple clôture la tâche et ouvre la suivante dans la vue courante, en priorité parmi les tâches en retard. Un nouveau rappel clôture le suivi d’origine et crée une nouvelle tâche sur la même fiche. Le nouveau rappel futur n’est pas sélectionné immédiatement.
+
+« Rendez-vous pris » ouvre la qualification et le formulaire de réservation existant. La transmission Assurance au conseiller ou l’enregistrement de la visite Isolation clôture la tâche d’origine dans la même transaction. Les droits, les notifications et la publication Google continuent de suivre le parcours de réservation de chaque espace.
+

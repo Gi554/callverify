@@ -102,16 +102,17 @@ async function close() {
   }
 }
 watch(busy, (value) => emit('busy', value), { flush: 'sync' });
-function closePanel() {
-  if (busy.value) return;
-  if (
-    (selected.value || planning.value || reassignment.value) &&
-    !window.confirm('Quitter sans enregistrer les modifications du suivi ?')
-  )
-    return;
-  emit('close');
+function canLeave() {
+  return (
+    !busy.value &&
+    (!(selected.value || planning.value || reassignment.value) ||
+      window.confirm('Quitter sans enregistrer les modifications du suivi ?'))
+  );
 }
-defineExpose({ close: closePanel });
+function closePanel() {
+  if (canLeave()) emit('close');
+}
+defineExpose({ close: closePanel, canLeave });
 function preparePlan(row: any, reopen = false) {
   reopening.value = reopen;
   planning.value = row;

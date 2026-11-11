@@ -5,6 +5,7 @@ const props = defineProps<{
   workspace: 'assurance' | 'isolation';
   resourceId: number;
   phone: string;
+  label?: string;
   disabled?: boolean;
   autoOpen?: boolean;
   // Call session: send the command as soon as the checks pass, without the confirmation step.
@@ -133,7 +134,7 @@ onMounted(() => {
       :disabled="disabled || pending"
       @click="open"
     >
-      <Phone :size="16" /> Appeler
+      <Phone :size="16" /> {{ label || 'Appeler' }}
     </button>
     <div v-if="confirming" class="call-confirm" role="group" aria-label="Confirmer l’appel">
       <div class="call-confirm-head">
