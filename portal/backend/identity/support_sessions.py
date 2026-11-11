@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from packages.support_audit import record_attempt
 
 from .models import AccessAudit, Membership, ROLES
 
@@ -51,12 +52,13 @@ def start_support(request, pk):
         'workspace': workspace,
         'expires': int(timezone.now().timestamp()) + DURATION,
     }
-    AccessAudit.objects.create(
+    opened = AccessAudit.objects.create(
         user=request.user,
         workspace=workspace,
         action='platform.support_started',
-        metadata={**context, 'reason': data['reason']},
+        metadata={**context, 'reason': data['reason'], 'journal': True},
     )
+    context['id'] = opened.pk
     request.session.cycle_key()
     request.session[KEY] = context
     return session_payload(member.user, support=context)
@@ -67,7 +69,7 @@ def finish_support(request, actor, context):
         user=actor,
         workspace=context['workspace'],
         action='platform.support_ended',
-        metadata={'subject': context['subject']},
+        metadata={'subject': context['subject'], 'session_id': context.get('id')},
     )
     request.session.pop(KEY)
     request.session.cycle_key()
@@ -98,10 +100,12 @@ def authenticate_support(request, actor, context):
     if not path.startswith(f'/api/portal/{workspace}/'):
         raise PermissionDenied('Cette opération est indisponible pendant une session d’assistance.')
     if request.method not in ('GET', 'HEAD', 'OPTIONS'):
-        AccessAudit.objects.create(
+        record_attempt(
+            request,
+            AccessAudit,
             user=actor,
             workspace=workspace,
-            action='platform.support_action',
-            metadata={'subject': member.user_id, 'method': request.method, 'path': path[:200]},
+            subject=member.user_id,
+            session_id=context.get('id'),
         )
     return member.user, context

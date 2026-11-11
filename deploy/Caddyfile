@@ -7,6 +7,12 @@
     handle /api/assurance/internal/* {
         respond 404
     }
+    handle /api/isolation/internal/support-journal/* {
+        respond 404
+    }
+    handle /api/internal/support-journal/* {
+        respond 404
+    }
     handle /api/portal/* {
         reverse_proxy portal:8000
     }

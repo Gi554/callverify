@@ -144,7 +144,13 @@ def access(request, workspace):
     actor = request.auth['actor'] if support else None
     return Response(
         {
-            'token': issue(request.user.pk, workspace, membership.role, support_actor=actor),
+            'token': issue(
+                request.user.pk,
+                workspace,
+                membership.role,
+                support_actor=actor,
+                support_session=support.get('id') if support else None,
+            ),
             'expires_in': 30 if support else 120,
         }
     )

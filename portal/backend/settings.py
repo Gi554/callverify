@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'portal.backend.identity',
 ]
 MIDDLEWARE = [
+    'packages.support_audit.SupportAuditMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
