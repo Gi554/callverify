@@ -354,7 +354,7 @@ const resultLabels: Record<string, string> = {
         Suivant
       </button>
     </div>
-    <footer class="sheet-footer">
+    <footer v-if="!followUp" class="sheet-footer">
       <button class="secondary" :disabled="busy || callBusy || taskBusy" @click="close">
         {{ session ? 'Terminer · prospect suivant' : 'Fermer la fiche' }}
       </button>
