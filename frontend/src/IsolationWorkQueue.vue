@@ -604,6 +604,7 @@ onBeforeUnmount(() => {
           :phone="activity.phone || activity.raw_phone"
           :auto-open="workflow === 'call'"
           :auto-send="session"
+          @skip="activityPanel?.close()"
           :before-open="
             async () => {
               activity = await request(`work-queue/${activity.id}/`);

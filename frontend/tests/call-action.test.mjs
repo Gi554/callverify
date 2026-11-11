@@ -210,3 +210,25 @@ test('lost dispatch response preserves reference and prevents another send', asy
     f.close()
   }
 })
+
+test('skipping an uncertain call keeps its reference without resending', async () => {
+  let sends = 0
+  let skips = 0
+  const f = fixture(
+    async (path, body) => {
+      if (path.endsWith('options/')) return { enabled: true, post_associated: true }
+      if (body) sends++
+      return { state: 'unknown' }
+    },
+    { autoOpen: true, autoSend: true, onSkip: () => skips++ },
+  )
+  try {
+    for (let i = 0; i < 10; i++) await nextTick()
+    await f.click('Passer au prospect suivant')
+    assert.equal(skips, 1)
+    assert.equal(sends, 1)
+    assert.equal(f.saved.size, 1)
+  } finally {
+    f.close()
+  }
+})
