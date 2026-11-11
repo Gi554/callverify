@@ -146,6 +146,8 @@ CID et `NEWT_SMS_AUTOMATIC_FROM` déjà utilisés par le relais automatique.
 
 **Rappel inchangé** : rendez-vous transmis dans l’espace du client, courriel complet, puis sans mise à jour après 24 h un rappel et l’apparition dans « Rendez-vous non mis à jour ». **Ajout** : champ « Numéro mobile pour les rappels » dans Mon compte du client Isolation (vide par défaut, validé comme numéro canadien, vidable). Tant qu’il est vide, aucun SMS ; une fois renseigné, un SMS est envoyé une seule fois par rendez-vous au moment du rappel de 24 h, seulement si le résultat est toujours manquant et si l’envoi automatique est activé (`NEWT_SMS_AUTOMATIC_FROM`).
 
+Le client reçoit aussi un SMS pour une nouvelle réservation au moment où son courriel est mis en file. Le SMS utilise le même mobile et indique le créneau au Québec avec un lien vers la visite. Chaque événement de réservation produit au maximum une tentative SMS et le relais ne renvoie pas les confirmations des courriels déjà mis en file.
+
 Vérifications : tests portail (353) et Isolation (356) verts, tests frontend (218), eslint, prettier, vue-tsc et build. Limites : aucun courriel ni SMS réel envoyé ; mise en page non vérifiée dans une vraie boîte de réception ; le SMS exige un numéro saisi par Charles et l’activation du SMS automatique en production.
 
 ## Isolation : courriel du prospect facultatif à la réservation

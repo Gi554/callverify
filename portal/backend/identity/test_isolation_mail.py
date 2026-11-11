@@ -3,7 +3,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.utils import timezone
-from .models import Membership, PortalMail, IsolationMailRelay
+from .models import Membership, PortalMail, IsolationMailRelay, ReminderPhone, SmsAttempt
 from .isolation_mail import sync
 from .mail_queue import dispatch
 
@@ -61,6 +61,30 @@ class IsolationMailTests(TestCase):
         with patch('portal.backend.identity.isolation_mail.eligible', return_value=False):
             self.assertEqual(dispatch()['expired'], 1)
         self.assertEqual(mail.outbox, [])
+
+    @override_settings(
+        NEWT_SMS_ENABLED=True,
+        NEWT_SMS_CALLER_ID='4387388939',
+        NEWT_USERNAME='test',
+        NEWT_PASSWORD='test',
+        NEWT_SMS_AUTOMATIC_FROM='2026-01-01T00:00:00Z',
+    )
+    @patch('portal.backend.identity.isolation_sms.sms.send', return_value='accepted')
+    @patch('portal.backend.identity.isolation_sms.eligible', return_value=True)
+    def test_new_booking_sends_one_sms_to_the_client_mobile(self, eligible, send):
+        ReminderPhone.objects.create(user=self.user, mobile='4387388944')
+        self.prospect_event()
+        self.assertEqual(self.sync()['queued'], 1)
+        self.assertEqual(self.sync()['existing'], 1)
+        eligible.assert_called_once_with(1, self.user.pk)
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[2], '4387388944')
+        message = send.call_args.args[4]
+        self.assertIn('01/11/2026 à 10:30', message)
+        self.assertIn('workspace=isolation&visit=42', message)
+        self.assertNotIn('Léa', message)
+        self.assertEqual(SmsAttempt.objects.get().kind, 'client_booking')
+        self.assertEqual(PortalMail.objects.count(), 1)
 
     def test_missing_result_triggers_the_client_sms_and_a_failure_never_blocks_the_queue(self):
         target = 'portal.backend.identity.isolation_sms.remind_client'

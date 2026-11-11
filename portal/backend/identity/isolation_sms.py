@@ -15,6 +15,7 @@ from packages.newt import sms
 from .isolation_mail import eligible, fetch
 from .models import ReminderPhone, SmsAttempt
 from .newt_sms import configured
+from .recovery import public_url
 
 
 def destination(raw):
@@ -66,6 +67,10 @@ def submit(visit, kind, since):
     stamp = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
     label = 'Confirmation' if kind == 'confirmation' else 'Rappel'
     message = f'{label} de votre visite Isolation le {stamp} (heure du Québec).'
+    return send_once(identifier, kind, phone, message)
+
+
+def send_once(identifier, kind, phone, message):
     caller_id = settings.NEWT_SMS_CALLER_ID
     row, created = SmsAttempt.objects.get_or_create(
         pk=identifier,
@@ -99,45 +104,34 @@ def remind_client(user, event, starts):
     Sent only to the number the client set in its account (empty by default), once per event,
     and only while the source still shows the result as missing.
     """
+    stamp = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
+    message = (
+        f'Orvia CRM : le résultat de votre visite du {stamp} (heure du Québec) '
+        'n’est pas encore renseigné. Merci de le mettre à jour dans votre espace ORVIA.'
+    )
+    return send_to_client(user, event, 'client_reminder', message)
+
+
+def confirm_client_booking(user, event, visit, starts):
+    stamp = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
+    message = (
+        f'Orvia CRM : nouvelle visite Isolation le {stamp} (heure du Québec). '
+        f'Détails : {public_url()}/crm?workspace=isolation&visit={visit}'
+    )
+    return send_to_client(user, event, 'client_booking', message)
+
+
+def send_to_client(user, event, kind, message):
     if not configured() or not settings.NEWT_SMS_AUTOMATIC_FROM:
         return 0
     row = ReminderPhone.objects.filter(user=user).first()
     phone = destination(row.mobile) if row else None
     if phone is None:
         return 0
-    identifier = uuid5(NAMESPACE_URL, f'orvia/isolation/sms/client-reminder/{event}')
+    identifier = uuid5(NAMESPACE_URL, f"orvia/isolation/sms/{kind.replace('_', '-')}/{event}")
     if SmsAttempt.objects.filter(pk=identifier).exists() or not eligible(event, user.pk):
         return 0
-    stamp = starts.astimezone(ZoneInfo('America/Toronto')).strftime('%d/%m/%Y à %H:%M')
-    message = (
-        f'Orvia CRM : le résultat de votre visite du {stamp} (heure du Québec) '
-        'n’est pas encore renseigné. Merci de le mettre à jour dans votre espace ORVIA.'
-    )
-    caller_id = settings.NEWT_SMS_CALLER_ID
-    attempt, created = SmsAttempt.objects.get_or_create(
-        pk=identifier,
-        defaults={
-            'kind': 'client_reminder',
-            'correlation': secrets.token_hex(5),
-            'destination': phone,
-            'caller_id': caller_id,
-            'fingerprint': salted_hmac(
-                'newt-sms-v1', phone + ':' + message, algorithm='sha256'
-            ).hexdigest(),
-        },
-    )
-    if not created:
-        return 0
-    attempt.state = sms.send(
-        settings.NEWT_USERNAME,
-        settings.NEWT_PASSWORD,
-        phone,
-        caller_id,
-        message,
-        attempt.correlation,
-    )
-    attempt.save(update_fields=['state'])
-    return 1
+    return send_once(identifier, kind, phone, message)
 
 
 def sync():
