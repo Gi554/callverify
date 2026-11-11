@@ -99,10 +99,11 @@ async function flush() {
   }
 }
 const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
-function fixture({ fail = false } = {}) {
+function fixture({ fail = false, importPreview = false } = {}) {
   const root = { children: [] },
     requests = [],
-    downloads = []
+    downloads = [],
+    confirmations = []
   const blob = new Blob(['synthetic workbook'])
   const originalCreate = URL.createObjectURL,
     originalRevoke = URL.revokeObjectURL
@@ -124,8 +125,30 @@ function fixture({ fail = false } = {}) {
     },
   }
   const app = renderer.createApp(component, {
-    request: async (path) => {
+    request: async (path, body) => {
       requests.push(path)
+      if (importPreview && path === 'qualification/') {
+        return {
+          results: [{ id: 7, name: 'Liste test', progress: { checked: 0, total: 0, percent: 0 } }],
+        }
+      }
+      if (importPreview && path === 'qualification/imports/' && body instanceof FormData) {
+        return {
+          id: 12,
+          rows: 1,
+          headers: ['Phone', 'Address', 'Delivery', 'Custom ZIP'],
+          suggested_mapping: { phone: 'Phone', address: 'Address' },
+          preview: [
+            {
+              Phone: '5145550123',
+              Address: 'Adresse proposée',
+              Delivery: 'Adresse choisie',
+              'Custom ZIP': 'H2X 1Y4',
+            },
+          ],
+        }
+      }
+      if (path.endsWith('/confirm/')) confirmations.push(body)
       if (path.endsWith('/download/')) {
         if (fail) throw new Error('Accès retiré')
         return blob
@@ -143,6 +166,7 @@ function fixture({ fail = false } = {}) {
     root,
     requests,
     downloads,
+    confirmations,
     close() {
       app.unmount()
       URL.createObjectURL = originalCreate
@@ -182,6 +206,43 @@ test('revoked export access displays the failure without downloading', async () 
     await click(f, 'Télécharger')
     assert.equal(f.downloads.length, 0)
     assert.ok(all(f.root).some((n) => n.props?.role === 'alert' && text(n) === 'Accès retiré'))
+  } finally {
+    f.close()
+  }
+})
+
+test('import preview and confirmation follow manually chosen columns instead of suggestions', async () => {
+  const f = fixture({ importPreview: true })
+  try {
+    await flush()
+    await click(f, 'Importer')
+    const input = all(f.root).find((n) => n.tag === 'input' && n.props.type === 'file')
+    input.props.onChange({ target: { files: [new File(['synthetic'], 'import.csv')] } })
+    const submit = async () => {
+      const form = all(f.root).find(
+        (n) => n.tag === 'form' && text(n).includes('Importer une liste'),
+      )
+      await form.props.onSubmit({ preventDefault() {} })
+      await flush()
+    }
+    await submit()
+    assert.ok(text(f.root).includes('Adresse proposée'))
+    const setColumn = (label, column) => {
+      const element = all(f.root).find((n) => n.tag === 'label' && text(n).trim().startsWith(label))
+      const select = all(element).find((n) => n.tag === 'select')
+      select.props['onUpdate:modelValue'](column)
+      select.props.onChange()
+    }
+    setColumn('Adresse complète', 'Delivery')
+    setColumn('Code postal', 'Custom ZIP')
+    await flush()
+    assert.ok(text(f.root).includes('Adresse choisie'))
+    assert.equal(text(f.root).includes('Adresse proposée'), false)
+    await submit()
+    assert.equal(f.confirmations.length, 1)
+    assert.equal(f.confirmations[0].mapping.address, 'Delivery')
+    assert.equal(f.confirmations[0].mapping.postal_code, 'Custom ZIP')
+    assert.equal(f.confirmations[0].mapping.city, '')
   } finally {
     f.close()
   }

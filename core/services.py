@@ -1,7 +1,6 @@
 import csv
 import io
 import re
-import unicodedata
 from itertools import chain
 import zipfile
 from decimal import Decimal
@@ -15,6 +14,14 @@ from django.db.models import Q
 from django.utils import timezone
 from twilio.rest import Client
 from twilio.http.http_client import TwilioHttpClient
+from .import_columns import (
+    FIRST_NAMES,
+    LAST_NAMES,
+    has_explicit_columns,
+    header_key,
+    selected_value,
+)
+from .isolation_c2 import mapped_coordinates
 from .models import (
     Campaign,
     PhoneNumber,
@@ -52,33 +59,13 @@ def normalize(value):
 def imported_display_name(row, mapped_name=''):
     """Build the prospect label from common bilingual import columns."""
 
-    def key(value):
-        return re.sub(
-            r'[^a-z0-9]',
-            '',
-            unicodedata.normalize('NFKD', str(value)).encode('ascii', 'ignore').decode().lower(),
-        )
-
-    source = {key(column): str(value or '').strip() for column, value in row.items()}
-    first = next(
-        (source[name] for name in ('firstname', 'prenom', 'givenname') if source.get(name)), ''
-    )
+    source = {header_key(column): str(value or '').strip() for column, value in row.items()}
+    first = next((source[name] for name in FIRST_NAMES if source.get(name)), '')
     last = next(
-        (source[name] for name in ('lastname', 'nom', 'familyname', 'surname') if source.get(name)),
+        (source[name] for name in LAST_NAMES if source.get(name)),
         '',
     )
-    mapped_key = key(mapped_name) if mapped_name else ''
-    if (
-        mapped_key not in ('firstname', 'prenom', 'givenname')
-        and mapped_key
-        not in (
-            'lastname',
-            'nom',
-            'familyname',
-            'surname',
-        )
-        and mapped_name
-    ):
+    if mapped_name and header_key(mapped_name) not in (*FIRST_NAMES, *LAST_NAMES):
         value = str(row.get(mapped_name, '') or '').strip()
         if value:
             return value[:250]
@@ -146,8 +133,9 @@ def process_import(batch_id):
     phone_column = batch.mapping.get('phone')
     if phone_column not in headers:
         raise ValueError('La colonne téléphone est obligatoire')
-    if any(column not in headers for column in batch.mapping.values()):
+    if any(column != '' and column not in headers for column in batch.mapping.values()):
         raise ValueError('Colonne du mappage inconnue')
+    explicit = has_explicit_columns(batch.mapping)
     # Campaign lock serializes concurrent imports and preserves one prospect per number.
     Campaign.objects.select_for_update().get(pk=batch.campaign_id)
     report = {'total': len(rows), 'valid': 0, 'invalid': 0, 'duplicates': 0, 'empty': 0}
@@ -166,11 +154,25 @@ def process_import(batch_id):
             prospect = Prospect.objects.filter(campaign=batch.campaign, phone=phone).first()
             duplicate = prospect is not None
         if prospect is None:
+            if explicit:
+                name_column = batch.mapping.get('name')
+                name = (
+                    selected_value(row, name_column)
+                    if name_column
+                    else ' '.join(
+                        value
+                        for key in ('first_name', 'last_name')
+                        if (value := selected_value(row, batch.mapping.get(key)))
+                    )
+                )
+            else:
+                name = imported_display_name(row, batch.mapping.get('name', ''))
             prospect = Prospect.objects.create(
                 campaign=batch.campaign,
                 phone=phone,
                 raw_phone=raw[:250],
-                name=imported_display_name(row, batch.mapping.get('name', '')),
+                name=name[:250],
+                c2=mapped_coordinates(row, batch.mapping) if explicit else {},
                 reference=row.get(batch.mapping.get('reference', ''), '')[:250],
                 validity='valid' if e164 else 'invalid',
                 reason=reason,
