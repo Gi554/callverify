@@ -135,7 +135,11 @@ def send_to_client(user, event, kind, message):
 
 
 def sync():
-    if not configured() or not settings.NEWT_SMS_AUTOMATIC_FROM:
+    if (
+        not settings.ISOLATION_PROSPECT_SMS_ENABLED
+        or not configured()
+        or not settings.NEWT_SMS_AUTOMATIC_FROM
+    ):
         return 0
     since = parse_datetime(settings.NEWT_SMS_AUTOMATIC_FROM)
     if since is None or timezone.is_naive(since):

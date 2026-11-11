@@ -68,6 +68,7 @@ class IsolationMailTests(TestCase):
         NEWT_USERNAME='test',
         NEWT_PASSWORD='test',
         NEWT_SMS_AUTOMATIC_FROM='2026-01-01T00:00:00Z',
+        ISOLATION_PROSPECT_SMS_ENABLED=False,
     )
     @patch('portal.backend.identity.isolation_sms.sms.send', return_value='accepted')
     @patch('portal.backend.identity.isolation_sms.eligible', return_value=True)
