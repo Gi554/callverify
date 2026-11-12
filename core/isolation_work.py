@@ -199,7 +199,9 @@ class WorkViewSet(
                     IsolationUnqualified.objects.filter(prospect_id=OuterRef('pk'), active=True)
                 ),
                 _queue_booking=Exists(
-                    IsolationVisit.objects.filter(prospect_id=OuterRef('pk'), status='scheduled')
+                    IsolationVisit.objects.filter(
+                        prospect_id=OuterRef('pk'), status='scheduled'
+                    ).exclude(result__performed=False)
                 ),
                 _queue_call_result=Subquery(
                     ProspectActivity.objects.filter(prospect_id=OuterRef('pk'), kind='call_result')
@@ -230,9 +232,9 @@ class WorkViewSet(
             )
             qs = qs.annotate(
                 _queue_reason=Case(
-                    When(_queue_booking=True, then=Value('appointment_booked')),
                     When(_queue_client_followup=True, then=Value('client_followup')),
                     When(_queue_unqualified=True, then=Value('unqualified')),
+                    When(_queue_booking=True, then=Value('appointment_booked')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     When(
                         _queue_call_result='callback',
