@@ -22,6 +22,8 @@ const from = ref(now.slice(0, 8) + '01'),
   agent = ref(''),
   data = ref<any>(null),
   calls = ref<any>(null),
+  teamRows = ref<any[]>([]),
+  teamBusy = ref(false),
   busy = ref(false),
   error = ref(''),
   callError = ref('');
@@ -54,6 +56,38 @@ const callDays = computed(() =>
     }),
   })),
 );
+function formatDuration(seconds: number | null | undefined) {
+  if (seconds == null) return '—';
+  const rounded = Math.round(seconds);
+  return `${Math.floor(rounded / 60)} min ${String(rounded % 60).padStart(2, '0')} s`;
+}
+async function loadTeam() {
+  if (!admin.value || !agents.value.length) return;
+  teamBusy.value = true;
+  const query = new URLSearchParams({ from: from.value, to: to.value });
+  try {
+    const rows = await Promise.all(
+      agents.value.map(async (item) => {
+        const [performance, phone] = await Promise.all([
+          props.request(`setter-performance/${item.id}/?${query}`),
+          props.portal(
+            `${props.workspace}/performance-calls/?${new URLSearchParams({
+              from: from.value,
+              to: to.value,
+              setter_id: String(item.id),
+            })}`,
+          ),
+        ]);
+        return { ...item, performance, phone };
+      }),
+    );
+    teamRows.value = rows;
+  } catch (e: any) {
+    callError.value = e.message || 'Rapport équipe indisponible.';
+  } finally {
+    teamBusy.value = false;
+  }
+}
 async function load() {
   const current = ++version;
   busy.value = true;
@@ -93,6 +127,7 @@ async function load() {
     } catch (e: any) {
       if (current === version) callError.value = e.message || 'Compteurs d’appels indisponibles.';
     }
+    if (current === version) await loadTeam();
   } catch (e: any) {
     if (current === version) error.value = e.message || 'Performance indisponible.';
   } finally {
@@ -124,6 +159,45 @@ onBeforeUnmount(() => version++);
     </form>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <p v-if="admin && !busy && !error && !agents.length">Aucun setter connu de cet espace.</p>
+    <section v-if="admin && agents.length" class="iso-panel team-report">
+      <div class="section-heading">
+        <div>
+          <h2>Rapport quotidien de l’équipe</h2>
+          <p>Totaux de la période sélectionnée, heure du Québec.</p>
+        </div>
+        <span v-if="teamBusy" role="status">Calcul en cours…</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Setter</th><th>Appels émis</th><th>Poste accepté</th>
+              <th>&gt; 1 minute</th><th>Durée totale</th><th>Durée moyenne</th>
+              <th>RDV pris</th><th>RDV présentés</th><th>Ventes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in teamRows" :key="row.id">
+              <td><strong>{{ row.name }}</strong></td>
+              <td>{{ row.phone?.totals?.attempts ?? '—' }}</td>
+              <td>{{ row.phone?.totals?.calls ?? '—' }}</td>
+              <td>{{ row.phone?.totals?.calls_over_minute ?? '—' }}</td>
+              <td>{{ formatDuration(row.phone?.totals?.duration_total_seconds) }}</td>
+              <td>{{ formatDuration(row.phone?.totals?.duration_average_seconds) }}</td>
+              <td>{{ row.performance?.totals?.booked ?? '—' }}</td>
+              <td>{{ row.performance?.totals?.held ?? '—' }}</td>
+              <td>{{ row.performance?.totals?.closed ?? '—' }}</td>
+            </tr>
+            <tr v-if="!teamBusy && !teamRows.length"><td colspan="9">Aucune donnée sur cette période.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="performance-definition">
+        « Appels émis » correspond aux commandes acceptées, refusées ou incertaines enregistrées par Orvia.
+        Les durées viennent du journal NEWT et peuvent rester en attente quelques minutes.
+        « Poste accepté » ne signifie pas que le prospect a décroché.
+      </p>
+    </section>
     <template v-if="data"
       ><h2><BarChart3 :size="20" />{{ data.agent_name }}</h2>
       <div class="performance-kpis">
@@ -213,6 +287,33 @@ h2 {
   font-size: 12px;
   color: #65758e;
   line-height: 1.7;
+}
+.team-report .section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+.team-report .table-scroll {
+  overflow-x: auto;
+}
+.team-report table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+.team-report th,
+.team-report td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #e3e9f3;
+  text-align: left;
+  white-space: nowrap;
+}
+.team-report th {
+  color: #52647f;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
 @media (max-width: 1000px) {
   .performance-kpis {
