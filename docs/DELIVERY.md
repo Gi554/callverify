@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Session d’appels : relance automatique d’une fiche déjà appelée
+
+Depuis que les prospects « Répondeur » ou « Ne répond pas » reviennent dans la session le même
+jour, la fiche d’un prospect déjà appelé depuis le même onglet ne lançait plus l’appel
+automatiquement : la référence de la commande précédente, gardée par le navigateur, bloquait le
+lancement et imposait « Vérifier la commande » puis « Préparer un nouvel appel ». La fiche relit
+maintenant elle-même cette commande : si le serveur la donne comme réglée (acceptée, refusée,
+bloquée ou retrouvée au journal), l’appel suivant part automatiquement. Une commande incertaine,
+en cours ou illisible continue de bloquer tout appel automatique, avec « Passer au prospect
+suivant ». S’applique à Assurance et Isolation. Vérifications : tests frontend du composant d’appel.
+Cause déduite du code ; à confirmer en session réelle avec un poste.
+
 ## Journal NEWT 511 : diagnostic du rapprochement
 
 NEWT confirme que les lectures 511 du worker répondent 200 ; la perte se situe donc après la
