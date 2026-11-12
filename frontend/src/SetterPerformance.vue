@@ -171,14 +171,22 @@ onBeforeUnmount(() => version++);
         <table>
           <thead>
             <tr>
-              <th>Setter</th><th>Appels émis</th><th>Poste accepté</th>
-              <th>&gt; 1 minute</th><th>Durée totale</th><th>Durée moyenne</th>
-              <th>RDV pris</th><th>RDV présentés</th><th>Ventes</th>
+              <th>Setter</th>
+              <th>Appels émis</th>
+              <th>Poste accepté</th>
+              <th>&gt; 1 minute</th>
+              <th>Durée totale</th>
+              <th>Durée moyenne</th>
+              <th>RDV pris</th>
+              <th>RDV présentés</th>
+              <th>Ventes</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in teamRows" :key="row.id">
-              <td><strong>{{ row.name }}</strong></td>
+              <td>
+                <strong>{{ row.name }}</strong>
+              </td>
               <td>{{ row.phone?.totals?.attempts ?? '—' }}</td>
               <td>{{ row.phone?.totals?.calls ?? '—' }}</td>
               <td>{{ row.phone?.totals?.calls_over_minute ?? '—' }}</td>
@@ -188,14 +196,16 @@ onBeforeUnmount(() => version++);
               <td>{{ row.performance?.totals?.held ?? '—' }}</td>
               <td>{{ row.performance?.totals?.closed ?? '—' }}</td>
             </tr>
-            <tr v-if="!teamBusy && !teamRows.length"><td colspan="9">Aucune donnée sur cette période.</td></tr>
+            <tr v-if="!teamBusy && !teamRows.length">
+              <td colspan="9">Aucune donnée sur cette période.</td>
+            </tr>
           </tbody>
         </table>
       </div>
       <p class="performance-definition">
-        « Appels émis » correspond aux commandes acceptées, refusées ou incertaines enregistrées par Orvia.
-        Les durées viennent du journal NEWT et peuvent rester en attente quelques minutes.
-        « Poste accepté » ne signifie pas que le prospect a décroché.
+        « Appels émis » correspond aux commandes acceptées, refusées ou incertaines enregistrées par
+        Orvia. Les durées viennent du journal NEWT et peuvent rester en attente quelques minutes. «
+        Poste accepté » ne signifie pas que le prospect a décroché.
       </p>
     </section>
     <template v-if="data"
@@ -313,7 +323,7 @@ h2 {
   color: #52647f;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
 }
 @media (max-width: 1000px) {
   .performance-kpis {
