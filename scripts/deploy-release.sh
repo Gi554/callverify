@@ -38,6 +38,9 @@ set_env_flag() {
 }
 set_env_flag NEWT_CALLS_ENABLED true
 set_env_flag NEWT_ISOLATION_CALLS_ENABLED true
+set_env_flag NEWT_STATUS_ENABLED true
+set_env_flag NEWT_CDR_SCHEMA_ENABLED true
+set_env_flag NEWT_CDR_HISTORY_ENABLED true
 
 compose=(docker compose -f compose.yaml -f infra/compose.crm.yaml -f compose.production.yaml)
 "${compose[@]}" config -q
