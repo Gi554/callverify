@@ -11,8 +11,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .isolation_work import WorkAuthentication
-from .models import IsolationVisit, AuditEvent, IsolationFollowUp
-from packages.stat_filters import selections, options
+from .models import IsolationVisit, AuditEvent, IsolationFollowUp, Prospect
+from packages.stat_filters import selections, options, merged
 from .isolation_statistics_export import response as export_response
 from packages.stats_series import daily, previous
 
@@ -162,7 +162,11 @@ def statistics(request):
     if request.user.role == 'administrator' and not kind:
         all_rows = IsolationVisit.objects.all()
         result['filter_options'] = {
-            'setter_id': options(all_rows, 'setter_id', 'setter_name'),
+            # Setters holding prospects are listed even before their first booked visit.
+            'setter_id': merged(
+                options(all_rows, 'setter_id', 'setter_name'),
+                options(Prospect.objects.all(), 'assigned_setter_id', 'assigned_setter_name'),
+            ),
             'client_id': options(all_rows, 'client_id', 'client_name'),
             'closer_id': options(all_rows, 'closer_id', 'closer_name'),
             'campaign_id': options(all_rows, 'prospect__campaign_id', 'prospect__campaign__name'),
