@@ -79,7 +79,7 @@ def parse_records(raw):
         raise DirectoryUnavailable()
     inspect(raw)
     try:
-        reader = csv.reader(io.StringIO(raw.decode('utf-8-sig'), newline=''), strict=True)
+        reader = csv.reader(io.StringIO(decoded(raw), newline=''), strict=True)
         if not confirmed(next(reader)):
             raise DirectoryUnavailable()
         records = []
@@ -109,7 +109,7 @@ def parse_records(raw):
 
 def inspect(raw):
     try:
-        reader = csv.reader(io.StringIO(raw.decode('utf-8-sig'), newline=''), strict=True)
+        reader = csv.reader(io.StringIO(decoded(raw), newline=''), strict=True)
         headings = next(reader)
         if not 2 <= len(headings) <= 64 or any(
             not h.strip()
@@ -146,15 +146,23 @@ def shape(cell):
     return re.sub(r'[^\W\d_]', 'a', re.sub(r'\d', '9', cell))[:30]
 
 
+def decoded(raw):
+    """UTF-8 when valid, otherwise Windows-1252: an accented place name must not reject a journal.
+
+    Only the free-text description can differ between the two; numbers, dates and durations
+    are plain ASCII either way.
+    """
+    try:
+        return raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        return raw.decode('cp1252', errors='replace')
+
+
 def describe(raw):
     """Structure of a 511 body that is safe to log: no number, name or timestamp is kept."""
     result = {'bytes': len(raw)}
     try:
-        text = raw.decode('utf-8-sig')
-    except UnicodeError:
-        return {**result, 'problem': 'encoding'}
-    try:
-        rows = [row for row in csv.reader(io.StringIO(text, newline='')) if row]
+        rows = [row for row in csv.reader(io.StringIO(decoded(raw), newline='')) if row]
     except csv.Error:
         return {**result, 'problem': 'csv'}
     if not rows:
@@ -214,20 +222,32 @@ def fetch_raw(username, password, start, end):
                 '_t': secrets.token_hex(5),
             },
             auth=(username, password),
-            timeout=(5, 10),
+            timeout=(5, 20),
             allow_redirects=False,
             stream=True,
         ) as response:
             if response.status_code != 200:
                 raise unavailable(f'http_{response.status_code}')
             body = bytearray()
-            deadline = monotonic() + 20
-            for chunk in response.iter_content(chunk_size=8192):
-                if monotonic() > deadline:
-                    raise unavailable('too_slow')
-                body.extend(chunk)
-                if len(body) > MAX_BYTES:
-                    raise unavailable('too_large')
+            deadline = monotonic() + 40
+            try:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if monotonic() > deadline:
+                        raise unavailable('too_slow')
+                    body.extend(chunk)
+                    if len(body) > MAX_BYTES:
+                        raise unavailable('too_large')
+            except requests.exceptions.ChunkedEncodingError:
+                # The provider answered 200 but closed before its announced length: keep the
+                # complete lines already received instead of discarding the whole journal.
+                cut = body.rfind(b'\n')
+                if cut < 0:
+                    raise
+                del body[cut + 1 :]
             return bytes(body)
-    except (requests.RequestException, ValueError, UnicodeError):
-        raise unavailable('network') from None
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
+        # Exception class and message without its address: no credential or call data.
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None
