@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Relances automatiques Isolation après absence de réponse
+
+Un prospect Isolation dont le dernier résultat est « Répondeur » ou « Ne répond pas » peut
+réintégrer la session automatique une seconde fois le même jour. Le plafond est de six tentatives
+de ce type au total ; à la sixième, le prospect est exclu définitivement de la file automatique et
+aucune tâche de rappel n’est créée. Les rendez-vous pris restent prioritaires et sont toujours
+exclus de la session, y compris lorsqu’ils sont ensuite déclarés non tenus.
+
 ## Flux de lecture Phonetico activés
 
 La configuration de production active désormais l’état des postes 244, le diagnostic de schéma
