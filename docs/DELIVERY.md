@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Composeur et file des rappels (local/staging)
+
+Le composeur ouvre maintenant la fiche trouvée en mode appel et déclenche effectivement la
+commande Phonetico après les contrôles, dans Assurance comme dans Isolation. La fiche reste
+attachée au CRM afin que le résultat puisse être enregistré au même endroit.
+
+Les deux espaces exposent aussi une colonne « Rappels » dédiée. Elle récupère les prospects dont
+le dernier résultat d’appel est « Rappel demandé » et dont le suivi n’est pas clôturé, qu’il soit
+déjà dû ou encore à venir. Ces fiches ne sont plus renvoyées par la file active « À contacter ».
+
+Livré et vérifié uniquement en local (build frontend et compilation Python). Aucun déploiement
+production effectué ; la commande réelle reste à valider avec un poste NEWT de staging.
+
 ## Journal NEWT 511 : lecture tolérante et erreur réseau précise
 
 Le diagnostic livré précédemment a renvoyé `network` en production : la lecture HTTP échoue chez

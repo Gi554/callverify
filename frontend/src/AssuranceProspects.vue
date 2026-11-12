@@ -165,8 +165,9 @@ async function loadColumn(column: Column, version: number, append = false) {
   column.busy = true;
   column.error = '';
   try {
+    const callbackQueue = column.key === 'callback_queue';
     const data = await props.request(
-      `contacts/?status=${encodeURIComponent(column.key)}&search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}&queue=${includeProcessed.value ? 'all' : 'active'}${props.role === 'setter' ? '&mine=true' : ''}`,
+      `contacts/?${callbackQueue ? '' : `status=${encodeURIComponent(column.key)}&`}search=${encodeURIComponent(applied.value)}&page=${append ? column.page + 1 : 1}&queue=${callbackQueue ? 'callbacks' : includeProcessed.value ? 'all' : 'active'}${props.role === 'setter' ? '&mine=true' : ''}`,
     );
     if (version !== generation || disposed) return;
     column.rows = append ? [...column.rows, ...data.results] : data.results;
@@ -189,7 +190,7 @@ async function load() {
   try {
     const data = await props.request('pipeline/');
     if (version !== generation || disposed) return;
-    columns.value = data.stages.map((s: any) => ({
+    columns.value = [{ key: 'callback_queue', label: 'Rappels', active: true }, ...data.stages].map((s: any) => ({
       ...s,
       rows: [],
       count: 0,
@@ -478,7 +479,7 @@ onBeforeUnmount(() => {
         :request="request"
         :role="role"
         :workflow="workflow"
-        :auto-call="session"
+        :auto-call="session || workflow === 'call'"
         @busy="panelBusy = $event"
         @summary="selected = { ...selected, ...$event }"
         @close="closed"

@@ -21,6 +21,7 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   // Call session: closing the file moves on to the next prospect.
   session?: boolean;
+  autoCall?: boolean;
   followUp?: FollowUpReference;
   taskReadOnly?: boolean;
 }>();
@@ -97,6 +98,13 @@ async function refreshContact() {
   prospect.value = await props.request(`work-queue/${props.prospectId}/`);
 }
 async function prepareTaskCall(id: string) {
+  await refreshContact();
+  return props.request(`work-queue/${props.prospectId}/call-intent/`, {
+    revision: prospect.value.revision,
+    request_id: id,
+  });
+}
+async function prepareCall(id: string) {
   await refreshContact();
   return props.request(`work-queue/${props.prospectId}/call-intent/`, {
     revision: prospect.value.revision,
@@ -181,6 +189,21 @@ const resultLabels: Record<string, string> = {
             new Date(prospect.callback_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' })
           : 'Aucun rappel programmé'
       }}</small>
+    </div>
+    <div v-if="!followUp && prospect" class="sheet-section">
+      <CallAction
+        workspace="isolation"
+        :resource-id="prospectId"
+        :phone="prospect.phone || prospect.raw_phone"
+        label="Appeler le prospect"
+        :auto-open="autoCall"
+        :auto-send="autoCall"
+        :portal="portal"
+        :prepare="prepareCall"
+        :before-open="refreshContact"
+        :disabled="busy || callBusy || taskBusy || c2Busy"
+        @busy="commandBusy = $event"
+      />
     </div>
     <div v-if="followUp && prospect" class="sheet-section">
       <strong>{{ prospect.name || 'Prospect sans nom' }}</strong>

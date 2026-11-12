@@ -29,6 +29,7 @@ const lotsOpen = ref(false),
   workflow = ref<'edit' | 'call'>('edit'),
   listManagement = ref(false);
 const statuses = [
+  ['callback_queue', 'Rappels'],
   ['to_contact', 'À contacter'],
   ['in_progress', 'En cours'],
   ['callback', 'À rappeler'],
@@ -106,13 +107,14 @@ async function loadColumn(column: Column, version: number, append = false) {
   column.busy = true;
   column.error = '';
   try {
+    const callbackQueue = column.key === 'callback_queue';
     const q = new URLSearchParams({
       page: String(append ? column.page + 1 : 1),
       search: applied.value.search,
       owner: applied.value.owner,
-      commercial_status: column.key,
+      ...(callbackQueue ? {} : { commercial_status: column.key }),
       due: String(applied.value.due),
-      queue: includeProcessed.value ? 'all' : 'active',
+      queue: callbackQueue ? 'callbacks' : includeProcessed.value ? 'all' : 'active',
     });
     const data = await props.request(`work-queue/?${q}`);
     if (version !== generation || disposed) return;
@@ -628,6 +630,7 @@ onBeforeUnmount(() => {
           :portal="portal"
           :request="request"
           :session="session"
+          :auto-call="session || workflow === 'call'"
           @busy="activityBusy = $event"
           @close="activityClosed"
           @saved="load"
