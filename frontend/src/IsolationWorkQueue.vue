@@ -180,6 +180,7 @@ async function nextProspect(id: number) {
     const candidate = data.results.find(
       (row: any) =>
         !visited.has(row.id) &&
+        row.queue_reason !== 'appointment_booked' &&
         row.commercial_status !== 'not_interested' &&
         String(row.phone || row.raw_phone || '').trim(),
     );

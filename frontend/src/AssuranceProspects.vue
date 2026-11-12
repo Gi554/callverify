@@ -98,7 +98,14 @@ async function loadMine() {
 }
 function nextProspect() {
   const pool = admin.value ? mine.value : columns.value.flatMap((column) => column.rows);
-  return pool.find((row) => !visited.has(row.id) && String(row.phone || '').trim()) || null;
+  return (
+    pool.find(
+      (row) =>
+        !visited.has(row.id) &&
+        row.queue_reason !== 'appointment_booked' &&
+        String(row.phone || '').trim(),
+    ) || null
+  );
 }
 function stopTimer() {
   if (timer) clearInterval(timer);

@@ -13,6 +13,11 @@ déjà dû ou encore à venir. Ces fiches ne sont plus renvoyées par la file ac
 Livré et vérifié uniquement en local (build frontend et compilation Python). Aucun déploiement
 production effectué ; la commande réelle reste à valider avec un poste NEWT de staging.
 
+La session d’appels applique en plus une protection côté interface : un rendez-vous marqué
+« appointment_booked » est ignoré même si une réponse serveur inattendue le renvoyait. Il ne peut
+réapparaître que par une file de tâche ouverte (par exemple un rendez-vous non tenu), jamais comme
+prospect « À contacter ».
+
 ## Journal NEWT 511 : lecture tolérante et erreur réseau précise
 
 Le diagnostic livré précédemment a renvoyé `network` en production : la lecture HTTP échoue chez
