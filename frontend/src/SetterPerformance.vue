@@ -61,6 +61,9 @@ function formatDuration(seconds: number | null | undefined) {
   const rounded = Math.round(seconds);
   return `${Math.floor(rounded / 60)} min ${String(rounded % 60).padStart(2, '0')} s`;
 }
+function teamCallCount(row: any, key: string) {
+  return row.phone?.totals?.[key] ?? 0;
+}
 async function loadTeam() {
   if (!admin.value || !agents.value.length) return;
   teamBusy.value = true;
@@ -198,10 +201,10 @@ onBeforeUnmount(() => version++);
               <td>
                 <strong>{{ row.name }}</strong>
               </td>
-              <td>{{ row.phone?.totals?.attempts ?? '—' }}</td>
-              <td>{{ row.phone?.totals?.calls ?? '—' }}</td>
-              <td>{{ row.phone?.totals?.uncertain ?? '—' }}</td>
-              <td>{{ row.phone?.totals?.calls_over_minute ?? '—' }}</td>
+              <td>{{ teamCallCount(row, 'attempts') }}</td>
+              <td>{{ teamCallCount(row, 'calls') }}</td>
+              <td>{{ teamCallCount(row, 'uncertain') }}</td>
+              <td>{{ teamCallCount(row, 'calls_over_minute') }}</td>
               <td>{{ formatDuration(row.phone?.totals?.duration_total_seconds) }}</td>
               <td>{{ formatDuration(row.phone?.totals?.duration_average_seconds) }}</td>
               <td>{{ row.performance?.totals?.booked ?? '—' }}</td>
@@ -216,8 +219,9 @@ onBeforeUnmount(() => version++);
       </div>
       <p class="performance-definition">
         « Appels émis » correspond aux commandes acceptées, refusées ou incertaines enregistrées par
-        Orvia. Les durées viennent du journal NEWT et peuvent rester en attente quelques minutes. «
-        Poste accepté » ne signifie pas que le prospect a décroché.
+        Orvia. Un compteur à 0 signifie qu’aucune commande de ce setter n’est enregistrée sur la
+        période. Les durées viennent du journal NEWT et peuvent rester en attente quelques minutes.
+        « Poste accepté » ne signifie pas que le prospect a décroché.
       </p>
     </section>
     <template v-if="data"
