@@ -152,6 +152,26 @@ test('admin activity uses its workspace endpoint and sends all selected filters 
     }
   }
 })
+test('default period covers the whole current Québec month, upcoming appointments included', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    const query = new URLSearchParams(f.calls[0].split('?')[1])
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
+    const [year, month] = today.split('-').map(Number)
+    const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
+    assert.equal(query.get('from'), today.slice(0, 8) + '01')
+    assert.equal(query.get('to'), today.slice(0, 8) + String(last).padStart(2, '0'))
+    assert.ok(query.get('to') >= today)
+  } finally {
+    f.app.unmount()
+  }
+})
 test('auto refresh pauses in hidden tabs and its timer is cleared on unmount', async () => {
   const f = fixture()
   try {
