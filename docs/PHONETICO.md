@@ -36,6 +36,12 @@ Le fuseau du PBX et l’inclusivité réelle de ses dates doivent être confirm�
 
 ## À livrer séparément
 
+Les trois flux de lecture Phonetico sont désormais activés dans la configuration de production.
+Le statut 244 et le diagnostic de schéma 511 restent des actions administrateur explicites. Le
+journal 511 est rapproché automatiquement par le worker toutes les quinze minutes lorsque les
+commandes d’appel sont éligibles. Les données restent limitées aux champs confirmés et aux
+correspondances avec le poste et le numéro de la fiche.
+
 Vérification réelle des droits/configuration pour l’annuaire, recette de lecture 244 et remontée des journaux 511, interprétation documentée des codes et rapprochement appels/contacts. La fonction 245 et tout contrôle d’appel restent absents et soumis à une nouvelle autorisation explicite avant tout test réel. Création automatique de comptes depuis les postes reportée.
 
 

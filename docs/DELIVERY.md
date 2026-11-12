@@ -1,5 +1,12 @@
 # Suivi des livraisons CRM AMX
 
+## Flux de lecture Phonetico activés
+
+La configuration de production active désormais l’état des postes 244, le diagnostic de schéma
+511 et le journal CDR 511. Le worker de rapprochement 511 est démarré par le déploiement et vérifie
+les commandes récentes toutes les quinze minutes. Les champs non confirmés par le fournisseur ne
+sont pas interprétés comme des résultats d’appel humain.
+
 ## Retrait d’un lot Isolation et rappels ouverts
 
 Le retrait d’un lot ne libère plus les prospects qui disposent d’un rappel Isolation ouvert.
