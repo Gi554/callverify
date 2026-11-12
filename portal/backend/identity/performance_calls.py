@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncDate
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -39,6 +39,15 @@ def statistics(request, workspace):
         'calls': Count('pk', filter=Q(state='accepted')),
         'attempts': Count('pk', filter=Q(state__in=['accepted', 'rejected', 'unknown'])),
         'uncertain': Count('pk', filter=Q(state='unknown')),
+        'calls_over_minute': Count(
+            'pk', filter=Q(journal_status='matched', journal_duration__gt=60)
+        ),
+        'duration_total_seconds': Sum(
+            'journal_duration', filter=Q(journal_status='matched', journal_duration__isnull=False)
+        ),
+        'duration_average_seconds': Avg(
+            'journal_duration', filter=Q(journal_status='matched', journal_duration__isnull=False)
+        ),
     }
     daily = list(
         rows.order_by()
