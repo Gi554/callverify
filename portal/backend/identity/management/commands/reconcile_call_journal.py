@@ -19,8 +19,11 @@ class Command(BaseCommand):
                 try:
                     summary = run(workspace)
                     self.stdout.write(f'{workspace}: {summary}')
-                except DirectoryUnavailable:
-                    self.stderr.write(f'{workspace}: journal NEWT indisponible')
+                except DirectoryUnavailable as error:
+                    self.stderr.write(
+                        f'{workspace}: journal NEWT indisponible '
+                        f'{getattr(error, "diagnostic", {})}'
+                    )
             if not options['loop']:
                 return
             time.sleep(max(options['interval'], 300))

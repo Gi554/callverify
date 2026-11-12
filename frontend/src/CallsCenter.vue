@@ -67,6 +67,19 @@ function duration(row: any) {
   if (seconds < 60) return `${seconds} s`;
   return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')} s`;
 }
+// Counts only, shown when some calls stay unmatched, to tell which matching step loses them.
+function diagnosis(result: any) {
+  const d = result.diagnostic;
+  if (!d || result.matched >= result.checked) return '';
+  const gap = d.median_gap_seconds_outside_window;
+  return (
+    ` Diagnostic : ${d.lines} ligne(s) au journal, ${d.lines_dated_with_number} avec date et numéro lisibles, ` +
+    `${d.lines_with_extension} avec un poste. Appels retrouvés par poste : ${d.attempts_same_extension}, ` +
+    `par numéro : ${d.attempts_same_number}, par poste et numéro : ${d.attempts_same_extension_and_number}, ` +
+    `dans la fenêtre horaire : ${d.attempts_in_time_window}` +
+    (gap == null ? '.' : `. Écart médian hors fenêtre : ${gap} s.`)
+  );
+}
 const reconciling = ref(false),
   reconciled = ref('');
 async function reconcile() {
@@ -79,7 +92,8 @@ async function reconcile() {
       ? `${result.matched} durée(s) récupérée(s) sur ${result.checked} appel(s) vérifié(s)` +
         (result.ambiguous ? `, ${result.ambiguous} à vérifier` : '') +
         (result.not_found ? `, ${result.not_found} absent(s) du journal` : '') +
-        '.'
+        '.' +
+        diagnosis(result)
       : 'Aucun appel récent à rapprocher.';
     await loadHistory();
   } catch (e: any) {
