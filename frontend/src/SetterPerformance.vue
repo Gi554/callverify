@@ -150,7 +150,7 @@ onBeforeUnmount(() => version++);
     />
     <form class="iso-panel performance-filters" @submit.prevent="load">
       <label v-if="admin"
-        >Setter<select v-model="agent" :disabled="busy" @change="load">
+        >Setter à consulter<select v-model="agent" :disabled="busy" @change="load">
           <option v-for="item in agents" :key="item.id" :value="String(item.id)">
             {{ item.name }}
           </option>
@@ -176,6 +176,7 @@ onBeforeUnmount(() => version++);
               <th>Setter</th>
               <th>Appels émis</th>
               <th>Poste accepté</th>
+              <th>Incertain</th>
               <th>&gt; 1 minute</th>
               <th>Durée totale</th>
               <th>Durée moyenne</th>
@@ -185,12 +186,21 @@ onBeforeUnmount(() => version++);
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in teamRows" :key="row.id">
+            <tr
+              v-for="row in teamRows"
+              :key="row.id"
+              :class="{ 'is-selected': String(row.id) === agent }"
+              @click="
+                agent = String(row.id);
+                load();
+              "
+            >
               <td>
                 <strong>{{ row.name }}</strong>
               </td>
               <td>{{ row.phone?.totals?.attempts ?? '—' }}</td>
               <td>{{ row.phone?.totals?.calls ?? '—' }}</td>
+              <td>{{ row.phone?.totals?.uncertain ?? '—' }}</td>
               <td>{{ row.phone?.totals?.calls_over_minute ?? '—' }}</td>
               <td>{{ formatDuration(row.phone?.totals?.duration_total_seconds) }}</td>
               <td>{{ formatDuration(row.phone?.totals?.duration_average_seconds) }}</td>
@@ -199,7 +209,7 @@ onBeforeUnmount(() => version++);
               <td>{{ row.performance?.totals?.closed ?? '—' }}</td>
             </tr>
             <tr v-if="!teamBusy && !teamRows.length">
-              <td colspan="9">Aucune donnée sur cette période.</td>
+              <td colspan="10">Aucune donnée sur cette période.</td>
             </tr>
           </tbody>
         </table>
@@ -211,7 +221,13 @@ onBeforeUnmount(() => version++);
       </p>
     </section>
     <template v-if="data"
-      ><h2><BarChart3 :size="20" />{{ data.agent_name }}</h2>
+      ><section class="selected-setter-heading">
+        <div>
+          <span class="selected-setter-eyebrow">DÉTAIL DU SETTER SÉLECTIONNÉ</span>
+          <h2><BarChart3 :size="20" />{{ data.agent_name }}</h2>
+        </div>
+        <span class="selected-setter-period">{{ from }} → {{ to }}</span>
+      </section>
       <div class="performance-kpis">
         <StatKpi
           v-for="item in metrics"
@@ -243,6 +259,15 @@ onBeforeUnmount(() => version++);
             label="Appels acceptés par le poste"
             :value="calls?.totals.calls ?? '—'"
           /><StatKpi label="Réponses incertaines" :value="calls?.totals.uncertain ?? '—'" /><StatKpi
+            label="Appels de plus d’une minute"
+            :value="calls?.totals.calls_over_minute ?? '—'"
+          /><StatKpi
+            label="Durée totale"
+            :value="formatDuration(calls?.totals.duration_total_seconds)"
+          /><StatKpi
+            label="Durée moyenne"
+            :value="formatDuration(calls?.totals.duration_average_seconds)"
+          /><StatKpi
             label="Prospects joints"
             value="Non disponible"
             hint="Le décrochage du poste ne prouve pas la réponse du prospect."
@@ -299,6 +324,40 @@ h2 {
   font-size: 12px;
   color: #65758e;
   line-height: 1.7;
+}
+.selected-setter-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 28px 0 14px;
+  padding: 18px 20px;
+  border: 1px solid #dce5f2;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #f4f7ff, #ffffff);
+}
+.selected-setter-heading h2 {
+  margin: 6px 0 0;
+  color: #173a67;
+}
+.selected-setter-eyebrow {
+  color: #6d7fa0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.selected-setter-period {
+  color: #61738f;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.team-report tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.team-report tbody tr:hover,
+.team-report tbody tr.is-selected {
+  background: #eef4ff;
 }
 .team-report .section-heading {
   display: flex;

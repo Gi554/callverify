@@ -78,10 +78,12 @@ def statistics(request, workspace):
             'pk', filter=Q(journal_status='matched', journal_duration__gt=60)
         ),
         'duration_total_seconds': Sum(
-            'journal_duration', filter=Q(journal_status='matched', journal_duration__isnull=False)
+            'journal_duration',
+            filter=Q(journal_status='matched', journal_duration__isnull=False),
         ),
         'duration_average_seconds': Avg(
-            'journal_duration', filter=Q(journal_status='matched', journal_duration__isnull=False)
+            'journal_duration',
+            filter=Q(journal_status='matched', journal_duration__isnull=False),
         ),
     }
     daily = list(
