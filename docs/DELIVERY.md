@@ -1,5 +1,22 @@
 # Suivi des livraisons CRM AMX
 
+## Journal NEWT 511 : diagnostic du rapprochement
+
+NEWT confirme que les lectures 511 du worker répondent 200 ; la perte se situe donc après la
+réception. Cette livraison n’est pas encore la correction : elle rend visible l’étape qui échoue.
+
+- Journal refusé (format) : l’erreur du bouton « Rapprocher le journal NEWT », la sortie du worker
+  et un audit `phone.journal_unreadable` indiquent la cause (HTTP, taille, délai, encodage, format)
+  et, pour un format refusé, les noms d’en-têtes, le nombre de colonnes par ligne et la forme de la
+  première ligne (chiffres remplacés par 9, lettres par a).
+- Journal lu mais appels non retrouvés : le résultat du rapprochement ajoute des compteurs — lignes
+  reçues, lignes avec date et numéro lisibles, lignes avec un poste, appels retrouvés par poste, par
+  numéro, par les deux, dans la fenêtre horaire, et écart médian en secondes hors fenêtre.
+
+Aucun numéro, nom, horodatage ou ligne fournisseur n’est conservé ni affiché. Les règles de
+rapprochement sont inchangées. Vérifications : tests backend du journal, du schéma et de
+l’historique. Reste à faire : lire le diagnostic en production puis corriger l’étape en cause.
+
 ## Pilotage : filtre Setter complet (Assurance et Isolation)
 
 Le filtre « Setter » du pilotage administrateur ne proposait que les setters ayant déjà réservé au

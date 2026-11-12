@@ -141,22 +141,67 @@ def inspect(raw):
     }
 
 
+def shape(cell):
+    """Character classes of a cell (digits as 9, letters as a): its format, never its value."""
+    return re.sub(r'[^\W\d_]', 'a', re.sub(r'\d', '9', cell))[:30]
+
+
+def describe(raw):
+    """Structure of a 511 body that is safe to log: no number, name or timestamp is kept."""
+    result = {'bytes': len(raw)}
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeError:
+        return {**result, 'problem': 'encoding'}
+    try:
+        rows = [row for row in csv.reader(io.StringIO(text, newline='')) if row]
+    except csv.Error:
+        return {**result, 'problem': 'csv'}
+    if not rows:
+        return {**result, 'problem': 'empty'}
+    widths = {}
+    for row in rows[1:]:
+        widths[len(row)] = widths.get(len(row), 0) + 1
+    return {
+        **result,
+        'problem': 'format',
+        # A first line holding digits may be a call line without headings: only its shape.
+        'headings': [
+            shape(cell) if any(c.isdigit() for c in cell) else cell[:30] for cell in rows[0][:16]
+        ],
+        'rows': len(rows) - 1,
+        'widths': {str(size): count for size, count in sorted(widths.items())[:5]},
+        'first_row_shape': [shape(cell) for cell in rows[1][:16]] if len(rows) > 1 else [],
+    }
+
+
+def unavailable(problem):
+    error = DirectoryUnavailable(problem)
+    error.diagnostic = {'problem': problem}
+    return error
+
+
 def fetch_schema(username, password, start, end):
     return inspect(fetch_raw(username, password, start, end))
 
 
 def fetch_records(username, password, start, end):
-    return parse_records(fetch_raw(username, password, start, end))
+    raw = fetch_raw(username, password, start, end)
+    try:
+        return parse_records(raw)
+    except DirectoryUnavailable as error:
+        error.diagnostic = describe(raw)
+        raise
 
 
 def fetch_raw(username, password, start, end):
     if not username or not password:
-        raise DirectoryUnavailable()
+        raise unavailable('credentials')
     # Dates are server-validated date objects, never arbitrary provider arguments.
     from datetime import date
 
     if type(start) is not date or type(end) is not date or end < start or (end - start).days > 6:
-        raise DirectoryUnavailable()
+        raise unavailable('window')
     try:
         with requests.get(
             URL,
@@ -174,15 +219,15 @@ def fetch_raw(username, password, start, end):
             stream=True,
         ) as response:
             if response.status_code != 200:
-                raise DirectoryUnavailable()
+                raise unavailable(f'http_{response.status_code}')
             body = bytearray()
             deadline = monotonic() + 20
             for chunk in response.iter_content(chunk_size=8192):
                 if monotonic() > deadline:
-                    raise DirectoryUnavailable()
+                    raise unavailable('too_slow')
                 body.extend(chunk)
                 if len(body) > MAX_BYTES:
-                    raise DirectoryUnavailable()
+                    raise unavailable('too_large')
             return bytes(body)
     except (requests.RequestException, ValueError, UnicodeError):
-        raise DirectoryUnavailable() from None
+        raise unavailable('network') from None
