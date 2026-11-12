@@ -3245,3 +3245,7 @@ Le panneau de tâche indique le motif, la date de création et l’échéance à
 
 Le panneau de fiche Assurance utilise un seul défilement, sous les onglets, sans commandes de navigation en double. La flèche dans son en-tête ramène au détail du rappel. Dans Isolation, le retour depuis la réservation ou la modification du rappel utilise la même flèche.
 
+## Rapport quotidien détaillé des setters
+
+La page Performance administrateur affiche désormais un tableau consolidé par setter pour la période sélectionnée, dans le fuseau du Québec : commandes d’appel enregistrées, poste accepté, appels dont la durée NEWT dépasse une minute, durée totale et moyenne, rendez-vous pris, rendez-vous présentés et ventes conclues. Les durées restent en attente jusqu’au rapprochement automatique du journal NEWT et ne prétendent pas mesurer le décrochage du prospect.
+
