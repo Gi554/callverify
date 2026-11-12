@@ -186,7 +186,7 @@ class WorkViewSet(
             quebec_now = now.astimezone(ZoneInfo('America/Toronto'))
             today_start = quebec_now.replace(hour=0, minute=0, second=0, microsecond=0)
             tomorrow_start = today_start + timedelta(days=1)
-            retryable = Q(changes__result__in=('voicemail', 'unreachable'))
+            retryable = Q(activities__changes__result__in=('voicemail', 'unreachable'))
 
             qs = qs.annotate(
                 _queue_client_followup=Exists(
