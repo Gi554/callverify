@@ -121,8 +121,17 @@ function reset() {
   result.value = null;
   error.value = '';
 }
-onMounted(() => {
-  if (props.autoOpen && !requestId.value) void open();
+onMounted(async () => {
+  if (!props.autoOpen) return;
+  if (requestId.value) {
+    // The file was already called from this browser (a prospect returns to the session after
+    // a voicemail). Its earlier command is cleared only once the server reports it as settled;
+    // an uncertain or unreadable one keeps blocking any automatic call.
+    await inspect();
+    if (error.value || unresolved.value) return;
+    reset();
+  }
+  void open();
 });
 </script>
 <template>

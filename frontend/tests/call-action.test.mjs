@@ -42,7 +42,10 @@ const renderer = createRenderer({
     node.props[key] = value
   },
   parentNode: (node) => node.parent,
-  nextSibling: () => null,
+  nextSibling: (node) => {
+    const siblings = node?.parent?.children || []
+    return siblings[siblings.indexOf(node) + 1] || null
+  },
   insert(node, parent, anchor) {
     if (node.parent) {
       const i = node.parent.children.indexOf(node)
@@ -58,8 +61,10 @@ const renderer = createRenderer({
   },
 })
 const text = (node) => (node.text || '') + (node.children || []).map(text).join('')
-function fixture(portal, extra = {}) {
+function fixture(portal, extra = {}, earlier = '') {
   const saved = new Map()
+  // A command already sent for this file from the same browser tab.
+  if (earlier) saved.set('amx-call:isolation:1', earlier)
   globalThis.sessionStorage = {
     getItem: (k) => saved.get(k) || null,
     setItem: (k, v) => saved.set(k, v),
@@ -150,6 +155,68 @@ test('call session sends once without confirmation when the checks pass', async 
     assert.doesNotMatch(text(f.root), /Appeler le .+ ?/)
   } finally {
     f.close()
+  }
+})
+test('call session calls again a file whose earlier command is settled', async () => {
+  for (const settled of [{ state: 'accepted' }, { state: 'unknown', journal_matched: true }]) {
+    let sends = 0
+    const paths = []
+    const f = fixture(
+      async (path, body) => {
+        paths.push(path)
+        if (path.endsWith('options/')) return { enabled: true, post_associated: true }
+        if (body) {
+          sends++
+          return { state: 'accepted' }
+        }
+        return settled
+      },
+      { autoOpen: true, autoSend: true },
+      'earlier-command',
+    )
+    try {
+      for (let i = 0; i < 20; i++) await nextTick()
+      // The earlier command is read first, then exactly one new command is sent.
+      assert.equal(paths[0], 'isolation/calls/earlier-command/')
+      assert.equal(sends, 1)
+      assert.equal(f.intents(), 1)
+      assert.notEqual(f.saved.get('amx-call:isolation:1'), 'earlier-command')
+    } finally {
+      f.close()
+    }
+  }
+})
+test('call session never calls again while the earlier command is uncertain or unreadable', async () => {
+  const cases = [
+    async () => ({ state: 'unknown' }),
+    async () => ({ state: 'dispatching' }),
+    async () => {
+      throw new Error('Serveur indisponible')
+    },
+  ]
+  for (const earlier of cases) {
+    let sends = 0
+    const f = fixture(
+      async (path, body) => {
+        if (path.endsWith('options/')) return { enabled: true, post_associated: true }
+        if (body) {
+          sends++
+          return { state: 'accepted' }
+        }
+        return earlier()
+      },
+      { autoOpen: true, autoSend: true },
+      'earlier-command',
+    )
+    try {
+      for (let i = 0; i < 20; i++) await nextTick()
+      assert.equal(sends, 0)
+      assert.equal(f.intents(), 0)
+      assert.equal(f.saved.get('amx-call:isolation:1'), 'earlier-command')
+      assert.match(text(f.root), /Passer au prospect suivant/)
+    } finally {
+      f.close()
+    }
   }
 })
 test('call session never sends when calls are disabled', async () => {
