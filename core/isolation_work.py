@@ -199,7 +199,10 @@ class WorkViewSet(
                     IsolationUnqualified.objects.filter(prospect_id=OuterRef('pk'), active=True)
                 ),
                 _queue_booking=Exists(
-                    IsolationVisit.objects.filter(prospect_id=OuterRef('pk'), status='scheduled')
+                    IsolationVisit.objects.filter(
+                        prospect_id=OuterRef('pk'),
+                        status='scheduled',
+                    ).filter(Q(result__isnull=True) | Q(result__performed=True))
                 ),
                 _queue_call_result=Subquery(
                     ProspectActivity.objects.filter(prospect_id=OuterRef('pk'), kind='call_result')
