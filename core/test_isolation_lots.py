@@ -76,6 +76,20 @@ class IsolationLotTests(TestCase):
         self.assertEqual(data['available'], 3)
         self.assertEqual([(row['id'], row['assigned']) for row in data['setters']], [(21, 2)])
 
+    def test_summary_counts_a_renamed_setter_once_with_the_whole_lot(self):
+        self.assign(3)
+        # Same account, older name snapshot and no lot week (individual assignment).
+        Prospect.objects.filter(pk=self.rows[4].pk).update(
+            assigned_setter_id=21, assigned_setter_name='Ancien nom'
+        )
+        self.auth(91, 'administrator')
+        data = self.client.get(self.base).data
+        self.assertEqual(len(data['setters']), 1)
+        row = data['setters'][0]
+        today = timezone.localdate()
+        self.assertEqual((row['id'], row['assigned'], row['name']), (21, 4, 'Ancien nom'))
+        self.assertEqual(row['week'], today - timedelta(days=today.weekday()))
+
     def test_release_only_returns_untouched_prospects(self):
         self.assign(3)
         Prospect.objects.filter(pk=self.rows[0].pk).update(commercial_status='callback')

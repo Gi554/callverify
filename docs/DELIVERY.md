@@ -1,5 +1,23 @@
 # Suivi des livraisons CRM AMX
 
+## Compteurs du lot de la semaine et période du pilotage (Isolation)
+
+Le résumé « Lot de la semaine » regroupe désormais les prospects par compte setter uniquement.
+Auparavant, le regroupement incluait le nom enregistré sur la fiche : un setter dont les fiches
+portaient deux noms différents (compte renommé, affectation individuelle antérieure) apparaissait
+sur plusieurs lignes et l’écran n’en affichait qu’une, donc un total partiel. Les prospects encore
+attribués à un compte qui n’est plus un setter actif (supprimé, suspendu, recréé sous un nouvel
+identifiant interne) sont listés à part avec le bouton « Reprendre » ; la reprise ne rend que les
+fiches non travaillées sans rappel ouvert, comme pour un setter actif.
+
+Le pilotage administrateur (Assurance et Isolation) couvre par défaut le mois en cours en entier
+au lieu de s’arrêter à la date du jour : les rendez-vous programmés pour les jours à venir étaient
+exclus et le compteur restait à zéro. Les définitions des compteurs sont inchangées.
+
+Vérifications : tests backend des lots, test frontend de la période par défaut, typage et build.
+La cause exacte en production (renommage ou recréation du compte concerné) n’a pas été lue dans
+les données de production ; le résultat est à contrôler à l’écran après déploiement.
+
 ## Relances automatiques Isolation après absence de réponse
 
 Un prospect Isolation dont le dernier résultat est « Répondeur » ou « Ne répond pas » peut

@@ -9,8 +9,11 @@ const today = new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 }).format(new Date());
+// Whole current month: appointments booked for the coming days must be counted too.
+const [year, month] = today.split('-').map(Number);
+const monthEnd = String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, '0');
 const from = ref(today.slice(0, 8) + '01'),
-  to = ref(today),
+  to = ref(today.slice(0, 8) + monthEnd),
   setter = ref(''),
   owner = ref(''),
   closer = ref(''),
@@ -174,8 +177,9 @@ onBeforeUnmount(() => {
       ><span>Actualisation automatique chaque minute quand la page est visible.</span>
     </footer>
     <p class="activity-definition">
-      Rendez-vous selon leur date de début ; rappels ouverts selon leur échéance sur la période. Une
-      vente non renseignée reste à compléter, sans être classée comme perdue.
+      Par défaut, le mois en cours en entier, rendez-vous à venir compris. Rendez-vous selon leur
+      date de début ; rappels ouverts selon leur échéance sur la période. Une vente non renseignée
+      reste à compléter, sans être classée comme perdue.
       {{ assurance ? 'Les campagnes correspondent aux lots importés Assurance.' : '' }}
     </p>
   </section>
