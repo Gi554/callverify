@@ -17,7 +17,12 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from packages.access.phone_history import number
-from packages.newt.cdr import fetch_records, PROVIDER_TIMEZONE
+from packages.newt.cdr import (
+    duration_seconds,
+    fetch_records,
+    normalize_extension,
+    PROVIDER_TIMEZONE,
+)
 from packages.newt.directory import DirectoryUnavailable
 from .management_api import require_admin
 from .models import PhoneCallAttempt, PhoneDirectoryGate, AccessAudit
@@ -57,10 +62,10 @@ def lines(records):
         raw = row['duration_raw'].strip()
         parsed.append(
             {
-                'extension': row['from'],
+                'extension': normalize_extension(row['from']),
                 'digest': target,
                 'at': instant,
-                'duration': int(raw) if raw.isdigit() else None,
+                'duration': duration_seconds(raw),
             }
         )
     return parsed

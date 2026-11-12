@@ -4,6 +4,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import secrets
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -18,6 +19,39 @@ PROVIDER_TIMEZONE = 'America/Toronto'
 
 def confirmed(headings):
     return [value.strip() for value in headings] == CONFIRMED_COLUMNS
+
+
+def normalize_extension(value):
+    """Return the numeric NEWT extension while tolerating CSV whitespace."""
+    text = str(value or '').strip()
+    return text if re.fullmatch(r'\d{1,8}', text) else ''
+
+
+def duration_seconds(value):
+    """Parse the unambiguous duration spellings returned by NEWT.
+
+    The provider documents the column name but not its unit. Bare integers keep
+    the existing seconds interpretation; clock-style values are converted
+    exactly and malformed values remain unavailable instead of being guessed.
+    """
+    text = str(value or '').strip()
+    if not text:
+        return None
+    if text.isdigit():
+        return int(text)
+    parts = text.split(':')
+    if len(parts) not in (2, 3) or any(not part.isdigit() for part in parts):
+        return None
+    numbers = [int(part) for part in parts]
+    if len(numbers) == 2:
+        minutes, seconds = numbers
+        if seconds >= 60:
+            return None
+        return minutes * 60 + seconds
+    hours, minutes, seconds = numbers
+    if minutes >= 60 or seconds >= 60:
+        return None
+    return hours * 3600 + minutes * 60 + seconds
 
 
 def local_instant(day, clock):
@@ -56,8 +90,8 @@ def parse_records(raw):
             # Duration and Amount have no confirmed unit/semantics; preserve as text.
             records.append(
                 {
-                    'from': values['From'],
-                    'to': values['To'],
+                    'from': normalize_extension(values['From']),
+                    'to': values['To'].strip(),
                     'description': values['Description'],
                     'dnid': values['DNID'],
                     'local_date': values['Date'],

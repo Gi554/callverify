@@ -3250,3 +3250,8 @@ Le panneau de fiche Assurance utilise un seul défilement, sous les onglets, san
 La page Performance administrateur affiche désormais un tableau consolidé par setter pour la période sélectionnée, dans le fuseau du Québec : commandes d’appel enregistrées, poste accepté, appels dont la durée NEWT dépasse une minute, durée totale et moyenne, rendez-vous pris, rendez-vous présentés et ventes conclues. Les durées restent en attente jusqu’au rapprochement automatique du journal NEWT et ne prétendent pas mesurer le décrochage du prospect.
 Le rapport équipe utilise un agrégat administrateur séparé : l’absence ou la suspension d’un ancien compte ne masque pas les autres setters ni leurs appels historiques.
 
+## Correctif — normalisation du journal NEWT 511
+
+Le rapprochement Phonetico accepte désormais les espaces parasites autour du poste et du numéro, et interprète les durées NEWT exprimées en secondes ou sous forme `MM:SS`/`HH:MM:SS`. Une durée mal formée reste inconnue : aucun statut prospect n’est inventé. Les résultats « Répondeur », « Pas intéressé », « Autre résultat », etc. restent les résultats saisis dans Orvia par le setter ; ils ne sont pas présentés comme des réponses CDR de NEWT. Les données NEWT ne sont comptées qu’après correspondance sûre de la ligne 511 avec le poste, le numéro haché et la fenêtre temporelle.
+
+Vérifications : formatage Ruff et tests ciblés du parseur/rapprochement ajoutés. Limite : la documentation fournisseur décrit les colonnes 511 mais ne confirme pas encore une unité pour les valeurs numériques brutes ; les entiers conservent donc l’interprétation historique en secondes, tandis que les formats horloge sont convertis sans ambiguïté. Une réponse 511 réelle reste nécessaire pour valider la recette fournisseur.

@@ -85,6 +85,13 @@ class CallJournalTests(TestCase):
         )
         self.assertEqual(reconcile([other], records, later)[other.pk][0], 'not_found')
 
+    def test_matching_accepts_newt_clock_duration_and_trimmed_extension(self):
+        first = self.attempt(T0 + timedelta(seconds=30))
+        records = [line(' 509 ', '4185547880', '09:40:50', '01:20')]
+        status, matched = reconcile([first], records, T0 + SETTLE + timedelta(minutes=1))[first.pk]
+        self.assertEqual(status, 'matched')
+        self.assertEqual(matched['duration'], 80)
+
     @patch('portal.backend.identity.call_journal.fetch_records')
     def test_administrator_reconciles_and_history_shows_duration(self, fetch):
         fetch.return_value = [line('509', '4185547880', '09:40:50', '4')]
