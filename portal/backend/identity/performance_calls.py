@@ -42,9 +42,7 @@ def statistics(request, workspace):
                 'to': end,
                 'timezone': 'America/Toronto',
                 'team': list(
-                    rows.values('user_id', 'user__username')
-                    .annotate(**metrics)
-                    .order_by('user_id')
+                    rows.values('user_id', 'user__username').annotate(**metrics).order_by('user_id')
                 ),
             },
             headers={'Cache-Control': 'no-store'},
