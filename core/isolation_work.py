@@ -198,6 +198,11 @@ class WorkViewSet(
                 _queue_unqualified=Exists(
                     IsolationUnqualified.objects.filter(prospect_id=OuterRef('pk'), active=True)
                 ),
+                _queue_setter_followup=Exists(
+                    IsolationFollowUp.objects.filter(
+                        prospect_id=OuterRef('pk'), closed_at__isnull=True
+                    )
+                ),
                 _queue_booking=Exists(
                     IsolationVisit.objects.filter(
                         prospect_id=OuterRef('pk'),
@@ -235,6 +240,7 @@ class WorkViewSet(
                 _queue_reason=Case(
                     When(_queue_client_followup=True, then=Value('client_followup')),
                     When(_queue_unqualified=True, then=Value('unqualified')),
+                    When(_queue_setter_followup=True, then=Value('')),
                     When(_queue_booking=True, then=Value('appointment_booked')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     When(
