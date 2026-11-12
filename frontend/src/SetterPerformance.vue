@@ -66,20 +66,22 @@ async function loadTeam() {
   teamBusy.value = true;
   const query = new URLSearchParams({ from: from.value, to: to.value });
   try {
+    const phone = await props.portal(
+      `${props.workspace}/performance-calls/?${new URLSearchParams({
+        from: from.value,
+        to: to.value,
+        team: '1',
+      })}`,
+    );
+    const callsByUser = new Map(
+      (phone.team || []).map((item: any) => [String(item.user_id), item]),
+    );
     const rows = await Promise.all(
-      agents.value.map(async (item) => {
-        const [performance, phone] = await Promise.all([
-          props.request(`setter-performance/${item.id}/?${query}`),
-          props.portal(
-            `${props.workspace}/performance-calls/?${new URLSearchParams({
-              from: from.value,
-              to: to.value,
-              setter_id: String(item.id),
-            })}`,
-          ),
-        ]);
-        return { ...item, performance, phone };
-      }),
+      agents.value.map(async (item) => ({
+        ...item,
+        performance: await props.request(`setter-performance/${item.id}/?${query}`),
+        phone: callsByUser.get(String(item.id)),
+      })),
     );
     teamRows.value = rows;
   } catch (e: any) {

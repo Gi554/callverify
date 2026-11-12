@@ -3248,4 +3248,5 @@ Le panneau de fiche Assurance utilise un seul défilement, sous les onglets, san
 ## Rapport quotidien détaillé des setters
 
 La page Performance administrateur affiche désormais un tableau consolidé par setter pour la période sélectionnée, dans le fuseau du Québec : commandes d’appel enregistrées, poste accepté, appels dont la durée NEWT dépasse une minute, durée totale et moyenne, rendez-vous pris, rendez-vous présentés et ventes conclues. Les durées restent en attente jusqu’au rapprochement automatique du journal NEWT et ne prétendent pas mesurer le décrochage du prospect.
+Le rapport équipe utilise un agrégat administrateur séparé : l’absence ou la suspension d’un ancien compte ne masque pas les autres setters ni leurs appels historiques.
 
