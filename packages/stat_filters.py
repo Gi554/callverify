@@ -36,3 +36,12 @@ def options(rows, id_field, name_field):
         {'id': pk, 'name': name or f'#{pk}'}
         for pk, name in sorted(values, key=lambda item: str(item[1]).casefold())
     ]
+
+
+def merged(*groups):
+    """One option per identifier across several sources; the first source names it."""
+    seen = {}
+    for group in groups:
+        for row in group:
+            seen.setdefault(row['id'], row)
+    return sorted(seen.values(), key=lambda row: str(row['name']).casefold())

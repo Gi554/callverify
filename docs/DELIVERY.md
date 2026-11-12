@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Pilotage : filtre Setter complet (Assurance et Isolation)
+
+Le filtre « Setter » du pilotage administrateur ne proposait que les setters ayant déjà réservé au
+moins un rendez-vous. Il liste désormais aussi ceux qui détiennent des prospects ou contacts
+attribués, même sans rendez-vous. Un compte sans fiche attribuée ni rendez-vous n’y figure pas : il
+n’aurait aucune donnée à filtrer. Vérifications : test backend Isolation dédié et suites
+statistiques Assurance et Isolation.
+
 ## Compteurs du lot de la semaine et période du pilotage (Isolation)
 
 Le résumé « Lot de la semaine » regroupe désormais les prospects par compte setter uniquement.

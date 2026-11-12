@@ -62,6 +62,17 @@ class AdminActivityTests(TestCase):
         self.assertEqual(data['totals']['not_closed'], 0)
         self.assertEqual(data['totals']['not_performed'], 0)
 
+    def test_setter_filter_lists_setters_holding_prospects_before_any_visit(self):
+        from .models import Prospect
+
+        self.visit(setter=22)
+        Prospect.objects.filter(pk=self.prospect.pk).update(
+            assigned_setter_id=35, assigned_setter_name='Sans visite'
+        )
+        options = self.client.get(self.url).data['filter_options']['setter_id']
+        self.assertEqual(sorted(row['id'] for row in options), [22, 35])
+        self.assertIn({'id': 35, 'name': 'Sans visite'}, options)
+
     def test_filter_validation_and_non_admin_never_expose_team_options(self):
         self.visit()
         for invalid in ('-1', 'x', '0', '9223372036854775808'):
