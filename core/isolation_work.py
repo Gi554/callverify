@@ -236,7 +236,7 @@ class WorkViewSet(
             qs = qs.annotate(
                 _queue_reason=Case(
                     When(_queue_client_followup=True, then=Value('client_followup')),
-                    When(_queue_unqualified=True, then=Value('unqualified')),
+                    When(_queue_unqualified=True, then=Value('')),
                     When(_queue_setter_followup=True, then=Value('')),
                     When(_queue_booking=True, then=Value('appointment_booked')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
