@@ -52,7 +52,7 @@ function when(value: string) {
   );
 }
 const phoneOf = (row: any) => row.phone || row.raw_phone || '';
-// Duration reported by the NEWT 511 journal once the call line is reconciled.
+// Duration reported by the NEWT 541 recording journal once the call line is reconciled.
 const journalLabels: Record<string, string> = {
   pending: 'En attente du journal',
   not_found: 'Absent du journal',
@@ -366,7 +366,7 @@ onMounted(() => {
           type="button"
           class="secondary"
           :disabled="reconciling || loading"
-          title="Récupère la durée des appels des sept derniers jours dans le journal NEWT"
+          title="Récupère les durées et identifiants des appels des sept derniers jours dans le journal NEWT 541"
           @click="reconcile"
         >
           <RefreshCw :size="15" />{{

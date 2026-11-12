@@ -33,6 +33,7 @@ def output(row, administrator):
         'journal_status': row.journal_status if row.destination_digest else 'unavailable',
         'journal_started_at': row.journal_started_at,
         'journal_duration': row.journal_duration,
+        'journal_uid': row.journal_uid,
     }
     if administrator:
         result['caller'] = {'id': row.user_id, 'username': row.user.username}

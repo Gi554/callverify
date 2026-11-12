@@ -57,7 +57,7 @@ onMounted(load);
       <small>{{
         row.journal_duration == null
           ? 'Durée indisponible'
-          : `${row.journal_duration} seconde(s) · journal NEWT`
+          : `${row.journal_duration} seconde(s) · journal NEWT 541`
       }}</small>
     </div>
     <p v-if="!busy && !error && !rows.length">

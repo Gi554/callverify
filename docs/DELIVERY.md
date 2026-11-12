@@ -1,5 +1,14 @@
 # Suivi des livraisons CRM AMX
 
+## Journal d’appels NEWT 541 (local/staging)
+
+Le rapprochement des durées utilise désormais le rapport F=541 confirmé par NEWT. L’UID opaque
+de chaque ligne est conservé avec l’appel CRM, en plus de la date et de la durée. L’interface
+continue d’afficher la durée et précise la source NEWT 541. La lecture audio F=246 reste à ajouter
+derrière une autorisation dédiée ; aucun enregistrement n’est encore rendu accessible.
+
+Livré et compilé localement uniquement, sans déploiement production.
+
 ## Composeur et file des rappels (local/staging)
 
 Le composeur ouvre maintenant la fiche trouvée en mode appel et déclenche effectivement la

@@ -20,13 +20,17 @@ from rest_framework.response import Response
 from packages.access.phone_history import number
 from packages.newt.cdr import (
     duration_seconds,
-    fetch_records,
+    fetch_recordings,
     normalize_extension,
     PROVIDER_TIMEZONE,
 )
 from packages.newt.directory import DirectoryUnavailable
 from .management_api import require_admin
 from .models import PhoneCallAttempt, PhoneDirectoryGate, AccessAudit
+
+# Compatibility seam for existing worker tests and integrations. The journal
+# reader behind this name is now F=541, not the legacy 511 report.
+fetch_records = fetch_recordings
 
 # The extension rings first (up to 30 s), then the number is dialed: allow clock drift before.
 BEFORE = timedelta(seconds=60)
@@ -67,6 +71,7 @@ def lines(records):
                 'digest': target,
                 'at': instant,
                 'duration': duration_seconds(raw),
+                'uid': row.get('uid', ''),
             }
         )
     return parsed
@@ -185,12 +190,14 @@ def reconcile_recent(workspace, actor=None, now=None):
                 if line:
                     attempt.journal_started_at = line['at']
                     attempt.journal_duration = line['duration']
+                    attempt.journal_uid = line['uid']
                 attempt.save(
                     update_fields=[
                         'journal_status',
                         'journal_checked_at',
                         'journal_started_at',
                         'journal_duration',
+                        'journal_uid',
                     ]
                 )
                 if status in ('matched', 'ambiguous', 'not_found'):
