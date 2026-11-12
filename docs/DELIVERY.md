@@ -1,5 +1,19 @@
 # Suivi des livraisons CRM AMX
 
+## Journal NEWT 511 : lecture tolérante et erreur réseau précise
+
+Le diagnostic livré précédemment a renvoyé `network` en production : la lecture HTTP échoue chez
+nous alors que NEWT enregistre une réponse 200 complète.
+
+- Une connexion fermée avant la longueur annoncée ne rejette plus tout le journal : les lignes
+  complètes déjà reçues sont conservées, la dernière ligne incomplète est écartée.
+- Le délai de lecture passe de 10 à 20 secondes par bloc, et de 20 à 40 secondes au total.
+- Une description en Windows-1252 (nom de lieu accentué) ne fait plus refuser le journal.
+- L’erreur réseau indique désormais sa nature (nom de l’exception et message sans adresse).
+
+Vérifications : tests backend du journal et du schéma. La cause exacte de l’erreur réseau n’est pas
+connue : si elle persiste, le nouveau message la nommera.
+
 ## Session d’appels : relance automatique d’une fiche déjà appelée
 
 Depuis que les prospects « Répondeur » ou « Ne répond pas » reviennent dans la session le même

@@ -203,7 +203,6 @@ class CallJournalTests(TestCase):
                 'first_row_shape': ['999;9999999999;9999-99-99'],
             },
         )
-        self.assertEqual(cdr.describe(b'\xff')['problem'], 'encoding')
         self.assertEqual(cdr.describe(b'')['problem'], 'empty')
         # A body without headings never exposes its first call line.
         self.assertEqual(cdr.describe(b'509,4185547880\n')['headings'], ['999', '9999999999'])
