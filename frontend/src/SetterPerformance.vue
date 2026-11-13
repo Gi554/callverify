@@ -85,25 +85,25 @@ function shiftReportDay(offset: number) {
   const next = new Date(`${reportDay.value}T12:00:00`);
   next.setDate(next.getDate() + offset);
   reportDay.value = next.toISOString().slice(0, 10);
-  from.value = reportDay.value;
-  to.value = reportDay.value;
-  load();
+  // The team report is its own daily view. Do not overwrite the period used
+  // by the selected setter below it.
+  loadTeam();
 }
 function resetReportDay() {
   reportDay.value = now;
-  from.value = now.slice(0, 8) + '01';
-  to.value = now;
-  load();
+  // “Période complète” only resets the daily report cursor. The top period
+  // remains the admin's selected analysis period.
+  loadTeam();
 }
 async function loadTeam() {
   if (!admin.value || !agents.value.length) return;
   teamBusy.value = true;
-  const query = new URLSearchParams({ from: from.value, to: to.value });
+  const query = new URLSearchParams({ from: reportDay.value, to: reportDay.value });
   try {
     const phone = await props.portal(
       `${props.workspace}/performance-calls/?${new URLSearchParams({
-        from: from.value,
-        to: to.value,
+        from: reportDay.value,
+        to: reportDay.value,
         team: '1',
       })}`,
     );
@@ -230,9 +230,7 @@ onBeforeUnmount(() => version++);
           >
             <ChevronRight :size="18" />
           </button>
-          <button type="button" class="today-button" @click="resetReportDay">
-            Période complète
-          </button>
+          <button type="button" class="today-button" @click="resetReportDay">Aujourd’hui</button>
         </div>
       </div>
       <p v-if="teamBusy" class="loading-line" role="status">
