@@ -1,5 +1,109 @@
 # Suivi des livraisons CRM AMX
 
+## Journal d’appels NEWT 541 (local/staging)
+
+Le rapprochement des durées utilise désormais le rapport F=541 confirmé par NEWT. L’UID opaque
+de chaque ligne est conservé avec l’appel CRM, en plus de la date et de la durée. L’interface
+continue d’afficher la durée et précise la source NEWT 541. La lecture audio F=246 reste à ajouter
+derrière une autorisation dédiée ; aucun enregistrement n’est encore rendu accessible.
+
+Livré et compilé localement uniquement, sans déploiement production.
+
+## Composeur et file des rappels (local/staging)
+
+Le composeur ouvre maintenant la fiche trouvée en mode appel et déclenche effectivement la
+commande Phonetico après les contrôles, dans Assurance comme dans Isolation. La fiche reste
+attachée au CRM afin que le résultat puisse être enregistré au même endroit.
+
+Les deux espaces exposent aussi une colonne « Rappels » dédiée. Elle récupère les prospects dont
+le dernier résultat d’appel est « Rappel demandé » et dont le suivi n’est pas clôturé, qu’il soit
+déjà dû ou encore à venir. Ces fiches ne sont plus renvoyées par la file active « À contacter ».
+
+Livré et vérifié uniquement en local (build frontend et compilation Python). Aucun déploiement
+production effectué ; la commande réelle reste à valider avec un poste NEWT de staging.
+
+La session d’appels applique en plus une protection côté interface : un rendez-vous marqué
+« appointment_booked » est ignoré même si une réponse serveur inattendue le renvoyait. Il ne peut
+réapparaître que par une file de tâche ouverte (par exemple un rendez-vous non tenu), jamais comme
+prospect « À contacter ».
+
+## Journal NEWT 511 : lecture tolérante et erreur réseau précise
+
+Le diagnostic livré précédemment a renvoyé `network` en production : la lecture HTTP échoue chez
+nous alors que NEWT enregistre une réponse 200 complète.
+
+- Une connexion fermée avant la longueur annoncée ne rejette plus tout le journal : les lignes
+  complètes déjà reçues sont conservées, la dernière ligne incomplète est écartée.
+- Le délai de lecture passe de 10 à 20 secondes par bloc, et de 20 à 40 secondes au total.
+- Une description en Windows-1252 (nom de lieu accentué) ne fait plus refuser le journal.
+- L’erreur réseau indique désormais sa nature (nom de l’exception et message sans adresse).
+
+Vérifications : tests backend du journal et du schéma. La cause exacte de l’erreur réseau n’est pas
+connue : si elle persiste, le nouveau message la nommera.
+
+## Session d’appels : relance automatique d’une fiche déjà appelée
+
+Depuis que les prospects « Répondeur » ou « Ne répond pas » reviennent dans la session le même
+jour, la fiche d’un prospect déjà appelé depuis le même onglet ne lançait plus l’appel
+automatiquement : la référence de la commande précédente, gardée par le navigateur, bloquait le
+lancement et imposait « Vérifier la commande » puis « Préparer un nouvel appel ». La fiche relit
+maintenant elle-même cette commande : si le serveur la donne comme réglée (acceptée, refusée,
+bloquée ou retrouvée au journal), l’appel suivant part automatiquement. Une commande incertaine,
+en cours ou illisible continue de bloquer tout appel automatique, avec « Passer au prospect
+suivant ». S’applique à Assurance et Isolation. Vérifications : tests frontend du composant d’appel.
+Cause déduite du code ; à confirmer en session réelle avec un poste.
+
+## Journal NEWT 511 : diagnostic du rapprochement
+
+NEWT confirme que les lectures 511 du worker répondent 200 ; la perte se situe donc après la
+réception. Cette livraison n’est pas encore la correction : elle rend visible l’étape qui échoue.
+
+- Journal refusé (format) : l’erreur du bouton « Rapprocher le journal NEWT », la sortie du worker
+  et un audit `phone.journal_unreadable` indiquent la cause (HTTP, taille, délai, encodage, format)
+  et, pour un format refusé, les noms d’en-têtes, le nombre de colonnes par ligne et la forme de la
+  première ligne (chiffres remplacés par 9, lettres par a).
+- Journal lu mais appels non retrouvés : le résultat du rapprochement ajoute des compteurs — lignes
+  reçues, lignes avec date et numéro lisibles, lignes avec un poste, appels retrouvés par poste, par
+  numéro, par les deux, dans la fenêtre horaire, et écart médian en secondes hors fenêtre.
+
+Aucun numéro, nom, horodatage ou ligne fournisseur n’est conservé ni affiché. Les règles de
+rapprochement sont inchangées. Vérifications : tests backend du journal, du schéma et de
+l’historique. Reste à faire : lire le diagnostic en production puis corriger l’étape en cause.
+
+## Pilotage : filtre Setter complet (Assurance et Isolation)
+
+Le filtre « Setter » du pilotage administrateur ne proposait que les setters ayant déjà réservé au
+moins un rendez-vous. Il liste désormais aussi ceux qui détiennent des prospects ou contacts
+attribués, même sans rendez-vous. Un compte sans fiche attribuée ni rendez-vous n’y figure pas : il
+n’aurait aucune donnée à filtrer. Vérifications : test backend Isolation dédié et suites
+statistiques Assurance et Isolation.
+
+## Compteurs du lot de la semaine et période du pilotage (Isolation)
+
+Le résumé « Lot de la semaine » regroupe désormais les prospects par compte setter uniquement.
+Auparavant, le regroupement incluait le nom enregistré sur la fiche : un setter dont les fiches
+portaient deux noms différents (compte renommé, affectation individuelle antérieure) apparaissait
+sur plusieurs lignes et l’écran n’en affichait qu’une, donc un total partiel. Les prospects encore
+attribués à un compte qui n’est plus un setter actif (supprimé, suspendu, recréé sous un nouvel
+identifiant interne) sont listés à part avec le bouton « Reprendre » ; la reprise ne rend que les
+fiches non travaillées sans rappel ouvert, comme pour un setter actif.
+
+Le pilotage administrateur (Assurance et Isolation) couvre par défaut le mois en cours en entier
+au lieu de s’arrêter à la date du jour : les rendez-vous programmés pour les jours à venir étaient
+exclus et le compteur restait à zéro. Les définitions des compteurs sont inchangées.
+
+Vérifications : tests backend des lots, test frontend de la période par défaut, typage et build.
+La cause exacte en production (renommage ou recréation du compte concerné) n’a pas été lue dans
+les données de production ; le résultat est à contrôler à l’écran après déploiement.
+
+## Relances automatiques Isolation après absence de réponse
+
+Un prospect Isolation dont le dernier résultat est « Répondeur » ou « Ne répond pas » peut
+réintégrer la session automatique une seconde fois le même jour. Le plafond est de six tentatives
+de ce type au total ; à la sixième, le prospect est exclu définitivement de la file automatique et
+aucune tâche de rappel n’est créée. Les rendez-vous pris restent prioritaires et sont toujours
+exclus de la session, y compris lorsqu’ils sont ensuite déclarés non tenus.
+
 ## Flux de lecture Phonetico activés
 
 La configuration de production active désormais l’état des postes 244, le diagnostic de schéma
@@ -3248,4 +3352,10 @@ Le panneau de fiche Assurance utilise un seul défilement, sous les onglets, san
 ## Rapport quotidien détaillé des setters
 
 La page Performance administrateur affiche désormais un tableau consolidé par setter pour la période sélectionnée, dans le fuseau du Québec : commandes d’appel enregistrées, poste accepté, appels dont la durée NEWT dépasse une minute, durée totale et moyenne, rendez-vous pris, rendez-vous présentés et ventes conclues. Les durées restent en attente jusqu’au rapprochement automatique du journal NEWT et ne prétendent pas mesurer le décrochage du prospect.
+Le rapport équipe utilise un agrégat administrateur séparé : l’absence ou la suspension d’un ancien compte ne masque pas les autres setters ni leurs appels historiques.
 
+## Correctif — normalisation du journal NEWT 511
+
+Le rapprochement Phonetico accepte désormais les espaces parasites autour du poste et du numéro, et interprète les durées NEWT exprimées en secondes ou sous forme `MM:SS`/`HH:MM:SS`. Une durée mal formée reste inconnue : aucun statut prospect n’est inventé. Les résultats « Répondeur », « Pas intéressé », « Autre résultat », etc. restent les résultats saisis dans Orvia par le setter ; ils ne sont pas présentés comme des réponses CDR de NEWT. Les données NEWT ne sont comptées qu’après correspondance sûre de la ligne 511 avec le poste, le numéro haché et la fenêtre temporelle.
+
+Vérifications : formatage Ruff et tests ciblés du parseur/rapprochement ajoutés. Limite : la documentation fournisseur décrit les colonnes 511 mais ne confirme pas encore une unité pour les valeurs numériques brutes ; les entiers conservent donc l’interprétation historique en secondes, tandis que les formats horloge sont convertis sans ambiguïté. Une réponse 511 réelle reste nécessaire pour valider la recette fournisseur.

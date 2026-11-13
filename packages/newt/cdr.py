@@ -1,9 +1,15 @@
-"""Read-only NEWT 511 format inspection. No inferred field mapping or call outcome."""
+"""Read-only NEWT call journal readers.
+
+The legacy 511 report remains available for schema compatibility. New call
+reconciliation uses the provider's 541 recording report, whose UID is safe to
+retain as the opaque key for a later, permission-checked recording request.
+"""
 
 import csv
 import hashlib
 import io
 import json
+import re
 import secrets
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -12,7 +18,9 @@ import requests
 from .directory import URL, DirectoryUnavailable
 
 MAX_BYTES = 1024 * 1024
+MAX_RECORDING_BYTES = 25 * 1024 * 1024
 CONFIRMED_COLUMNS = ['From', 'To', 'Description', 'DNID', 'Date', 'Time', 'Duration', 'Amount']
+RECORDING_COLUMNS = ['UID', 'Date', 'Time', 'Source', 'Caller Name', 'Destination', 'Duration']
 PROVIDER_TIMEZONE = 'America/Toronto'
 
 
@@ -20,10 +28,44 @@ def confirmed(headings):
     return [value.strip() for value in headings] == CONFIRMED_COLUMNS
 
 
+def normalize_extension(value):
+    """Return the numeric NEWT extension while tolerating CSV whitespace."""
+    text = str(value or '').strip()
+    return text if re.fullmatch(r'\d{1,8}', text) else ''
+
+
+def duration_seconds(value):
+    """Parse the unambiguous duration spellings returned by NEWT.
+
+    The provider documents the column name but not its unit. Bare integers keep
+    the existing seconds interpretation; clock-style values are converted
+    exactly and malformed values remain unavailable instead of being guessed.
+    """
+    text = str(value or '').strip()
+    if not text:
+        return None
+    if text.isdigit():
+        return int(text)
+    parts = text.split(':')
+    if len(parts) not in (2, 3) or any(not part.isdigit() for part in parts):
+        return None
+    numbers = [int(part) for part in parts]
+    if len(numbers) == 2:
+        minutes, seconds = numbers
+        if seconds >= 60:
+            return None
+        return minutes * 60 + seconds
+    hours, minutes, seconds = numbers
+    if minutes >= 60 or seconds >= 60:
+        return None
+    return hours * 3600 + minutes * 60 + seconds
+
+
 def local_instant(day, clock):
     """Do not guess which repeated autumn hour a provider timestamp denotes."""
     try:
-        local = datetime.strptime(day + ' ' + clock, '%Y-%m-%d %H:%M:%S')
+        format = '%Y-%m-%d %H:%M' if len(clock) == 5 else '%Y-%m-%d %H:%M:%S'
+        local = datetime.strptime(day + ' ' + clock, format)
         zone = ZoneInfo(PROVIDER_TIMEZONE)
         candidates = {
             local.replace(tzinfo=zone, fold=fold).astimezone(timezone.utc)
@@ -45,7 +87,7 @@ def parse_records(raw):
         raise DirectoryUnavailable()
     inspect(raw)
     try:
-        reader = csv.reader(io.StringIO(raw.decode('utf-8-sig'), newline=''), strict=True)
+        reader = csv.reader(io.StringIO(decoded(raw), newline=''), strict=True)
         if not confirmed(next(reader)):
             raise DirectoryUnavailable()
         records = []
@@ -56,8 +98,8 @@ def parse_records(raw):
             # Duration and Amount have no confirmed unit/semantics; preserve as text.
             records.append(
                 {
-                    'from': values['From'],
-                    'to': values['To'],
+                    'from': normalize_extension(values['From']),
+                    'to': values['To'].strip(),
                     'description': values['Description'],
                     'dnid': values['DNID'],
                     'local_date': values['Date'],
@@ -75,7 +117,7 @@ def parse_records(raw):
 
 def inspect(raw):
     try:
-        reader = csv.reader(io.StringIO(raw.decode('utf-8-sig'), newline=''), strict=True)
+        reader = csv.reader(io.StringIO(decoded(raw), newline=''), strict=True)
         headings = next(reader)
         if not 2 <= len(headings) <= 64 or any(
             not h.strip()
@@ -107,22 +149,75 @@ def inspect(raw):
     }
 
 
+def shape(cell):
+    """Character classes of a cell (digits as 9, letters as a): its format, never its value."""
+    return re.sub(r'[^\W\d_]', 'a', re.sub(r'\d', '9', cell))[:30]
+
+
+def decoded(raw):
+    """UTF-8 when valid, otherwise Windows-1252: an accented place name must not reject a journal.
+
+    Only the free-text description can differ between the two; numbers, dates and durations
+    are plain ASCII either way.
+    """
+    try:
+        return raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        return raw.decode('cp1252', errors='replace')
+
+
+def describe(raw):
+    """Structure of a 511 body that is safe to log: no number, name or timestamp is kept."""
+    result = {'bytes': len(raw)}
+    try:
+        rows = [row for row in csv.reader(io.StringIO(decoded(raw), newline='')) if row]
+    except csv.Error:
+        return {**result, 'problem': 'csv'}
+    if not rows:
+        return {**result, 'problem': 'empty'}
+    widths = {}
+    for row in rows[1:]:
+        widths[len(row)] = widths.get(len(row), 0) + 1
+    return {
+        **result,
+        'problem': 'format',
+        # A first line holding digits may be a call line without headings: only its shape.
+        'headings': [
+            shape(cell) if any(c.isdigit() for c in cell) else cell[:30] for cell in rows[0][:16]
+        ],
+        'rows': len(rows) - 1,
+        'widths': {str(size): count for size, count in sorted(widths.items())[:5]},
+        'first_row_shape': [shape(cell) for cell in rows[1][:16]] if len(rows) > 1 else [],
+    }
+
+
+def unavailable(problem):
+    error = DirectoryUnavailable(problem)
+    error.diagnostic = {'problem': problem}
+    return error
+
+
 def fetch_schema(username, password, start, end):
     return inspect(fetch_raw(username, password, start, end))
 
 
 def fetch_records(username, password, start, end):
-    return parse_records(fetch_raw(username, password, start, end))
+    raw = fetch_raw(username, password, start, end)
+    try:
+        return parse_records(raw)
+    except DirectoryUnavailable as error:
+        error.diagnostic = describe(raw)
+        raise
 
 
 def fetch_raw(username, password, start, end):
     if not username or not password:
-        raise DirectoryUnavailable()
+        raise unavailable('credentials')
     # Dates are server-validated date objects, never arbitrary provider arguments.
     from datetime import date
 
     if type(start) is not date or type(end) is not date or end < start or (end - start).days > 6:
-        raise DirectoryUnavailable()
+        raise unavailable('window')
     try:
         with requests.get(
             URL,
@@ -135,20 +230,124 @@ def fetch_raw(username, password, start, end):
                 '_t': secrets.token_hex(5),
             },
             auth=(username, password),
-            timeout=(5, 10),
+            timeout=(5, 20),
             allow_redirects=False,
             stream=True,
         ) as response:
             if response.status_code != 200:
-                raise DirectoryUnavailable()
+                raise unavailable(f'http_{response.status_code}')
             body = bytearray()
-            deadline = monotonic() + 20
-            for chunk in response.iter_content(chunk_size=8192):
-                if monotonic() > deadline:
-                    raise DirectoryUnavailable()
-                body.extend(chunk)
-                if len(body) > MAX_BYTES:
-                    raise DirectoryUnavailable()
+            deadline = monotonic() + 40
+            try:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if monotonic() > deadline:
+                        raise unavailable('too_slow')
+                    body.extend(chunk)
+                    if len(body) > MAX_BYTES:
+                        raise unavailable('too_large')
+            except requests.exceptions.ChunkedEncodingError:
+                # The provider answered 200 but closed before its announced length: keep the
+                # complete lines already received instead of discarding the whole journal.
+                cut = body.rfind(b'\n')
+                if cut < 0:
+                    raise
+                del body[cut + 1 :]
             return bytes(body)
-    except (requests.RequestException, ValueError, UnicodeError):
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
+        # Exception class and message without its address: no credential or call data.
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None
+
+
+def parse_recording_records(raw):
+    """Parse the confirmed F=541 call-recording report without retaining numbers or names."""
+    if len(raw) > MAX_BYTES:
+        raise DirectoryUnavailable()
+    try:
+        reader = csv.reader(io.StringIO(decoded(raw), newline=''), strict=True)
+        if [value.strip() for value in next(reader)] != RECORDING_COLUMNS:
+            raise DirectoryUnavailable()
+        records = []
+        for row in reader:
+            if not row:
+                continue
+            if len(row) != len(RECORDING_COLUMNS):
+                raise DirectoryUnavailable()
+            uid, day, clock, source, _caller, _destination, duration = row
+            if not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', uid.strip()):
+                continue
+            records.append(
+                {
+                    'uid': uid.strip(),
+                    'extension': normalize_extension(source),
+                    'occurred_at': local_instant(day.strip(), clock.strip()),
+                    'duration_raw': duration.strip(),
+                }
+            )
+        return records
+    except (UnicodeError, csv.Error, StopIteration, ValueError):
         raise DirectoryUnavailable() from None
+
+
+def fetch_recordings(username, password, start, end, extension=''):
+    """Fetch F=541 recordings for a bounded Montreal-local date window."""
+    if not username or not password:
+        raise unavailable('credentials')
+    from datetime import date
+
+    if type(start) is not date or type(end) is not date or end < start or (end - start).days > 6:
+        raise unavailable('window')
+    params = {
+        '_f': '541',
+        '_v': 'C',
+        '_sd': start.strftime('%Y%m%d'),
+        '_ed': end.strftime('%Y%m%d'),
+        '_t': secrets.token_hex(5),
+    }
+    if extension:
+        normalized = normalize_extension(extension)
+        if not normalized:
+            raise unavailable('extension')
+        params['_x'] = normalized
+    try:
+        response = requests.get(URL, params=params, auth=(username, password), timeout=(5, 20))
+        if response.status_code != 200:
+            raise unavailable(f'http_{response.status_code}')
+        return parse_recording_records(response.content)
+    except DirectoryUnavailable:
+        raise
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None
+
+
+def fetch_recording(username, password, uid):
+    """Fetch one provider recording by its opaque F=541 UID."""
+    if not username or not password or not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str(uid or '')):
+        raise unavailable('recording_uid')
+    try:
+        response = requests.get(
+            URL,
+            params={'_f': '246', '_i': str(uid)},
+            auth=(username, password),
+            timeout=(5, 30),
+        )
+        if response.status_code != 200:
+            raise unavailable(f'http_{response.status_code}')
+        if len(response.content) > MAX_RECORDING_BYTES:
+            raise unavailable('recording_too_large')
+        content_type = response.headers.get('Content-Type', 'audio/wav').split(';', 1)[0]
+        if not content_type.startswith('audio/') and content_type != 'application/octet-stream':
+            raise unavailable('recording_format')
+        return response.content, content_type
+    except DirectoryUnavailable:
+        raise
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None

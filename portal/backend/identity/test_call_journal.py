@@ -4,9 +4,10 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
+from packages.newt import cdr
 from packages.newt.cdr import local_instant
 from packages.newt.directory import DirectoryUnavailable
-from .call_journal import digest, reconcile, run, SETTLE
+from .call_journal import digest, funnel, lines, reconcile, run, SETTLE
 from .models import Membership, PhoneCallAttempt, AccessAudit
 
 # 2026-10-15 09:40:00 in Montréal (EDT, UTC-4).
@@ -85,6 +86,13 @@ class CallJournalTests(TestCase):
         )
         self.assertEqual(reconcile([other], records, later)[other.pk][0], 'not_found')
 
+    def test_matching_accepts_newt_clock_duration_and_trimmed_extension(self):
+        first = self.attempt(T0 + timedelta(seconds=30))
+        records = [line(' 509 ', '4185547880', '09:40:50', '01:20')]
+        status, matched = reconcile([first], records, T0 + SETTLE + timedelta(minutes=1))[first.pk]
+        self.assertEqual(status, 'matched')
+        self.assertEqual(matched['duration'], 80)
+
     @patch('portal.backend.identity.call_journal.fetch_records')
     def test_administrator_reconciles_and_history_shows_duration(self, fetch):
         fetch.return_value = [line('509', '4185547880', '09:40:50', '4')]
@@ -100,8 +108,22 @@ class CallJournalTests(TestCase):
         ):
             response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
+        diagnostic = response.data.pop('diagnostic')
         self.assertEqual(
             response.data, {'checked': 1, 'matched': 1, 'ambiguous': 0, 'not_found': 0}
+        )
+        self.assertEqual(
+            diagnostic,
+            {
+                'lines': 1,
+                'lines_dated_with_number': 1,
+                'lines_with_extension': 1,
+                'attempts_same_extension': 1,
+                'attempts_same_number': 1,
+                'attempts_same_extension_and_number': 1,
+                'attempts_in_time_window': 1,
+                'median_gap_seconds_outside_window': None,
+            },
         )
         start, end = fetch.call_args.args[2:]
         self.assertEqual((end - start).days, 6)
@@ -141,6 +163,67 @@ class CallJournalTests(TestCase):
             self.assertEqual(
                 self.client.post('/api/portal/assurance/call-history/reconcile/').status_code, 503
             )
+
+    def test_funnel_tells_which_matching_step_loses_the_calls(self):
+        shifted = self.attempt(T0)
+        other_post = self.attempt(T0, destination='15145550100', extension='777')
+        records = [
+            # Right extension and number, one hour late: a clock or zone shift.
+            line('509', '4185547880', '10:40:00', '12'),
+            # The number is in the journal, but under a caller that is not an extension.
+            line('15145559999', '5145550100', '09:40:10', '5'),
+            {**line('509', '4185547880', '09:40:10', '5'), 'occurred_at': None},
+        ]
+        result = funnel([shifted, other_post], records, lines(records))
+        self.assertEqual(
+            result,
+            {
+                'lines': 3,
+                'lines_dated_with_number': 2,
+                'lines_with_extension': 1,
+                'attempts_same_extension': 1,
+                'attempts_same_number': 2,
+                'attempts_same_extension_and_number': 1,
+                'attempts_in_time_window': 0,
+                'median_gap_seconds_outside_window': 3600,
+            },
+        )
+        self.assertNotIn('4185547880', str(result))
+
+    def test_unreadable_journal_is_audited_with_its_structure_only(self):
+        raw = b'From;To;Date\n509;4185547880;2026-10-15\n'
+        self.assertEqual(
+            cdr.describe(raw),
+            {
+                'bytes': len(raw),
+                'problem': 'format',
+                'headings': ['From;To;Date'],
+                'rows': 1,
+                'widths': {'1': 1},
+                'first_row_shape': ['999;9999999999;9999-99-99'],
+            },
+        )
+        self.assertEqual(cdr.describe(b'')['problem'], 'empty')
+        # A body without headings never exposes its first call line.
+        self.assertEqual(cdr.describe(b'509,4185547880\n')['headings'], ['999', '9999999999'])
+        self.attempt(T0)
+        self.client.force_login(self.admin)
+        unreadable = DirectoryUnavailable('format')
+        unreadable.diagnostic = cdr.describe(raw)
+        with (
+            patch('portal.backend.identity.call_journal.fetch_records', side_effect=unreadable),
+            patch(
+                'portal.backend.identity.call_journal.timezone.now',
+                return_value=T0 + timedelta(hours=1),
+            ),
+        ):
+            response = self.client.post('/api/portal/assurance/call-history/reconcile/')
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('From;To;Date', response.data['detail'])
+        self.assertNotIn('4185547880', response.data['detail'])
+        audit = AccessAudit.objects.get(action='phone.journal_unreadable')
+        self.assertEqual(audit.metadata['problem'], 'format')
+        self.assertNotIn('4185547880', str(audit.metadata))
 
     def test_digest_is_keyed_and_older_attempts_are_unavailable(self):
         self.assertNotIn('4185547880', digest('14185547880'))

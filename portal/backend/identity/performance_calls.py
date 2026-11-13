@@ -13,6 +13,40 @@ def statistics(request, workspace):
     if workspace not in ('assurance', 'isolation'):
         raise PermissionDenied('Espace invalide.')
     member = caller_access(request.user, workspace)
+    start, end, lower, upper = period(request.query_params)
+    if request.query_params.get('team') == '1':
+        if member.role != 'administrator':
+            raise PermissionDenied('Rapport équipe réservé aux administrateurs.')
+        rows = PhoneCallAttempt.objects.filter(
+            workspace=workspace, created_at__gte=lower, created_at__lt=upper
+        )
+        metrics = {
+            'calls': Count('pk', filter=Q(state='accepted')),
+            'attempts': Count('pk', filter=Q(state__in=['accepted', 'rejected', 'unknown'])),
+            'uncertain': Count('pk', filter=Q(state='unknown')),
+            'calls_over_minute': Count(
+                'pk', filter=Q(journal_status='matched', journal_duration__gt=60)
+            ),
+            'duration_total_seconds': Sum(
+                'journal_duration',
+                filter=Q(journal_status='matched', journal_duration__isnull=False),
+            ),
+            'duration_average_seconds': Avg(
+                'journal_duration',
+                filter=Q(journal_status='matched', journal_duration__isnull=False),
+            ),
+        }
+        return Response(
+            {
+                'from': start,
+                'to': end,
+                'timezone': 'America/Toronto',
+                'team': list(
+                    rows.values('user_id', 'user__username').annotate(**metrics).order_by('user_id')
+                ),
+            },
+            headers={'Cache-Control': 'no-store'},
+        )
     agent = request.user.pk
     if request.query_params.get('setter_id'):
         try:
@@ -31,7 +65,6 @@ def statistics(request, workspace):
         user__is_active=True,
     ).exists():
         raise ValidationError('Compte actif de cet espace requis.')
-    start, end, lower, upper = period(request.query_params)
     rows = PhoneCallAttempt.objects.filter(
         workspace=workspace, user_id=agent, created_at__gte=lower, created_at__lt=upper
     )
@@ -43,10 +76,12 @@ def statistics(request, workspace):
             'pk', filter=Q(journal_status='matched', journal_duration__gt=60)
         ),
         'duration_total_seconds': Sum(
-            'journal_duration', filter=Q(journal_status='matched', journal_duration__isnull=False)
+            'journal_duration',
+            filter=Q(journal_status='matched', journal_duration__isnull=False),
         ),
         'duration_average_seconds': Avg(
-            'journal_duration', filter=Q(journal_status='matched', journal_duration__isnull=False)
+            'journal_duration',
+            filter=Q(journal_status='matched', journal_duration__isnull=False),
         ),
     }
     daily = list(

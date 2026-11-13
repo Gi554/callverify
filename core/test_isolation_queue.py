@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from .test_isolation_work import fixture
-from .models import Prospect, IsolationVisit
+from .models import IsolationVisit, IsolationVisitResult, Prospect, ProspectActivity
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
@@ -56,3 +56,78 @@ class IsolationQueueTests(TestCase):
         client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(91, 'isolation', 'administrator'))
         self.assertEqual(client.get('/api/work-queue/', {'queue': 'all'}).data['count'], 3)
         self.assertEqual(client.get('/api/work-queue/', {'queue': 'bad'}).status_code, 400)
+
+    def test_missed_booked_visit_stays_out_of_automatic_call_queue(self):
+        first = fixture()
+        first.assigned_setter_id = 21
+        first.save()
+        visit = IsolationVisit.objects.create(
+            prospect=first,
+            request_id=uuid4(),
+            fingerprint='missed-test',
+            client_id=41,
+            client_name='Client',
+            setter_id=21,
+            setter_name='Setter',
+            booked_by_id=21,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() - timedelta(days=1) + timedelta(hours=1),
+            timezone='UTC',
+        )
+        IsolationVisitResult.objects.create(
+            visit=visit,
+            performed=False,
+            outcome='not_performed',
+            note='Prospect absent',
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', 'setter'))
+        active = client.get('/api/work-queue/', {'queue': 'active'})
+        self.assertEqual(active.status_code, 200, active.data)
+        self.assertNotIn(first.pk, [row['id'] for row in active.data['results']])
+        all_rows = client.get('/api/work-queue/', {'queue': 'all'}).data['results']
+        self.assertEqual(
+            next(row for row in all_rows if row['id'] == first.pk)['queue_reason'],
+            'appointment_booked',
+        )
+
+    def test_unanswered_calls_reenter_twice_daily_then_are_exhausted(self):
+        prospect = fixture()
+        prospect.assigned_setter_id = 21
+        prospect.save()
+
+        def result(index, value='voicemail'):
+            return ProspectActivity.objects.create(
+                prospect=prospect,
+                request_id=uuid4(),
+                fingerprint=f'retry-{index}',
+                author_portal_id=21,
+                author_role='setter',
+                kind='call_result',
+                body=value,
+                changes={'result': value},
+            )
+
+        result(1)
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', 'setter'))
+        active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
+        self.assertIn(prospect.pk, [row['id'] for row in active])
+
+        result(2, 'unreachable')
+        active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
+        self.assertNotIn(prospect.pk, [row['id'] for row in active])
+        all_rows = client.get('/api/work-queue/', {'queue': 'all'}).data['results']
+        self.assertEqual(
+            next(row for row in all_rows if row['id'] == prospect.pk)['queue_reason'], 'retry_wait'
+        )
+
+        for index in range(3, 7):
+            result(index)
+        all_rows = client.get('/api/work-queue/', {'queue': 'all'}).data['results']
+        self.assertEqual(
+            next(row for row in all_rows if row['id'] == prospect.pk)['queue_reason'],
+            'retry_exhausted',
+        )
+        active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
+        self.assertNotIn(prospect.pk, [row['id'] for row in active])

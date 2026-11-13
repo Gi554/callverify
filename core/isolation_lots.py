@@ -81,25 +81,34 @@ class LotMixin:
     def lots(self, request):
         admin(request.user)
         free = active(Prospect.objects.filter(assigned_setter_id__isnull=True))
-        rows = (
+        # One row per setter account: the stored name is a snapshot that differs after a
+        # rename, so grouping on it would split a setter's lot into several partial rows.
+        rows = list(
             active(Prospect.objects.filter(assigned_setter_id__isnull=False))
-            .values('assigned_setter_id', 'assigned_setter_name')
-            .annotate(n=Count('pk'), week=Max('lot_week'))
-            .order_by('assigned_setter_name')
+            .order_by()
+            .values('assigned_setter_id')
+            .annotate(n=Count('pk'), week=Max('lot_week'), last=Max('pk'))
         )
+        names = dict(
+            Prospect.objects.filter(pk__in=[row['last'] for row in rows]).values_list(
+                'assigned_setter_id', 'assigned_setter_name'
+            )
+        )
+        setters = [
+            {
+                'id': row['assigned_setter_id'],
+                'name': names.get(row['assigned_setter_id'], ''),
+                'assigned': row['n'],
+                'week': row['week'],
+            }
+            for row in rows
+        ]
+        setters.sort(key=lambda row: (row['name'].casefold(), row['id']))
         response = Response(
             {
                 'available': free.count(),
                 'week': week_start(timezone.localdate()),
-                'setters': [
-                    {
-                        'id': row['assigned_setter_id'],
-                        'name': row['assigned_setter_name'],
-                        'assigned': row['n'],
-                        'week': row['week'],
-                    }
-                    for row in rows
-                ],
+                'setters': setters,
             }
         )
         response['Cache-Control'] = 'no-store'

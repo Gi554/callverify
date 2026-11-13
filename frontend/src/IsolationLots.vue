@@ -24,19 +24,24 @@ function day(value: string | null) {
   return value ? value.split('-').reverse().join('/') : '';
 }
 const assigned = (id: number) => lots.value.find((lot) => lot.id === id);
+// Lots still held by an account that is no longer an active setter (deleted, suspended).
+const orphans = computed(() =>
+  lots.value.filter((lot) => !people.value.some((person) => person.id === lot.id)),
+);
 async function load() {
   error.value = '';
   try {
     const data = await props.request('work-queue/lots/');
-    available.value = data.available;
-    week.value = data.week;
-    lots.value = data.setters;
     const found: Person[] = [];
     for (let page = 1; page <= 8; page++) {
       const part = await props.portal(`isolation/setters/?with_admins=1&page=${page}`);
       found.push(...part.results);
       if (!part.next) break;
     }
+    // Published together so a lot is never shown as orphaned while accounts are loading.
+    available.value = data.available;
+    week.value = data.week;
+    lots.value = data.setters;
     people.value = found;
     if (!setterId.value && found.length) setterId.value = String(found[0].id);
   } catch (e: any) {
@@ -66,9 +71,10 @@ async function give() {
     busy.value = false;
   }
 }
-async function takeBack(person: Person) {
+async function takeBack(person: Person, former = false) {
   if (busy.value) return;
-  if (!confirm('Reprendre les prospects non travaillés de ' + person.name + ' ?')) return;
+  const label = (person.name || 'Compte #' + person.id) + (former ? ' (compte inactif)' : '');
+  if (!confirm('Reprendre les prospects non travaillés de ' + label + ' ?')) return;
   busy.value = true;
   error.value = notice.value = '';
   try {
@@ -114,6 +120,23 @@ onMounted(load);
         </button>
       </li>
     </ul>
+    <template v-if="orphans.length">
+      <p class="lots-help lots-orphans" role="status">
+        Des prospects restent attribués à des comptes qui ne sont plus des setters actifs. Reprenez
+        les non travaillés pour les remettre à disposition.
+      </p>
+      <ul class="lots-setters">
+        <li v-for="lot in orphans" :key="lot.id">
+          <span>{{ lot.name || 'Compte #' + lot.id }} · compte inactif</span>
+          <span class="lots-count"
+            >{{ lot.assigned }} en cours<template v-if="lot.week">
+              · lot du {{ day(lot.week) }}</template
+            ></span
+          >
+          <button class="secondary" :disabled="busy" @click="takeBack(lot, true)">Reprendre</button>
+        </li>
+      </ul>
+    </template>
     <form v-if="people.length" class="lots-form" @submit.prevent="give">
       <label
         >Setter
@@ -151,6 +174,9 @@ onMounted(load);
   margin: 0;
   font-size: 13px;
   color: #5f6b80;
+}
+.lots-orphans {
+  color: #8a5a00;
 }
 .lots-setters {
   list-style: none;

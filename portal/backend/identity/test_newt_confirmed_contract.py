@@ -19,6 +19,13 @@ class ConfirmedCdrParserTests(TestCase):
         self.assertNotIn('answered', records[0])
         self.assertNotIn('duration_seconds', records[0])
 
+    def test_duration_clock_values_are_supported_without_inventing_provider_status(self):
+        raw = HEADER + b'501,5145550100,Outbound,,2026-10-15,09:40:25,01:20,0\n'
+        records = cdr.parse_records(raw)
+        self.assertEqual(records[0]['duration_raw'], '01:20')
+        self.assertEqual(cdr.duration_seconds(records[0]['duration_raw']), 80)
+        self.assertIsNone(records[0].get('duration_seconds'))
+
     def test_montreal_uses_seasonal_offset_not_permanent_utc_minus_four(self):
         self.assertEqual(cdr.local_instant('2026-12-15', '09:40:25'), '2026-12-15T14:40:25+00:00')
         self.assertEqual(cdr.local_instant('2026-10-15', '09:40:25'), '2026-10-15T13:40:25+00:00')

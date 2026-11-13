@@ -1,9 +1,11 @@
 """Scoped central-identity work queue. Legacy admin APIs keep their own guard."""
 
 from dataclasses import dataclass
+from datetime import timedelta
+from zoneinfo import ZoneInfo
 from django.core import signing
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 from rest_framework import serializers, viewsets
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
@@ -168,7 +170,7 @@ class WorkViewSet(
             )
         mode = self.request.query_params.get('queue', '')
         if mode:
-            if mode not in ('active', 'all'):
+            if mode not in ('active', 'all', 'callbacks'):
                 raise ValidationError('File de prospection invalide.')
             from django.db.models import Exists, OuterRef, Subquery, Case, When, Value, CharField
             from django.db.models.fields.json import KeyTextTransform
@@ -180,6 +182,12 @@ class WorkViewSet(
                 ProspectActivity,
             )
 
+            now = timezone.now()
+            quebec_now = now.astimezone(ZoneInfo('America/Toronto'))
+            today_start = quebec_now.replace(hour=0, minute=0, second=0, microsecond=0)
+            tomorrow_start = today_start + timedelta(days=1)
+            retryable = Q(activities__changes__result__in=('voicemail', 'unreachable'))
+
             qs = qs.annotate(
                 _queue_client_followup=Exists(
                     IsolationClientFollowUp.objects.filter(
@@ -190,10 +198,19 @@ class WorkViewSet(
                 _queue_unqualified=Exists(
                     IsolationUnqualified.objects.filter(prospect_id=OuterRef('pk'), active=True)
                 ),
+                _queue_setter_followup=Exists(
+                    IsolationFollowUp.objects.filter(
+                        prospect_id=OuterRef('pk'), closed_at__isnull=True
+                    )
+                ),
                 _queue_booking=Exists(
                     IsolationVisit.objects.filter(
                         prospect_id=OuterRef('pk'), status='scheduled'
-                    ).exclude(result__performed=False)
+                    ).filter(
+                        Q(result__isnull=True)
+                        | Q(result__performed=True)
+                        | ~Q(result__outcome='unqualified')
+                    )
                 ),
                 _queue_call_result=Subquery(
                     ProspectActivity.objects.filter(prospect_id=OuterRef('pk'), kind='call_result')
@@ -206,17 +223,50 @@ class WorkViewSet(
                     .order_by('-created_at', '-pk')
                     .values('due_at')[:1]
                 ),
+                _queue_retry_total=Count(
+                    'activities',
+                    filter=Q(activities__kind='call_result') & retryable,
+                    distinct=True,
+                ),
+                _queue_retry_today=Count(
+                    'activities',
+                    filter=(
+                        Q(activities__kind='call_result')
+                        & retryable
+                        & Q(activities__created_at__gte=today_start)
+                        & Q(activities__created_at__lt=tomorrow_start)
+                    ),
+                    distinct=True,
+                ),
             )
             qs = qs.annotate(
                 _queue_reason=Case(
-                    When(_queue_booking=True, then=Value('appointment_booked')),
                     When(_queue_client_followup=True, then=Value('client_followup')),
                     When(_queue_unqualified=True, then=Value('unqualified')),
+                    When(_queue_booking=True, then=Value('appointment_booked')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     When(
                         _queue_call_result='callback',
-                        _queue_callback_due__gt=timezone.now(),
+                        _queue_callback_due__gt=now,
                         then=Value('callback_pending'),
+                    ),
+                    # A setter callback belongs in the dedicated Rappels
+                    # queue, even when its due time has arrived.
+                    When(_queue_call_result='callback', then=Value('callback')),
+                    When(_queue_setter_followup=True, then=Value('')),
+                    When(
+                        _queue_call_result__in=('voicemail', 'unreachable'),
+                        _queue_retry_total__gte=6,
+                        then=Value('retry_exhausted'),
+                    ),
+                    When(
+                        _queue_call_result__in=('voicemail', 'unreachable'),
+                        _queue_retry_today__gte=2,
+                        then=Value('retry_wait'),
+                    ),
+                    When(
+                        _queue_call_result__in=('voicemail', 'unreachable'),
+                        then=Value(''),
                     ),
                     When(_queue_call_result__isnull=False, then=F('_queue_call_result')),
                     default=Value(''),
@@ -225,6 +275,12 @@ class WorkViewSet(
             )
             if mode == 'active':
                 qs = qs.filter(_queue_reason='')
+            elif mode == 'callbacks':
+                # The dedicated callback queue is driven by the open follow-up
+                # task itself.  A missed appointment creates this task without
+                # a setter call-result activity, so filtering on the latest
+                # call result would silently hide it.
+                qs = qs.filter(_queue_setter_followup=True)
         return qs
 
     def list(self, request):

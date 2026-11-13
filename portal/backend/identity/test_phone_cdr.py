@@ -115,6 +115,77 @@ class CdrAdapterTests(TestCase):
         with self.assertRaises(DirectoryUnavailable):
             cdr.inspect(b'A,B\n' + b'1,2\n' * 10001)
 
+    def response(self, chunks):
+        response = Mock(status_code=200)
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.iter_content.side_effect = lambda **kwargs: chunks()
+        return response
+
+    def test_connection_closed_before_the_announced_length_keeps_complete_lines(self):
+        def cut_short():
+            yield b'From,To\n509,4185547880\n510,81937'
+            raise cdr.requests.exceptions.ChunkedEncodingError('IncompleteRead')
+
+        day = date(2026, 10, 1)
+        with patch.object(cdr.requests, 'get', return_value=self.response(cut_short)):
+            self.assertEqual(cdr.fetch_raw('u', 'p', day, day), b'From,To\n509,4185547880\n')
+
+        def nothing_usable():
+            yield b'From,To'
+            raise cdr.requests.exceptions.ChunkedEncodingError('IncompleteRead')
+
+        with patch.object(cdr.requests, 'get', return_value=self.response(nothing_usable)):
+            with self.assertRaises(DirectoryUnavailable) as caught:
+                cdr.fetch_raw('u', 'p', day, day)
+        self.assertEqual(caught.exception.diagnostic['error'], 'ChunkedEncodingError')
+
+    def test_network_failure_reports_its_kind_without_the_provider_address(self):
+        failure = cdr.requests.exceptions.ReadTimeout(f'{URL}?_f=511: read timed out')
+        day = date(2026, 10, 1)
+        with patch.object(cdr.requests, 'get', side_effect=failure):
+            with self.assertRaises(DirectoryUnavailable) as caught:
+                cdr.fetch_raw('u', 'p', day, day)
+        diagnostic = caught.exception.diagnostic
+        self.assertEqual((diagnostic['problem'], diagnostic['error']), ('network', 'ReadTimeout'))
+        self.assertIn('read timed out', diagnostic['detail'])
+        self.assertNotIn('http', diagnostic['detail'])
+
+    def test_windows_1252_description_does_not_reject_the_journal(self):
+        raw = (
+            b'"From","To","Description","DNID","Date","Time","Duration","Amount"\n'
+            b'509,4185547880,Qu\xe9bec,,2026-10-15,09:40:50,12,0\n'
+        )
+        record = cdr.parse_records(raw)[0]
+        self.assertEqual((record['from'], record['description']), ('509', 'Québec'))
+        self.assertEqual(record['duration_raw'], '12')
+
+    def test_541_parser_keeps_uid_and_supports_provider_minute_clock(self):
+        raw = (
+            b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'
+            b'1794407689.12746,2026-11-11,09:34,503,,5146481176,0:00:09\n'
+        )
+        record = cdr.parse_recording_records(raw)[0]
+        self.assertEqual(record['uid'], '1794407689.12746')
+        self.assertEqual(record['extension'], '503')
+        self.assertEqual(record['duration_raw'], '0:00:09')
+        self.assertIsNotNone(record['occurred_at'])
+
+    def test_541_fetch_uses_bounded_dates_and_optional_extension(self):
+        response = Mock(
+            status_code=200,
+            content=(b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'),
+            headers={'Content-Type': 'text/csv'},
+        )
+        start = date(2026, 11, 11)
+        with patch.object(cdr.requests, 'get', return_value=response) as http:
+            self.assertEqual(cdr.fetch_recordings('u', 'p', start, start, '503'), [])
+        self.assertEqual(http.call_args.args, (URL,))
+        self.assertEqual(http.call_args.kwargs['params']['_f'], '541')
+        self.assertEqual(http.call_args.kwargs['params']['_x'], '503')
+        self.assertEqual(http.call_args.kwargs['params']['_sd'], '20261111')
+        self.assertEqual(http.call_args.kwargs['params']['_ed'], '20261111')
+
     def test_only_fixed_511_bounded_dates_both_directions_and_no_call_command(self):
         response = Mock(status_code=200)
         response.__enter__ = Mock(return_value=response)

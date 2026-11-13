@@ -2,7 +2,7 @@
 import { isDialableNumber } from './phone-number';
 // Calls module: setters and administrators dial through a prospect card; everyone in
 // charge reads the call history. Real dialing stays governed by the telephony settings.
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
   Phone,
   Search,
@@ -52,7 +52,7 @@ function when(value: string) {
   );
 }
 const phoneOf = (row: any) => row.phone || row.raw_phone || '';
-// Duration reported by the NEWT 511 journal once the call line is reconciled.
+// Duration reported by the NEWT 541 recording journal once the call line is reconciled.
 const journalLabels: Record<string, string> = {
   pending: 'En attente du journal',
   not_found: 'Absent du journal',
@@ -67,8 +67,37 @@ function duration(row: any) {
   if (seconds < 60) return `${seconds} s`;
   return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')} s`;
 }
+// Counts only, shown when some calls stay unmatched, to tell which matching step loses them.
+function diagnosis(result: any) {
+  const d = result.diagnostic;
+  if (!d || result.matched >= result.checked) return '';
+  const gap = d.median_gap_seconds_outside_window;
+  return (
+    ` Diagnostic : ${d.lines} ligne(s) au journal, ${d.lines_dated_with_number} avec date et numéro lisibles, ` +
+    `${d.lines_with_extension} avec un poste. Appels retrouvés par poste : ${d.attempts_same_extension}, ` +
+    `par numéro : ${d.attempts_same_number}, par poste et numéro : ${d.attempts_same_extension_and_number}, ` +
+    `dans la fenêtre horaire : ${d.attempts_in_time_window}` +
+    (gap == null ? '.' : `. Écart médian hors fenêtre : ${gap} s.`)
+  );
+}
 const reconciling = ref(false),
   reconciled = ref('');
+const recordingBusy = ref(''),
+  recordingUrl = ref('');
+async function playRecording(row: any) {
+  if (!admin.value || !row.journal_uid || recordingBusy.value) return;
+  recordingBusy.value = row.request_id;
+  error.value = '';
+  try {
+    if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
+    const blob = await props.portal(`${props.workspace}/call-history/${row.request_id}/recording/`);
+    recordingUrl.value = URL.createObjectURL(blob);
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    recordingBusy.value = '';
+  }
+}
 async function reconcile() {
   reconciling.value = true;
   error.value = '';
@@ -79,7 +108,8 @@ async function reconcile() {
       ? `${result.matched} durée(s) récupérée(s) sur ${result.checked} appel(s) vérifié(s)` +
         (result.ambiguous ? `, ${result.ambiguous} à vérifier` : '') +
         (result.not_found ? `, ${result.not_found} absent(s) du journal` : '') +
-        '.'
+        '.' +
+        diagnosis(result)
       : 'Aucun appel récent à rapprocher.';
     await loadHistory();
   } catch (e: any) {
@@ -173,6 +203,9 @@ onMounted(() => {
   void loadOptions();
   void loadCallers();
   if (tab.value === 'history') void loadHistory();
+});
+onBeforeUnmount(() => {
+  if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
 });
 </script>
 
@@ -352,7 +385,7 @@ onMounted(() => {
           type="button"
           class="secondary"
           :disabled="reconciling || loading"
-          title="Récupère la durée des appels des sept derniers jours dans le journal NEWT"
+          title="Récupère les durées et identifiants des appels des sept derniers jours dans le journal NEWT 541"
           @click="reconcile"
         >
           <RefreshCw :size="15" />{{
@@ -395,11 +428,25 @@ onMounted(() => {
               </td>
               <td class="row-action">
                 <button
+                  v-if="admin && row.journal_uid"
+                  class="secondary"
+                  :disabled="recordingBusy === row.request_id"
+                  @click="playRecording(row)"
+                >
+                  {{ recordingBusy === row.request_id ? 'Chargement…' : 'Écouter' }}
+                </button>
+                <button
                   class="secondary"
                   @click="emit('openProspect', { id: row.contact_id, mode: 'edit' })"
                 >
                   Ouvrir la fiche<ArrowUpRight :size="14" />
                 </button>
+                <audio
+                  v-if="admin && recordingUrl"
+                  class="recording-player"
+                  controls
+                  :src="recordingUrl"
+                />
               </td>
             </tr>
             <tr v-if="!history.length">

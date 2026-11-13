@@ -7,6 +7,7 @@ digest) and starts shortly after the command. Ambiguous cases are reported, neve
 
 import hashlib
 import hmac
+import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from django.conf import settings
@@ -17,10 +18,19 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from packages.access.phone_history import number
-from packages.newt.cdr import fetch_records, PROVIDER_TIMEZONE
+from packages.newt.cdr import (
+    duration_seconds,
+    fetch_recordings,
+    normalize_extension,
+    PROVIDER_TIMEZONE,
+)
 from packages.newt.directory import DirectoryUnavailable
 from .management_api import require_admin
 from .models import PhoneCallAttempt, PhoneDirectoryGate, AccessAudit
+
+# Compatibility seam for existing worker tests and integrations. The journal
+# reader behind this name is now F=541, not the legacy 511 report.
+fetch_records = fetch_recordings
 
 # The extension rings first (up to 30 s), then the number is dialed: allow clock drift before.
 BEFORE = timedelta(seconds=60)
@@ -57,10 +67,11 @@ def lines(records):
         raw = row['duration_raw'].strip()
         parsed.append(
             {
-                'extension': row['from'],
+                'extension': normalize_extension(row['from']),
                 'digest': target,
                 'at': instant,
-                'duration': int(raw) if raw.isdigit() else None,
+                'duration': duration_seconds(raw),
+                'uid': row.get('uid', ''),
             }
         )
     return parsed
@@ -97,7 +108,59 @@ def reconcile(attempts, records, now):
     return results
 
 
+def funnel(attempts, records, parsed):
+    """Counts only: where commands stop matching journal lines. No number or time is kept."""
+    extensions = {line['extension'] for line in parsed}
+    digests = {line['digest'] for line in parsed}
+    pairs = {}
+    for line in parsed:
+        pairs.setdefault((line['extension'], line['digest']), []).append(line['at'])
+    same_extension = same_number = same_both = in_window = 0
+    offsets = []
+    for attempt in attempts:
+        same_extension += attempt.extension in extensions
+        same_number += attempt.destination_digest in digests
+        instants = pairs.get((attempt.extension, attempt.destination_digest))
+        if not instants:
+            continue
+        same_both += 1
+        if any(attempt.created_at - BEFORE <= at <= attempt.created_at + AFTER for at in instants):
+            in_window += 1
+        else:
+            # Signed gap to the closest line: a constant value reveals a clock or zone shift.
+            offsets.append(
+                min(((at - attempt.created_at).total_seconds() for at in instants), key=abs)
+            )
+    offsets.sort()
+    return {
+        'lines': len(records),
+        'lines_dated_with_number': len(parsed),
+        'lines_with_extension': sum(1 for line in parsed if line['extension']),
+        'attempts_same_extension': same_extension,
+        'attempts_same_number': same_number,
+        'attempts_same_extension_and_number': same_both,
+        'attempts_in_time_window': in_window,
+        'median_gap_seconds_outside_window': (
+            round(offsets[len(offsets) // 2]) if offsets else None
+        ),
+    }
+
+
 def run(workspace, actor=None, now=None):
+    try:
+        return reconcile_recent(workspace, actor, now)
+    except DirectoryUnavailable as error:
+        # Written after the rollback so that an unreadable journal leaves a trace.
+        AccessAudit.objects.create(
+            user=actor,
+            workspace=workspace,
+            action='phone.journal_unreadable',
+            metadata=getattr(error, 'diagnostic', {}),
+        )
+        raise
+
+
+def reconcile_recent(workspace, actor=None, now=None):
     now = now or timezone.now()
     zone = ZoneInfo(PROVIDER_TIMEZONE)
     today = now.astimezone(zone).date()
@@ -119,6 +182,7 @@ def run(workspace, actor=None, now=None):
         if attempts:
             records = fetch_records(settings.NEWT_USERNAME, settings.NEWT_PASSWORD, start, today)
             results = reconcile(attempts, records, now)
+            summary['diagnostic'] = funnel(attempts, records, lines(records))
             for attempt in attempts:
                 status, line = results[attempt.pk]
                 attempt.journal_status = status
@@ -126,15 +190,17 @@ def run(workspace, actor=None, now=None):
                 if line:
                     attempt.journal_started_at = line['at']
                     attempt.journal_duration = line['duration']
+                    attempt.journal_uid = line['uid']
                 attempt.save(
                     update_fields=[
                         'journal_status',
                         'journal_checked_at',
                         'journal_started_at',
                         'journal_duration',
+                        'journal_uid',
                     ]
                 )
-                if status in summary:
+                if status in ('matched', 'ambiguous', 'not_found'):
                     summary[status] += 1
         AccessAudit.objects.create(
             user=actor,
@@ -158,8 +224,12 @@ def reconcile_view(request, workspace):
         raise Unavailable()
     try:
         summary = run(workspace, request.user)
-    except DirectoryUnavailable:
-        raise Unavailable() from None
+    except DirectoryUnavailable as error:
+        diagnostic = getattr(error, 'diagnostic', None)
+        raise Unavailable(
+            Unavailable.default_detail
+            + (' Diagnostic : ' + json.dumps(diagnostic, ensure_ascii=False) if diagnostic else '')
+        ) from None
     response = Response(summary)
     response['Cache-Control'] = 'no-store'
     return response

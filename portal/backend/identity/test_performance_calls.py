@@ -28,3 +28,18 @@ class PerformanceCallTests(TestCase):
         )
         Membership.objects.filter(user=self.admin).update(active=False)
         self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_admin_team_report_groups_call_metrics_without_target_membership_lookup(self):
+        self.row('accepted')
+        row = fixtures.PhoneCallAttempt.objects.filter(user=self.setter).first()
+        fixtures.PhoneCallAttempt.objects.filter(pk=row.pk).update(
+            journal_status='matched', journal_duration=75
+        )
+        response = self.client.get(
+            '/api/portal/assurance/performance-calls/?from=2026-10-26&to=2026-11-01&team=1'
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['team'][0]['user_id'], self.setter.pk)
+        self.assertEqual(response.data['team'][0]['attempts'], 1)
+        self.assertEqual(response.data['team'][0]['calls_over_minute'], 1)
+        self.assertEqual(response.data['team'][0]['duration_total_seconds'], 75)

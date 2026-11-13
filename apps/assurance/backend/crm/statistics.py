@@ -8,8 +8,8 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from .models import Appointment, BusinessAudit, FollowUpTask
-from packages.stat_filters import selections, options
+from .models import Appointment, BusinessAudit, Contact, FollowUpTask
+from packages.stat_filters import selections, options, merged
 from .statistics_export import response as export_response
 from packages.stats_series import daily, previous
 from packages.quebec_period import ZONE
@@ -137,7 +137,11 @@ def statistics(request):
     if request.user.role == 'administrator' and not kind:
         all_rows = Appointment.objects.all()
         result['filter_options'] = {
-            'setter_id': options(all_rows, 'setter_id', 'setter_name'),
+            # Setters holding contacts are listed even before their first appointment.
+            'setter_id': merged(
+                options(all_rows, 'setter_id', 'setter_name'),
+                options(Contact.objects.all(), 'assigned_setter_id', 'assigned_setter_name'),
+            ),
             'advisor_id': options(all_rows, 'advisor_id', 'advisor_name'),
             'campaign_id': options(
                 all_rows, 'contact__import_batch_id', 'contact__import_batch__filename'
