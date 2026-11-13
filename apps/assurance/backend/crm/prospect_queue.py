@@ -8,9 +8,7 @@ from .models import Appointment, AppointmentReport, ContactCallOutcome, FollowUp
 
 def call_block_reason(contact):
     """Permanent call exclusions for an explicit decline or attended appointment."""
-    declined = ContactCallOutcome.objects.filter(
-        contact=contact, result='not_interested'
-    ).exists()
+    declined = ContactCallOutcome.objects.filter(contact=contact, result='not_interested').exists()
     if declined:
         return 'Ce prospect a indiqué ne pas être intéressé : appel interdit.'
     attended = AppointmentReport.objects.filter(
@@ -30,9 +28,7 @@ def apply_queue(qs, mode):
         '-created_at', '-pk'
     )
     booking = Appointment.objects.filter(contact_id=OuterRef('pk'), status='scheduled')
-    declined = ContactCallOutcome.objects.filter(
-        contact_id=OuterRef('pk'), result='not_interested'
-    )
+    declined = ContactCallOutcome.objects.filter(contact_id=OuterRef('pk'), result='not_interested')
     attended = AppointmentReport.objects.filter(
         appointment__contact_id=OuterRef('pk'), performed=True
     )
