@@ -172,9 +172,11 @@ class CdrAdapterTests(TestCase):
         self.assertIsNotNone(record['occurred_at'])
 
     def test_541_fetch_uses_bounded_dates_and_optional_extension(self):
-        response = Mock(status_code=200, content=(
-            b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'
-        ), headers={'Content-Type': 'text/csv'})
+        response = Mock(
+            status_code=200,
+            content=(b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'),
+            headers={'Content-Type': 'text/csv'},
+        )
         start = date(2026, 11, 11)
         with patch.object(cdr.requests, 'get', return_value=response) as http:
             self.assertEqual(cdr.fetch_recordings('u', 'p', start, start, '503'), [])

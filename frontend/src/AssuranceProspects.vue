@@ -197,15 +197,17 @@ async function load() {
   try {
     const data = await props.request('pipeline/');
     if (version !== generation || disposed) return;
-    columns.value = [{ key: 'callback_queue', label: 'Rappels', active: true }, ...data.stages].map((s: any) => ({
-      ...s,
-      rows: [],
-      count: 0,
-      page: 0,
-      next: false,
-      busy: true,
-      error: '',
-    }));
+    columns.value = [{ key: 'callback_queue', label: 'Rappels', active: true }, ...data.stages].map(
+      (s: any) => ({
+        ...s,
+        rows: [],
+        count: 0,
+        page: 0,
+        next: false,
+        busy: true,
+        error: '',
+      }),
+    );
     const queue = [...columns.value];
     await Promise.all(
       Array.from({ length: 3 }, async () => {

@@ -90,9 +90,7 @@ async function playRecording(row: any) {
   error.value = '';
   try {
     if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
-    const blob = await props.portal(
-      `${props.workspace}/call-history/${row.request_id}/recording/`,
-    );
+    const blob = await props.portal(`${props.workspace}/call-history/${row.request_id}/recording/`);
     recordingUrl.value = URL.createObjectURL(blob);
   } catch (e: any) {
     error.value = e.message;

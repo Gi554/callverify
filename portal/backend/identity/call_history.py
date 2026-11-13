@@ -87,9 +87,7 @@ def history(request, workspace):
 def recording(request, workspace, request_id):
     """Stream one recording to an administrator of the matching workspace only."""
     require_admin(request.user, workspace)
-    row = PhoneCallAttempt.objects.filter(
-        request_id=request_id, workspace=workspace
-    ).first()
+    row = PhoneCallAttempt.objects.filter(request_id=request_id, workspace=workspace).first()
     if row is None or not row.journal_uid:
         raise ValidationError('Enregistrement indisponible pour cet appel.')
     try:

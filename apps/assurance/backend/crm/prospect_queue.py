@@ -15,9 +15,7 @@ def apply_queue(qs, mode):
         '-created_at', '-pk'
     )
     booking = Appointment.objects.filter(contact_id=OuterRef('pk'), status='scheduled')
-    callback_open = FollowUpTask.objects.filter(
-        contact_id=OuterRef('pk'), closed_at__isnull=True
-    )
+    callback_open = FollowUpTask.objects.filter(contact_id=OuterRef('pk'), closed_at__isnull=True)
     qs = qs.annotate(
         _queue_result=Subquery(last.values('result')[:1]),
         _queue_callback_due=Subquery(last.values('task__due_at')[:1]),

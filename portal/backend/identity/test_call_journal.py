@@ -208,8 +208,10 @@ class CallJournalTests(TestCase):
         self.assertEqual(cdr.describe(b'509,4185547880\n')['headings'], ['999', '9999999999'])
         self.attempt(T0)
         self.client.force_login(self.admin)
+        unreadable = DirectoryUnavailable('format')
+        unreadable.diagnostic = cdr.describe(raw)
         with (
-            patch('packages.newt.cdr.fetch_raw', return_value=raw),
+            patch('portal.backend.identity.call_journal.fetch_records', side_effect=unreadable),
             patch(
                 'portal.backend.identity.call_journal.timezone.now',
                 return_value=T0 + timedelta(hours=1),
