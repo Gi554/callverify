@@ -23,6 +23,7 @@ class PhoneCallAttempt(models.Model):
     journal_status = models.CharField(max_length=20, default='pending')
     journal_started_at = models.DateTimeField(null=True, blank=True)
     journal_duration = models.PositiveIntegerField(null=True, blank=True)
+    journal_uid = models.CharField(max_length=80, blank=True, default='')
     journal_checked_at = models.DateTimeField(null=True, blank=True)
 
 

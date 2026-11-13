@@ -170,7 +170,7 @@ class WorkViewSet(
             )
         mode = self.request.query_params.get('queue', '')
         if mode:
-            if mode not in ('active', 'all'):
+            if mode not in ('active', 'all', 'callbacks'):
                 raise ValidationError('File de prospection invalide.')
             from django.db.models import Exists, OuterRef, Subquery, Case, When, Value, CharField
             from django.db.models.fields.json import KeyTextTransform
@@ -243,7 +243,6 @@ class WorkViewSet(
                 _queue_reason=Case(
                     When(_queue_client_followup=True, then=Value('client_followup')),
                     When(_queue_unqualified=True, then=Value('unqualified')),
-                    When(_queue_setter_followup=True, then=Value('')),
                     When(_queue_booking=True, then=Value('appointment_booked')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     When(
@@ -251,6 +250,10 @@ class WorkViewSet(
                         _queue_callback_due__gt=now,
                         then=Value('callback_pending'),
                     ),
+                    # A setter callback belongs in the dedicated Rappels
+                    # queue, even when its due time has arrived.
+                    When(_queue_call_result='callback', then=Value('callback')),
+                    When(_queue_setter_followup=True, then=Value('')),
                     When(
                         _queue_call_result__in=('voicemail', 'unreachable'),
                         _queue_retry_total__gte=6,
@@ -272,6 +275,12 @@ class WorkViewSet(
             )
             if mode == 'active':
                 qs = qs.filter(_queue_reason='')
+            elif mode == 'callbacks':
+                # The dedicated callback queue is driven by the open follow-up
+                # task itself.  A missed appointment creates this task without
+                # a setter call-result activity, so filtering on the latest
+                # call result would silently hide it.
+                qs = qs.filter(_queue_setter_followup=True)
         return qs
 
     def list(self, request):

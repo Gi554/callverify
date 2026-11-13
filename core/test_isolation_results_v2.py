@@ -61,7 +61,9 @@ class ResultV2Tests(TestCase):
         self.assertIsNone(task.closed_at)
         self.assertFalse(IsolationVisitResult.objects.get().performed)
         active = self.client.get('/api/work-queue/?queue=active')
-        self.assertIn(self.prospect.pk, [r['id'] for r in active.data['results']])
+        self.assertNotIn(self.prospect.pk, [r['id'] for r in active.data['results']])
+        callbacks = self.client.get('/api/work-queue/?queue=callbacks')
+        self.assertIn(self.prospect.pk, [r['id'] for r in callbacks.data['results']])
         self.auth(22, 'setter')
         self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
         self.assertEqual(

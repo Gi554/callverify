@@ -1,4 +1,9 @@
-"""Read-only NEWT 511 format inspection. No inferred field mapping or call outcome."""
+"""Read-only NEWT call journal readers.
+
+The legacy 511 report remains available for schema compatibility. New call
+reconciliation uses the provider's 541 recording report, whose UID is safe to
+retain as the opaque key for a later, permission-checked recording request.
+"""
 
 import csv
 import hashlib
@@ -13,7 +18,9 @@ import requests
 from .directory import URL, DirectoryUnavailable
 
 MAX_BYTES = 1024 * 1024
+MAX_RECORDING_BYTES = 25 * 1024 * 1024
 CONFIRMED_COLUMNS = ['From', 'To', 'Description', 'DNID', 'Date', 'Time', 'Duration', 'Amount']
+RECORDING_COLUMNS = ['UID', 'Date', 'Time', 'Source', 'Caller Name', 'Destination', 'Duration']
 PROVIDER_TIMEZONE = 'America/Toronto'
 
 
@@ -57,7 +64,8 @@ def duration_seconds(value):
 def local_instant(day, clock):
     """Do not guess which repeated autumn hour a provider timestamp denotes."""
     try:
-        local = datetime.strptime(day + ' ' + clock, '%Y-%m-%d %H:%M:%S')
+        format = '%Y-%m-%d %H:%M' if len(clock) == 5 else '%Y-%m-%d %H:%M:%S'
+        local = datetime.strptime(day + ' ' + clock, format)
         zone = ZoneInfo(PROVIDER_TIMEZONE)
         candidates = {
             local.replace(tzinfo=zone, fold=fold).astimezone(timezone.utc)
@@ -248,6 +256,98 @@ def fetch_raw(username, password, start, end):
     except (requests.RequestException, ValueError, UnicodeError) as error:
         failure = unavailable('network')
         # Exception class and message without its address: no credential or call data.
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None
+
+
+def parse_recording_records(raw):
+    """Parse the confirmed F=541 call-recording report without retaining numbers or names."""
+    if len(raw) > MAX_BYTES:
+        raise DirectoryUnavailable()
+    try:
+        reader = csv.reader(io.StringIO(decoded(raw), newline=''), strict=True)
+        if [value.strip() for value in next(reader)] != RECORDING_COLUMNS:
+            raise DirectoryUnavailable()
+        records = []
+        for row in reader:
+            if not row:
+                continue
+            if len(row) != len(RECORDING_COLUMNS):
+                raise DirectoryUnavailable()
+            uid, day, clock, source, _caller, _destination, duration = row
+            if not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', uid.strip()):
+                continue
+            records.append(
+                {
+                    'uid': uid.strip(),
+                    'extension': normalize_extension(source),
+                    'occurred_at': local_instant(day.strip(), clock.strip()),
+                    'duration_raw': duration.strip(),
+                }
+            )
+        return records
+    except (UnicodeError, csv.Error, StopIteration, ValueError):
+        raise DirectoryUnavailable() from None
+
+
+def fetch_recordings(username, password, start, end, extension=''):
+    """Fetch F=541 recordings for a bounded Montreal-local date window."""
+    if not username or not password:
+        raise unavailable('credentials')
+    from datetime import date
+
+    if type(start) is not date or type(end) is not date or end < start or (end - start).days > 6:
+        raise unavailable('window')
+    params = {
+        '_f': '541',
+        '_v': 'C',
+        '_sd': start.strftime('%Y%m%d'),
+        '_ed': end.strftime('%Y%m%d'),
+        '_t': secrets.token_hex(5),
+    }
+    if extension:
+        normalized = normalize_extension(extension)
+        if not normalized:
+            raise unavailable('extension')
+        params['_x'] = normalized
+    try:
+        response = requests.get(URL, params=params, auth=(username, password), timeout=(5, 20))
+        if response.status_code != 200:
+            raise unavailable(f'http_{response.status_code}')
+        return parse_recording_records(response.content)
+    except DirectoryUnavailable:
+        raise
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None
+
+
+def fetch_recording(username, password, uid):
+    """Fetch one provider recording by its opaque F=541 UID."""
+    if not username or not password or not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str(uid or '')):
+        raise unavailable('recording_uid')
+    try:
+        response = requests.get(
+            URL,
+            params={'_f': '246', '_i': str(uid)},
+            auth=(username, password),
+            timeout=(5, 30),
+        )
+        if response.status_code != 200:
+            raise unavailable(f'http_{response.status_code}')
+        if len(response.content) > MAX_RECORDING_BYTES:
+            raise unavailable('recording_too_large')
+        content_type = response.headers.get('Content-Type', 'audio/wav').split(';', 1)[0]
+        if not content_type.startswith('audio/') and content_type != 'application/octet-stream':
+            raise unavailable('recording_format')
+        return response.content, content_type
+    except DirectoryUnavailable:
+        raise
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
         failure.diagnostic['error'] = type(error).__name__
         failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
         raise failure from None

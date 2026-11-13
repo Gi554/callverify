@@ -1,5 +1,32 @@
 # Suivi des livraisons CRM AMX
 
+## Journal d’appels NEWT 541 (local/staging)
+
+Le rapprochement des durées utilise désormais le rapport F=541 confirmé par NEWT. L’UID opaque
+de chaque ligne est conservé avec l’appel CRM, en plus de la date et de la durée. L’interface
+continue d’afficher la durée et précise la source NEWT 541. La lecture audio F=246 reste à ajouter
+derrière une autorisation dédiée ; aucun enregistrement n’est encore rendu accessible.
+
+Livré et compilé localement uniquement, sans déploiement production.
+
+## Composeur et file des rappels (local/staging)
+
+Le composeur ouvre maintenant la fiche trouvée en mode appel et déclenche effectivement la
+commande Phonetico après les contrôles, dans Assurance comme dans Isolation. La fiche reste
+attachée au CRM afin que le résultat puisse être enregistré au même endroit.
+
+Les deux espaces exposent aussi une colonne « Rappels » dédiée. Elle récupère les prospects dont
+le dernier résultat d’appel est « Rappel demandé » et dont le suivi n’est pas clôturé, qu’il soit
+déjà dû ou encore à venir. Ces fiches ne sont plus renvoyées par la file active « À contacter ».
+
+Livré et vérifié uniquement en local (build frontend et compilation Python). Aucun déploiement
+production effectué ; la commande réelle reste à valider avec un poste NEWT de staging.
+
+La session d’appels applique en plus une protection côté interface : un rendez-vous marqué
+« appointment_booked » est ignoré même si une réponse serveur inattendue le renvoyait. Il ne peut
+réapparaître que par une file de tâche ouverte (par exemple un rendez-vous non tenu), jamais comme
+prospect « À contacter ».
+
 ## Journal NEWT 511 : lecture tolérante et erreur réseau précise
 
 Le diagnostic livré précédemment a renvoyé `network` en production : la lecture HTTP échoue chez

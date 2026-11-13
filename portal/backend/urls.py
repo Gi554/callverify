@@ -141,9 +141,15 @@ urlpatterns += [
     ),
 ]
 
-from .identity.call_history import history as call_history
+from .identity.call_history import history as call_history, recording as call_recording
 
 urlpatterns += [path('api/portal/<str:workspace>/call-history/', call_history)]
+urlpatterns += [
+    path(
+        'api/portal/<str:workspace>/call-history/<uuid:request_id>/recording/',
+        call_recording,
+    )
+]
 
 from .identity.call_journal import reconcile_view as call_journal
 
