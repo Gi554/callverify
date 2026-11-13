@@ -23,23 +23,23 @@ class IsolationQueueTests(TestCase):
         )
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', 'setter'))
-        started = client.post('/api/isolation/call-session/', {'action': 'start'}, format='json')
+        started = client.post('/api/call-session/', {'action': 'start'}, format='json')
         self.assertEqual(started.status_code, 200, started.data)
         began = client.post(
-            '/api/isolation/call-session/',
+            '/api/call-session/',
             {'action': 'begin', 'prospect_id': prospect.pk},
             format='json',
         )
         self.assertEqual(began.status_code, 200, began.data)
-        self.assertEqual(client.get('/api/isolation/call-session/').data['current_id'], prospect.pk)
+        self.assertEqual(client.get('/api/call-session/').data['current_id'], prospect.pk)
         conflict = client.post(
-            '/api/isolation/call-session/',
+            '/api/call-session/',
             {'action': 'begin', 'prospect_id': second.pk},
             format='json',
         )
         self.assertEqual(conflict.status_code, 409)
         completed = client.post(
-            '/api/isolation/call-session/',
+            '/api/call-session/',
             {'action': 'complete', 'prospect_id': prospect.pk},
             format='json',
         )
@@ -55,7 +55,7 @@ class IsolationQueueTests(TestCase):
         )
         self.assertEqual(blocked.status_code, 400)
         client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(22, 'isolation', 'setter'))
-        self.assertEqual(client.get('/api/isolation/call-session/').data['visited_ids'], [])
+        self.assertEqual(client.get('/api/call-session/').data['visited_ids'], [])
 
     def test_active_queue_keeps_history_and_assignment_scope(self):
         first = fixture()

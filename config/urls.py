@@ -48,7 +48,8 @@ from core.isolation_unqualified import Unqualified
 router.register('isolation-unqualified', Unqualified, basename='isolation-unqualified')
 
 urlpatterns = [
-    path('api/isolation/call-session/', isolation_call_session),
+    # Caddy strips /api/isolation from public isolation routes before forwarding them here.
+    path('api/call-session/', isolation_call_session),
     path('api/admin-search/', admin_search),
     path('api/setter-performance/', setter_performance),
     path('api/internal/support-journal/', business_journal_view('isolation', AuditEvent)),

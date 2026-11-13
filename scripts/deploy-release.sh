@@ -70,7 +70,7 @@ if ! bash scripts/deploy.sh < /dev/null; then
 fi
 # Both the frontend and each routed API must answer through public HTTPS.
 curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors --max-time 15 "https://$domain/crm" -o /dev/null
-for path in /api/portal/session/ /api/assurance/contacts/ /api/isolation/work-queue/; do
+for path in /api/portal/session/ /api/assurance/contacts/ /api/isolation/work-queue/ /api/isolation/call-session/; do
   healthy=false
   for attempt in {1..12}; do
     code=$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' "https://$domain$path") || code=000
