@@ -1,5 +1,5 @@
-from django.db.models import Avg, Count, Q, Sum
-from django.db.models.functions import TruncDate
+from django.db.models import Avg, Count, DateTimeField, Q, Sum
+from django.db.models.functions import Coalesce, TruncDate
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -17,8 +17,16 @@ def statistics(request, workspace):
     if request.query_params.get('team') == '1':
         if member.role != 'administrator':
             raise PermissionDenied('Rapport équipe réservé aux administrateurs.')
-        rows = PhoneCallAttempt.objects.filter(
-            workspace=workspace, created_at__gte=lower, created_at__lt=upper
+        rows = (
+            PhoneCallAttempt.objects.filter(workspace=workspace)
+            .annotate(
+                report_at=Coalesce(
+                    'journal_started_at',
+                    'created_at',
+                    output_field=DateTimeField(),
+                )
+            )
+            .filter(report_at__gte=lower, report_at__lt=upper)
         )
         metrics = {
             'calls': Count('pk', filter=Q(state='accepted')),
@@ -65,8 +73,16 @@ def statistics(request, workspace):
         user__is_active=True,
     ).exists():
         raise ValidationError('Compte actif de cet espace requis.')
-    rows = PhoneCallAttempt.objects.filter(
-        workspace=workspace, user_id=agent, created_at__gte=lower, created_at__lt=upper
+    rows = (
+        PhoneCallAttempt.objects.filter(workspace=workspace, user_id=agent)
+        .annotate(
+            report_at=Coalesce(
+                'journal_started_at',
+                'created_at',
+                output_field=DateTimeField(),
+            )
+        )
+        .filter(report_at__gte=lower, report_at__lt=upper)
     )
     metrics = {
         'calls': Count('pk', filter=Q(state='accepted')),
@@ -86,7 +102,7 @@ def statistics(request, workspace):
     }
     daily = list(
         rows.order_by()
-        .annotate(day=TruncDate('created_at', tzinfo=ZONE))
+        .annotate(day=TruncDate('report_at', tzinfo=ZONE))
         .values('day')
         .annotate(**metrics)
     )
