@@ -167,7 +167,8 @@ class CdrAdapterTests(TestCase):
         )
         record = cdr.parse_recording_records(raw)[0]
         self.assertEqual(record['uid'], '1794407689.12746')
-        self.assertEqual(record['extension'], '503')
+        self.assertEqual(record['from'], '503')
+        self.assertEqual(record['to'], '5146481176')
         self.assertEqual(record['duration_raw'], '0:00:09')
         self.assertIsNotNone(record['occurred_at'])
 
