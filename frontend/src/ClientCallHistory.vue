@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref } from 'vue';
 const props = defineProps<{
   workspace: string;
   contactId: number;
@@ -10,6 +10,24 @@ const rows = ref<any[]>([]),
   page = ref(1),
   busy = ref(false),
   error = ref('');
+const recordingBusy = ref(''),
+  recordingUrl = ref('');
+async function playRecording(row: any) {
+  if (!row.journal_uid || recordingBusy.value) return;
+  recordingBusy.value = row.request_id;
+  error.value = '';
+  try {
+    if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
+    const blob = await props.portal(
+      `${props.workspace}/call-history/${row.request_id}/recording/`,
+    );
+    recordingUrl.value = URL.createObjectURL(blob);
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    recordingBusy.value = '';
+  }
+}
 const states: Record<string, string> = {
   dispatching: 'Envoi en cours',
   accepted: 'Poste joint · composition lancée',
@@ -34,6 +52,9 @@ async function load() {
   }
 }
 onMounted(load);
+onBeforeUnmount(() => {
+  if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
+});
 </script>
 <template>
   <section>
@@ -59,6 +80,14 @@ onMounted(load);
           ? 'Durée indisponible'
           : `${row.journal_duration} seconde(s) · journal NEWT 541`
       }}</small>
+      <button
+        v-if="row.journal_uid"
+        :disabled="recordingBusy === row.request_id"
+        @click="playRecording(row)"
+      >
+        {{ recordingBusy === row.request_id ? 'Chargement…' : 'Écouter l’enregistrement' }}
+      </button>
+      <audio v-if="recordingUrl" controls :src="recordingUrl"></audio>
     </div>
     <p v-if="!busy && !error && !rows.length">
       Aucune commande d’appel enregistrée pour cette fiche.

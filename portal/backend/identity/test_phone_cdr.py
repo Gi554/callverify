@@ -160,6 +160,30 @@ class CdrAdapterTests(TestCase):
         self.assertEqual((record['from'], record['description']), ('509', 'Québec'))
         self.assertEqual(record['duration_raw'], '12')
 
+    def test_541_parser_keeps_uid_and_supports_provider_minute_clock(self):
+        raw = (
+            b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'
+            b'1794407689.12746,2026-11-11,09:34,503,,5146481176,0:00:09\n'
+        )
+        record = cdr.parse_recording_records(raw)[0]
+        self.assertEqual(record['uid'], '1794407689.12746')
+        self.assertEqual(record['extension'], '503')
+        self.assertEqual(record['duration_raw'], '0:00:09')
+        self.assertIsNotNone(record['occurred_at'])
+
+    def test_541_fetch_uses_bounded_dates_and_optional_extension(self):
+        response = Mock(status_code=200, content=(
+            b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'
+        ), headers={'Content-Type': 'text/csv'})
+        start = date(2026, 11, 11)
+        with patch.object(cdr.requests, 'get', return_value=response) as http:
+            self.assertEqual(cdr.fetch_recordings('u', 'p', start, start, '503'), [])
+        self.assertEqual(http.call_args.args, (URL,))
+        self.assertEqual(http.call_args.kwargs['params']['_f'], '541')
+        self.assertEqual(http.call_args.kwargs['params']['_x'], '503')
+        self.assertEqual(http.call_args.kwargs['params']['_sd'], '20261111')
+        self.assertEqual(http.call_args.kwargs['params']['_ed'], '20261111')
+
     def test_only_fixed_511_bounded_dates_both_directions_and_no_call_command(self):
         response = Mock(status_code=200)
         response.__enter__ = Mock(return_value=response)

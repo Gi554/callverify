@@ -1,9 +1,14 @@
 """Call history: setters read their own call commands, administrators the whole workspace."""
 
+from django.http import HttpResponse
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from .models import Membership, PhoneCallAttempt
+from .management_api import require_admin
+from packages.newt.cdr import fetch_recording
+from packages.newt.directory import DirectoryUnavailable
+from django.conf import settings
 
 STATES = ('dispatching', 'accepted', 'rejected', 'blocked', 'unknown')
 
@@ -33,9 +38,9 @@ def output(row, administrator):
         'journal_status': row.journal_status if row.destination_digest else 'unavailable',
         'journal_started_at': row.journal_started_at,
         'journal_duration': row.journal_duration,
-        'journal_uid': row.journal_uid,
     }
     if administrator:
+        result['journal_uid'] = row.journal_uid
         result['caller'] = {'id': row.user_id, 'username': row.user.username}
         result['extension'] = row.extension
     return result
@@ -74,5 +79,26 @@ def history(request, workspace):
     pager = Pager()
     page = pager.paginate_queryset(rows, request)
     response = pager.get_paginated_response([output(row, administrator) for row in page])
+    response['Cache-Control'] = 'no-store'
+    return response
+
+
+@api_view(['GET'])
+def recording(request, workspace, request_id):
+    """Stream one recording to an administrator of the matching workspace only."""
+    require_admin(request.user, workspace)
+    row = PhoneCallAttempt.objects.filter(
+        request_id=request_id, workspace=workspace
+    ).first()
+    if row is None or not row.journal_uid:
+        raise ValidationError('Enregistrement indisponible pour cet appel.')
+    try:
+        content, content_type = fetch_recording(
+            settings.NEWT_USERNAME, settings.NEWT_PASSWORD, row.journal_uid
+        )
+    except DirectoryUnavailable as error:
+        raise ValidationError('Enregistrement NEWT indisponible.') from error
+    response = HttpResponse(content, content_type=content_type)
+    response['Content-Disposition'] = f'attachment; filename="call-{row.request_id}.audio"'
     response['Cache-Control'] = 'no-store'
     return response

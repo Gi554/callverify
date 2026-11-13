@@ -2,7 +2,7 @@
 import { isDialableNumber } from './phone-number';
 // Calls module: setters and administrators dial through a prospect card; everyone in
 // charge reads the call history. Real dialing stays governed by the telephony settings.
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
   Phone,
   Search,
@@ -82,6 +82,24 @@ function diagnosis(result: any) {
 }
 const reconciling = ref(false),
   reconciled = ref('');
+const recordingBusy = ref(''),
+  recordingUrl = ref('');
+async function playRecording(row: any) {
+  if (!admin.value || !row.journal_uid || recordingBusy.value) return;
+  recordingBusy.value = row.request_id;
+  error.value = '';
+  try {
+    if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
+    const blob = await props.portal(
+      `${props.workspace}/call-history/${row.request_id}/recording/`,
+    );
+    recordingUrl.value = URL.createObjectURL(blob);
+  } catch (e: any) {
+    error.value = e.message;
+  } finally {
+    recordingBusy.value = '';
+  }
+}
 async function reconcile() {
   reconciling.value = true;
   error.value = '';
@@ -187,6 +205,9 @@ onMounted(() => {
   void loadOptions();
   void loadCallers();
   if (tab.value === 'history') void loadHistory();
+});
+onBeforeUnmount(() => {
+  if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
 });
 </script>
 
@@ -409,11 +430,25 @@ onMounted(() => {
               </td>
               <td class="row-action">
                 <button
+                  v-if="admin && row.journal_uid"
+                  class="secondary"
+                  :disabled="recordingBusy === row.request_id"
+                  @click="playRecording(row)"
+                >
+                  {{ recordingBusy === row.request_id ? 'Chargement…' : 'Écouter' }}
+                </button>
+                <button
                   class="secondary"
                   @click="emit('openProspect', { id: row.contact_id, mode: 'edit' })"
                 >
                   Ouvrir la fiche<ArrowUpRight :size="14" />
                 </button>
+                <audio
+                  v-if="admin && recordingUrl"
+                  class="recording-player"
+                  controls
+                  :src="recordingUrl"
+                />
               </td>
             </tr>
             <tr v-if="!history.length">

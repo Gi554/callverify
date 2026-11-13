@@ -18,6 +18,7 @@ import requests
 from .directory import URL, DirectoryUnavailable
 
 MAX_BYTES = 1024 * 1024
+MAX_RECORDING_BYTES = 25 * 1024 * 1024
 CONFIRMED_COLUMNS = ['From', 'To', 'Description', 'DNID', 'Date', 'Time', 'Duration', 'Amount']
 RECORDING_COLUMNS = ['UID', 'Date', 'Time', 'Source', 'Caller Name', 'Destination', 'Duration']
 PROVIDER_TIMEZONE = 'America/Toronto'
@@ -315,6 +316,34 @@ def fetch_recordings(username, password, start, end, extension=''):
         if response.status_code != 200:
             raise unavailable(f'http_{response.status_code}')
         return parse_recording_records(response.content)
+    except DirectoryUnavailable:
+        raise
+    except (requests.RequestException, ValueError, UnicodeError) as error:
+        failure = unavailable('network')
+        failure.diagnostic['error'] = type(error).__name__
+        failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
+        raise failure from None
+
+
+def fetch_recording(username, password, uid):
+    """Fetch one provider recording by its opaque F=541 UID."""
+    if not username or not password or not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str(uid or '')):
+        raise unavailable('recording_uid')
+    try:
+        response = requests.get(
+            URL,
+            params={'_f': '246', '_i': str(uid)},
+            auth=(username, password),
+            timeout=(5, 30),
+        )
+        if response.status_code != 200:
+            raise unavailable(f'http_{response.status_code}')
+        if len(response.content) > MAX_RECORDING_BYTES:
+            raise unavailable('recording_too_large')
+        content_type = response.headers.get('Content-Type', 'audio/wav').split(';', 1)[0]
+        if not content_type.startswith('audio/') and content_type != 'application/octet-stream':
+            raise unavailable('recording_format')
+        return response.content, content_type
     except DirectoryUnavailable:
         raise
     except (requests.RequestException, ValueError, UnicodeError) as error:
