@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
-import { BarChart3 } from 'lucide-vue-next';
+import {
+  BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  PhoneCall,
+  Users,
+} from 'lucide-vue-next';
 import IsolationPageHeader from './IsolationPageHeader.vue';
 import StatKpi from './StatKpi.vue';
 import StatBars from './StatBars.vue';
@@ -27,6 +34,7 @@ const from = ref(now.slice(0, 8) + '01'),
   busy = ref(false),
   error = ref(''),
   callError = ref('');
+const reportDay = ref(now);
 let version = 0;
 const admin = computed(() => props.role === 'administrator');
 const metrics = [
@@ -46,6 +54,15 @@ const metrics = [
   { key: 'sale_unknown', label: 'Résultat commercial attendu' },
 ];
 const days = computed(() => data.value?.daily || []);
+const reportDayLabel = computed(() =>
+  new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(`${reportDay.value}T12:00:00`)),
+);
 const callDays = computed(() =>
   days.value.map((row: any) => ({
     ...row,
@@ -63,6 +80,20 @@ function formatDuration(seconds: number | null | undefined) {
 }
 function teamCallCount(row: any, key: string) {
   return row.phone?.totals?.[key] ?? 0;
+}
+function shiftReportDay(offset: number) {
+  const next = new Date(`${reportDay.value}T12:00:00`);
+  next.setDate(next.getDate() + offset);
+  reportDay.value = next.toISOString().slice(0, 10);
+  from.value = reportDay.value;
+  to.value = reportDay.value;
+  load();
+}
+function resetReportDay() {
+  reportDay.value = now;
+  from.value = now.slice(0, 8) + '01';
+  to.value = now;
+  load();
 }
 async function loadTeam() {
   if (!admin.value || !agents.value.length) return;
@@ -152,6 +183,13 @@ onBeforeUnmount(() => version++);
       @refresh="load"
     />
     <form class="iso-panel performance-filters" @submit.prevent="load">
+      <div class="filter-intro">
+        <span class="filter-icon"><CalendarDays :size="18" /></span>
+        <div>
+          <strong>Période d’analyse</strong
+          ><small>Heure du Québec · sélectionnez un setter ou toute l’équipe.</small>
+        </div>
+      </div>
       <label v-if="admin"
         >Setter à consulter<select v-model="agent" :disabled="busy" @change="load">
           <option v-for="item in agents" :key="item.id" :value="String(item.id)">
@@ -167,11 +205,39 @@ onBeforeUnmount(() => version++);
     <section v-if="admin && agents.length" class="iso-panel team-report">
       <div class="section-heading">
         <div>
-          <h2>Rapport quotidien de l’équipe</h2>
-          <p>Totaux de la période sélectionnée, heure du Québec.</p>
+          <div class="section-kicker"><Users :size="15" /> SUIVI DE L’ÉQUIPE</div>
+          <h2>Rapport quotidien</h2>
+          <p>Comparez les setters sur une journée précise.</p>
         </div>
-        <span v-if="teamBusy" role="status">Calcul en cours…</span>
+        <div class="day-nav">
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Jour précédent"
+            @click="shiftReportDay(-1)"
+          >
+            <ChevronLeft :size="18" />
+          </button>
+          <span
+            ><strong>{{ reportDayLabel }}</strong
+            ><small>Montréal</small></span
+          >
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Jour suivant"
+            @click="shiftReportDay(1)"
+          >
+            <ChevronRight :size="18" />
+          </button>
+          <button type="button" class="today-button" @click="resetReportDay">
+            Période complète
+          </button>
+        </div>
       </div>
+      <p v-if="teamBusy" class="loading-line" role="status">
+        <span class="spinner" /> Calcul des performances…
+      </p>
       <div class="table-scroll">
         <table>
           <thead>
@@ -232,14 +298,39 @@ onBeforeUnmount(() => version++);
         </div>
         <span class="selected-setter-period">{{ from }} → {{ to }}</span>
       </section>
-      <div class="performance-kpis">
-        <StatKpi
-          v-for="item in metrics"
-          :key="item.key"
-          :label="item.label"
-          :value="data.totals[item.key]"
-        />
-      </div>
+      <section class="metric-group">
+        <div class="metric-group-title"><CalendarDays :size="16" /> Rendez-vous</div>
+        <div class="performance-kpis">
+          <StatKpi
+            v-for="item in metrics.slice(0, 3)"
+            :key="item.key"
+            :label="item.label"
+            :value="data.totals[item.key]"
+          />
+        </div>
+      </section>
+      <section class="metric-group">
+        <div class="metric-group-title"><Users :size="16" /> Portefeuille</div>
+        <div class="performance-kpis">
+          <StatKpi
+            v-for="item in metrics.slice(3, 6)"
+            :key="item.key"
+            :label="item.label"
+            :value="data.totals[item.key]"
+          />
+        </div>
+      </section>
+      <section class="metric-group">
+        <div class="metric-group-title"><BarChart3 :size="16" /> Résultats commerciaux</div>
+        <div class="performance-kpis">
+          <StatKpi
+            v-for="item in metrics.slice(6)"
+            :key="item.key"
+            :label="item.label"
+            :value="data.totals[item.key]"
+          />
+        </div>
+      </section>
       <section v-if="data.outcomes" class="iso-panel">
         <h2>Résultats d’appel déclarés pendant la période</h2>
         <div class="performance-kpis">
@@ -255,7 +346,8 @@ onBeforeUnmount(() => version++);
           les réservations effectivement créées.
         </p>
       </section>
-      <section class="iso-panel">
+      <section class="iso-panel calls-panel">
+        <div class="section-kicker"><PhoneCall :size="15" /> TÉLÉPHONIE</div>
         <h2>Appels Orvia</h2>
         <p v-if="callError" role="alert" class="error">{{ callError }}</p>
         <div class="performance-kpis">
@@ -307,6 +399,31 @@ onBeforeUnmount(() => version++);
   flex-wrap: wrap;
   align-items: end;
   gap: 16px;
+  padding: 18px;
+  background: #fff;
+}
+.filter-intro {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1 1 240px;
+  color: #183a66;
+}
+.filter-intro small,
+.day-nav small {
+  display: block;
+  margin-top: 3px;
+  color: #72839c;
+  font-size: 11px;
+}
+.filter-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  color: #2864b0;
+  background: #edf4ff;
 }
 .performance-filters label {
   display: grid;
@@ -339,6 +456,84 @@ h2 {
   border: 1px solid #dce5f2;
   border-radius: 16px;
   background: linear-gradient(120deg, #f4f7ff, #ffffff);
+}
+.section-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6f82a1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.metric-group {
+  margin: 20px 0;
+}
+.metric-group-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px 2px;
+  color: #2d5484;
+  font-size: 13px;
+  font-weight: 750;
+}
+.day-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #294c79;
+}
+.day-nav > span {
+  min-width: 150px;
+  text-align: center;
+  font-size: 12px;
+}
+.icon-button,
+.today-button {
+  border: 1px solid #d5e1f0;
+  background: #fff;
+  color: #2b5f9d;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.today-button {
+  padding: 8px 10px;
+  font-size: 11px;
+}
+.icon-button:hover,
+.today-button:hover {
+  background: #edf4ff;
+}
+.loading-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #58718f;
+  font-size: 12px;
+}
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #d7e3f3;
+  border-top-color: #2f6fed;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.calls-panel {
+  border-top: 3px solid #2f6fed;
 }
 .selected-setter-heading h2 {
   margin: 6px 0 0;
@@ -400,6 +595,15 @@ h2 {
     grid-template-columns: 1fr;
   }
   .performance-filters button {
+    width: 100%;
+  }
+  .day-nav {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .day-nav > span {
+    order: -1;
     width: 100%;
   }
 }
