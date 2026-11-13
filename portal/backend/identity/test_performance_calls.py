@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from . import test_call_statistics as fixtures
 from django.test import TestCase, override_settings
 from .models import Membership
@@ -43,3 +46,18 @@ class PerformanceCallTests(TestCase):
         self.assertEqual(response.data['team'][0]['attempts'], 1)
         self.assertEqual(response.data['team'][0]['calls_over_minute'], 1)
         self.assertEqual(response.data['team'][0]['duration_total_seconds'], 75)
+
+    def test_team_report_uses_newt_start_date_when_it_differs_from_command_date(self):
+        self.row('unknown')
+        row = fixtures.PhoneCallAttempt.objects.filter(user=self.setter).first()
+        fixtures.PhoneCallAttempt.objects.filter(pk=row.pk).update(
+            journal_status='matched',
+            journal_duration=68,
+            journal_started_at=datetime(2026, 11, 12, 23, 49, tzinfo=ZoneInfo('America/Toronto')),
+        )
+        response = self.client.get(
+            '/api/portal/assurance/performance-calls/?from=2026-11-12&to=2026-11-12&team=1'
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['team'][0]['calls_over_minute'], 1)
+        self.assertEqual(response.data['team'][0]['duration_total_seconds'], 68)
