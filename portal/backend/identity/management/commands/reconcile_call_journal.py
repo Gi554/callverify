@@ -5,7 +5,7 @@ from portal.backend.identity.call_journal import run, configured
 
 
 class Command(BaseCommand):
-    help = 'Record NEWT 511 durations on recent CRM calls. No provider line or number is printed.'
+    help = 'Record NEWT 541 durations on recent CRM calls. No provider line or number is printed.'
 
     def add_arguments(self, parser):
         parser.add_argument('--loop', action='store_true')

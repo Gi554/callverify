@@ -5,7 +5,14 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue as ticket
 from packages.access.phone_calls import verify
-from .models import Contact, BusinessAudit
+from .models import (
+    Contact,
+    BusinessAudit,
+    ContactCallOutcome,
+    AdvisorAssignment,
+    Appointment,
+    AppointmentReport,
+)
 
 
 @override_settings(DEBUG=True)
@@ -101,6 +108,44 @@ class CallIntentTests(TestCase):
                 self.client.post(self.base + 'call-intent/', self.body, format='json').status_code,
                 400,
             )
+
+    def test_declined_or_attended_contact_is_blocked_at_call_intent(self):
+        ContactCallOutcome.objects.create(
+            contact=self.contact,
+            setter_id=21,
+            request_id=uuid4(),
+            fingerprint='declined',
+            result='not_interested',
+        )
+        self.assertEqual(
+            self.client.post(self.base + 'call-intent/', self.body, format='json').status_code,
+            400,
+        )
+        ContactCallOutcome.objects.all().delete()
+        assignment = AdvisorAssignment.objects.create(
+            setter_id=21, setter_name='Setter', advisor_id=31, advisor_name='Advisor'
+        )
+        appointment = Appointment.objects.create(
+            contact=self.contact,
+            assignment=assignment,
+            request_id=uuid4(),
+            fingerprint='appointment',
+            setter_id=21,
+            setter_name='Setter',
+            advisor_id=31,
+            advisor_name='Advisor',
+            booked_by_id=21,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() - timedelta(days=1) + timedelta(hours=1),
+            timezone='America/Toronto',
+        )
+        AppointmentReport.objects.create(
+            appointment=appointment, performed=True, author_id=31, outcome='performed'
+        )
+        self.assertEqual(
+            self.client.post(self.base + 'call-intent/', self.body, format='json').status_code,
+            400,
+        )
 
     def test_administrator_uses_own_lease_and_never_steals_setter_lease(self):
         self.auth(31, 'administrator')

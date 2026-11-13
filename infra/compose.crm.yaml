@@ -165,7 +165,7 @@ services:
     depends_on:
       assurance-db:
         condition: service_healthy
-  # NEWT 511 call durations; started by scripts/deploy.sh when NEWT_CDR_HISTORY_ENABLED=true.
+  # NEWT 541 call durations; started by scripts/deploy.sh when NEWT_CDR_HISTORY_ENABLED=true.
   portal-call-journal:
     build: .
     environment: *portal-environment

@@ -10,7 +10,15 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from packages.access.phone_calls import issue, verify
 from packages.access.phone_history import lookup_number
-from .models import Campaign, PhoneNumber, Prospect, Suppression, AuditEvent
+from .models import (
+    Campaign,
+    PhoneNumber,
+    Prospect,
+    Suppression,
+    AuditEvent,
+    IsolationVisitResult,
+    ProspectActivity,
+)
 from packages.access.history_actions import HistoryMixin
 
 
@@ -25,6 +33,12 @@ class Input(serializers.Serializer):
 
 
 def destination(row):
+    if row.commercial_status == 'not_interested' or ProspectActivity.objects.filter(
+        prospect=row, kind='call_result', changes__result='not_interested'
+    ).exists():
+        raise ValidationError('Ce prospect a indiqué ne pas être intéressé : appel interdit.')
+    if IsolationVisitResult.objects.filter(visit__prospect=row, performed=True).exists():
+        raise ValidationError('Ce prospect s’est présenté à un rendez-vous : appel interdit.')
     if row.compliance not in ('allowed', 'review'):
         raise ValidationError('Appel interdit pour ce prospect.')
     if row.validity == 'invalid' or not row.phone_id:
@@ -164,10 +178,11 @@ class IsolationPhoneCallMixin(HistoryMixin):
             raise ValidationError('Preuve invalide ou expirée.') from None
         row = self.get_object()
         try:
+            destination_allowed = destination(row)
             eligible = (
                 claims['contact'] == row.pk
                 and claims['revision'] == row.assignment_revision
-                and claims['destination'] == destination(row)
+                and claims['destination'] == destination_allowed
             )
         except ValidationError:
             eligible = False

@@ -12,6 +12,7 @@ from django.utils import timezone
 from .leases import held
 from .agreements import lock_contact
 from .models import BusinessAudit, Contact
+from .prospect_queue import call_block_reason
 from .visibility import visible_contacts
 from packages.access.history_actions import HistoryMixin
 
@@ -90,6 +91,8 @@ class PhoneCallMixin(HistoryMixin):
         data = serializer.validated_data
         with transaction.atomic():
             contact = lock_contact(self.get_object(), request.user, data)
+            if reason := call_block_reason(contact):
+                raise ValidationError(reason)
             proof = issue(
                 request.user.pk,
                 contact.pk,
@@ -122,8 +125,10 @@ class PhoneCallMixin(HistoryMixin):
         except (signing.BadSignature, TypeError, ValueError, AttributeError):
             raise ValidationError('Preuve invalide ou expirée.') from None
         contact = self.get_object()
+        reason = call_block_reason(contact)
         eligible = (
-            claims['contact'] == contact.pk
+            not reason
+            and claims['contact'] == contact.pk
             and claims['revision'] == contact.revision
             and held(contact.pk, request.user, claims['lease'], timezone.now()).exists()
             and dial_number(contact.phone) == claims['destination']

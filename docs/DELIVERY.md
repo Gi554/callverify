@@ -1,5 +1,18 @@
 # Suivi des livraisons CRM AMX
 
+## Exclusion définitive des appels non souhaités (staging)
+
+Dans Assurance et Isolation, « Pas intéressé » est désormais une exclusion persistante fondée sur
+l’historique des résultats : une réponse ultérieure ou un changement de lot ne réintroduit pas la
+fiche. Un rendez-vous déclaré présenté crée aussi une exclusion persistante, même si le rendez-vous
+est ensuite annulé. Ces deux règles s’appliquent à la file active, aux rappels et au contrôle
+serveur qui autorise chaque commande d’appel ; ouvrir une fiche directement ne permet donc pas de
+contourner la règle. Le composeur d’un numéro sans fiche CRM n’a pas de statut métier à contrôler.
+
+Vérifications prévues : tests de file active/rappels et tests d’autorisation serveur des deux
+espaces. Cette modification est en staging ; elle ne devient pas effective en production avant
+fusion et déploiement.
+
 ## Journal d’appels NEWT 541 (local/staging)
 
 Le rapprochement des durées utilise désormais le rapport F=541 confirmé par NEWT. L’UID opaque
