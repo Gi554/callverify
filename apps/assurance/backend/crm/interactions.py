@@ -139,7 +139,6 @@ class ContactInteractionMixin:
                 Q(contact=contact) | Q(appointment__contact=contact)
             )
             if user.role == 'setter':
-                outcomes = outcomes.filter(setter_id=user.pk)
                 tasks = tasks.filter(setter_id=user.pk)
             sources['call_result'] = (outcomes, F('note'), F('result'), F('pk'))
             sources['task'] = (

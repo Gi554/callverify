@@ -204,14 +204,17 @@ class ContactCallbackTests(TestCase):
         self.assertFalse(ContactCallOutcome.objects.exists())
         self.assertFalse(TaskNotification.objects.exists())
 
-    def test_other_setter_and_advisor_cannot_read_internal_outcomes_or_mutate_tasks(self):
+    def test_current_setter_can_read_prior_results_after_a_contact_is_reassigned(self):
         self.callback()
+        Contact.objects.filter(pk=self.contact.pk).update(assigned_setter_id=22)
         self.auth(22)
-        self.assertEqual(self.client.get(self.base + 'call-outcomes/').data['count'], 0)
-        self.assertEqual(
-            self.client.get(self.base + 'interactions/?type=call_result').data['count'], 0
-        )
-        self.assertEqual(self.callback().status_code, 409)
+        outcomes = self.client.get(self.base + 'call-outcomes/').data
+        interactions = self.client.get(self.base + 'interactions/?type=call_result').data
+        self.assertEqual(outcomes['count'], 1)
+        self.assertEqual(outcomes['results'][0]['note'], 'Après 17 h')
+        self.assertEqual(interactions['count'], 1)
+        self.assertEqual(interactions['results'][0]['detail'], 'Après 17 h')
+        self.assertEqual(self.client.get(self.base + 'follow-ups/').data['count'], 0)
         self.auth(31, 'advisor')
         self.assertIn(self.client.get(self.base + 'call-outcomes/').status_code, (403, 404))
 

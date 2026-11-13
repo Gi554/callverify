@@ -152,17 +152,28 @@ class IsolationQueueTests(TestCase):
         result(2, 'unreachable')
         active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
         self.assertNotIn(prospect.pk, [row['id'] for row in active])
-        all_rows = client.get('/api/work-queue/', {'queue': 'all'}).data['results']
-        self.assertEqual(
-            next(row for row in all_rows if row['id'] == prospect.pk)['queue_reason'], 'retry_wait'
-        )
 
-        for index in range(3, 7):
-            result(index)
+    def test_later_call_result_does_not_reopen_a_prospect_declined_earlier(self):
+        prospect = fixture()
+        prospect.assigned_setter_id = 21
+        prospect.save()
+        for index, result_value in enumerate(('not_interested', 'voicemail'), 1):
+            ProspectActivity.objects.create(
+                prospect=prospect,
+                request_id=uuid4(),
+                fingerprint=f'decline-{index}',
+                author_portal_id=21,
+                author_role='setter',
+                kind='call_result',
+                body='Refus conservé',
+                changes={'result': result_value},
+            )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', 'setter'))
+        active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
+        self.assertNotIn(prospect.pk, [row['id'] for row in active])
         all_rows = client.get('/api/work-queue/', {'queue': 'all'}).data['results']
         self.assertEqual(
             next(row for row in all_rows if row['id'] == prospect.pk)['queue_reason'],
-            'retry_exhausted',
+            'not_interested',
         )
-        active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
-        self.assertNotIn(prospect.pk, [row['id'] for row in active])

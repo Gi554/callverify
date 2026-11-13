@@ -21,6 +21,13 @@ import ProspectExport from './ProspectExport.vue';
 import IsolationBulkAssignment from './IsolationBulkAssignment.vue';
 import IsolationDistribution from './IsolationDistribution.vue';
 import IsolationLots from './IsolationLots.vue';
+import {
+  callSessionKey,
+  clearCallSession,
+  quebecDay,
+  readCallSession,
+  writeCallSession,
+} from './call-session-progress';
 import IsolationQualification from './IsolationQualification.vue';
 const includeProcessed = ref(false);
 const lotsOpen = ref(false),
@@ -60,6 +67,7 @@ let generation = 0,
   disposed = false;
 const props = defineProps<{
   role: string;
+  sessionOwner?: string;
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   // Prospect to open on arrival, e.g. from the calls module.
@@ -167,7 +175,37 @@ const session = ref(false),
   countdown = ref<number | null>(null),
   nextInSession = ref<any>(null),
   sessionNote = ref('');
-const visited = new Set<number>();
+const sessionKey = callSessionKey('isolation', props.sessionOwner || props.role);
+const sessionStorage = (() => {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+})();
+const savedSession = sessionStorage ? readCallSession(sessionStorage, sessionKey) : null;
+const resumeAvailable = ref(!!savedSession);
+const visited = new Set<number>(savedSession?.visited || []);
+function persistSession() {
+  if (!sessionStorage) return;
+  try {
+    writeCallSession(sessionStorage, sessionKey, {
+      day: quebecDay(),
+      active: true,
+      visited: [...visited],
+    });
+  } catch {
+    // Session progress is a convenience; saved call outcomes remain on the server.
+  }
+}
+function clearSessionProgress() {
+  if (!sessionStorage) return;
+  try {
+    clearCallSession(sessionStorage, sessionKey);
+  } catch {
+    // The call session can still run if browser storage is unavailable.
+  }
+}
 let sessionId = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 function isCurrentSession(id: number) {
@@ -209,7 +247,11 @@ async function advance() {
 }
 async function startSession() {
   if (session.value || busy.value || activity.value) return;
-  visited.clear();
+  if (!resumeAvailable.value) {
+    visited.clear();
+    persistSession();
+  }
+  resumeAvailable.value = false;
   sessionNote.value = '';
   sessionId++;
   session.value = true;
@@ -219,7 +261,8 @@ function stopSession() {
   stopTimer();
   nextInSession.value = null;
   session.value = false;
-  sessionNote.value = 'Session arrêtée.';
+  sessionNote.value = 'Session mise en pause. Votre progression est conservée pour aujourd’hui.';
+  resumeAvailable.value = true;
 }
 async function prepareNext(first = false) {
   const id = sessionId;
@@ -236,10 +279,13 @@ async function prepareNext(first = false) {
     sessionNote.value = first
       ? 'Aucun prospect dans votre lot actif.'
       : 'Session terminée : plus aucun prospect à appeler.';
+    clearSessionProgress();
+    resumeAvailable.value = false;
   } catch (e: any) {
     if (!isCurrentSession(id)) return;
     session.value = false;
     sessionNote.value = e.message || 'Impossible de charger votre lot actif.';
+    resumeAvailable.value = true;
   }
 }
 function startCountdown() {
@@ -262,6 +308,11 @@ async function openActivity(row: any, mode: 'edit' | 'call' = 'edit', id?: numbe
 }
 function activityClosed() {
   if (callPending.value) return;
+  const closedId = activity.value?.id;
+  if (session.value && Number.isSafeInteger(Number(closedId)) && Number(closedId) > 0) {
+    visited.add(Number(closedId));
+    persistSession();
+  }
   activity.value = null;
   callPending.value = false;
   void load();
@@ -350,7 +401,9 @@ onBeforeUnmount(() => {
           :disabled="busy || !!activity"
           @click="startSession"
         >
-          <PhoneForwarded :size="16" />Lancer une session d’appels
+          <PhoneForwarded :size="16" />{{
+            resumeAvailable ? 'Reprendre la session' : 'Lancer une session d’appels'
+          }}
         </button>
         <button
           v-if="role === 'administrator'"
@@ -442,7 +495,7 @@ onBeforeUnmount(() => {
           >Prochain appel dans {{ countdown }} s</span
         >
         <button class="primary" @click="advance">Appeler maintenant</button>
-        <button class="secondary" @click="stopSession">Arrêter la session</button>
+        <button class="secondary" @click="stopSession">Mettre en pause</button>
       </CallCountdownModal>
       <p v-else-if="session && !activity" class="call-session" role="status">
         Chargement du prochain prospect…

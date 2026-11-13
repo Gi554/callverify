@@ -1,5 +1,24 @@
 # Suivi des livraisons CRM AMX
 
+## Reprise de session et historique des appels (staging)
+
+Dans les deux espaces, la progression d’une session d’appels est conservée par compte et par jour
+du Québec. « Mettre en pause » puis revenir dans Prospects propose « Reprendre la session » et
+reprend après les fiches déjà parcourues. Une nouvelle journée repart sur une nouvelle progression ;
+la fin normale d’une session permet d’en lancer une autre et ne change pas les règles quotidiennes
+de réessai. La progression est un repère local au navigateur, tandis que les résultats et notes
+restent enregistrés côté serveur.
+
+Dans Assurance, l’historique des résultats et commentaires d’appel suit désormais les droits
+d’accès à la fiche courante. Un setter qui reçoit une fiche voit les résultats précédents, même
+s’ils ont été saisis par un autre setter ; un setter sans accès à cette fiche ne peut pas les
+consulter. Les notes, résultats et événements d’Isolation restent append-only.
+
+Vérifications ciblées : 17 tests Assurance, 5 tests de file Isolation, 25 tests frontend ciblés,
+et compilation TypeScript/Vite. Le test de file couvre un refus suivi d’un résultat plus récent ;
+le test d’historique couvre la consultation après réaffectation.
+La mise à disposition reste limitée à staging jusqu’à fusion et déploiement explicite.
+
 ## Exclusion définitive des appels non souhaités (staging)
 
 Dans Assurance et Isolation, « Pas intéressé » est désormais une exclusion persistante fondée sur

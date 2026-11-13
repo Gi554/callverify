@@ -116,6 +116,23 @@ class ProspectQueueTests(TestCase):
             self.client.get('/api/assurance/contacts/', {'queue': 'bad'}).status_code, 400
         )
 
+    def test_a_later_result_does_not_reopen_a_contact_declined_earlier(self):
+        ContactCallOutcome.objects.create(
+            contact=self.declined,
+            setter_id=21,
+            request_id=uuid4(),
+            fingerprint='later',
+            result='voicemail',
+            note='Résultat plus récent, refus antérieur conservé',
+        )
+        active = self.client.get('/api/assurance/contacts/', {'queue': 'active'}).data['results']
+        self.assertNotIn(self.declined.pk, [row['id'] for row in active])
+        all_rows = self.client.get('/api/assurance/contacts/', {'queue': 'all'}).data['results']
+        self.assertEqual(
+            next(row for row in all_rows if row['id'] == self.declined.pk)['queue_reason'],
+            'not_interested',
+        )
+
     def test_attended_contact_remains_excluded_even_if_appointment_is_cancelled(self):
         appointment = self.appointment
         AppointmentReport.objects.create(

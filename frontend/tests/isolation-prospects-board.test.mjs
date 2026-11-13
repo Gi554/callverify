@@ -22,11 +22,18 @@ let code = compileScript(
     templateOptions: { compilerOptions: { hoistStatic: false } },
   },
 ).content
+const sessionProgressCode = ts.transpileModule(
+  readFileSync(new URL('../src/call-session-progress.ts', import.meta.url), 'utf8'),
+  { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } },
+).outputText
+const sessionProgressUrl =
+  'data:text/javascript;base64,' + Buffer.from(sessionProgressCode).toString('base64')
 code = code
   .replace(
     "from './phone-number'",
     `from '${new URL('../src/phone-number.ts', import.meta.url).href}'`,
   )
+  .replace("from './call-session-progress'", `from '${sessionProgressUrl}'`)
   .replace(/import \{([^}]+)\} from 'lucide-vue-next'/g, (_, names) =>
     names
       .split(',')
@@ -313,9 +320,10 @@ test('setter can stop the countdown and the session ends after the last prospect
     await flush()
     component_(f, 'IsolationProspectActivity').props.onClose()
     await flush()
-    labelled(f, 'Arrêter la session').props.onClick()
+    labelled(f, 'Mettre en pause').props.onClick()
     await flush()
-    assert.match(text(f.root), /Session arrêtée/)
+    assert.match(text(f.root), /progression est conservée/)
+    assert.ok(labelled(f, 'Reprendre la session'))
     assert.equal(component_(f, 'IsolationProspectActivity'), undefined)
   } finally {
     f.app.unmount()
@@ -359,7 +367,7 @@ test('dismissing the countdown modal stops the session without opening another p
     await flush()
     component_(f, 'CallCountdownModal').props.onStop()
     await flush()
-    assert.match(text(f.root), /Session arrêtée/)
+    assert.match(text(f.root), /Session arrêtée|Session mise en pause/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'IsolationProspectActivity'), undefined)
   } finally {

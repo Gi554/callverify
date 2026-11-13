@@ -906,6 +906,7 @@ onMounted(async () => {
                       :portal="portal"
                       :request="assurance"
                       :role="role"
+                      :session-owner="user.username"
                       @imported="summary.contacts = $event"
                     />
                     <AssuranceAdvisorProspects
@@ -1072,6 +1073,7 @@ onMounted(async () => {
                       :key="prospectFocus ? 'focus-' + prospectFocus.id : 'board'"
                       :focus="prospectFocus"
                       :role="role"
+                      :session-owner="user.username"
                       :portal="portal"
                       :request="isolation"
                     />
