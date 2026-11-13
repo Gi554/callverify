@@ -3402,3 +3402,7 @@ La progression des sessions Assurance et Isolation est persistée côté serveur
 Vérifications : tests API Assurance et Isolation pour la persistance après relecture, l’isolation par compte, les conflits de fiches en cours et la clôture; tests frontend de reprise sans rappel automatique; compilation frontend; validations CI sur `main`; migrations et contrôles de santé de production réussis le 13 novembre 2026 (commit `11a7c0fd`).
 
 **Correctif de routage Isolation :** Caddy retire le préfixe public `/api/isolation/` avant de transmettre les requêtes au service Isolation. La route de reprise de session est donc exposée en interne sous `/api/call-session/`; le contrôle de santé du déploiement vérifie désormais aussi son URL publique `/api/isolation/call-session/`.
+
+## Défilement des fiches ouvertes en panneau latéral
+
+À l’ouverture d’un panneau de fiche ou de qualification, le défilement de la page principale est verrouillé. Le contenu du panneau conserve son propre défilement jusqu’à la fin du formulaire, y compris sur les écrans tactiles. Les panneaux imbriqués partagent un verrou compté : fermer un panneau ne réactive pas la page tant qu’un autre panneau reste ouvert. La position initiale de la page est restaurée à la fermeture du dernier panneau.

@@ -1,6 +1,34 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount, useId } from 'vue';
 import { ArrowLeft, X, PanelRight } from 'lucide-vue-next';
+const pageScrollLockState = ((globalThis as any).__orviaPageScrollLock ??= {
+  activeLocks: 0,
+  htmlOverflow: '',
+  bodyOverflow: '',
+  position: { x: 0, y: 0 },
+});
+function acquirePageScrollLock() {
+  if (typeof document === 'undefined') return () => {};
+  if (pageScrollLockState.activeLocks === 0) {
+    pageScrollLockState.htmlOverflow = document.documentElement.style.overflow;
+    pageScrollLockState.bodyOverflow = document.body.style.overflow;
+    pageScrollLockState.position = { x: window.scrollX, y: window.scrollY };
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+  pageScrollLockState.activeLocks += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    pageScrollLockState.activeLocks = Math.max(0, pageScrollLockState.activeLocks - 1);
+    if (pageScrollLockState.activeLocks === 0) {
+      document.documentElement.style.overflow = pageScrollLockState.htmlOverflow;
+      document.body.style.overflow = pageScrollLockState.bodyOverflow;
+      window.scrollTo(pageScrollLockState.position.x, pageScrollLockState.position.y);
+    }
+  };
+}
 const props = withDefaults(
   defineProps<{
     open: boolean;
@@ -16,6 +44,7 @@ const props = withDefaults(
 const emit = defineEmits<{ requestClose: [] }>();
 const dialog = ref<HTMLDialogElement | null>(null),
   headingId = useId();
+let releasePageScrollLock: (() => void) | null = null;
 function requestClose() {
   if (!props.closeDisabled) emit('requestClose');
 }
@@ -23,12 +52,22 @@ watch(
   () => props.open,
   async (open) => {
     await nextTick();
-    if (open && props.open && !dialog.value?.open) dialog.value?.showModal();
-    else if (!props.open) dialog.value?.close();
+    if (open && props.open && !dialog.value?.open) {
+      dialog.value?.showModal();
+      if (dialog.value?.open) releasePageScrollLock = acquirePageScrollLock();
+    } else if (!props.open && dialog.value?.open) {
+      dialog.value.close();
+      releasePageScrollLock?.();
+      releasePageScrollLock = null;
+    }
   },
   { immediate: true, flush: 'post' },
 );
-onBeforeUnmount(() => dialog.value?.close());
+onBeforeUnmount(() => {
+  dialog.value?.close();
+  releasePageScrollLock?.();
+  releasePageScrollLock = null;
+});
 </script>
 <template>
   <dialog
@@ -88,6 +127,7 @@ onBeforeUnmount(() => dialog.value?.close());
   color: #293c55;
   box-shadow: -18px 0 70px #142a492b;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 .side-panel[open] {
   display: flex;
@@ -189,7 +229,9 @@ onBeforeUnmount(() => dialog.value?.close());
 .side-panel-body.panel-body-scroll {
   display: block;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 24px;
 }
 @keyframes panel-enter {
