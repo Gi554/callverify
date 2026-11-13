@@ -93,7 +93,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture(role = 'administrator', second = false, ownLot = false) {
+function fixture(role = 'administrator', second = false, ownLot = false, withCallback = false) {
   const root = { children: [] },
     requests = [],
     imported = []
@@ -104,6 +104,22 @@ function fixture(role = 'administrator', second = false, ownLot = false) {
         stages: [
           { key: 'new', label: 'Nouveau', active: true },
           { key: 'won', label: 'Gagné', active: true },
+        ],
+      }
+    if (withCallback && path.includes('queue=callbacks'))
+      return {
+        count: 1,
+        next: null,
+        results: [
+          {
+            id: 10,
+            name: 'Rappel existant',
+            phone: '+15145559999',
+            email: '',
+            status: 'new',
+            queue_reason: 'callback',
+            updated_at: '2026-10-20T12:00:00Z',
+          },
         ],
       }
     if (
@@ -264,6 +280,20 @@ test('setter runs a call session with a countdown between prospects', async () =
     await flush()
     assert.match(text(f.root), /Session terminée/)
     assert.equal(button(f, 'Appeler maintenant'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('setter call session does not pull prospects from the separate callbacks queue', async () => {
+  const f = fixture('setter', false, false, true)
+  try {
+    await flush()
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    assert.ok(f.requests.some((path) => path.includes('queue=callbacks')))
+    assert.ok(f.requests.some((path) => path === 'contacts/11/'))
+    assert.ok(f.requests.every((path) => path !== 'contacts/10/'))
   } finally {
     f.close()
   }

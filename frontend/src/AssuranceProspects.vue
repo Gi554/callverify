@@ -135,7 +135,13 @@ async function loadMine() {
   mine.value = rows.sort((a, b) => a.id - b.id);
 }
 function nextProspect() {
-  const pool = admin.value ? mine.value : columns.value.flatMap((column) => column.rows);
+  // Due callbacks are handled from the dedicated Rappels queue, not mixed into
+  // the prospecting session. The row's pipeline status can still be "new".
+  const pool = admin.value
+    ? mine.value
+    : columns.value
+        .filter((column) => column.key !== 'callback_queue')
+        .flatMap((column) => column.rows);
   return (
     pool.find(
       (row) =>
