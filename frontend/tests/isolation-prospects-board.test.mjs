@@ -131,13 +131,15 @@ function fixture(role = 'setter', ownLot = false, serverState = null) {
       requests.push({ path, body })
       if (path === 'call-session/') {
         if (method !== 'POST') return structuredClone(state)
-        if (body.action === 'start') Object.assign(state, { active: true, visited_ids: [], current_id: null })
+        if (body.action === 'start')
+          Object.assign(state, { active: true, visited_ids: [], current_id: null })
         if (body.action === 'begin') state.current_id = body.prospect_id
         if (body.action === 'complete') {
           state.visited_ids = [...new Set([...state.visited_ids, body.prospect_id])]
           state.current_id = null
         }
-        if (body.action === 'finish') Object.assign(state, { active: false, visited_ids: [], current_id: null })
+        if (body.action === 'finish')
+          Object.assign(state, { active: false, visited_ids: [], current_id: null })
         return structuredClone(state)
       }
       if (path === 'workspace-dashboard/') return { callbacks_due: 2 }

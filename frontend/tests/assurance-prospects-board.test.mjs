@@ -86,7 +86,13 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture(role = 'administrator', second = false, ownLot = false, withCallback = false, serverState = null) {
+function fixture(
+  role = 'administrator',
+  second = false,
+  ownLot = false,
+  withCallback = false,
+  serverState = null,
+) {
   const root = { children: [] },
     requests = [],
     imported = [],
@@ -95,13 +101,15 @@ function fixture(role = 'administrator', second = false, ownLot = false, withCal
     requests.push({ path, body, method })
     if (path === 'call-session/') {
       if (method !== 'POST') return structuredClone(state)
-      if (body.action === 'start') Object.assign(state, { active: true, visited_ids: [], current_id: null })
+      if (body.action === 'start')
+        Object.assign(state, { active: true, visited_ids: [], current_id: null })
       if (body.action === 'begin') state.current_id = body.contact_id
       if (body.action === 'complete') {
         state.visited_ids = [...new Set([...state.visited_ids, body.contact_id])]
         state.current_id = null
       }
-      if (body.action === 'finish') Object.assign(state, { active: false, visited_ids: [], current_id: null })
+      if (body.action === 'finish')
+        Object.assign(state, { active: false, visited_ids: [], current_id: null })
       return structuredClone(state)
     }
     if (path === 'pipeline/')
@@ -128,7 +136,8 @@ function fixture(role = 'administrator', second = false, ownLot = false, withCal
         ],
       }
     const detail = path.match(/^contacts\/(\d+)\/$/)
-    if (detail) return { id: Number(detail[1]), name: 'Dossier ' + detail[1], phone: '+15145550000' }
+    if (detail)
+      return { id: Number(detail[1]), name: 'Dossier ' + detail[1], phone: '+15145550000' }
     if (
       path.startsWith('contacts/?status=new') ||
       (ownLot && path.startsWith('contacts/?mine=true'))

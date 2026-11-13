@@ -245,7 +245,8 @@ async function startSession() {
       session.value = true;
       recovering.value = true;
       resumeAvailable.value = false;
-      sessionNote.value = 'Fiche interrompue : vérifiez son historique avant toute nouvelle tentative d’appel.';
+      sessionNote.value =
+        'Fiche interrompue : vérifiez son historique avant toute nouvelle tentative d’appel.';
       await openActivity({ id: Number(saved.current_id) }, 'call', sessionId);
       return;
     }

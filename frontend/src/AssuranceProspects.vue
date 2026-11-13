@@ -180,7 +180,8 @@ async function startSession() {
       const detail = await props.request(`contacts/${saved.current_id}/`);
       workflow.value = 'call';
       selected.value = detail;
-      sessionNote.value = 'Fiche interrompue : vérifiez son historique avant toute nouvelle tentative d’appel.';
+      sessionNote.value =
+        'Fiche interrompue : vérifiez son historique avant toute nouvelle tentative d’appel.';
       resumeAvailable.value = false;
       return;
     }
