@@ -135,19 +135,16 @@ class IsolationCallsTests(TestCase):
         self.assertTrue(result.data['journal_matched'])
         self.provider.assert_called_once()
 
-    def test_uncertain_command_guards_number_without_blocking_other_prospects(self):
+    def test_uncertain_command_can_be_retried_after_the_normal_cooldown(self):
         self.provider.return_value = 'unknown'
         self.assertEqual(self.post().data['state'], 'unknown')
         PhoneCallAttempt.objects.filter(pk=self.key).update(
-            created_at=timezone.now() - timedelta(seconds=12)
+            created_at=timezone.now() - timedelta(seconds=6)
         )
         duplicate = issue(self.user.pk, 13, 0, uuid4(), '14165550123', workspace='isolation')
-        refused = self.post(duplicate)
-        self.assertEqual(refused.status_code, 409)
-        self.assertEqual(refused.data['reason'], 'call_pending_review')
-        self.provider.assert_called_once()
-        other = issue(self.user.pk, 14, 0, uuid4(), '14165550124', workspace='isolation')
-        self.assertEqual(self.post(other).status_code, 200)
+        retried = self.post(duplicate)
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(retried.data['state'], 'unknown')
         self.assertEqual(self.provider.call_count, 2)
 
     def test_options_never_send_and_reveal_no_extension(self):

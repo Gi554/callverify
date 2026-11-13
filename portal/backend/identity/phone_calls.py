@@ -21,7 +21,7 @@ from packages.access.phone_calls import verify
 from packages.access.tickets import issue as access_ticket
 from packages.newt.calls import place
 from .models import Membership, PhoneExtension, PhoneCallAttempt, AccessAudit
-from .call_journal import SETTLE, digest
+from .call_journal import digest
 from .call_rules import refusal, rules, window
 
 CALL_COOLDOWN_SECONDS = 5
@@ -174,22 +174,6 @@ def calls(request, workspace='assurance'):
             return Response({'detail': reason}, status=400)
         destination_digest = digest(claims['destination'])
         now = timezone.now()
-        if (
-            PhoneCallAttempt.objects.filter(
-                user=request.user,
-                destination_digest=destination_digest,
-                state__in=('unknown', 'dispatching'),
-                created_at__gt=now - SETTLE,
-            )
-            .exclude(journal_status='matched')
-            .exists()
-        ):
-            raise Conflict(
-                {
-                    'detail': 'Une commande récente vers ce numéro reste à vérifier.',
-                    'reason': 'call_pending_review',
-                }
-            )
         if PhoneCallAttempt.objects.filter(
             user=request.user,
             created_at__gt=now - timedelta(seconds=CALL_COOLDOWN_SECONDS),

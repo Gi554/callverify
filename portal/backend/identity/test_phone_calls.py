@@ -180,6 +180,18 @@ class PhoneCallsTests(TestCase):
         self.assertEqual(self.post(new).status_code, 200)
         self.assertEqual(self.provider.call_count, 2)
 
+    def test_uncertain_command_does_not_lock_same_number_after_cooldown(self):
+        self.provider.return_value = 'unknown'
+        self.assertEqual(self.post().data['state'], 'unknown')
+        PhoneCallAttempt.objects.filter(pk=self.key).update(
+            created_at=timezone.now() - timedelta(seconds=CALL_COOLDOWN_SECONDS + 1)
+        )
+        retry = issue(self.user.pk, 43, 3, uuid4(), '15145550101', self.lease)
+        response = self.post(retry)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['state'], 'unknown')
+        self.assertEqual(self.provider.call_count, 2)
+
     def test_other_user_and_advisor_cannot_read_attempt(self):
         self.post()
         other = get_user_model().objects.create_user('other')

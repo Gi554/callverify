@@ -41,7 +41,7 @@ Exemple curl après préparation de la session dans un fichier de cookies privé
 curl.exe --fail-with-body -b $cookieFile -H "X-CSRFToken: $csrf" -H "Content-Type: application/json" --data-binary "@$privateProofBody" http://127.0.0.1:5173/api/portal/assurance/calls/
 ```
 
-`$privateProofBody` contient seulement le JSON `proof` généré à l’étape précédente. Le flag désactivé renvoie 503 avant réservation/envoi. Une association de poste absente est refusée. Les commandes distinctes du même compte sont espacées d’au moins 60 secondes ; ce délai ne prouve pas que le poste est libre.
+`$privateProofBody` contient seulement le JSON `proof` généré à l’étape précédente. Le flag désactivé renvoie 503 avant réservation/envoi. Une association de poste absente est refusée. Les commandes distinctes du même compte sont espacées d’au moins 5 secondes ; ce délai ne prouve pas que le poste est libre.
 
 5. Pour vérifier la commande sans jamais la relancer :
 
@@ -50,7 +50,7 @@ GET /api/portal/assurance/calls/<uuid>/
 Cookie: <session-centrale>
 ```
 
-Lecture limitée au setter actif propriétaire. Le même POST avec une preuve valide et le même contenu/UUID retourne le registre existant **sans nouvelle commande**. Si la preuve a expiré, consulter par GET ; ne pas créer un nouvel UUID pour compenser une erreur réseau ambiguë. Un changement de contenu sous le même UUID renvoie 409. Ne pas conserver les preuves dans l’historique du navigateur ou un export.
+Lecture limitée au setter actif propriétaire. Le même POST avec une preuve valide et le même contenu/UUID retourne le registre existant **sans nouvelle commande**. Si la preuve a expiré, consulter par GET. Une nouvelle commande distincte peut être émise après le délai normal de 5 secondes même si l’état précédent reste ambigu ; cela peut créer un doublon si le premier appel avait déjà démarré. Aucun renvoi automatique n’est effectué. Un changement de contenu sous le même UUID renvoie 409. Ne pas conserver les preuves dans l’historique du navigateur ou un export.
 
 ## Protections et sémantique
 
@@ -66,7 +66,7 @@ Un seul GET fournisseur 245 avec source associée, destination autorisée, timeo
 | rejected | Réponse fournisseur Failure corrélée. |
 | unknown | Résultat ambigu ; ne pas relancer automatiquement. |
 
-Une interruption après réservation ou une erreur de persistance après envoi peut laisser `dispatching`. Aucune reprise automatique n’envoie un second appel. Il n’existe pas encore de rapprochement CDR pour résoudre cet état : examen manuel, conservation de l’UUID et vérification côté poste/fournisseur. Le délai entre commandes n’interdit pas à un utilisateur d’initier volontairement un nouvel UUID après 60 secondes ; ce n’est pas une détection fiable de ligne occupée ni un verrou pendant toute la conversation.
+Une interruption après réservation ou une erreur de persistance après envoi peut laisser `dispatching`. Aucune reprise automatique n’envoie un second appel. Une nouvelle tentative est possible manuellement après 5 secondes et peut créer un doublon si la commande précédente a abouti côté fournisseur. Le rapprochement CDR reste incomplet ; vérifier côté poste/fournisseur si le résultat est ambigu. Ce délai n’est pas une détection fiable de ligne occupée ni un verrou pendant toute la conversation.
 
 Audit Assurance d’autorisation lié au dossier et à sa version, sans preuve/numéro/jeton. Registre central conservant compte, dossier, extension au moment de l’envoi, empreinte et états ; audit central réservation/résultat sans secrets ni numéro. Réponse au setter : UUID, dossier, état et dates, sans extension ni données fournisseur brutes. Ces deux journaux ne sont pas fusionnés en timeline d’appels du dossier ; pas de durée, résultat commercial ou décrochage déduit. La politique de conservation est à finaliser avant production.
 
