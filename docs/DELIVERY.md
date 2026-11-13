@@ -9,9 +9,10 @@ est ensuite annulé. Ces deux règles s’appliquent à la file active, aux rapp
 serveur qui autorise chaque commande d’appel ; ouvrir une fiche directement ne permet donc pas de
 contourner la règle. Le composeur d’un numéro sans fiche CRM n’a pas de statut métier à contrôler.
 
-Vérifications prévues : tests de file active/rappels et tests d’autorisation serveur des deux
-espaces. Cette modification est en staging ; elle ne devient pas effective en production avant
-fusion et déploiement.
+Vérifications : tests d’exclusion par file active/rappels et par autorisation serveur dans
+Assurance et Isolation ; suites backend, PostgreSQL, base commune, migrations, lint Ruff et frontend
+passent dans la CI GitHub de la PR #390. La modification est destinée à staging ; aucun déploiement
+production n’a été effectué.
 
 ## Journal d’appels NEWT 541 (local/staging)
 
