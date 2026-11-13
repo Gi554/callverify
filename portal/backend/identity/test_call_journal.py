@@ -44,6 +44,18 @@ class CallJournalTests(TestCase):
         Membership.objects.create(user=self.admin, workspace='assurance', role='administrator')
         self.client = APIClient()
 
+    def test_f541_record_is_compatible_with_journal_matching(self):
+        raw = (
+            b'UID,Date,Time,Source,Caller Name,Destination,Duration\n'
+            b'1794407689.12746,2026-10-15,09:40,503,,5146481176,0:00:09\n'
+        )
+        parsed = cdr.parse_recording_records(raw)
+        matched = lines(parsed)
+        self.assertEqual(len(matched), 1)
+        self.assertEqual(matched[0]['extension'], '503')
+        self.assertEqual(matched[0]['duration'], 9)
+        self.assertEqual(matched[0]['uid'], '1794407689.12746')
+
     def attempt(self, created_at, destination='14185547880', extension='509', **changes):
         row = PhoneCallAttempt.objects.create(
             request_id=uuid4(),
