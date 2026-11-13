@@ -276,7 +276,11 @@ class WorkViewSet(
             if mode == 'active':
                 qs = qs.filter(_queue_reason='')
             elif mode == 'callbacks':
-                qs = qs.filter(_queue_call_result='callback', _queue_setter_followup=True)
+                # The dedicated callback queue is driven by the open follow-up
+                # task itself.  A missed appointment creates this task without
+                # a setter call-result activity, so filtering on the latest
+                # call result would silently hide it.
+                qs = qs.filter(_queue_setter_followup=True)
         return qs
 
     def list(self, request):
