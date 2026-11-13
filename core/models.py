@@ -81,6 +81,16 @@ class Prospect(models.Model):
         ]
 
 
+class CallSessionProgress(models.Model):
+    """Durable Isolation call-session cursor, scoped to a central portal account."""
+
+    portal_user_id = models.PositiveBigIntegerField(unique=True)
+    active = models.BooleanField(default=False)
+    visited_prospect_ids = models.JSONField(default=list)
+    current_prospect_id = models.PositiveBigIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class ImportRow(models.Model):
     batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name='rows')
     prospect = models.ForeignKey(Prospect, null=True, on_delete=models.SET_NULL)

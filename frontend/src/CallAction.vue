@@ -116,10 +116,15 @@ async function inspect() {
   }
 }
 function reset() {
-  if (unresolved.value || pending.value) return;
+  if (pending.value) return;
   remember('');
   result.value = null;
   error.value = '';
+}
+async function prepareNewAttempt() {
+  if (pending.value) return;
+  reset();
+  await open();
 }
 onMounted(async () => {
   if (!props.autoOpen) return;
@@ -177,13 +182,14 @@ onMounted(async () => {
     <template v-if="requestId">
       <small>Référence de commande : {{ requestId }}</small>
       <p v-if="unresolved">
-        Vérifiez cette commande avant toute nouvelle tentative. Aucune relance automatique.
+        Le résultat de la commande précédente reste indéterminé. Une nouvelle tentative peut
+        provoquer un doublon si le premier appel était déjà parti.
       </p>
       <button type="button" class="secondary" :disabled="pending" @click="inspect">
         <RefreshCw :size="14" /> Vérifier la commande
       </button>
-      <button v-if="!unresolved" type="button" class="secondary" :disabled="pending" @click="reset">
-        Préparer un nouvel appel
+      <button type="button" class="secondary" :disabled="pending" @click="prepareNewAttempt">
+        {{ unresolved ? 'Préparer une nouvelle tentative' : 'Préparer un nouvel appel' }}
       </button>
     </template>
     <button

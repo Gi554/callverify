@@ -180,6 +180,7 @@ class WorkViewSet(
                 IsolationClientFollowUp,
                 IsolationFollowUp,
                 ProspectActivity,
+                IsolationVisitResult,
             )
 
             now = timezone.now()
@@ -197,6 +198,18 @@ class WorkViewSet(
                 ),
                 _queue_unqualified=Exists(
                     IsolationUnqualified.objects.filter(prospect_id=OuterRef('pk'), active=True)
+                ),
+                _queue_declined=Exists(
+                    ProspectActivity.objects.filter(
+                        prospect_id=OuterRef('pk'),
+                        kind='call_result',
+                        changes__result='not_interested',
+                    )
+                ),
+                _queue_attended=Exists(
+                    IsolationVisitResult.objects.filter(
+                        visit__prospect_id=OuterRef('pk'), performed=True
+                    )
                 ),
                 _queue_setter_followup=Exists(
                     IsolationFollowUp.objects.filter(
@@ -243,6 +256,8 @@ class WorkViewSet(
                 _queue_reason=Case(
                     When(_queue_client_followup=True, then=Value('client_followup')),
                     When(_queue_unqualified=True, then=Value('unqualified')),
+                    When(_queue_declined=True, then=Value('not_interested')),
+                    When(_queue_attended=True, then=Value('appointment_attended')),
                     When(_queue_booking=True, then=Value('appointment_booked')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     When(
@@ -280,7 +295,11 @@ class WorkViewSet(
                 # task itself.  A missed appointment creates this task without
                 # a setter call-result activity, so filtering on the latest
                 # call result would silently hide it.
-                qs = qs.filter(_queue_setter_followup=True)
+                qs = qs.filter(_queue_setter_followup=True).exclude(
+                    Q(commercial_status='not_interested')
+                    | Q(_queue_declined=True)
+                    | Q(_queue_attended=True)
+                )
         return qs
 
     def list(self, request):

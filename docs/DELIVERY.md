@@ -1,5 +1,40 @@
 # Suivi des livraisons CRM AMX
 
+## Reprise de session et historique des appels (staging)
+
+Dans les deux espaces, la progression d’une session d’appels est conservée par compte et par jour
+du Québec. « Mettre en pause » puis revenir dans Prospects propose « Reprendre la session » et
+reprend après les fiches déjà parcourues. Une nouvelle journée repart sur une nouvelle progression ;
+la fin normale d’une session permet d’en lancer une autre et ne change pas les règles quotidiennes
+de réessai. Dans Assurance, une session de prospection prend uniquement les fiches actives ; les
+rappels restent dans leur colonne dédiée et ne sont plus pris en premier par la session. La
+progression est un repère local au navigateur, tandis que les résultats et notes restent enregistrés
+côté serveur.
+
+Dans Assurance, l’historique des résultats et commentaires d’appel suit désormais les droits
+d’accès à la fiche courante. Un setter qui reçoit une fiche voit les résultats précédents, même
+s’ils ont été saisis par un autre setter ; un setter sans accès à cette fiche ne peut pas les
+consulter. Les notes, résultats et événements d’Isolation restent append-only.
+
+Vérifications ciblées : 17 tests Assurance, 5 tests de file Isolation, 26 tests frontend ciblés,
+et compilation TypeScript/Vite. Le test de file couvre un refus suivi d’un résultat plus récent ;
+le test d’historique couvre la consultation après réaffectation.
+La mise à disposition reste limitée à staging jusqu’à fusion et déploiement explicite.
+
+## Exclusion définitive des appels non souhaités (staging)
+
+Dans Assurance et Isolation, « Pas intéressé » est désormais une exclusion persistante fondée sur
+l’historique des résultats : une réponse ultérieure ou un changement de lot ne réintroduit pas la
+fiche. Un rendez-vous déclaré présenté crée aussi une exclusion persistante, même si le rendez-vous
+est ensuite annulé. Ces deux règles s’appliquent à la file active, aux rappels et au contrôle
+serveur qui autorise chaque commande d’appel ; ouvrir une fiche directement ne permet donc pas de
+contourner la règle. Le composeur d’un numéro sans fiche CRM n’a pas de statut métier à contrôler.
+
+Vérifications : tests d’exclusion par file active/rappels et par autorisation serveur dans
+Assurance et Isolation ; suites backend, PostgreSQL, base commune, migrations, lint Ruff et frontend
+passent dans la CI GitHub de la PR #390. La modification est destinée à staging ; aucun déploiement
+production n’a été effectué.
+
 ## Journal d’appels NEWT 541 (local/staging)
 
 Le rapprochement des durées utilise désormais le rapport F=541 confirmé par NEWT. L’UID opaque
@@ -3329,9 +3364,9 @@ La performance compte les rendez-vous pris selon la date de création, y compris
 
 Depuis la gestion d’un compte actif, le superadmin peut ouvrir une session d’assistance pour un espace après avoir saisi un motif. Pendant 15 minutes, le CRM applique les droits métier de ce compte. Le bandeau permet de revenir au compte superadmin. Les réglages de sécurité du compte sont réservés à sa propre session. Le début, la fin et les tentatives d’action sont journalisés avec l’identité du superadmin. Les jetons métier délivrés en assistance expirent au plus tard 30 secondes après émission.
 
-## Reprise de la file après un appel incertain
+## Nouvelle tentative après une commande d’appel incertaine
 
-Les files d’appels Assurance et Isolation proposent de passer au prospect suivant tout en conservant la référence à vérifier. Un même agent ne peut pas émettre une nouvelle commande vers le même numéro pendant les 15 minutes qui suivent une tentative incertaine, sauf si le journal la retrouve. Une commande dont la réservation est restée en attente peut être rapprochée après ce délai.
+Une commande distincte vers le même numéro n’est plus bloquée pendant 15 minutes lorsqu’une tentative précédente est `unknown` ou `dispatching`. Après le délai partagé normal de 5 secondes, le setter peut explicitement préparer et lancer une nouvelle tentative ; l’interface avertit qu’un doublon est possible. Aucun renvoi automatique n’est activé. Le rejeu du même UUID reste idempotent et ne renvoie jamais une nouvelle commande. Les contrôles d’accès, de poste associé, d’affectation et d’éligibilité de la fiche, d’horaires autorisés, de liste d’exclusion et de cooldown de 5 secondes restent actifs sur Assurance et Isolation.
 
 ## Journal des sessions d’assistance
 
@@ -3359,3 +3394,9 @@ Le rapport équipe utilise un agrégat administrateur séparé : l’absence ou 
 Le rapprochement Phonetico accepte désormais les espaces parasites autour du poste et du numéro, et interprète les durées NEWT exprimées en secondes ou sous forme `MM:SS`/`HH:MM:SS`. Une durée mal formée reste inconnue : aucun statut prospect n’est inventé. Les résultats « Répondeur », « Pas intéressé », « Autre résultat », etc. restent les résultats saisis dans Orvia par le setter ; ils ne sont pas présentés comme des réponses CDR de NEWT. Les données NEWT ne sont comptées qu’après correspondance sûre de la ligne 511 avec le poste, le numéro haché et la fenêtre temporelle.
 
 Vérifications : formatage Ruff et tests ciblés du parseur/rapprochement ajoutés. Limite : la documentation fournisseur décrit les colonnes 511 mais ne confirme pas encore une unité pour les valeurs numériques brutes ; les entiers conservent donc l’interprétation historique en secondes, tandis que les formats horloge sont convertis sans ambiguïté. Une réponse 511 réelle reste nécessaire pour valider la recette fournisseur.
+
+## Reprise durable des sessions d’appels
+
+La progression des sessions Assurance et Isolation est persistée côté serveur par compte de portail et par espace. Elle comprend les fiches terminées et la fiche éventuellement interrompue, sans expiration à minuit ni dépendance au navigateur ou à l’appareil. Une reprise rouvre la fiche interrompue sans relancer l’appel automatiquement ; l’agent vérifie l’historique puis ferme la fiche pour l’enregistrer comme terminée. Une seule fiche peut être en cours par compte afin d’éviter deux appels simultanés depuis plusieurs onglets. Les nouveaux appels restent soumis aux files admissibles, aux affectations et aux règles de blocage existantes. Les opérations de progression sont authentifiées et idempotentes pour la clôture d’une fiche.
+
+Vérifications : tests API Assurance et Isolation pour la persistance après relecture, l’isolation par compte, les conflits de fiches en cours et la clôture; tests frontend de reprise sans rappel automatique; compilation frontend. Limite : l’application de ces migrations sur les bases de staging/prod et la recette manuelle après déploiement restent nécessaires. Cette livraison est préparée sur la branche de staging et n’est pas un déploiement en production.

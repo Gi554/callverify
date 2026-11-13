@@ -1,4 +1,4 @@
-"""Reconcile CRM call commands with the NEWT 511 journal to record the provider's duration.
+"""Reconcile CRM call commands with the NEWT 541 journal to record the provider's duration.
 
 Only our own attempts are updated; the provider's global lines are never stored. A line matches
 when it comes from the attempt's extension, reaches the same number (compared through a keyed

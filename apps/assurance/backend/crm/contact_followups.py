@@ -151,8 +151,6 @@ class ContactFollowUpMixin:
         contact = self.get_object()
         if request.method == 'GET':
             qs = contact.call_outcomes.order_by('-created_at', '-pk')
-            if request.user.role == 'setter':
-                qs = qs.filter(setter_id=request.user.pk)
             return self.get_paginated_response(
                 [outcome_output(row) for row in self.paginate_queryset(qs)]
             )
