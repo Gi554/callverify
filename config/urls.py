@@ -40,12 +40,15 @@ for prefix, view, name in [
     router.register(prefix, view, basename=name)
 from core.isolation_notices import Notices
 
+from core.isolation_call_sessions import call_session as isolation_call_session
+
 router.register('isolation-notices', Notices, basename='isolation-notice')
 from core.isolation_unqualified import Unqualified
 
 router.register('isolation-unqualified', Unqualified, basename='isolation-unqualified')
 
 urlpatterns = [
+    path('api/isolation/call-session/', isolation_call_session),
     path('api/admin-search/', admin_search),
     path('api/setter-performance/', setter_performance),
     path('api/internal/support-journal/', business_journal_view('isolation', AuditEvent)),

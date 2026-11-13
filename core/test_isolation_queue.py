@@ -5,11 +5,58 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
 from .test_isolation_work import fixture
-from .models import IsolationVisit, IsolationVisitResult, Prospect, ProspectActivity
+from .models import IsolationVisit, IsolationVisitResult, PhoneNumber, Prospect, ProspectActivity
 
 
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False)
 class IsolationQueueTests(TestCase):
+    def test_call_session_progress_survives_reload_and_is_scoped_to_account(self):
+        prospect = fixture()
+        prospect.assigned_setter_id = 21
+        prospect.save()
+        second = Prospect.objects.create(
+            campaign=prospect.campaign,
+            phone=PhoneNumber.objects.create(e164='+14165550124', line_status='unknown'),
+            raw_phone='4165550124',
+            name='Second synthetic prospect',
+            assigned_setter_id=21,
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', 'setter'))
+        started = client.post('/api/isolation/call-session/', {'action': 'start'}, format='json')
+        self.assertEqual(started.status_code, 200, started.data)
+        began = client.post(
+            '/api/isolation/call-session/',
+            {'action': 'begin', 'prospect_id': prospect.pk},
+            format='json',
+        )
+        self.assertEqual(began.status_code, 200, began.data)
+        self.assertEqual(client.get('/api/isolation/call-session/').data['current_id'], prospect.pk)
+        conflict = client.post(
+            '/api/isolation/call-session/',
+            {'action': 'begin', 'prospect_id': second.pk},
+            format='json',
+        )
+        self.assertEqual(conflict.status_code, 409)
+        completed = client.post(
+            '/api/isolation/call-session/',
+            {'action': 'complete', 'prospect_id': prospect.pk},
+            format='json',
+        )
+        self.assertEqual(completed.status_code, 200, completed.data)
+        self.assertEqual(completed.data['visited_ids'], [prospect.pk])
+        self.assertIsNone(completed.data['current_id'])
+        second.commercial_status = 'not_interested'
+        second.save()
+        blocked = client.post(
+            '/api/isolation/call-session/',
+            {'action': 'begin', 'prospect_id': second.pk},
+            format='json',
+        )
+        self.assertEqual(blocked.status_code, 400)
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(22, 'isolation', 'setter'))
+        self.assertEqual(client.get('/api/isolation/call-session/').data['visited_ids'], [])
+
     def test_active_queue_keeps_history_and_assignment_scope(self):
         first = fixture()
         first.assigned_setter_id = 21

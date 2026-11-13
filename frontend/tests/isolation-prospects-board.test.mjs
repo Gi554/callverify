@@ -22,18 +22,11 @@ let code = compileScript(
     templateOptions: { compilerOptions: { hoistStatic: false } },
   },
 ).content
-const sessionProgressCode = ts.transpileModule(
-  readFileSync(new URL('../src/call-session-progress.ts', import.meta.url), 'utf8'),
-  { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } },
-).outputText
-const sessionProgressUrl =
-  'data:text/javascript;base64,' + Buffer.from(sessionProgressCode).toString('base64')
 code = code
   .replace(
     "from './phone-number'",
     `from '${new URL('../src/phone-number.ts', import.meta.url).href}'`,
   )
-  .replace("from './call-session-progress'", `from '${sessionProgressUrl}'`)
   .replace(/import \{([^}]+)\} from 'lucide-vue-next'/g, (_, names) =>
     names
       .split(',')
@@ -52,7 +45,7 @@ code =
 code = code.replace(
   /import (\w+) from ['"]\.\/[^'"]+\.vue['"]/g,
   (_, name) =>
-    `const ${name}={props:['open','title','autoOpen','role'],setup(p,{slots}){return()=>(${JSON.stringify(name)}==='SidePanel'&&!p.open)?null:stubH('div',{'data-component':${JSON.stringify(name)},'data-title':p.title,'data-auto-open':p.autoOpen},slots.default?.())}}`,
+    `const ${name}={props:['open','title','autoOpen','autoCall','autoSend','session','role'],setup(p,{slots}){return()=>(${JSON.stringify(name)}==='SidePanel'&&!p.open)?null:stubH('div',{'data-component':${JSON.stringify(name)},'data-title':p.title,'data-auto-open':p.autoOpen,'data-auto-call':p.autoCall,'data-auto-send':p.autoSend,'data-session':p.session},slots.default?.())}}`,
 )
 code = "import {h as stubH} from '" + pathToFileURL(require.resolve('vue')).href + "';" + code
 const component = (await import(url(code))).default
@@ -116,10 +109,11 @@ async function flush() {
   }
 }
 const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
-function fixture(role = 'setter', ownLot = false) {
+function fixture(role = 'setter', ownLot = false, serverState = null) {
   const root = { children: [] },
     requests = [],
-    portalCalls = []
+    portalCalls = [],
+    state = serverState || { active: false, visited_ids: [], current_id: null }
   const row = (id, status) => ({
     id,
     name: 'Prospect ' + id,
@@ -133,8 +127,19 @@ function fixture(role = 'setter', ownLot = false) {
   })
   const app = renderer.createApp(component, {
     role,
-    request: async (path, body) => {
+    request: async (path, body, method) => {
       requests.push({ path, body })
+      if (path === 'call-session/') {
+        if (method !== 'POST') return structuredClone(state)
+        if (body.action === 'start') Object.assign(state, { active: true, visited_ids: [], current_id: null })
+        if (body.action === 'begin') state.current_id = body.prospect_id
+        if (body.action === 'complete') {
+          state.visited_ids = [...new Set([...state.visited_ids, body.prospect_id])]
+          state.current_id = null
+        }
+        if (body.action === 'finish') Object.assign(state, { active: false, visited_ids: [], current_id: null })
+        return structuredClone(state)
+      }
       if (path === 'workspace-dashboard/') return { callbacks_due: 2 }
       if (path.startsWith('work-queue/?')) {
         const q = new URLSearchParams(path.split('?')[1]),
@@ -165,7 +170,7 @@ function fixture(role = 'setter', ownLot = false) {
     },
   })
   app.mount(root)
-  return { root, requests, portalCalls, app }
+  return { root, requests, portalCalls, state, app }
 }
 async function click(f, label) {
   const button = all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
@@ -297,8 +302,8 @@ test('setter calls from the paginated active lot even when the reminders filter 
     await start.props.onClick()
     await flush()
     const first = component_(f, 'IsolationProspectActivity')
-    assert.equal(first.props.session, true)
-    assert.equal(component_(f, 'CallAction').props['auto-send'], true)
+    assert.equal(first.props['data-session'], true)
+    assert.equal(component_(f, 'CallAction').props['data-auto-send'], true)
     first.props.onClose()
     await flush()
     assert.match(text(f.root), /Prochain appel dans 10 s/)
@@ -322,9 +327,29 @@ test('setter can stop the countdown and the session ends after the last prospect
     await flush()
     labelled(f, 'Mettre en pause').props.onClick()
     await flush()
-    assert.match(text(f.root), /progression est conservée/)
+    assert.match(text(f.root), /progression est enregistrée sur le serveur/)
     assert.ok(labelled(f, 'Reprendre la session'))
     assert.equal(component_(f, 'IsolationProspectActivity'), undefined)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('Isolation resumes an interrupted prospect without automatically redialing', async () => {
+  const state = { active: true, visited_ids: [9], current_id: 5 }
+  const f = fixture('setter', false, state)
+  try {
+    await flush()
+    await click(f, 'Reprendre la session')
+    const activity = component_(f, 'IsolationProspectActivity')
+    assert.equal(activity.props['data-auto-call'], false)
+    assert.equal(component_(f, 'CallAction').props['data-auto-send'], false)
+    assert.match(text(f.root), /vérifiez son historique/)
+    activity.props.onClose()
+    await flush()
+    assert.deepEqual(state.visited_ids, [9, 5])
+    assert.equal(state.current_id, null)
+    assert.ok(labelled(f, 'Appeler maintenant'))
   } finally {
     f.app.unmount()
   }
@@ -348,7 +373,7 @@ test('administrator calls the prospects of their own lot', async () => {
     await flush()
     assert.ok(f.requests.some((r) => r.path.startsWith('work-queue/?owner=me')))
     const first = component_(f, 'IsolationProspectActivity')
-    assert.equal(first.props.session, true)
+    assert.equal(first.props['data-session'], true)
     first.props.onClose()
     await flush()
     assert.match(text(f.root), /Prochain appel dans 10 s/)

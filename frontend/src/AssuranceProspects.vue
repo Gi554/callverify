@@ -18,13 +18,6 @@ import SidePanel from './SidePanel.vue';
 import CallCountdownModal from './CallCountdownModal.vue';
 import ProspectExport from './ProspectExport.vue';
 import AssuranceLots from './AssuranceLots.vue';
-import {
-  callSessionKey,
-  clearCallSession,
-  quebecDay,
-  readCallSession,
-  writeCallSession,
-} from './call-session-progress';
 const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
@@ -90,37 +83,25 @@ const total = computed(() => visible.value.reduce((n, c) => n + c.count, 0));
 const COUNTDOWN = 10;
 const session = ref(false),
   countdown = ref<number | null>(null),
-  sessionNote = ref('');
-const sessionKey = callSessionKey('assurance', props.sessionOwner || props.role);
-const sessionStorage = (() => {
-  try {
-    return typeof window === 'undefined' ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-})();
-const savedSession = sessionStorage ? readCallSession(sessionStorage, sessionKey) : null;
-const resumeAvailable = ref(!!savedSession);
-const visited = new Set<number>(savedSession?.visited || []);
-function persistSession() {
-  if (!sessionStorage) return;
-  try {
-    writeCallSession(sessionStorage, sessionKey, {
-      day: quebecDay(),
-      active: true,
-      visited: [...visited],
-    });
-  } catch {
-    // Session progress is a convenience; saved call outcomes remain on the server.
-  }
+  sessionNote = ref(''),
+  resumeAvailable = ref(false),
+  recovering = ref(false),
+  currentSessionId = ref<number | null>(null);
+const visited = new Set<number>();
+async function sessionAction(action: string, contactId?: number) {
+  return props.request(
+    'call-session/',
+    { action, ...(contactId ? { contact_id: contactId } : {}) },
+    'POST',
+  );
 }
-function clearSessionProgress() {
-  if (!sessionStorage) return;
-  try {
-    clearCallSession(sessionStorage, sessionKey);
-  } catch {
-    // The call session can still run if browser storage is unavailable.
-  }
+async function loadSessionState() {
+  const saved = await props.request('call-session/');
+  visited.clear();
+  for (const id of saved.visited_ids || []) visited.add(Number(id));
+  currentSessionId.value = saved.current_id == null ? null : Number(saved.current_id);
+  resumeAvailable.value = !!saved.active;
+  return saved;
 }
 // An administrator calls the prospects of their own lot; a setter's board already is their lot.
 const mine = ref<any[]>([]);
@@ -162,11 +143,26 @@ async function advance() {
   if (!row) {
     session.value = false;
     sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
-    clearSessionProgress();
+    try {
+      await sessionAction('finish');
+      visited.clear();
+      currentSessionId.value = null;
+    } catch (e: any) {
+      sessionNote.value = `Session terminée, mais progression non clôturée : ${e.message}`;
+    }
     resumeAvailable.value = false;
     return;
   }
-  visited.add(row.id);
+  try {
+    await sessionAction('begin', Number(row.id));
+    currentSessionId.value = Number(row.id);
+    recovering.value = false;
+  } catch (e: any) {
+    session.value = false;
+    sessionNote.value = e.message || 'Impossible de préparer cette fiche.';
+    resumeAvailable.value = true;
+    return;
+  }
   await open(row, 'call');
   if (!selected.value) {
     session.value = false;
@@ -176,9 +172,26 @@ async function advance() {
 }
 async function startSession() {
   sessionNote.value = '';
-  if (!resumeAvailable.value) {
-    visited.clear();
-    persistSession();
+  try {
+    const saved = await loadSessionState();
+    if (saved.active && saved.current_id) {
+      session.value = true;
+      recovering.value = true;
+      const detail = await props.request(`contacts/${saved.current_id}/`);
+      workflow.value = 'call';
+      selected.value = detail;
+      sessionNote.value = 'Fiche interrompue : vérifiez son historique avant toute nouvelle tentative d’appel.';
+      resumeAvailable.value = false;
+      return;
+    }
+    if (!saved.active) {
+      visited.clear();
+      await sessionAction('start');
+    }
+  } catch (e: any) {
+    sessionNote.value = e.message || 'Impossible de charger la progression de la session.';
+    resumeAvailable.value = true;
+    return;
   }
   resumeAvailable.value = false;
   if (admin.value) {
@@ -192,7 +205,7 @@ async function startSession() {
     if (!nextProspect()) {
       sessionNote.value =
         'Aucun prospect dans votre lot : attribuez-vous un lot avec « Attribuer des lots ».';
-      clearSessionProgress();
+      await sessionAction('finish');
       return;
     }
   }
@@ -202,15 +215,21 @@ async function startSession() {
 function stopSession() {
   stopTimer();
   session.value = false;
-  sessionNote.value = 'Session mise en pause. Votre progression est conservée pour aujourd’hui.';
+  sessionNote.value = 'Session mise en pause. Votre progression est enregistrée sur le serveur.';
   resumeAvailable.value = true;
 }
-function startCountdown() {
+async function startCountdown() {
   stopTimer();
   if (!nextProspect()) {
     session.value = false;
     sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
-    clearSessionProgress();
+    try {
+      await sessionAction('finish');
+      visited.clear();
+      currentSessionId.value = null;
+    } catch (e: any) {
+      sessionNote.value = `Session terminée, mais progression non clôturée : ${e.message}`;
+    }
     resumeAvailable.value = false;
     return;
   }
@@ -293,11 +312,20 @@ async function open(row: any, mode: 'edit' | 'call') {
     opening.value = false;
   }
 }
-function closed() {
+async function closed() {
   const id = selected.value?.id;
-  if (session.value && Number.isSafeInteger(Number(id)) && Number(id) > 0) {
-    visited.add(Number(id));
-    persistSession();
+  if (Number.isSafeInteger(Number(id)) && Number(id) > 0 && currentSessionId.value === Number(id)) {
+    panelBusy.value = true;
+    try {
+      await sessionAction('complete', Number(id));
+      visited.add(Number(id));
+      currentSessionId.value = null;
+      recovering.value = false;
+    } catch (e: any) {
+      error.value = `Progression non enregistrée : ${e.message}. La fiche reste ouverte.`;
+      panelBusy.value = false;
+      return;
+    }
   }
   selected.value = null;
   panelBusy.value = false;
@@ -310,6 +338,11 @@ function closed() {
 }
 onMounted(async () => {
   await load();
+  try {
+    await loadSessionState();
+  } catch {
+    sessionNote.value = 'La progression de session ne peut pas être chargée pour le moment.';
+  }
   if (props.focus) await open({ id: props.focus.id }, props.focus.mode);
 });
 onBeforeUnmount(() => {
@@ -550,7 +583,7 @@ onBeforeUnmount(() => {
         :request="request"
         :role="role"
         :workflow="workflow"
-        :auto-call="session || workflow === 'call'"
+        :auto-call="!recovering && (session || workflow === 'call')"
         @busy="panelBusy = $event"
         @summary="selected = { ...selected, ...$event }"
         @close="closed"

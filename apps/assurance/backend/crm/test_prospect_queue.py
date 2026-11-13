@@ -89,6 +89,61 @@ class ProspectQueueTests(TestCase):
         self.assertNotIn('Declined synthetic', export.content.decode('utf-8-sig'))
         self.assertNotIn('Booked synthetic', export.content.decode('utf-8-sig'))
 
+    def test_call_session_progress_survives_reload_and_is_scoped_to_account(self):
+        self.open.assigned_setter_id = 21
+        self.open.save()
+        second = Contact.objects.create(
+            name='Second active synthetic',
+            phone='5145550104',
+            created_by_id=21,
+            assigned_setter_id=21,
+        )
+        started = self.client.post(
+            '/api/assurance/call-session/', {'action': 'start'}, format='json'
+        )
+        self.assertEqual(started.status_code, 200, started.data)
+        began = self.client.post(
+            '/api/assurance/call-session/',
+            {'action': 'begin', 'contact_id': self.open.pk},
+            format='json',
+        )
+        self.assertEqual(began.status_code, 200, began.data)
+        self.assertEqual(
+            self.client.get('/api/assurance/call-session/').data['current_id'], self.open.pk
+        )
+        conflict = self.client.post(
+            '/api/assurance/call-session/',
+            {'action': 'begin', 'contact_id': second.pk},
+            format='json',
+        )
+        self.assertEqual(conflict.status_code, 409)
+        completed = self.client.post(
+            '/api/assurance/call-session/',
+            {'action': 'complete', 'contact_id': self.open.pk},
+            format='json',
+        )
+        self.assertEqual(completed.status_code, 200, completed.data)
+        self.assertEqual(completed.data['visited_ids'], [self.open.pk])
+        self.assertIsNone(completed.data['current_id'])
+        duplicate = self.client.post(
+            '/api/assurance/call-session/',
+            {'action': 'begin', 'contact_id': self.open.pk},
+            format='json',
+        )
+        self.assertEqual(duplicate.status_code, 409)
+        self.declined.assigned_setter_id = 21
+        self.declined.save()
+        blocked = self.client.post(
+            '/api/assurance/call-session/',
+            {'action': 'begin', 'contact_id': self.declined.pk},
+            format='json',
+        )
+        self.assertEqual(blocked.status_code, 400)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(22, 'assurance', 'setter'))
+        other_account = self.client.get('/api/assurance/call-session/')
+        self.assertEqual(other_account.status_code, 200)
+        self.assertEqual(other_account.data['visited_ids'], [])
+
     def test_new_callback_result_stays_out_until_its_follow_up_is_due(self):
         task = FollowUpTask.objects.create(
             contact=self.declined,
