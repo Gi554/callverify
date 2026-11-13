@@ -262,7 +262,11 @@ def fetch_raw(username, password, start, end):
 
 
 def parse_recording_records(raw):
-    """Parse the confirmed F=541 call-recording report without retaining numbers or names."""
+    """Parse F=541 into the transient shape consumed by call-journal matching.
+
+    The destination is kept only in memory long enough for the caller to hash it;
+    it is never persisted in the CRM journal.
+    """
     if len(raw) > MAX_BYTES:
         raise DirectoryUnavailable()
     try:
@@ -275,13 +279,14 @@ def parse_recording_records(raw):
                 continue
             if len(row) != len(RECORDING_COLUMNS):
                 raise DirectoryUnavailable()
-            uid, day, clock, source, _caller, _destination, duration = row
+            uid, day, clock, source, _caller, destination, duration = row
             if not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', uid.strip()):
                 continue
             records.append(
                 {
                     'uid': uid.strip(),
-                    'extension': normalize_extension(source),
+                    'from': normalize_extension(source),
+                    'to': destination.strip(),
                     'occurred_at': local_instant(day.strip(), clock.strip()),
                     'duration_raw': duration.strip(),
                 }
