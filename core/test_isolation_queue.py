@@ -49,7 +49,7 @@ class IsolationQueueTests(TestCase):
         second.commercial_status = 'not_interested'
         second.save()
         blocked = client.post(
-            '/api/isolation/call-session/',
+            '/api/call-session/',
             {'action': 'begin', 'prospect_id': second.pk},
             format='json',
         )
