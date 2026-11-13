@@ -113,6 +113,10 @@ from .crm.advisor_availability import availability as advisor_availability
 urlpatterns += [path('api/assurance/advisor-availability/', advisor_availability)]
 from .crm.client_folders import clients as client_folders, export_client
 
+from .crm.call_sessions import call_session as assurance_call_session
+
+urlpatterns += [path('api/assurance/call-session/', assurance_call_session)]
+
 urlpatterns += [
     path('api/assurance/client-folders/', client_folders),
     path('api/assurance/client-folders/<int:client_id>/', client_folders),

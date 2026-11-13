@@ -22,6 +22,7 @@ const props = defineProps<{
   request: (path: string, body?: any, method?: string) => Promise<any>;
   portal: (path: string, body?: any) => Promise<any>;
   role: string;
+  sessionOwner?: string;
   // Prospect to open on arrival, e.g. from the calls module.
   focus?: { id: number; mode: 'edit' | 'call' } | null;
 }>();
@@ -82,8 +83,26 @@ const total = computed(() => visible.value.reduce((n, c) => n + c.count, 0));
 const COUNTDOWN = 10;
 const session = ref(false),
   countdown = ref<number | null>(null),
-  sessionNote = ref('');
+  sessionNote = ref(''),
+  resumeAvailable = ref(false),
+  recovering = ref(false),
+  currentSessionId = ref<number | null>(null);
 const visited = new Set<number>();
+async function sessionAction(action: string, contactId?: number) {
+  return props.request(
+    'call-session/',
+    { action, ...(contactId ? { contact_id: contactId } : {}) },
+    'POST',
+  );
+}
+async function loadSessionState() {
+  const saved = await props.request('call-session/');
+  visited.clear();
+  for (const id of saved.visited_ids || []) visited.add(Number(id));
+  currentSessionId.value = saved.current_id == null ? null : Number(saved.current_id);
+  resumeAvailable.value = !!saved.active;
+  return saved;
+}
 // An administrator calls the prospects of their own lot; a setter's board already is their lot.
 const mine = ref<any[]>([]);
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -97,7 +116,13 @@ async function loadMine() {
   mine.value = rows.sort((a, b) => a.id - b.id);
 }
 function nextProspect() {
-  const pool = admin.value ? mine.value : columns.value.flatMap((column) => column.rows);
+  // Due callbacks are handled from the dedicated Rappels queue, not mixed into
+  // the prospecting session. The row's pipeline status can still be "new".
+  const pool = admin.value
+    ? mine.value
+    : columns.value
+        .filter((column) => column.key !== 'callback_queue')
+        .flatMap((column) => column.rows);
   return (
     pool.find(
       (row) =>
@@ -118,28 +143,70 @@ async function advance() {
   if (!row) {
     session.value = false;
     sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
+    try {
+      await sessionAction('finish');
+      visited.clear();
+      currentSessionId.value = null;
+    } catch (e: any) {
+      sessionNote.value = `Session terminée, mais progression non clôturée : ${e.message}`;
+    }
+    resumeAvailable.value = false;
     return;
   }
-  visited.add(row.id);
+  try {
+    await sessionAction('begin', Number(row.id));
+    currentSessionId.value = Number(row.id);
+    recovering.value = false;
+  } catch (e: any) {
+    session.value = false;
+    sessionNote.value = e.message || 'Impossible de préparer cette fiche.';
+    resumeAvailable.value = true;
+    return;
+  }
   await open(row, 'call');
   if (!selected.value) {
     session.value = false;
     sessionNote.value = error.value || 'Session interrompue.';
+    resumeAvailable.value = true;
   }
 }
 async function startSession() {
-  visited.clear();
   sessionNote.value = '';
+  try {
+    const saved = await loadSessionState();
+    if (saved.active && saved.current_id) {
+      session.value = true;
+      recovering.value = true;
+      const detail = await props.request(`contacts/${saved.current_id}/`);
+      workflow.value = 'call';
+      selected.value = detail;
+      sessionNote.value =
+        'Fiche interrompue : vérifiez son historique avant toute nouvelle tentative d’appel.';
+      resumeAvailable.value = false;
+      return;
+    }
+    if (!saved.active) {
+      visited.clear();
+      await sessionAction('start');
+    }
+  } catch (e: any) {
+    sessionNote.value = e.message || 'Impossible de charger la progression de la session.';
+    resumeAvailable.value = true;
+    return;
+  }
+  resumeAvailable.value = false;
   if (admin.value) {
     try {
       await loadMine();
     } catch (e: any) {
       sessionNote.value = e.message;
+      resumeAvailable.value = true;
       return;
     }
     if (!nextProspect()) {
       sessionNote.value =
         'Aucun prospect dans votre lot : attribuez-vous un lot avec « Attribuer des lots ».';
+      await sessionAction('finish');
       return;
     }
   }
@@ -149,13 +216,22 @@ async function startSession() {
 function stopSession() {
   stopTimer();
   session.value = false;
-  sessionNote.value = 'Session arrêtée.';
+  sessionNote.value = 'Session mise en pause. Votre progression est enregistrée sur le serveur.';
+  resumeAvailable.value = true;
 }
-function startCountdown() {
+async function startCountdown() {
   stopTimer();
   if (!nextProspect()) {
     session.value = false;
     sessionNote.value = 'Session terminée : plus aucun prospect à appeler.';
+    try {
+      await sessionAction('finish');
+      visited.clear();
+      currentSessionId.value = null;
+    } catch (e: any) {
+      sessionNote.value = `Session terminée, mais progression non clôturée : ${e.message}`;
+    }
+    resumeAvailable.value = false;
     return;
   }
   countdown.value = COUNTDOWN;
@@ -237,8 +313,21 @@ async function open(row: any, mode: 'edit' | 'call') {
     opening.value = false;
   }
 }
-function closed() {
+async function closed() {
   const id = selected.value?.id;
+  if (Number.isSafeInteger(Number(id)) && Number(id) > 0 && currentSessionId.value === Number(id)) {
+    panelBusy.value = true;
+    try {
+      await sessionAction('complete', Number(id));
+      visited.add(Number(id));
+      currentSessionId.value = null;
+      recovering.value = false;
+    } catch (e: any) {
+      error.value = `Progression non enregistrée : ${e.message}. La fiche reste ouverte.`;
+      panelBusy.value = false;
+      return;
+    }
+  }
   selected.value = null;
   panelBusy.value = false;
   void load().then(async () => {
@@ -250,6 +339,11 @@ function closed() {
 }
 onMounted(async () => {
   await load();
+  try {
+    await loadSessionState();
+  } catch {
+    sessionNote.value = 'La progression de session ne peut pas être chargée pour le moment.';
+  }
   if (props.focus) await open({ id: props.focus.id }, props.focus.mode);
 });
 onBeforeUnmount(() => {
@@ -297,7 +391,9 @@ onBeforeUnmount(() => {
           :disabled="busy || !total"
           @click="startSession"
         >
-          <PhoneForwarded :size="16" />Lancer une session d’appels
+          <PhoneForwarded :size="16" />{{
+            resumeAvailable ? 'Reprendre la session' : 'Lancer une session d’appels'
+          }}
         </button>
 
         <ProspectExport
@@ -330,7 +426,7 @@ onBeforeUnmount(() => {
           >Prochain appel dans {{ countdown }} s</span
         >
         <button class="primary" @click="advance">Appeler maintenant</button>
-        <button class="secondary" @click="stopSession">Arrêter la session</button>
+        <button class="secondary" @click="stopSession">Mettre en pause</button>
       </CallCountdownModal>
       <p v-else-if="sessionNote" class="call-session" role="status">{{ sessionNote }}</p>
       <AssuranceLots v-if="admin && lotsOpen" :request="request" :portal="portal" @changed="load" />
@@ -488,7 +584,7 @@ onBeforeUnmount(() => {
         :request="request"
         :role="role"
         :workflow="workflow"
-        :auto-call="session || workflow === 'call'"
+        :auto-call="!recovering && (session || workflow === 'call')"
         @busy="panelBusy = $event"
         @summary="selected = { ...selected, ...$event }"
         @close="closed"

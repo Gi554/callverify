@@ -86,12 +86,32 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture(role = 'administrator', second = false, ownLot = false) {
+function fixture(
+  role = 'administrator',
+  second = false,
+  ownLot = false,
+  withCallback = false,
+  serverState = null,
+) {
   const root = { children: [] },
     requests = [],
-    imported = []
-  const request = async (path) => {
-    requests.push(path)
+    imported = [],
+    state = serverState || { active: false, visited_ids: [], current_id: null }
+  const request = async (path, body, method) => {
+    requests.push({ path, body, method })
+    if (path === 'call-session/') {
+      if (method !== 'POST') return structuredClone(state)
+      if (body.action === 'start')
+        Object.assign(state, { active: true, visited_ids: [], current_id: null })
+      if (body.action === 'begin') state.current_id = body.contact_id
+      if (body.action === 'complete') {
+        state.visited_ids = [...new Set([...state.visited_ids, body.contact_id])]
+        state.current_id = null
+      }
+      if (body.action === 'finish')
+        Object.assign(state, { active: false, visited_ids: [], current_id: null })
+      return structuredClone(state)
+    }
     if (path === 'pipeline/')
       return {
         stages: [
@@ -99,6 +119,25 @@ function fixture(role = 'administrator', second = false, ownLot = false) {
           { key: 'won', label: 'Gagné', active: true },
         ],
       }
+    if (withCallback && path.includes('queue=callbacks'))
+      return {
+        count: 1,
+        next: null,
+        results: [
+          {
+            id: 10,
+            name: 'Rappel existant',
+            phone: '+15145559999',
+            email: '',
+            status: 'new',
+            queue_reason: 'callback',
+            updated_at: '2026-10-20T12:00:00Z',
+          },
+        ],
+      }
+    const detail = path.match(/^contacts\/(\d+)\/$/)
+    if (detail)
+      return { id: Number(detail[1]), name: 'Dossier ' + detail[1], phone: '+15145550000' }
     if (
       path.startsWith('contacts/?status=new') ||
       (ownLot && path.startsWith('contacts/?mine=true'))
@@ -141,7 +180,7 @@ function fixture(role = 'administrator', second = false, ownLot = false) {
       }),
   })
   app.mount(root)
-  return { root, requests, imported, close: () => app.unmount() }
+  return { root, requests, state, imported, close: () => app.unmount() }
 }
 const button = (f, label) => all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
 const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
@@ -159,12 +198,12 @@ test('administrator sees the team board with call preparation', async () => {
     assert.match(text(f.root), /Tous les prospects de l’équipe/)
     assert.match(text(f.root), /Dossier Alpha/)
     assert.equal(callButtons(f).length, 1)
-    assert.ok(f.requests.some((path) => path.includes('queue=active')))
+    assert.ok(f.requests.some(({ path }) => path.includes('queue=active')))
     const processed = all(f.root).find((n) => n.tag === 'input' && n.props.type === 'checkbox')
     processed.props['onUpdate:modelValue'](true)
     processed.props.onChange()
     await flush()
-    assert.ok(f.requests.some((path) => path.includes('queue=all')))
+    assert.ok(f.requests.some(({ path }) => path.includes('queue=all')))
     assert.ok(all(f.root).some((n) => /Modifier le numéro/.test(n.props?.['aria-label'] || '')))
     assert.equal(component_(f, 'AssuranceContacts'), undefined)
   } finally {
@@ -184,10 +223,10 @@ test('administrator switches to the list with imports and back to a refreshed bo
     assert.equal(button(f, 'Actualiser'), undefined)
     list.props.onImported(42)
     assert.deepEqual(f.imported, [42])
-    const before = f.requests.filter((path) => path === 'pipeline/').length
+    const before = f.requests.filter(({ path }) => path === 'pipeline/').length
     button(f, 'Tableau').props.onClick()
     await flush()
-    assert.equal(f.requests.filter((path) => path === 'pipeline/').length, before + 1)
+    assert.equal(f.requests.filter(({ path }) => path === 'pipeline/').length, before + 1)
     assert.match(text(f.root), /Dossier Alpha/)
   } finally {
     f.close()
@@ -262,6 +301,41 @@ test('setter runs a call session with a countdown between prospects', async () =
   }
 })
 
+test('setter call session does not pull prospects from the separate callbacks queue', async () => {
+  const f = fixture('setter', false, false, true)
+  try {
+    await flush()
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    assert.ok(f.requests.some(({ path }) => path.includes('queue=callbacks')))
+    assert.ok(f.requests.some(({ path }) => path === 'contacts/11/'))
+    assert.ok(f.requests.every(({ path }) => path !== 'contacts/10/'))
+  } finally {
+    f.close()
+  }
+})
+
+test('Assurance resumes the interrupted prospect without automatically redialing', async () => {
+  const state = { active: true, visited_ids: [9], current_id: 11 }
+  const f = fixture('setter', true, false, false, state)
+  try {
+    await flush()
+    button(f, 'Reprendre la session').props.onClick()
+    await flush()
+    const editor = component_(f, 'AssuranceContactEditor')
+    assert.equal(editor.props.contact.id, 11)
+    assert.equal(editor.props['auto-call'], false)
+    assert.match(text(f.root), /vérifiez son historique/)
+    editor.props.onClose()
+    await flush()
+    assert.deepEqual(state.visited_ids, [9, 11])
+    assert.equal(state.current_id, null)
+    assert.ok(button(f, 'Appeler maintenant'))
+  } finally {
+    f.close()
+  }
+})
+
 test('setter can stop the countdown', async () => {
   const f = fixture('setter', true)
   try {
@@ -270,9 +344,10 @@ test('setter can stop the countdown', async () => {
     await flush()
     component_(f, 'AssuranceContactEditor').props.onClose()
     await flush()
-    button(f, 'Arrêter la session').props.onClick()
+    button(f, 'Mettre en pause').props.onClick()
     await flush()
-    assert.match(text(f.root), /Session arrêtée/)
+    assert.match(text(f.root), /progression est enregistrée sur le serveur/)
+    assert.ok(button(f, 'Reprendre la session'))
     assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
   } finally {
     f.close()
@@ -298,7 +373,7 @@ test('administrator calls the prospects of their own lot', async () => {
     await flush()
     button(f, 'Lancer une session d’appels').props.onClick()
     await flush()
-    assert.ok(f.requests.some((path) => path.startsWith('contacts/?mine=true')))
+    assert.ok(f.requests.some(({ path }) => path.startsWith('contacts/?mine=true')))
     const first = component_(f, 'AssuranceContactEditor')
     assert.equal(first.props.workflow, 'call')
     first.props.onClose()
@@ -341,7 +416,7 @@ test('dismissing the countdown modal stops the session without opening another p
     await flush()
     component_(f, 'CallCountdownModal').props.onStop()
     await flush()
-    assert.match(text(f.root), /Session arrêtée/)
+    assert.match(text(f.root), /Session mise en pause/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
   } finally {

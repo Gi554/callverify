@@ -55,6 +55,16 @@ class Contact(models.Model):
         return super().save(*args, **kwargs)
 
 
+class CallSessionProgress(models.Model):
+    """Durable call-session cursor, scoped to a central portal account."""
+
+    portal_user_id = models.PositiveBigIntegerField(unique=True)
+    active = models.BooleanField(default=False)
+    visited_contact_ids = models.JSONField(default=list)
+    current_contact_id = models.PositiveBigIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class AdvisorAssignment(models.Model):
     setter_id = models.PositiveBigIntegerField()
     setter_name = models.CharField(max_length=150)
