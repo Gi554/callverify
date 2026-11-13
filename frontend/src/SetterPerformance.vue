@@ -81,6 +81,13 @@ function formatDuration(seconds: number | null | undefined) {
 function teamCallCount(row: any, key: string) {
   return row.phone?.totals?.[key] ?? 0;
 }
+function callUserKey(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('fr-CA')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
 function shiftReportDay(offset: number) {
   const next = new Date(`${reportDay.value}T12:00:00`);
   next.setDate(next.getDate() + offset);
@@ -107,14 +114,16 @@ async function loadTeam() {
         team: '1',
       })}`,
     );
-    const callsByUser = new Map(
-      (phone.team || []).map((item: any) => [String(item.user_id), item]),
-    );
+    const callsByUser = new Map<string, any>();
+    for (const item of phone.team || []) {
+      callsByUser.set(String(item.user_id), item);
+      if (item.user__username) callsByUser.set(callUserKey(item.user__username), item);
+    }
     const rows = await Promise.all(
       agents.value.map(async (item) => ({
         ...item,
         performance: await props.request(`setter-performance/${item.id}/?${query}`),
-        phone: callsByUser.get(String(item.id)),
+        phone: callsByUser.get(String(item.id)) || callsByUser.get(callUserKey(item.name)),
       })),
     );
     teamRows.value = rows;
