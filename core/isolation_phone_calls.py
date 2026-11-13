@@ -33,11 +33,15 @@ class Input(serializers.Serializer):
 
 
 def destination(row):
-    if row.commercial_status == 'not_interested' or ProspectActivity.objects.filter(
+    declined = row.commercial_status == 'not_interested' or ProspectActivity.objects.filter(
         prospect=row, kind='call_result', changes__result='not_interested'
-    ).exists():
+    ).exists()
+    if declined:
         raise ValidationError('Ce prospect a indiqué ne pas être intéressé : appel interdit.')
-    if IsolationVisitResult.objects.filter(visit__prospect=row, performed=True).exists():
+    attended = IsolationVisitResult.objects.filter(
+        visit__prospect=row, performed=True
+    ).exists()
+    if attended:
         raise ValidationError('Ce prospect s’est présenté à un rendez-vous : appel interdit.')
     if row.compliance not in ('allowed', 'review'):
         raise ValidationError('Appel interdit pour ce prospect.')

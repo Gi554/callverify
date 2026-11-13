@@ -8,11 +8,15 @@ from .models import Appointment, AppointmentReport, ContactCallOutcome, FollowUp
 
 def call_block_reason(contact):
     """Permanent call exclusions for an explicit decline or attended appointment."""
-    if ContactCallOutcome.objects.filter(contact=contact, result='not_interested').exists():
+    declined = ContactCallOutcome.objects.filter(
+        contact=contact, result='not_interested'
+    ).exists()
+    if declined:
         return 'Ce prospect a indiqué ne pas être intéressé : appel interdit.'
-    if AppointmentReport.objects.filter(
+    attended = AppointmentReport.objects.filter(
         appointment__contact=contact, performed=True
-    ).exists():
+    ).exists()
+    if attended:
         return 'Ce prospect s’est présenté à un rendez-vous : appel interdit.'
     return ''
 
