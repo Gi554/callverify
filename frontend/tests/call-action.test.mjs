@@ -255,7 +255,7 @@ test('outside the permitted hours no intent and no send happen, with the reason 
     f.close()
   }
 })
-test('lost dispatch response preserves reference and prevents another send', async () => {
+test('lost dispatch response preserves reference and allows an explicit new attempt', async () => {
   let sends = 0
   const f = fixture(async (path, body) => {
     if (path.endsWith('options/')) return { enabled: true, post_associated: true }
@@ -271,8 +271,11 @@ test('lost dispatch response preserves reference and prevents another send', asy
     assert.equal(f.saved.size, 1)
     await f.click('Vérifier la commande')
     assert.equal(sends, 1)
-    assert.match(text(f.root), /Aucune relance automatique/)
-    assert.doesNotMatch(text(f.root), /Préparer un nouvel appel/)
+    assert.match(text(f.root), /résultat de la commande précédente reste indéterminé/i)
+    assert.match(text(f.root), /doublon/i)
+    await f.click('Préparer une nouvelle tentative')
+    await f.click('Lancer l’appel')
+    assert.equal(sends, 2)
   } finally {
     f.close()
   }
