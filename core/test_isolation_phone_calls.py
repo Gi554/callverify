@@ -3,7 +3,14 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.tickets import issue as ticket
 from packages.access.phone_calls import verify, issue
-from .models import Prospect, Suppression, AuditEvent
+from .models import (
+    Prospect,
+    Suppression,
+    AuditEvent,
+    ProspectActivity,
+    IsolationVisit,
+    IsolationVisitResult,
+)
 from .test_isolation_activity import assigned_fixture
 
 
@@ -72,6 +79,45 @@ class IsolationCallIntentTests(TestCase):
         Suppression.objects.all().delete()
         self.row.phone = None
         self.row.save()
+        self.assertEqual(self.post().status_code, 400)
+
+    def test_declined_or_attended_prospect_is_blocked_at_call_intent(self):
+        ProspectActivity.objects.create(
+            prospect=self.row,
+            request_id=uuid4(),
+            fingerprint='declined',
+            author_portal_id=21,
+            author_role='setter',
+            kind='call_result',
+            body='Pas intéressé',
+            changes={'result': 'not_interested'},
+        )
+        self.assertEqual(self.post().status_code, 400)
+        ProspectActivity.objects.all().delete()
+        from datetime import timedelta
+        from django.utils import timezone
+
+        now = timezone.now()
+        visit = IsolationVisit.objects.create(
+            prospect=self.row,
+            request_id=uuid4(),
+            fingerprint='attended',
+            client_id=41,
+            client_name='Client',
+            setter_id=21,
+            setter_name='Setter',
+            booked_by_id=21,
+            starts_at=now - timedelta(days=1),
+            ends_at=now - timedelta(days=1) + timedelta(hours=1),
+            timezone='America/Toronto',
+        )
+        IsolationVisitResult.objects.create(
+            visit=visit,
+            performed=True,
+            outcome='completed',
+            note='',
+            author_client_id=41,
+        )
         self.assertEqual(self.post().status_code, 400)
 
     def test_final_check_revalidates_transfer_number_and_exclusion(self):

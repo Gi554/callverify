@@ -91,6 +91,41 @@ class IsolationQueueTests(TestCase):
             'appointment_booked',
         )
 
+    def test_attended_prospect_remains_excluded_even_if_visit_is_cancelled(self):
+        prospect = fixture()
+        prospect.assigned_setter_id = 21
+        prospect.save()
+        visit = IsolationVisit.objects.create(
+            prospect=prospect,
+            request_id=uuid4(),
+            fingerprint='attended-queue-test',
+            client_id=41,
+            client_name='Client',
+            setter_id=21,
+            setter_name='Setter',
+            booked_by_id=21,
+            starts_at=timezone.now() - timedelta(days=1),
+            ends_at=timezone.now() - timedelta(days=1) + timedelta(hours=1),
+            timezone='America/Toronto',
+            status='cancelled',
+        )
+        IsolationVisitResult.objects.create(
+            visit=visit,
+            performed=True,
+            outcome='completed',
+            note='',
+            author_client_id=41,
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(21, 'isolation', 'setter'))
+        active = client.get('/api/work-queue/', {'queue': 'active'}).data['results']
+        self.assertNotIn(prospect.pk, [row['id'] for row in active])
+        all_rows = client.get('/api/work-queue/', {'queue': 'all'}).data['results']
+        self.assertEqual(
+            next(row for row in all_rows if row['id'] == prospect.pk)['queue_reason'],
+            'appointment_attended',
+        )
+
     def test_unanswered_calls_reenter_twice_daily_then_are_exhausted(self):
         prospect = fixture()
         prospect.assigned_setter_id = 21

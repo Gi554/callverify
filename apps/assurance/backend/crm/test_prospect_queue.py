@@ -4,7 +4,14 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from .models import Contact, ContactCallOutcome, Appointment, AdvisorAssignment
+from .models import (
+    Contact,
+    ContactCallOutcome,
+    Appointment,
+    AppointmentReport,
+    AdvisorAssignment,
+    FollowUpTask,
+)
 
 
 @override_settings(DEBUG=True)
@@ -83,12 +90,19 @@ class ProspectQueueTests(TestCase):
         self.assertNotIn('Booked synthetic', export.content.decode('utf-8-sig'))
 
     def test_new_callback_result_stays_out_until_its_follow_up_is_due(self):
+        task = FollowUpTask.objects.create(
+            contact=self.declined,
+            setter_id=21,
+            reason='Rappel demandé',
+            due_at=timezone.now() + timedelta(hours=1),
+        )
         ContactCallOutcome.objects.create(
             contact=self.declined,
             setter_id=21,
             request_id=uuid4(),
             fingerprint='new',
             result='callback',
+            task=task,
         )
         self.appointment.status = 'cancelled'
         self.appointment.save()
@@ -96,7 +110,25 @@ class ProspectQueueTests(TestCase):
             self.client.get('/api/assurance/contacts/', {'queue': 'active'}).data['count'], 2
         )
         self.assertEqual(
+            self.client.get('/api/assurance/contacts/', {'queue': 'callbacks'}).data['count'], 0
+        )
+        self.assertEqual(
             self.client.get('/api/assurance/contacts/', {'queue': 'bad'}).status_code, 400
+        )
+
+    def test_attended_contact_remains_excluded_even_if_appointment_is_cancelled(self):
+        appointment = self.appointment
+        AppointmentReport.objects.create(
+            appointment=appointment, performed=True, author_id=31, outcome='performed'
+        )
+        appointment.status = 'cancelled'
+        appointment.save()
+        active = self.client.get('/api/assurance/contacts/', {'queue': 'active'}).data['results']
+        self.assertNotIn(self.booked.pk, [row['id'] for row in active])
+        all_rows = self.client.get('/api/assurance/contacts/', {'queue': 'all'}).data['results']
+        self.assertEqual(
+            next(row for row in all_rows if row['id'] == self.booked.pk)['queue_reason'],
+            'appointment_attended',
         )
 
     def test_advisor_scope_is_not_expanded_by_all_queue(self):
