@@ -172,6 +172,9 @@ const session = ref(false),
   recovering = ref(false),
   currentSessionProspect = ref<number | null>(null);
 const visited = new Set<number>();
+// A contact can become non-callable between loading the queue and starting it. Keep it out of
+// this in-memory session so a stale/invalid first row cannot trap the setter on every resume.
+const sessionSkipped = new Set<number>();
 async function sessionAction(action: string, prospectId?: number) {
   return props.request(
     'call-session/',
@@ -199,6 +202,7 @@ async function nextProspect(id: number) {
     const candidate = data.results.find(
       (row: any) =>
         !visited.has(row.id) &&
+        !sessionSkipped.has(row.id) &&
         row.queue_reason !== 'appointment_booked' &&
         row.commercial_status !== 'not_interested' &&
         String(row.phone || row.raw_phone || '').trim(),
@@ -224,6 +228,16 @@ async function advance() {
     currentSessionProspect.value = Number(row.id);
     recovering.value = false;
   } catch (e: any) {
+    if (e.status === 400 && row) {
+      // The server rechecks eligibility when beginning a call. A 400 here means this queued row
+      // is no longer eligible (for example, its number is invalid or its status changed). Do not
+      // record it as called/completed; move on so a single row cannot block session recovery.
+      sessionSkipped.add(Number(row.id));
+      sessionNote.value =
+        'Une fiche n’est plus admissible pour un appel. Passage au prospect suivant.';
+      void prepareNext(true);
+      return;
+    }
     session.value = false;
     sessionNote.value = e.message || 'Impossible de préparer cette fiche.';
     resumeAvailable.value = true;
@@ -252,6 +266,7 @@ async function startSession() {
     }
     if (!saved.active) {
       visited.clear();
+      sessionSkipped.clear();
       await sessionAction('start');
     }
     resumeAvailable.value = false;
@@ -282,9 +297,12 @@ async function prepareNext(first = false) {
       return;
     }
     session.value = false;
+    const skippedNote = sessionSkipped.size
+      ? ` ${sessionSkipped.size} fiche(s) écartée(s), car elles n’étaient plus admissibles pour un appel.`
+      : '';
     sessionNote.value = first
-      ? 'Aucun prospect dans votre lot actif.'
-      : 'Session terminée : plus aucun prospect à appeler.';
+      ? `Aucun prospect admissible dans votre lot actif.${skippedNote}`
+      : `Session terminée : plus aucun prospect admissible à appeler.${skippedNote}`;
     try {
       await sessionAction('finish');
       visited.clear();
