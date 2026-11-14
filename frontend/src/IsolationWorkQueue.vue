@@ -301,7 +301,7 @@ async function prepareNext(first = false) {
       ? ` ${sessionSkipped.size} fiche(s) écartée(s), car elles n’étaient plus admissibles pour un appel.`
       : '';
     sessionNote.value = first
-      ? `Aucun prospect admissible dans votre lot actif.${skippedNote}`
+      ? `Aucun prospect dans votre lot actif n’est admissible pour un appel.${skippedNote}`
       : `Session terminée : plus aucun prospect admissible à appeler.${skippedNote}`;
     try {
       await sessionAction('finish');
