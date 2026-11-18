@@ -345,9 +345,23 @@ def fetch_recording(username, password, uid):
             raise unavailable(f'http_{response.status_code}')
         if len(response.content) > MAX_RECORDING_BYTES:
             raise unavailable('recording_too_large')
-        content_type = response.headers.get('Content-Type', 'audio/wav').split(';', 1)[0]
+        content_type = (
+            response.headers.get('Content-Type', 'audio/wav').split(';', 1)[0].strip().lower()
+        )
         if not content_type.startswith('audio/') and content_type != 'application/octet-stream':
-            raise unavailable('recording_format')
+            failure = unavailable('recording_format')
+            failure.diagnostic.update(
+                {
+                    'content_type': (
+                        content_type
+                        if re.fullmatch(r'[a-z0-9.+-]+/[a-z0-9.+-]+', content_type)
+                        else 'invalid'
+                    ),
+                    'response_bytes': len(response.content),
+                    'signature': _recording_response_signature(response.content),
+                }
+            )
+            raise failure
         return response.content, content_type
     except DirectoryUnavailable:
         raise
@@ -356,3 +370,19 @@ def fetch_recording(username, password, uid):
         failure.diagnostic['error'] = type(error).__name__
         failure.diagnostic['detail'] = re.sub(r'https?://\S+', '', str(error))[:200]
         raise failure from None
+
+
+def _recording_response_signature(content):
+    """Classify an unexpected provider body without retaining its contents."""
+    sample = bytes(content[:512]).lstrip().lower()
+    if not sample:
+        return 'empty'
+    if sample.startswith((b'{', b'[')):
+        return 'json'
+    if sample.startswith((b'<!doctype html', b'<html', b'<?xml', b'<')):
+        return 'html-or-xml'
+    if sample.startswith((b'riff', b'id3', b'oggs', b'flac')):
+        return 'audio-signature'
+    if all(byte in b'\t\n\r' or 32 <= byte < 127 for byte in sample):
+        return 'plain-text'
+    return 'binary-unknown'
