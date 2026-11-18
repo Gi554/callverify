@@ -3430,3 +3430,7 @@ Si NEWT répond avec un contenu non audio, le diagnostic indique aussi le type M
 ## Prise en main et changement de compte par le superadmin
 
 La liste de supervision inclut les comptes métier de tous les rôles, pas uniquement les administrateurs. Pendant une session d’assistance, le bandeau permet de chercher et choisir directement un autre compte et un de ses espaces actifs, avec motif obligatoire ; le superadmin n’a pas besoin du mot de passe de l’utilisateur ni de quitter l’assistance pour revenir à la liste. Chaque fin et chaque nouveau démarrage sont journalisés séparément. Les comptes système, suspendus ou sans appartenance active ne peuvent pas être pris en main ; l’assistance reste limitée à un espace à la fois et expire après 15 minutes.
+
+## Diagnostic manuel des ressources VPS
+
+Le workflow « VPS read-only diagnostics » est déclenchable manuellement depuis GitHub Actions et utilise l’environnement de production ainsi que la clé SSH déjà réservée au déploiement. Il affiche l’horodatage, la charge et l’échantillonnage vmstat, la mémoire, l’espace disque, les compteurs Docker, l’état des services Compose et l’occupation Docker. Il n’exécute aucune commande de modification et ne lit ni les variables .env, ni les journaux d’appels, ni les données CRM.
