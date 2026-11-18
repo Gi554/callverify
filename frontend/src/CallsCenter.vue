@@ -2,7 +2,7 @@
 import { isDialableNumber } from './phone-number';
 // Calls module: setters and administrators dial through a prospect card; everyone in
 // charge reads the call history. Real dialing stays governed by the telephony settings.
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import {
   Phone,
   Search,
@@ -83,17 +83,35 @@ function diagnosis(result: any) {
 const reconciling = ref(false),
   reconciled = ref('');
 const recordingBusy = ref(''),
-  recordingUrl = ref('');
+  recordingRequestId = ref(''),
+  recordingUrl = ref(''),
+  recordingMessage = ref('');
+const recordingAudio = ref<HTMLAudioElement | null>(null);
+function setRecordingAudio(element: any) {
+  recordingAudio.value = element instanceof HTMLAudioElement ? element : null;
+}
 async function playRecording(row: any) {
   if (!admin.value || !row.journal_uid || recordingBusy.value) return;
   recordingBusy.value = row.request_id;
-  error.value = '';
+  recordingMessage.value = '';
   try {
     if (recordingUrl.value) URL.revokeObjectURL(recordingUrl.value);
+    recordingUrl.value = '';
+    recordingRequestId.value = row.request_id;
     const blob = await props.portal(`${props.workspace}/call-history/${row.request_id}/recording/`);
+    if (!(blob instanceof Blob) || !blob.size)
+      throw new Error('Le fournisseur a renvoyé un enregistrement vide.');
     recordingUrl.value = URL.createObjectURL(blob);
+    await nextTick();
+    try {
+      await recordingAudio.value?.play();
+      recordingMessage.value = 'Lecture de l’enregistrement en cours.';
+    } catch {
+      recordingMessage.value =
+        'Enregistrement chargé. Appuyez sur Lecture dans le lecteur ci-dessous.';
+    }
   } catch (e: any) {
-    error.value = e.message;
+    recordingMessage.value = e?.message || 'Impossible de charger cet enregistrement.';
   } finally {
     recordingBusy.value = '';
   }
@@ -441,12 +459,19 @@ onBeforeUnmount(() => {
                 >
                   Ouvrir la fiche<ArrowUpRight :size="14" />
                 </button>
-                <audio
-                  v-if="admin && recordingUrl"
-                  class="recording-player"
-                  controls
-                  :src="recordingUrl"
-                />
+                <div
+                  v-if="admin && recordingRequestId === row.request_id && recordingMessage"
+                  class="recording-inline"
+                >
+                  <p role="status">{{ recordingMessage }}</p>
+                  <audio
+                    v-if="recordingUrl"
+                    :ref="setRecordingAudio"
+                    class="recording-player"
+                    controls
+                    :src="recordingUrl"
+                  />
+                </div>
               </td>
             </tr>
             <tr v-if="!history.length">
