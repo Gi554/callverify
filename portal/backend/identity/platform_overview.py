@@ -193,7 +193,7 @@ def platform_accounts(request):
         users = users.filter(Q(username__icontains=query) | Q(email__icontains=query))
     else:
         users = users.filter(
-            Q(workspace_memberships__role='administrator') | Q(is_superuser=True)
+            Q(workspace_memberships__workspace__in=ROLES) | Q(is_superuser=True)
         ).distinct()
     pager = AccessPagination()
     rows = pager.paginate_queryset(
