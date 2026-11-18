@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, nextTick } from 'vue';
+import { inject, computed, onMounted, ref, watch, nextTick } from 'vue';
 import { bookingInterval } from './booking-time';
 import AssuranceAppointments from './AssuranceAppointments.vue';
 import type { FollowUpReference } from './follow-up';
+const observeJourney =
+  inject<(area: string, operation: string, start: number, failed: boolean) => void>(
+    'observeSetterJourney',
+  );
 const props = defineProps<{
   contactId: number;
   contactRevision: number;
@@ -126,6 +130,7 @@ async function submit() {
   } catch (e: any) {
     error.value = e.message;
   } finally {
+    observeJourney?.('assurance', 'send', started, !message.value);
     recordDuration('envoi complet', started);
     busy.value = false;
   }

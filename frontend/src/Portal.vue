@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onErrorCaptured } from 'vue';
+import { ref, computed, onMounted, onErrorCaptured, provide } from 'vue';
 import PortalLogin from './PortalLogin.vue';
 import PortalMfaSetup from './PortalMfaSetup.vue';
 import PortalWorkspaceChooser from './PortalWorkspaceChooser.vue';
@@ -205,6 +205,9 @@ function newProspectPreview() {
 }
 let prospectPreview = newProspectPreview();
 function resetProspectPreview() {
+  clearTimeout(flushTimer);
+  flushTimer = undefined;
+  samples.length = 0;
   prospectPreview.clear();
   prospectPreview = newProspectPreview();
 }
@@ -217,6 +220,48 @@ function boardGrant(target: string) {
   pendingBoardGrants.set(key, grant);
   return grant;
 }
+type Sample = {
+  area: string;
+  operation: string;
+  elapsed_ms: number;
+  failed: boolean;
+  server_ms: number | null;
+  sql_ms: number | null;
+};
+const samples: Sample[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+function recordSample(
+  area: string,
+  operation: string,
+  started: number,
+  failed: boolean,
+  server: number | null = null,
+  sql: number | null = null,
+) {
+  if (
+    !user.value ||
+    role.value !== 'setter' ||
+    user.value.support ||
+    workspace.value !== area ||
+    samples.length >= 40
+  )
+    return;
+  samples.push({
+    area,
+    operation,
+    elapsed_ms: Math.min(600000, Math.round(performance.now() - started)),
+    failed,
+    server_ms: server,
+    sql_ms: sql,
+  });
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = undefined;
+    const batch = samples.splice(0);
+    if (batch.length) void portal('performance/', batch).catch(() => {});
+  }, 2000);
+}
+provide('observeSetterJourney', recordSample);
 async function business(path: string, body?: any, method?: string, target = workspace.value) {
   if ((method && method !== 'GET') || body !== undefined) prospectPreview.clear();
   const boardRead =
@@ -227,32 +272,68 @@ async function business(path: string, body?: any, method?: string, target = work
       path === 'workspace-dashboard/' ||
       path.startsWith('work-queue/?') ||
       path.startsWith('contacts/?'));
-  const grant = await (boardRead ? boardGrant(target) : portal('access/' + target + '/', {}));
-  // A leading slash would give `/api/assurance//…`, which the services answer with a 404.
-  const response = await monitoredFetch(
-    '/api/' + target + '/' + path.replace(/^\/+/, ''),
-    {
-      method: method || (body !== undefined ? 'POST' : 'GET'),
-      headers: {
-        Authorization: 'Bearer ' + grant.token,
-        ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+  const operation =
+    boardRead && /^(contacts|work-queue)\/\?/.test(path)
+      ? 'column'
+      : /^(contacts|work-queue)\/\d+\/$/.test(path) && body === undefined
+        ? 'contact'
+        : body !== undefined && (path === 'appointments/transmit/' || path === 'visits/')
+          ? 'booking'
+          : body !== undefined && /\/(qualification|c2)\/$/.test(path)
+            ? 'qualification'
+            : '';
+  const measured = operation && role.value === 'setter' && !user.value?.support;
+  const started = performance.now();
+  const identity = user.value;
+  let server: number | null = null,
+    sql: number | null = null,
+    failed = true;
+  try {
+    const grant = await (boardRead ? boardGrant(target) : portal('access/' + target + '/', {}));
+    // A leading slash would give `/api/assurance//…`, which the services answer with a 404.
+    const response = await monitoredFetch(
+      '/api/' + target + '/' + path.replace(/^\/+/, ''),
+      {
+        method: method || (body !== undefined ? 'POST' : 'GET'),
+        headers: {
+          ...(measured ? { 'X-Orvia-Timing': '1' } : {}),
+          Authorization: 'Bearer ' + grant.token,
+          ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        },
+        ...(body !== undefined
+          ? { body: body instanceof FormData ? body : JSON.stringify(body) }
+          : {}),
       },
-      ...(body !== undefined
-        ? { body: body instanceof FormData ? body : JSON.stringify(body) }
-        : {}),
-    },
-    target,
-  );
-  if (!response.ok) {
-    const result = await response.json().catch(() => ({}));
-    const failure = new Error(
-      errorMessages(result?.detail ?? result).join(' · ') || 'Service métier indisponible',
-    ) as Error & { status: number };
-    failure.status = response.status;
-    throw failure;
+      target,
+    );
+    if (measured) {
+      const timings = response.headers.get('Server-Timing') || '';
+      const milliseconds = (name: string) => {
+        const match = timings.match(new RegExp(name + ';dur=([0-9.]+)'));
+        return match ? Math.round(Number(match[1])) : null;
+      };
+      server = milliseconds('app');
+      sql = milliseconds('db');
+    }
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      const failure = new Error(
+        errorMessages(result?.detail ?? result).join(' · ') || 'Service métier indisponible',
+      ) as Error & { status: number };
+      failure.status = response.status;
+      throw failure;
+    }
+    const data = response.headers.get('Content-Disposition')?.includes('attachment')
+      ? await response.blob()
+      : response.status === 204
+        ? null
+        : await response.json();
+    failed = false;
+    return data;
+  } finally {
+    if (measured && identity === user.value)
+      recordSample(target, operation, started, failed, server, sql);
   }
-  if (response.headers.get('Content-Disposition')?.includes('attachment')) return response.blob();
-  return response.status === 204 ? null : response.json();
 }
 function assurance(path: string, body?: any, method?: string) {
   return business(path, body, method, 'assurance');
@@ -619,8 +700,15 @@ function openAssuranceAppointment(id: number) {
 const pageTitle = computed(
   () => navigation.value.find((item) => item.id === activeModule.value)?.label || 'Mes espaces',
 );
+const prospectNavigationStart = ref<number>();
+function recordNavigation(operation: string, started: number) {
+  if (started !== prospectNavigationStart.value) return;
+  prospectNavigationStart.value = undefined;
+  recordSample(workspace.value, operation, started, false);
+}
 function selectModule(id: string) {
   if (!navigation.value.some((item) => item.id === id)) return;
+  prospectNavigationStart.value = id === 'contacts' ? performance.now() : undefined;
   if (id !== 'contacts') prospectFocus.value = null;
   if (id !== 'appointments') appointmentFocus.value = null;
   managing.value = false;
@@ -1107,6 +1195,11 @@ onMounted(async () => {
                       :request="assurance"
                       :role="role"
                       :session-owner="user.username"
+                      :navigation-start="prospectNavigationStart"
+                      :observe-navigation="recordNavigation"
+                      :observe-board="
+                        (started, failed) => recordSample(workspace, 'board', started, failed)
+                      "
                       :preview="role === 'setter' ? prospectPreview : undefined"
                       @imported="summary.contacts = $event"
                     />
@@ -1275,6 +1368,11 @@ onMounted(async () => {
                       :focus="prospectFocus"
                       :role="role"
                       :session-owner="user.username"
+                      :navigation-start="prospectNavigationStart"
+                      :observe-navigation="recordNavigation"
+                      :observe-board="
+                        (started, failed) => recordSample(workspace, 'board', started, failed)
+                      "
                       :preview="role === 'setter' ? prospectPreview : undefined"
                       :portal="portal"
                       :request="isolation"

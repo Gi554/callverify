@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { isDialableNumber } from './phone-number';
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { watch, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
   CalendarDays,
   UserRoundCog,
@@ -61,6 +61,9 @@ let generation = 0,
 const props = defineProps<{
   role: string;
   sessionOwner?: string;
+  navigationStart?: number;
+  observeNavigation?: (operation: string, started: number) => void;
+  observeBoard?: (started: number, failed: boolean) => void;
   preview?: { revision: number; read: () => Column[]; store: (columns: Column[]) => void };
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
@@ -135,6 +138,7 @@ async function loadColumn(column: Column, version: number, append = false) {
   }
 }
 async function load(restorePreview: unknown = false) {
+  const started = performance.now();
   const revision = props.preview?.revision;
   const preview = restorePreview === true ? props.preview?.read() || [] : [];
   if (preview.length)
@@ -181,7 +185,14 @@ async function load(restorePreview: unknown = false) {
   ) {
     props.preview.store(columns.value.map((column) => ({ ...column, rows: [...column.rows] })));
   }
-  if (version === generation) busy.value = false;
+  if (version === generation) {
+    busy.value = false;
+    if (!disposed)
+      props.observeBoard?.(
+        started,
+        !!error.value || columns.value.some((column) => !!column.error),
+      );
+  }
 }
 // Call session (setters): prospects are called one after the other. Finishing a file starts a
 // countdown that the setter can stop; at zero the next prospect is opened and called.
@@ -431,6 +442,16 @@ async function loadHistory() {
   historyRows.value = data.results;
   historyCount.value = data.count;
 }
+let navigationMeasured = false;
+watch(
+  () => (props.focus ? !!activity.value : visible.value.some((column) => column.rows.length > 0)),
+  (shown) => {
+    if (!shown || navigationMeasured || props.navigationStart === undefined) return;
+    navigationMeasured = true;
+    props.observeNavigation?.(props.focus ? 'open' : 'first', props.navigationStart);
+  },
+  { flush: 'post' },
+);
 onMounted(async () => {
   if (!props.focus) await load(true);
   try {

@@ -71,6 +71,16 @@ class PlatformIncident(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
 
+class PerformanceSample(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    area = models.CharField(max_length=20)
+    operation = models.CharField(max_length=20)
+    elapsed_ms = models.PositiveIntegerField()
+    server_ms = models.PositiveIntegerField(null=True)
+    sql_ms = models.PositiveIntegerField(null=True)
+    failed = models.BooleanField()
+
+
 class SessionGeneration(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True

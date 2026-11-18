@@ -3447,3 +3447,8 @@ Chaque compte métier actif disposant d’un espace actif présente une action d
 
 ## Navigation des setters vers Prospects
 Depuis Appels, la fiche demandée se charge avant le tableau en Assurance et en Isolation. Au retour sur Prospects, le dernier tableau sans filtre du setter peut être réaffiché pendant sa relecture, pendant trente secondes au maximum. Cet aperçu en mémoire est invalidé sur écriture métier et changement de contexte. La composition et les commandes de session continuent de passer par le serveur. Les lectures de colonnes simultanées du même contexte partagent uniquement la demande de droit d’accès en cours.
+
+## Mesures de latence des setters (staging)
+La vue d’ensemble du superadmin présente les volumes reçus, les erreurs, la médiane et le 95e percentile par opération et par campagne. Le navigateur mesure la relecture complète du tableau, les lectures de colonnes et de fiches, les écritures de qualification et la transmission des rendez-vous. Une mesure distincte couvre le parcours complet d’envoi. Les requêtes métier instrumentées renvoient également la durée serveur et la durée cumulée des exécutions SQL. Aucune requête SQL, URL de prospect ou donnée de fiche n’est conservée dans ces mesures.
+
+La collecte authentifiée est limitée aux setters actifs de l’espace, hors assistance. Les mesures sont envoyées en arrière-plan par petits lots. La synthèse porte sur les 5 000 dernières mesures des dernières 24 h. Les onglets fermés avant l’envoi, les lots rejetés et les postes hors ligne peuvent manquer. Il reste à vérifier la distribution réelle des temps avec des utilisateurs en recette.

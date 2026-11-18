@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { isDialableNumber } from './phone-number';
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { watch, ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import {
   Search,
   RefreshCw,
@@ -23,6 +23,9 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   role: string;
   sessionOwner?: string;
+  navigationStart?: number;
+  observeNavigation?: (operation: string, started: number) => void;
+  observeBoard?: (started: number, failed: boolean) => void;
   preview?: { revision: number; read: () => Column[]; store: (columns: Column[]) => void };
   // Prospect to open on arrival, e.g. from the calls module.
   focus?: { id: number; mode: 'edit' | 'call' } | null;
@@ -266,6 +269,7 @@ async function loadColumn(column: Column, version: number, append = false) {
   }
 }
 async function load(restorePreview: unknown = false) {
+  const started = performance.now();
   const revision = props.preview?.revision;
   const preview = restorePreview === true ? props.preview?.read() || [] : [];
   if (preview.length)
@@ -316,7 +320,14 @@ async function load(restorePreview: unknown = false) {
   } catch (e: any) {
     if (version === generation) error.value = e.message;
   } finally {
-    if (version === generation) busy.value = false;
+    if (version === generation) {
+      busy.value = false;
+      if (!disposed)
+        props.observeBoard?.(
+          started,
+          !!error.value || columns.value.some((column) => !!column.error),
+        );
+    }
   }
 }
 async function open(row: any, mode: 'edit' | 'call') {
@@ -362,6 +373,16 @@ async function closed() {
       document.querySelector<HTMLButtonElement>(`[data-prospect-id="${Number(id)}"]`)?.focus();
   });
 }
+let navigationMeasured = false;
+watch(
+  () => (props.focus ? !!selected.value : visible.value.some((column) => column.rows.length > 0)),
+  (shown) => {
+    if (!shown || navigationMeasured || props.navigationStart === undefined) return;
+    navigationMeasured = true;
+    props.observeNavigation?.(props.focus ? 'open' : 'first', props.navigationStart);
+  },
+  { flush: 'post' },
+);
 onMounted(async () => {
   if (!props.focus) void load(true);
   try {
