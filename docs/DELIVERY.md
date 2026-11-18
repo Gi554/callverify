@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Note utile au conseiller dans la qualification Isolation (staging)
+
+La qualification Isolation des setters comprend une note facultative de 3 000 caractères. Elle
+est enregistrée dans le brouillon C2, figée avec les autres champs au moment de la réservation,
+affichée dans la copie de qualification du rendez-vous et transmise au flux de notification du
+client Isolation. Elle n’est pas envoyée au prospect. Aucun champ relationnel ou migration n’est
+nécessaire : la qualification est stockée en JSON.
+
 ## Reprise de session et historique des appels (staging)
 
 Dans les deux espaces, la progression d’une session d’appels est conservée par compte et par jour

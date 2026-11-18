@@ -233,6 +233,7 @@ def mail_events(request):
                             'monthly_electricity',
                             'construction_year',
                             'age',
+                            'advisor_note',
                         )
                     }
                     if r.kind == 'booked'
