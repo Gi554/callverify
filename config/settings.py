@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'core',
 ]
 MIDDLEWARE = [
+    'packages.request_timing.RequestTimingMiddleware',
     'packages.support_audit.SupportAuditMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',

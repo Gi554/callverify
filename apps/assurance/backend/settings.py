@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'apps.assurance.backend.crm',
 ]
 MIDDLEWARE = [
+    'packages.request_timing.RequestTimingMiddleware',
     'packages.support_audit.SupportAuditMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -18,7 +18,28 @@ const emit = defineEmits<{
   prospect: [space: string, id: number];
   logout: [];
 }>();
+const operations: Record<string, string> = {
+  open: 'Du clic à la fiche affichée',
+  first: 'Du clic aux premières fiches affichées',
+  board: 'Tableau Prospects complet',
+  send: 'Envoi complet du rendez-vous',
+  column: 'Lecture d’une colonne',
+  contact: 'Lecture d’une fiche',
+  qualification: 'Enregistrement de qualification',
+  booking: 'Transmission du rendez-vous',
+};
+const milliseconds = (value: number | null) => (value === null ? '—' : value + ' ms');
 type Overview = {
+  performance?: {
+    area: string;
+    operation: string;
+    total: number;
+    errors: number;
+    median_ms: number | null;
+    p95_ms: number | null;
+    server_ms: number | null;
+    sql_ms: number | null;
+  }[];
   memberships: { workspace: string; role: string; count: number }[];
   days: { day: string; assurance: number; isolation: number }[];
   incidents: {
@@ -274,6 +295,42 @@ onMounted(load);
         </section>
       </div>
       <PlatformAccounts :request="request" @changed="load" />
+      <section class="platform-card">
+        <h2>Temps de réponse des setters</h2>
+        <p>
+          Dernières 24 heures · jusqu’aux 5 000 dernières mesures reçues. Les durées portent sur les
+          opérations réussies. Le serveur et SQL correspondent à la requête métier.
+        </p>
+        <div v-if="data?.performance?.length" style="overflow-x: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Espace</th>
+                <th>Opération</th>
+                <th>Mesures</th>
+                <th>Erreurs</th>
+                <th>Médiane</th>
+                <th>95e percentile</th>
+                <th>Serveur médian</th>
+                <th>SQL médian</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in data.performance" :key="row.area + row.operation">
+                <td>{{ row.area === 'assurance' ? 'Assurance' : 'Isolation' }}</td>
+                <td>{{ operations[row.operation] }}</td>
+                <td>{{ row.total }}</td>
+                <td>{{ row.errors }}</td>
+                <td>{{ milliseconds(row.median_ms) }}</td>
+                <td>{{ milliseconds(row.p95_ms) }}</td>
+                <td>{{ milliseconds(row.server_ms) }}</td>
+                <td>{{ milliseconds(row.sql_ms) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else>Aucune mesure reçue sur cette période.</p>
+      </section>
       <PlatformSupportJournal class="platform-card" :request="request" />
       <section v-if="data" class="platform-card">
         <header class="section-heading">
