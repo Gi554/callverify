@@ -183,8 +183,51 @@ function errorMessages(value: unknown): string[] {
     ),
   );
 }
+// Display-only snapshots, scoped to this portal login and workspace.
+function newProspectPreview() {
+  let rows: any[] = [];
+  let expires = 0;
+  return {
+    revision: 0,
+    read() {
+      return expires > Date.now() ? rows : [];
+    },
+    store(columns: any[]) {
+      rows = columns;
+      expires = Date.now() + 30000;
+    },
+    clear() {
+      this.revision++;
+      rows = [];
+      expires = 0;
+    },
+  };
+}
+let prospectPreview = newProspectPreview();
+function resetProspectPreview() {
+  prospectPreview.clear();
+  prospectPreview = newProspectPreview();
+}
+const pendingBoardGrants = new Map<string, Promise<any>>();
+function boardGrant(target: string) {
+  const key = JSON.stringify([authVersion.value, workspaceVersion, user.value?.username, target]);
+  const pending = pendingBoardGrants.get(key);
+  if (pending) return pending;
+  const grant = portal('access/' + target + '/', {}).finally(() => pendingBoardGrants.delete(key));
+  pendingBoardGrants.set(key, grant);
+  return grant;
+}
 async function business(path: string, body?: any, method?: string, target = workspace.value) {
-  const grant = await portal('access/' + target + '/', {});
+  if ((method && method !== 'GET') || body !== undefined) prospectPreview.clear();
+  const boardRead =
+    body === undefined &&
+    (!method || method === 'GET') &&
+    (path === 'pipeline/' ||
+      path === 'call-session/' ||
+      path === 'workspace-dashboard/' ||
+      path.startsWith('work-queue/?') ||
+      path.startsWith('contacts/?'));
+  const grant = await (boardRead ? boardGrant(target) : portal('access/' + target + '/', {}));
   // A leading slash would give `/api/assurance//…`, which the services answer with a 404.
   const response = await monitoredFetch(
     '/api/' + target + '/' + path.replace(/^\/+/, ''),
@@ -236,6 +279,7 @@ async function enter(value: string) {
   } catch {
     /* Storage unavailable: the profile menu still switches spaces. */
   }
+  resetProspectPreview();
   const version = ++workspaceVersion;
   error.value = '';
   busy.value = true;
@@ -378,6 +422,7 @@ async function logout() {
     for (const key of Object.keys(sessionStorage))
       if (key.startsWith('amx-call:')) sessionStorage.removeItem(key);
   } catch {}
+  resetProspectPreview();
   user.value = null;
   workspace.value = '';
   summary.value = null;
@@ -1062,6 +1107,7 @@ onMounted(async () => {
                       :request="assurance"
                       :role="role"
                       :session-owner="user.username"
+                      :preview="role === 'setter' ? prospectPreview : undefined"
                       @imported="summary.contacts = $event"
                     />
                     <AssuranceAdvisorProspects
@@ -1229,6 +1275,7 @@ onMounted(async () => {
                       :focus="prospectFocus"
                       :role="role"
                       :session-owner="user.username"
+                      :preview="role === 'setter' ? prospectPreview : undefined"
                       :portal="portal"
                       :request="isolation"
                     />
