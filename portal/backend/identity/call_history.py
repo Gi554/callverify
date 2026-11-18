@@ -100,10 +100,13 @@ def recording(request, workspace, request_id):
     except DirectoryUnavailable as error:
         problem = getattr(error, 'diagnostic', {}).get('problem', 'unknown')
         logger.warning(
-            'NEWT recording fetch failed workspace=%s request_id=%s problem=%s',
+            'NEWT recording fetch failed workspace=%s request_id=%s problem=%s content_type=%s response_bytes=%s signature=%s',
             workspace,
             request_id,
             problem,
+            getattr(error, 'diagnostic', {}).get('content_type', '-'),
+            getattr(error, 'diagnostic', {}).get('response_bytes', '-'),
+            getattr(error, 'diagnostic', {}).get('signature', '-'),
         )
         if problem.startswith('http_') and problem.removeprefix('http_').isdigit():
             status = problem.removeprefix('http_')
@@ -116,7 +119,12 @@ def recording(request, workspace, request_id):
             message = {
                 'recording_uid': 'L’identifiant NEWT de cet enregistrement est invalide.',
                 'recording_too_large': 'L’enregistrement NEWT dépasse la taille autorisée.',
-                'recording_format': 'NEWT n’a pas renvoyé un format audio reconnu.',
+                'recording_format': (
+                    'NEWT a renvoyé un contenu non audio '
+                    f'(type {getattr(error, "diagnostic", {}).get("content_type", "inconnu")}, '
+                    f'{getattr(error, "diagnostic", {}).get("response_bytes", "taille inconnue")} octets, '
+                    f'{getattr(error, "diagnostic", {}).get("signature", "signature inconnue")}).'
+                ),
                 'network': 'Le serveur n’a pas pu joindre le service d’enregistrement NEWT.',
             }.get(problem, 'NEWT n’a pas fourni cet enregistrement (cause non reconnue).')
         raise ValidationError(message) from error

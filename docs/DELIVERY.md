@@ -3425,6 +3425,8 @@ Dans l’historique des appels, le bouton « Écouter » télécharge l’enregi
 
 Un refus de lecture F=246 expose désormais une cause limitée et non sensible (HTTP fournisseur, UID, format, taille ou réseau) dans le message admin et la journalisation serveur ; aucun UID, numéro de prospect ni identifiant API n’est ajouté aux journaux.
 
+Si NEWT répond avec un contenu non audio, le diagnostic indique aussi le type MIME, la taille et une signature classifiée (JSON, HTML/XML, texte, binaire ou vide). Le corps reçu n’est ni conservé ni transmis au navigateur, afin de ne pas exposer un message fournisseur ou des données d’appel.
+
 ## Prise en main et changement de compte par le superadmin
 
 La liste de supervision inclut les comptes métier de tous les rôles, pas uniquement les administrateurs. Pendant une session d’assistance, le bandeau permet de chercher et choisir directement un autre compte et un de ses espaces actifs, avec motif obligatoire ; le superadmin n’a pas besoin du mot de passe de l’utilisateur ni de quitter l’assistance pour revenir à la liste. Chaque fin et chaque nouveau démarrage sont journalisés séparément. Les comptes système, suspendus ou sans appartenance active ne peuvent pas être pris en main ; l’assistance reste limitée à un espace à la fois et expire après 15 minutes.
