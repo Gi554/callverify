@@ -3430,3 +3430,9 @@ Si NEWT répond avec un contenu non audio, le diagnostic indique aussi le type M
 ## Prise en main et changement de compte par le superadmin
 
 La liste de supervision inclut les comptes métier de tous les rôles, pas uniquement les administrateurs. Pendant une session d’assistance, le bandeau permet de chercher et choisir directement un autre compte et un de ses espaces actifs, avec motif obligatoire ; le superadmin n’a pas besoin du mot de passe de l’utilisateur ni de quitter l’assistance pour revenir à la liste. Chaque fin et chaque nouveau démarrage sont journalisés séparément. Les comptes système, suspendus ou sans appartenance active ne peuvent pas être pris en main ; l’assistance reste limitée à un espace à la fois et expire après 15 minutes.
+
+## Assurance — temps de passage entre deux fiches (recette staging)
+
+Après confirmation serveur de la progression, le minuteur de cinq secondes et la lecture du prochain contact du lot démarrent ensemble. La session interroge la file active du setter ou de l’administrateur. Elle recharge le tableau à la pause ou en fin de session. Le résultat enregistré avec passage au suivant évite deux lectures d’historique. À l’ouverture de Prospects, la restauration de session et le chargement des colonnes démarrent en parallèle.
+
+Pour mesurer un envoi de rendez-vous en recette, enregistrer le parcours dans les outils de performance du navigateur. Les mesures « Orvia Assurance » distinguent la préparation de la fiche, la vérification du conseiller, la transmission et le total. Elles restent dans le navigateur. La latence réelle du parcours des agents doit encore être chronométrée en situation.
