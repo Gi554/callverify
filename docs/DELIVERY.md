@@ -3440,3 +3440,7 @@ Pour mesurer un envoi de rendez-vous en recette, enregistrer le parcours dans le
 ## Décompte entre deux appels en Isolation
 
 En recette sur staging, le minuteur Isolation passe à cinq secondes, comme en Assurance. Un test avec horloge simulée vérifie que la seconde fiche est ouverte en mode appel automatique à cinq secondes, après quatre secondes sans nouveau départ.
+
+## Assistance superadmin depuis la liste des comptes
+
+Chaque compte métier actif disposant d’un espace actif présente une action directe « Se connecter en tant que ». Le choix de l’espace, le motif et la confirmation s’affichent sous le compte choisi. Le serveur conserve les contrôles d’accès et la journalisation de l’assistance.

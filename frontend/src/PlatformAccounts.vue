@@ -56,9 +56,10 @@ function lookup() {
     await load();
   });
 }
-function open(account: Account) {
+function open(account: Account, assist = false) {
   selected.value = account;
-  action.value = '';
+  action.value = assist ? 'support' : '';
+  workspace.value = assist ? supportGrants.value[0]?.workspace || '' : 'assurance';
   reason.value = '';
   notice.value = '';
 }
@@ -94,7 +95,7 @@ onMounted(() => run(() => load()));
       <div class="account-title">
         <span class="heading-icon"><UsersRound :size="20" /></span>
         <div>
-          <h2>Administrateurs et accès</h2>
+          <h2>Comptes et accès</h2>
           <p>Gérez les comptes et leurs droits par espace.</p>
         </div>
       </div>
@@ -136,9 +137,69 @@ onMounted(() => run(() => load()));
         <span v-if="account.protected" class="badge protected"
           ><ShieldCheck :size="15" /> Compte protégé</span
         >
-        <button v-else type="button" class="secondary" :disabled="busy" @click="open(account)">
-          <SlidersHorizontal :size="15" /> Gérer
-        </button>
+        <div v-else class="controls">
+          <button
+            v-if="account.active && account.memberships.some((grant) => grant.active)"
+            type="button"
+            class="primary"
+            :disabled="busy"
+            @click="open(account, true)"
+          >
+            Se connecter en tant que
+          </button>
+          <button type="button" class="secondary" :disabled="busy" @click="open(account)">
+            <SlidersHorizontal :size="15" /> Gérer
+          </button>
+        </div>
+        <form
+          v-if="selected && selected.id === account.id"
+          class="controls action-form"
+          @submit.prevent="apply"
+        >
+          <strong>{{ selected.username }}</strong>
+          <label v-if="action !== 'support'"
+            >Action<select
+              v-model="action"
+              required
+              @change="action === 'support' && (workspace = supportGrants[0]?.workspace || '')"
+            >
+              <option disabled value="">Sélectionner</option>
+              <option value="grant_admin">Attribuer ou réactiver un accès administrateur</option>
+              <option value="suspend_admin">Suspendre un accès administrateur</option>
+              <option value="revoke_sessions">Révoquer les sessions du compte</option>
+              <option v-if="selected.active && supportGrants.length" value="support">
+                Se connecter en tant que
+              </option>
+              <option v-if="selected.active" value="suspend">
+                Suspendre le compte dans tous les espaces
+              </option>
+              <option v-else value="reactivate">Réactiver le compte</option>
+            </select></label
+          >
+          <label v-if="scoped"
+            >Espace<select v-model="workspace">
+              <template v-if="action === 'support'">
+                <option
+                  v-for="grant in supportGrants"
+                  :key="grant.workspace"
+                  :value="grant.workspace"
+                >
+                  {{ spaces[grant.workspace] }}
+                </option>
+              </template>
+              <template v-else>
+                <option v-for="(label, key) in spaces" :key="key" :value="key">{{ label }}</option>
+              </template>
+            </select></label
+          >
+          <label>Motif<input v-model="reason" required minlength="3" maxlength="500" /></label>
+          <button type="submit" class="primary" :disabled="busy">
+            {{ action === 'support' ? 'Ouvrir ce compte' : 'Confirmer' }}
+          </button>
+          <button type="button" class="secondary" :disabled="busy" @click="selected = undefined">
+            Annuler
+          </button>
+        </form>
       </li>
     </ul>
     <div v-if="page > 1 || hasNext" class="controls">
@@ -159,45 +220,6 @@ onMounted(() => run(() => load()));
         Suivant
       </button>
     </div>
-    <form v-if="selected" class="controls action-form" @submit.prevent="apply">
-      <strong>{{ selected.username }}</strong>
-      <label
-        >Action<select
-          v-model="action"
-          required
-          @change="action === 'support' && (workspace = supportGrants[0]?.workspace || '')"
-        >
-          <option disabled value="">Sélectionner</option>
-          <option value="grant_admin">Attribuer ou réactiver un accès administrateur</option>
-          <option value="suspend_admin">Suspendre un accès administrateur</option>
-          <option value="revoke_sessions">Révoquer les sessions du compte</option>
-          <option v-if="selected.active && supportGrants.length" value="support">
-            Se connecter en tant que
-          </option>
-          <option v-if="selected.active" value="suspend">
-            Suspendre le compte dans tous les espaces
-          </option>
-          <option v-else value="reactivate">Réactiver le compte</option>
-        </select></label
-      >
-      <label v-if="scoped"
-        >Espace<select v-model="workspace">
-          <template v-if="action === 'support'">
-            <option v-for="grant in supportGrants" :key="grant.workspace" :value="grant.workspace">
-              {{ spaces[grant.workspace] }}
-            </option>
-          </template>
-          <template v-else>
-            <option v-for="(label, key) in spaces" :key="key" :value="key">{{ label }}</option>
-          </template>
-        </select></label
-      >
-      <label>Motif<input v-model="reason" required minlength="3" maxlength="500" /></label>
-      <button type="submit" class="primary" :disabled="busy">Confirmer</button>
-      <button type="button" class="secondary" :disabled="busy" @click="selected = undefined">
-        Annuler
-      </button>
-    </form>
   </section>
 </template>
 
@@ -293,7 +315,8 @@ button {
   gap: 4px;
 }
 .action-form {
-  margin-top: 14px;
+  grid-column: 1 / -1;
+  margin-top: 0;
   border-radius: 12px;
   background: #f6f4fb;
   padding: 14px;
