@@ -32,6 +32,7 @@ class C2Input(serializers.Serializer):
     )
     construction_year = serializers.IntegerField(min_value=1600, allow_null=True, default=None)
     age = serializers.IntegerField(min_value=0, max_value=120, allow_null=True, default=None)
+    advisor_note = serializers.CharField(max_length=3000, allow_blank=True, default='')
 
     def to_internal_value(self, data):
         if isinstance(data, dict) and set(data) - set(self.fields):

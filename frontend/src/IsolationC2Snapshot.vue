@@ -11,6 +11,7 @@ const labels: Record<string, string> = {
   monthly_electricity: 'Électricité mensuelle ($)',
   construction_year: 'Année de construction',
   age: 'Âge du client',
+  advisor_note: 'Note utile au conseiller',
 };
 function value(v: any) {
   return v === true
