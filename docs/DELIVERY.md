@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Navigation du superadmin (staging)
+
+L’accueil donne accès à la recherche d’un utilisateur et aux incidents. « Comptes et accès » regroupe l’annuaire et la gestion des espaces. « Performances » présente les mesures du CRM. « Journal d’assistance » regroupe les sessions d’assistance et les dernières actions du superadmin. Chaque rubrique possède une adresse directe et prend en charge le retour du navigateur. La recherche depuis l’accueil charge les comptes à la demande.
+
 ## Note utile au conseiller dans la qualification Isolation (staging)
 
 La qualification Isolation des setters comprend une note facultative de 3 000 caractères. Elle
