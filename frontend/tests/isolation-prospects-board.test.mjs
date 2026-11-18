@@ -287,7 +287,8 @@ test('administrator opens the weekly lot panel; setter does not get it', async (
 const component_ = (f, name) => all(f.root).find((n) => n.props?.['data-component'] === name)
 const labelled = (f, label) =>
   all(f.root).find((n) => n.tag === 'button' && text(n).trim() === label)
-test('setter calls from the paginated active lot even when the reminders filter is empty', async () => {
+test('setter calls from the paginated active lot even when the reminders filter is empty', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] })
   const f = fixture('setter')
   try {
     await flush()
@@ -308,9 +309,15 @@ test('setter calls from the paginated active lot even when the reminders filter 
     assert.equal(component_(f, 'CallAction').props['data-auto-send'], true)
     first.props.onClose()
     await flush()
-    assert.match(text(f.root), /Prochain appel dans 10 s/)
-    labelled(f, 'Appeler maintenant').props.onClick()
+    assert.match(text(f.root), /Prochain appel dans 5 s/)
+    const begins = () => f.requests.filter((r) => r.body?.action === 'begin')
+    t.mock.timers.tick(4000)
+    assert.equal(begins().length, 1)
+    t.mock.timers.tick(1000)
     await flush()
+    assert.equal(begins().length, 2)
+    assert.equal(begins()[1].body.prospect_id, 2)
+    assert.equal(component_(f, 'CallAction').props['data-auto-send'], true)
     assert.ok(component_(f, 'IsolationProspectActivity'))
     assert.equal(f.requests.filter((r) => r.path === 'work-queue/2/').length > 0, true)
     assert.ok(f.requests.some((r) => r.path === 'work-queue/?owner=me&queue=active&page=2'))
@@ -378,7 +385,7 @@ test('administrator calls the prospects of their own lot', async () => {
     assert.equal(first.props['data-session'], true)
     first.props.onClose()
     await flush()
-    assert.match(text(f.root), /Prochain appel dans 10 s/)
+    assert.match(text(f.root), /Prochain appel dans 5 s/)
   } finally {
     f.app.unmount()
   }

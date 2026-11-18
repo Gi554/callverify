@@ -3436,3 +3436,7 @@ La liste de supervision inclut les comptes métier de tous les rôles, pas uniqu
 Après confirmation serveur de la progression, le minuteur de cinq secondes et la lecture du prochain contact du lot démarrent ensemble. La session interroge la file active du setter ou de l’administrateur. Elle recharge le tableau à la pause ou en fin de session. Le résultat enregistré avec passage au suivant évite deux lectures d’historique. À l’ouverture de Prospects, la restauration de session et le chargement des colonnes démarrent en parallèle.
 
 Pour mesurer un envoi de rendez-vous en recette, enregistrer le parcours dans les outils de performance du navigateur. Les mesures « Orvia Assurance » distinguent la préparation de la fiche, la vérification du conseiller, la transmission et le total. Elles restent dans le navigateur. La latence réelle du parcours des agents doit encore être chronométrée en situation.
+
+## Décompte entre deux appels en Isolation
+
+En recette sur staging, le minuteur Isolation passe à cinq secondes, comme en Assurance. Un test avec horloge simulée vérifie que la seconde fiche est ouverte en mode appel automatique à cinq secondes, après quatre secondes sans nouveau départ.

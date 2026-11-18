@@ -163,7 +163,7 @@ async function load() {
 }
 // Call session (setters): prospects are called one after the other. Finishing a file starts a
 // countdown that the setter can stop; at zero the next prospect is opened and called.
-const COUNTDOWN = 10;
+const COUNTDOWN = 5;
 const session = ref(false),
   countdown = ref<number | null>(null),
   nextInSession = ref<any>(null),
