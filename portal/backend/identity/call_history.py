@@ -1,5 +1,7 @@
 """Call history: setters read their own call commands, administrators the whole workspace."""
 
+import logging
+
 from django.http import HttpResponse
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -11,6 +13,7 @@ from packages.newt.directory import DirectoryUnavailable
 from django.conf import settings
 
 STATES = ('dispatching', 'accepted', 'rejected', 'blocked', 'unknown')
+logger = logging.getLogger(__name__)
 
 
 class Pager(PageNumberPagination):
@@ -95,7 +98,28 @@ def recording(request, workspace, request_id):
             settings.NEWT_USERNAME, settings.NEWT_PASSWORD, row.journal_uid
         )
     except DirectoryUnavailable as error:
-        raise ValidationError('Enregistrement NEWT indisponible.') from error
+        problem = getattr(error, 'diagnostic', {}).get('problem', 'unknown')
+        logger.warning(
+            'NEWT recording fetch failed workspace=%s request_id=%s problem=%s',
+            workspace,
+            request_id,
+            problem,
+        )
+        if problem.startswith('http_') and problem.removeprefix('http_').isdigit():
+            status = problem.removeprefix('http_')
+            message = f'NEWT a refusé l’enregistrement (HTTP {status}).'
+            if status in ('401', '403'):
+                message += ' Vérifiez les identifiants API et les droits de lecture du PBX.'
+            elif status == '404':
+                message += ' L’enregistrement est absent ou inaccessible pour ce compte NEWT.'
+        else:
+            message = {
+                'recording_uid': 'L’identifiant NEWT de cet enregistrement est invalide.',
+                'recording_too_large': 'L’enregistrement NEWT dépasse la taille autorisée.',
+                'recording_format': 'NEWT n’a pas renvoyé un format audio reconnu.',
+                'network': 'Le serveur n’a pas pu joindre le service d’enregistrement NEWT.',
+            }.get(problem, 'NEWT n’a pas fourni cet enregistrement (cause non reconnue).')
+        raise ValidationError(message) from error
     response = HttpResponse(content, content_type=content_type)
     response['Content-Disposition'] = f'attachment; filename="call-{row.request_id}.audio"'
     response['Cache-Control'] = 'no-store'
