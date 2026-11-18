@@ -10,7 +10,10 @@ type Account = {
   protected: boolean;
   memberships: { workspace: string; role: string; active: boolean }[];
 };
-const props = defineProps<{ request: (path: string, body?: unknown) => Promise<any> }>();
+const props = defineProps<{
+  lookupOnly?: boolean;
+  request: (path: string, body?: unknown) => Promise<any>;
+}>();
 const emit = defineEmits<{ changed: [] }>();
 const search = ref('');
 const filter = ref('');
@@ -52,7 +55,15 @@ async function run(work: () => Promise<void>) {
 }
 function lookup() {
   void run(async () => {
+    selected.value = undefined;
+    notice.value = '';
     filter.value = search.value.trim();
+    if (props.lookupOnly && !filter.value) {
+      accounts.value = [];
+      page.value = 1;
+      hasNext.value = false;
+      return;
+    }
     await load();
   });
 }
@@ -86,7 +97,9 @@ function apply() {
     await load(page.value);
   });
 }
-onMounted(() => run(() => load()));
+onMounted(() => {
+  if (!props.lookupOnly) void run(() => load());
+});
 </script>
 
 <template>
@@ -95,8 +108,14 @@ onMounted(() => run(() => load()));
       <div class="account-title">
         <span class="heading-icon"><UsersRound :size="20" /></span>
         <div>
-          <h2>Comptes et accès</h2>
-          <p>Gérez les comptes et leurs droits par espace.</p>
+          <h2>{{ lookupOnly ? 'Retrouver un compte' : 'Annuaire des comptes' }}</h2>
+          <p>
+            {{
+              lookupOnly
+                ? 'Cherchez un utilisateur pour ouvrir son espace en assistance.'
+                : 'Gérez les comptes et leurs droits par espace.'
+            }}
+          </p>
         </div>
       </div>
       <form class="controls search" @submit.prevent="lookup">
@@ -112,8 +131,10 @@ onMounted(() => run(() => load()));
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="busy" role="status">Traitement en cours…</p>
-    <p v-else-if="!accounts.length" class="empty">Aucun compte trouvé.</p>
-    <ul class="accounts">
+    <p v-else-if="!error && !accounts.length && (!lookupOnly || filter)" class="empty">
+      Aucun compte trouvé.
+    </p>
+    <ul v-if="accounts.length" class="accounts">
       <li v-for="account in accounts" :key="account.id">
         <div class="identity">
           <strong>{{ account.username }}</strong>

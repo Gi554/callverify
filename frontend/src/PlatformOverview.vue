@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { Activity, ArrowRight, ClipboardList, LogOut, RefreshCw } from 'lucide-vue-next';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import {
+  Activity,
+  ArrowRight,
+  ClipboardList,
+  LogOut,
+  RefreshCw,
+  Home,
+  UsersRound,
+  ChartColumn,
+} from 'lucide-vue-next';
 import StatBars from './StatBars.vue';
 import StatDonut from './StatDonut.vue';
 import StatKpi from './StatKpi.vue';
@@ -217,7 +226,24 @@ async function load() {
     busy.value = false;
   }
 }
-onMounted(load);
+const sections = [
+  { key: 'accueil', label: 'Accueil', icon: Home },
+  { key: 'comptes', label: 'Comptes et accès', icon: UsersRound },
+  { key: 'performances', label: 'Performances', icon: ChartColumn },
+  { key: 'journal', label: 'Journal d’assistance', icon: ClipboardList },
+] as const;
+function currentSection() {
+  return sections.find((item) => location.hash === '#superadmin-' + item.key) || sections[0];
+}
+const section = ref(currentSection());
+function navigate() {
+  section.value = currentSection();
+}
+onMounted(() => {
+  window.addEventListener('hashchange', navigate);
+  void load();
+});
+onBeforeUnmount(() => window.removeEventListener('hashchange', navigate));
 </script>
 
 <template>
@@ -232,8 +258,8 @@ onMounted(load);
       <div class="platform-heading">
         <div>
           <small>SUPER ADMINISTRATION</small>
-          <h1>Vue d’ensemble</h1>
-          <p>{{ username }} · Activité et accès des espaces Assurance et Isolation</p>
+          <h1>{{ section.label }}</h1>
+          <p>{{ username }} · Assurance et Isolation</p>
         </div>
         <div class="platform-actions">
           <button type="button" class="secondary" :disabled="busy" @click="load">
@@ -244,214 +270,297 @@ onMounted(load);
           </button>
         </div>
       </div>
+      <nav class="platform-nav" aria-label="Super administration">
+        <a
+          v-for="item in sections"
+          :key="item.key"
+          :href="'#superadmin-' + item.key"
+          :aria-current="section.key === item.key ? 'page' : undefined"
+        >
+          <component :is="item.icon" :size="18" aria-hidden="true" /> {{ item.label }}
+        </a>
+      </nav>
       <p v-if="error" role="alert">{{ error }}</p>
       <p v-else-if="busy && !data" role="status">Chargement des indicateurs…</p>
-      <template v-if="data">
+      <template v-if="section.key === 'accueil'">
+        <PlatformAccounts key="lookup" :request="request" lookup-only @changed="load" />
+        <section v-if="data" class="platform-card">
+          <header class="section-heading">
+            <span class="section-icon warning"><Activity :size="20" /></span>
+            <div>
+              <h2>Incidents observés</h2>
+              <p>Appels, courriels et signalements techniques.</p>
+            </div>
+            <span class="area period">Dernières 24 h</span>
+          </header>
+          <ul v-if="incidentRows.length" class="incident-grid">
+            <li v-for="row in incidentRows" :key="row.key">
+              <span class="area" :class="row.area">{{
+                spaces.find((space) => space.key === row.area)?.label || 'Portail'
+              }}</span>
+              <strong class="incident-count">{{ row.count }}</strong>
+              <span>{{ row.label }}</span>
+              <small v-if="row.lastSeen"
+                >Dernier signalement {{ auditDate.format(new Date(row.lastSeen)) }}</small
+              >
+              <button type="button" class="secondary" @click="openIncident(row)">
+                Voir le détail
+              </button>
+            </li>
+          </ul>
+          <p v-else class="panel-empty">Aucun incident enregistré sur la période.</p>
+          <section v-if="selectedIncident" class="incident-details" :aria-busy="detailBusy">
+            <header class="section-heading">
+              <div>
+                <h3>{{ selectedIncident.label }}</h3>
+                <p>
+                  Heure du Québec ·
+                  {{
+                    spaces.find((space) => space.key === selectedIncident?.area)?.label || 'Portail'
+                  }}
+                </p>
+              </div>
+              <button type="button" class="secondary" @click="selectedIncident = undefined">
+                Fermer
+              </button>
+            </header>
+            <p v-if="detailBusy" role="status">Chargement des événements…</p>
+            <p v-else-if="detailError" role="alert">{{ detailError }}</p>
+            <p v-else-if="!incidentDetails.length" class="panel-empty">
+              Aucun événement sur cette page.
+            </p>
+            <ol v-else class="audit-list">
+              <li v-for="item in incidentDetails" :key="item.request_id ?? item.id">
+                <div>
+                  <strong v-if="item.contact_id"
+                    >Fiche n° {{ item.contact_id }} · Poste {{ item.extension }}</strong
+                  >
+                  <strong v-else>{{ selectedIncident.label }}</strong>
+                  <span v-if="item.attempts !== undefined">{{ item.attempts }} tentative(s)</span>
+                  <span v-if="item.request_id">Référence d’appel {{ item.request_id }}</span>
+                  <button
+                    v-if="item.contact_id && adminSpaces.includes(selectedIncident.area)"
+                    type="button"
+                    class="secondary"
+                    @click="emit('prospect', selectedIncident.area, item.contact_id)"
+                  >
+                    Ouvrir la fiche
+                  </button>
+                </div>
+                <time :datetime="item.observed_at">{{
+                  auditDate.format(new Date(item.observed_at))
+                }}</time>
+              </li>
+            </ol>
+            <nav
+              v-if="detailPage > 1 || moreDetails"
+              class="incident-pagination"
+              aria-label="Pages du journal technique"
+            >
+              <button
+                type="button"
+                class="secondary"
+                :disabled="detailBusy || detailPage === 1"
+                @click="openIncident(selectedIncident, detailPage - 1)"
+              >
+                Précédent
+              </button>
+              <span>Page {{ detailPage }}</span>
+              <button
+                type="button"
+                class="secondary"
+                :disabled="detailBusy || !moreDetails"
+                @click="openIncident(selectedIncident, detailPage + 1)"
+              >
+                Suivant
+              </button>
+            </nav>
+          </section>
+        </section>
+      </template>
+      <template v-else-if="section.key === 'comptes'">
+        <PlatformAccounts key="directory" :request="request" @changed="load" />
         <div class="platform-grid">
-          <StatKpi
-            label="Accès actifs"
-            :value="memberships"
-            hint="Un compte peut avoir plusieurs accès."
-          />
-          <StatKpi
-            label="Tentatives d’appel"
-            :value="calls"
-            hint="Sur les 30 derniers jours, heure du Québec."
-          />
-        </div>
-        <div class="platform-charts">
-          <StatBars title="Tentatives d’appel par espace" :days="data.days" :series="[...spaces]" />
-          <StatDonut
-            title="Répartition des accès actifs"
-            :center="String(memberships)"
-            caption="Accès actifs"
-            :segments="accessSegments"
-          />
+          <section v-for="space in spaces" :key="space.key" class="platform-card">
+            <h2>{{ space.label }}</h2>
+            <dl v-if="data" class="platform-roles">
+              <div
+                v-for="row in data.memberships.filter((item) => item.workspace === space.key)"
+                :key="row.role"
+              >
+                <dt>{{ roles[row.role] || row.role }}</dt>
+                <dd>{{ row.count }}</dd>
+              </div>
+            </dl>
+            <div v-if="adminSpaces.includes(space.key)" class="platform-actions">
+              <button
+                v-for="action in actions"
+                :key="action.key"
+                type="button"
+                class="secondary"
+                @click="emit('action', space.key, action.key)"
+              >
+                {{ action.label }} <ArrowRight :size="14" />
+              </button>
+            </div>
+          </section>
         </div>
       </template>
-      <div class="platform-grid">
-        <section v-for="space in spaces" :key="space.key" class="platform-card">
-          <h2>{{ space.label }}</h2>
-          <dl v-if="data" class="platform-roles">
-            <div
-              v-for="row in data.memberships.filter((item) => item.workspace === space.key)"
-              :key="row.role"
-            >
-              <dt>{{ roles[row.role] || row.role }}</dt>
-              <dd>{{ row.count }}</dd>
-            </div>
-          </dl>
-          <div v-if="adminSpaces.includes(space.key)" class="platform-actions">
-            <button
-              v-for="action in actions"
-              :key="action.key"
-              type="button"
-              class="secondary"
-              @click="emit('action', space.key, action.key)"
-            >
-              {{ action.label }} <ArrowRight :size="14" />
-            </button>
+      <template v-else-if="section.key === 'performances'">
+        <section v-if="data" class="platform-card performance">
+          <h2>Temps de réponse des setters</h2>
+          <p>
+            Dernières 24 heures · jusqu’aux 5 000 dernières mesures reçues. Les durées portent sur
+            les opérations réussies. Le serveur et SQL correspondent à la requête métier.
+          </p>
+          <div v-if="data?.performance?.length" style="overflow-x: auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Espace</th>
+                  <th>Opération</th>
+                  <th>Mesures</th>
+                  <th>Erreurs</th>
+                  <th>Médiane</th>
+                  <th>95e percentile</th>
+                  <th>Serveur médian</th>
+                  <th>SQL médian</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in data.performance" :key="row.area + row.operation">
+                  <td>{{ row.area === 'assurance' ? 'Assurance' : 'Isolation' }}</td>
+                  <td>{{ operations[row.operation] }}</td>
+                  <td>{{ row.total }}</td>
+                  <td>{{ row.errors }}</td>
+                  <td>{{ milliseconds(row.median_ms) }}</td>
+                  <td>{{ milliseconds(row.p95_ms) }}</td>
+                  <td>{{ milliseconds(row.server_ms) }}</td>
+                  <td>{{ milliseconds(row.sql_ms) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+          <p v-else>Aucune mesure reçue sur cette période.</p>
         </section>
-      </div>
-      <PlatformAccounts :request="request" @changed="load" />
-      <section class="platform-card">
-        <h2>Temps de réponse des setters</h2>
-        <p>
-          Dernières 24 heures · jusqu’aux 5 000 dernières mesures reçues. Les durées portent sur les
-          opérations réussies. Le serveur et SQL correspondent à la requête métier.
-        </p>
-        <div v-if="data?.performance?.length" style="overflow-x: auto">
-          <table>
-            <thead>
-              <tr>
-                <th>Espace</th>
-                <th>Opération</th>
-                <th>Mesures</th>
-                <th>Erreurs</th>
-                <th>Médiane</th>
-                <th>95e percentile</th>
-                <th>Serveur médian</th>
-                <th>SQL médian</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in data.performance" :key="row.area + row.operation">
-                <td>{{ row.area === 'assurance' ? 'Assurance' : 'Isolation' }}</td>
-                <td>{{ operations[row.operation] }}</td>
-                <td>{{ row.total }}</td>
-                <td>{{ row.errors }}</td>
-                <td>{{ milliseconds(row.median_ms) }}</td>
-                <td>{{ milliseconds(row.p95_ms) }}</td>
-                <td>{{ milliseconds(row.server_ms) }}</td>
-                <td>{{ milliseconds(row.sql_ms) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p v-else>Aucune mesure reçue sur cette période.</p>
-      </section>
-      <PlatformSupportJournal class="platform-card" :request="request" />
-      <section v-if="data" class="platform-card">
-        <header class="section-heading">
-          <span class="section-icon warning"><Activity :size="20" /></span>
-          <div>
-            <h2>Incidents observés</h2>
-            <p>Appels, courriels et signalements techniques.</p>
+        <template v-if="data">
+          <div class="platform-grid">
+            <StatKpi
+              label="Accès actifs"
+              :value="memberships"
+              hint="Un compte peut avoir plusieurs accès."
+            />
+            <StatKpi
+              label="Tentatives d’appel"
+              :value="calls"
+              hint="Sur les 30 derniers jours, heure du Québec."
+            />
           </div>
-          <span class="area period">Dernières 24 h</span>
-        </header>
-        <ul v-if="incidentRows.length" class="incident-grid">
-          <li v-for="row in incidentRows" :key="row.key">
-            <span class="area" :class="row.area">{{
-              spaces.find((space) => space.key === row.area)?.label || 'Portail'
-            }}</span>
-            <strong class="incident-count">{{ row.count }}</strong>
-            <span>{{ row.label }}</span>
-            <small v-if="row.lastSeen"
-              >Dernier signalement {{ auditDate.format(new Date(row.lastSeen)) }}</small
-            >
-            <button type="button" class="secondary" @click="openIncident(row)">
-              Voir le détail
-            </button>
-          </li>
-        </ul>
-        <p v-else class="panel-empty">Aucun incident enregistré sur la période.</p>
-        <section v-if="selectedIncident" class="incident-details" :aria-busy="detailBusy">
+          <div class="platform-charts">
+            <StatBars
+              title="Tentatives d’appel par espace"
+              :days="data.days"
+              :series="[...spaces]"
+            />
+            <StatDonut
+              title="Répartition des accès actifs"
+              :center="String(memberships)"
+              caption="Accès actifs"
+              :segments="accessSegments"
+            />
+          </div>
+        </template>
+      </template>
+      <template v-else>
+        <PlatformSupportJournal class="platform-card" :request="request" />
+        <section v-if="data" class="platform-card">
           <header class="section-heading">
+            <span class="section-icon"><ClipboardList :size="20" /></span>
             <div>
-              <h3>{{ selectedIncident.label }}</h3>
-              <p>
-                Heure du Québec ·
-                {{
-                  spaces.find((space) => space.key === selectedIncident?.area)?.label || 'Portail'
-                }}
-              </p>
+              <h2>Journal du superadmin</h2>
+              <p>Les 20 dernières actions sur les comptes et les accès. Heure du Québec.</p>
             </div>
-            <button type="button" class="secondary" @click="selectedIncident = undefined">
-              Fermer
-            </button>
           </header>
-          <p v-if="detailBusy" role="status">Chargement des événements…</p>
-          <p v-else-if="detailError" role="alert">{{ detailError }}</p>
-          <p v-else-if="!incidentDetails.length" class="panel-empty">
-            Aucun événement sur cette page.
+          <p v-if="!data.recent_actions.length" class="panel-empty">
+            Les actions apparaîtront ici après leur confirmation.
           </p>
           <ol v-else class="audit-list">
-            <li v-for="item in incidentDetails" :key="item.request_id ?? item.id">
+            <li v-for="row in data.recent_actions" :key="row.id">
               <div>
-                <strong v-if="item.contact_id"
-                  >Fiche n° {{ item.contact_id }} · Poste {{ item.extension }}</strong
-                >
-                <strong v-else>{{ selectedIncident.label }}</strong>
-                <span v-if="item.attempts !== undefined">{{ item.attempts }} tentative(s)</span>
-                <span v-if="item.request_id">Référence d’appel {{ item.request_id }}</span>
-                <button
-                  v-if="item.contact_id && adminSpaces.includes(selectedIncident.area)"
-                  type="button"
-                  class="secondary"
-                  @click="emit('prospect', selectedIncident.area, item.contact_id)"
-                >
-                  Ouvrir la fiche
-                </button>
+                <strong>{{ auditLabels[row.action] || row.action }}</strong>
+                <span>Compte #{{ row.target }} · Par {{ row.actor }}</span>
+                <p>{{ row.reason }}</p>
               </div>
-              <time :datetime="item.observed_at">{{
-                auditDate.format(new Date(item.observed_at))
+              <time :datetime="row.created_at">{{
+                auditDate.format(new Date(row.created_at))
               }}</time>
             </li>
           </ol>
-          <nav
-            v-if="detailPage > 1 || moreDetails"
-            class="incident-pagination"
-            aria-label="Pages du journal technique"
-          >
-            <button
-              type="button"
-              class="secondary"
-              :disabled="detailBusy || detailPage === 1"
-              @click="openIncident(selectedIncident, detailPage - 1)"
-            >
-              Précédent
-            </button>
-            <span>Page {{ detailPage }}</span>
-            <button
-              type="button"
-              class="secondary"
-              :disabled="detailBusy || !moreDetails"
-              @click="openIncident(selectedIncident, detailPage + 1)"
-            >
-              Suivant
-            </button>
-          </nav>
         </section>
-      </section>
-      <section v-if="data" class="platform-card">
-        <header class="section-heading">
-          <span class="section-icon"><ClipboardList :size="20" /></span>
-          <div>
-            <h2>Journal du superadmin</h2>
-            <p>Les 20 dernières actions sur les comptes et les accès. Heure du Québec.</p>
-          </div>
-        </header>
-        <p v-if="!data.recent_actions.length" class="panel-empty">
-          Les actions apparaîtront ici après leur confirmation.
-        </p>
-        <ol v-else class="audit-list">
-          <li v-for="row in data.recent_actions" :key="row.id">
-            <div>
-              <strong>{{ auditLabels[row.action] || row.action }}</strong>
-              <span>Compte #{{ row.target }} · Par {{ row.actor }}</span>
-              <p>{{ row.reason }}</p>
-            </div>
-            <time :datetime="row.created_at">{{ auditDate.format(new Date(row.created_at)) }}</time>
-          </li>
-        </ol>
-      </section>
+      </template>
     </main>
   </div>
 </template>
 
 <style scoped>
+.platform-nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 5px;
+  gap: 4px;
+  border: 1px solid #dbe2ec;
+  border-radius: 14px;
+  background: white;
+}
+.platform-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  text-decoration: none;
+  color: #344961;
+  font-weight: 600;
+  border-radius: 9px;
+}
+.platform-nav a:hover {
+  background: #eff4fa;
+}
+.platform-nav a[aria-current='page'] {
+  background: #203d60;
+  color: white;
+}
+.platform-nav a:focus-visible {
+  outline: 3px solid #3987d4;
+  outline-offset: 1px;
+}
+.platform-card {
+  min-width: 0;
+}
+.performance table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.performance th,
+.performance td {
+  padding: 10px;
+  border-bottom: 1px solid #dbe2ec;
+  text-align: right;
+  white-space: nowrap;
+}
+.performance th:first-child,
+.performance td:first-child,
+.performance th:nth-child(2),
+.performance td:nth-child(2) {
+  text-align: left;
+}
+@media (max-width: 640px) {
+  .platform-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .incident-details {
   margin-top: 1.25rem;
   padding-top: 1rem;
