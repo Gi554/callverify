@@ -3418,3 +3418,7 @@ Vérifications : tests API Assurance et Isolation pour la persistance après rel
 ## Reprise d’une session d’appels Isolation lorsque la file contient une fiche devenue inadmissible
 
 Au démarrage de chaque appel, l’API contrôle à nouveau l’affectation, l’admissibilité et le numéro. Si une fiche de la file active a changé entre son chargement et cette validation, une réponse 400 ne bloque plus toute la session : elle est écartée de la session en cours, sans être marquée comme appelée ni modifier la fiche, puis l’agent passe au prochain contact admissible. Le nombre de fiches écartées est indiqué lorsque la file est épuisée. Les conflits de progression (409) et les autres erreurs conservent leur traitement existant.
+
+## Lecture des enregistrements d’appel par l’administrateur
+
+Dans l’historique des appels, le bouton « Écouter » télécharge l’enregistrement NEWT autorisé pour l’administrateur et l’affiche dans un lecteur associé uniquement à la ligne sélectionnée. La lecture démarre après chargement lorsque le navigateur l’autorise ; sinon le lecteur reste visible avec les commandes natives et une indication pour démarrer manuellement. Les erreurs ou réponses vides s’affichent sous l’appel concerné. L’accès reste réservé aux administrateurs de l’espace et à son enregistrement NEWT.
