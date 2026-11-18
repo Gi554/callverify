@@ -66,6 +66,21 @@ const workspace = ref(''),
   ready = ref(false);
 const supportError = ref('');
 const stoppingSupport = ref(false);
+const supportSwitchOpen = ref(false);
+const supportSwitchBusy = ref(false);
+const supportTargetSearch = ref('');
+const supportTargets = ref<any[]>([]);
+const supportTargetId = ref('');
+const supportTargetWorkspace = ref('');
+const supportSwitchReason = ref('');
+const supportTargetPage = ref(1);
+const supportTargetsNext = ref(false);
+const activeSupportTarget = computed(
+  () => supportTargets.value.find((target) => String(target.id) === supportTargetId.value) || null,
+);
+const activeSupportGrants = computed(
+  () => activeSupportTarget.value?.memberships.filter((grant: any) => grant.active) || [],
+);
 const recoveryOpen = ref(false),
   resetUid = ref(''),
   resetToken = ref('');
@@ -383,6 +398,58 @@ async function stopSupport() {
   }
 }
 
+async function loadSupportTargets(page = 1) {
+  supportSwitchBusy.value = true;
+  supportError.value = '';
+  try {
+    const query = encodeURIComponent(supportTargetSearch.value.trim());
+    const data = await portal(`platform/accounts/?page=${page}&search=${query}`);
+    supportTargets.value = data.results.filter(
+      (target: any) =>
+        target.active && !target.protected && target.memberships.some((grant: any) => grant.active),
+    );
+    supportTargetPage.value = page;
+    supportTargetsNext.value = !!data.next;
+    if (!supportTargets.value.some((target: any) => String(target.id) === supportTargetId.value)) {
+      supportTargetId.value = '';
+      supportTargetWorkspace.value = '';
+    }
+  } catch (cause) {
+    supportError.value = cause instanceof Error ? cause.message : 'Liste des comptes indisponible.';
+  } finally {
+    supportSwitchBusy.value = false;
+  }
+}
+
+async function toggleSupportSwitcher() {
+  supportSwitchOpen.value = !supportSwitchOpen.value;
+  supportError.value = '';
+  if (supportSwitchOpen.value) await loadSupportTargets();
+}
+
+function chooseSupportTarget() {
+  supportTargetWorkspace.value = activeSupportGrants.value[0]?.workspace || '';
+}
+
+async function switchSupportAccount() {
+  if (!activeSupportTarget.value || !supportTargetWorkspace.value || supportSwitchBusy.value)
+    return;
+  supportSwitchBusy.value = true;
+  supportError.value = '';
+  try {
+    await portal('platform/support/switch/', {
+      user_id: activeSupportTarget.value.id,
+      workspace: supportTargetWorkspace.value,
+      reason: supportSwitchReason.value.trim(),
+    });
+    window.location.assign('/crm');
+  } catch (cause) {
+    supportError.value =
+      cause instanceof Error ? cause.message : 'Changement de compte indisponible.';
+    supportSwitchBusy.value = false;
+  }
+}
+
 const role = computed(
   () =>
     summary.value?.role ||
@@ -601,10 +668,98 @@ onMounted(async () => {
 <template>
   <aside v-if="user?.support" class="portal-support-banner" aria-label="Session d’assistance">
     <strong>Assistance · {{ user.username }}</strong>
+    <button
+      type="button"
+      class="secondary"
+      :disabled="stoppingSupport || supportSwitchBusy"
+      @click="toggleSupportSwitcher"
+    >
+      {{ supportSwitchOpen ? 'Fermer le changement de compte' : 'Changer de compte' }}
+    </button>
     <button type="button" class="secondary" :disabled="stoppingSupport" @click="stopSupport">
-      Revenir au compte superadmin
+      Terminer l’assistance
     </button>
     <span v-if="supportError" role="alert">{{ supportError }}</span>
+    <form
+      v-if="supportSwitchOpen"
+      class="portal-support-switch"
+      @submit.prevent="switchSupportAccount"
+    >
+      <label>
+        <span>Rechercher un compte</span>
+        <span class="portal-support-search">
+          <input v-model="supportTargetSearch" type="search" placeholder="Nom ou adresse e-mail" />
+          <button
+            type="button"
+            class="secondary"
+            :disabled="supportSwitchBusy"
+            @click="loadSupportTargets(1)"
+          >
+            Rechercher
+          </button>
+        </span>
+      </label>
+      <label>
+        <span>Compte actif</span>
+        <select v-model="supportTargetId" required @change="chooseSupportTarget">
+          <option disabled value="">Sélectionner un compte</option>
+          <option v-for="target in supportTargets" :key="target.id" :value="String(target.id)">
+            {{ target.username }}{{ target.email ? ` · ${target.email}` : '' }}
+          </option>
+        </select>
+      </label>
+      <label v-if="activeSupportGrants.length">
+        <span>Espace</span>
+        <select v-model="supportTargetWorkspace" required>
+          <option
+            v-for="grant in activeSupportGrants"
+            :key="grant.workspace"
+            :value="grant.workspace"
+          >
+            {{ grant.workspace === 'assurance' ? 'Assurance' : 'Isolation' }} · {{ grant.role }}
+          </option>
+        </select>
+      </label>
+      <label>
+        <span>Motif (journalisé)</span>
+        <input
+          v-model="supportSwitchReason"
+          required
+          minlength="3"
+          maxlength="500"
+          placeholder="Ex. Diagnostic d’un bug signalé"
+        />
+      </label>
+      <div class="portal-support-switch-actions">
+        <button
+          type="submit"
+          class="primary"
+          :disabled="supportSwitchBusy || !activeSupportTarget || !supportTargetWorkspace"
+        >
+          {{ supportSwitchBusy ? 'Changement…' : 'Ouvrir ce compte' }}
+        </button>
+        <button
+          type="button"
+          class="secondary"
+          :disabled="supportSwitchBusy || supportTargetPage <= 1"
+          @click="loadSupportTargets(supportTargetPage - 1)"
+        >
+          Précédents
+        </button>
+        <button
+          type="button"
+          class="secondary"
+          :disabled="supportSwitchBusy || !supportTargetsNext"
+          @click="loadSupportTargets(supportTargetPage + 1)"
+        >
+          Suivants
+        </button>
+      </div>
+      <small
+        >Seuls les comptes actifs ayant un accès actif à l’espace sont proposés. Chaque changement
+        est journalisé.</small
+      >
+    </form>
   </aside>
   <div
     class="amx-root"
@@ -1102,6 +1257,47 @@ onMounted(async () => {
   padding: 0.5rem 1rem;
   background: #fff1cc;
   color: #563b00;
+}
+.portal-support-switch {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  align-items: end;
+  gap: 0.75rem;
+  width: min(100%, 1100px);
+  padding: 0.85rem;
+  border: 1px solid #ead59d;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+.portal-support-switch label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+.portal-support-switch input,
+.portal-support-switch select {
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d7dbe3;
+  border-radius: 8px;
+  background: #fff;
+  color: #20271e;
+}
+.portal-support-search,
+.portal-support-switch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.portal-support-search input {
+  flex: 1 1 140px;
+}
+.portal-support-switch small {
+  grid-column: 1 / -1;
+  color: #685d43;
 }
 .amx-root {
   min-height: 100vh;

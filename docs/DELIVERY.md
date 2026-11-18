@@ -3422,3 +3422,7 @@ Au démarrage de chaque appel, l’API contrôle à nouveau l’affectation, l�
 ## Lecture des enregistrements d’appel par l’administrateur
 
 Dans l’historique des appels, le bouton « Écouter » télécharge l’enregistrement NEWT autorisé pour l’administrateur et l’affiche dans un lecteur associé uniquement à la ligne sélectionnée. La lecture démarre après chargement lorsque le navigateur l’autorise ; sinon le lecteur reste visible avec les commandes natives et une indication pour démarrer manuellement. Les erreurs ou réponses vides s’affichent sous l’appel concerné. L’accès reste réservé aux administrateurs de l’espace et à son enregistrement NEWT.
+
+## Prise en main et changement de compte par le superadmin
+
+La liste de supervision inclut les comptes métier de tous les rôles, pas uniquement les administrateurs. Pendant une session d’assistance, le bandeau permet de chercher et choisir directement un autre compte et un de ses espaces actifs, avec motif obligatoire ; le superadmin n’a pas besoin du mot de passe de l’utilisateur ni de quitter l’assistance pour revenir à la liste. Chaque fin et chaque nouveau démarrage sont journalisés séparément. Les comptes système, suspendus ou sans appartenance active ne peuvent pas être pris en main ; l’assistance reste limitée à un espace à la fois et expire après 15 minutes.
