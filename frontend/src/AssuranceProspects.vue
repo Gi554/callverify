@@ -23,6 +23,7 @@ const props = defineProps<{
   portal: (path: string, body?: any) => Promise<any>;
   role: string;
   sessionOwner?: string;
+  preview?: { revision: number; read: () => Column[]; store: (columns: Column[]) => void };
   // Prospect to open on arrival, e.g. from the calls module.
   focus?: { id: number; mode: 'edit' | 'call' } | null;
 }>();
@@ -255,12 +256,20 @@ async function loadColumn(column: Column, version: number, append = false) {
     column.page = append ? column.page + 1 : 1;
     column.next = !!data.next;
   } catch (e: any) {
-    if (version === generation) column.error = e.message;
+    if (version === generation) {
+      column.rows = [];
+      column.count = 0;
+      column.error = e.message;
+    }
   } finally {
     if (version === generation) column.busy = false;
   }
 }
-async function load() {
+async function load(restorePreview: unknown = false) {
+  const revision = props.preview?.revision;
+  const preview = restorePreview === true ? props.preview?.read() || [] : [];
+  if (preview.length)
+    columns.value = preview.map((column) => ({ ...column, rows: [...column.rows] }));
   const version = ++generation;
   busy.value = true;
   error.value = '';
@@ -273,8 +282,8 @@ async function load() {
     columns.value = [{ key: 'callback_queue', label: 'Rappels', active: true }, ...data.stages].map(
       (s: any) => ({
         ...s,
-        rows: [],
-        count: 0,
+        rows: preview.find((column) => column.key === s.key)?.rows || [],
+        count: preview.find((column) => column.key === s.key)?.count || 0,
         page: 0,
         next: false,
         busy: true,
@@ -288,6 +297,22 @@ async function load() {
           await loadColumn(queue.shift()!, version);
       }),
     );
+    if (
+      props.preview &&
+      props.preview.revision === revision &&
+      !disposed &&
+      version === generation &&
+      !term &&
+      !includeProcessed.value &&
+      columns.value.every((column) => !column.error)
+    ) {
+      props.preview.store(
+        columns.value.map((column) => ({
+          ...column,
+          rows: [...column.rows],
+        })),
+      );
+    }
   } catch (e: any) {
     if (version === generation) error.value = e.message;
   } finally {
@@ -338,7 +363,7 @@ async function closed() {
   });
 }
 onMounted(async () => {
-  void load();
+  if (!props.focus) void load(true);
   try {
     await loadSessionState();
   } catch {
@@ -346,7 +371,14 @@ onMounted(async () => {
   } finally {
     restoring.value = false;
   }
-  if (!disposed && props.focus) await open({ id: props.focus.id }, props.focus.mode);
+  if (!disposed && props.focus) {
+    await open({ id: props.focus.id }, props.focus.mode);
+    if (!selected.value && !disposed) {
+      const openingError = error.value;
+      await load();
+      error.value = openingError || error.value;
+    }
+  }
 });
 onBeforeUnmount(() => {
   stopTimer();

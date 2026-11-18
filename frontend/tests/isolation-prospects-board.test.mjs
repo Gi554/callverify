@@ -109,7 +109,7 @@ async function flush() {
   }
 }
 const text = (n) => (n.text || '') + (n.children || []).map(text).join('')
-function fixture(role = 'setter', ownLot = false, serverState = null) {
+function fixture(role = 'setter', ownLot = false, serverState = null, focus = null) {
   const root = { children: [] },
     requests = [],
     portalCalls = [],
@@ -127,6 +127,7 @@ function fixture(role = 'setter', ownLot = false, serverState = null) {
   })
   const app = renderer.createApp(component, {
     role,
+    focus,
     request: async (path, body, method) => {
       requests.push({ path, body })
       if (path === 'call-session/') {
@@ -404,6 +405,21 @@ test('dismissing the countdown modal stops the session without opening another p
     assert.match(text(f.root), /Session arrêtée|Session mise en pause/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'IsolationProspectActivity'), undefined)
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('Isolation opens a prospect from Calls before loading any board columns', async () => {
+  const f = fixture('setter', false, null, { id: 42, mode: 'edit' })
+  try {
+    await flush()
+    assert.ok(component_(f, 'IsolationProspectActivity'))
+    assert.ok(f.requests.some((r) => r.path === 'work-queue/42/'))
+    assert.ok(!f.requests.some((r) => r.path.startsWith('work-queue/?')))
+    component_(f, 'IsolationProspectActivity').props.onClose()
+    await flush()
+    assert.ok(f.requests.some((r) => r.path.startsWith('work-queue/?')))
   } finally {
     f.app.unmount()
   }

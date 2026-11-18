@@ -3444,3 +3444,6 @@ En recette sur staging, le minuteur Isolation passe à cinq secondes, comme en A
 ## Assistance superadmin depuis la liste des comptes
 
 Chaque compte métier actif disposant d’un espace actif présente une action directe « Se connecter en tant que ». Le choix de l’espace, le motif et la confirmation s’affichent sous le compte choisi. Le serveur conserve les contrôles d’accès et la journalisation de l’assistance.
+
+## Navigation des setters vers Prospects
+Depuis Appels, la fiche demandée se charge avant le tableau en Assurance et en Isolation. Au retour sur Prospects, le dernier tableau sans filtre du setter peut être réaffiché pendant sa relecture, pendant trente secondes au maximum. Cet aperçu en mémoire est invalidé sur écriture métier et changement de contexte. La composition et les commandes de session continuent de passer par le serveur. Les lectures de colonnes simultanées du même contexte partagent uniquement la demande de droit d’accès en cours.

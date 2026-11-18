@@ -93,6 +93,7 @@ function fixture(
   withCallback = false,
   serverState = null,
   beforeRequest = null,
+  focus = null,
 ) {
   const root = { children: [] },
     requests = [],
@@ -176,6 +177,7 @@ function fixture(
     render: () =>
       h(component, {
         role,
+        focus,
         request,
         portal: async () => ({}),
         onImported: (count) => imported.push(count),
@@ -472,6 +474,21 @@ test('dismissing the countdown modal stops the session without opening another p
     assert.match(text(f.root), /Session mise en pause/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('Assurance opens a prospect from Calls before loading any board columns', async () => {
+  const f = fixture('setter', false, false, false, null, null, { id: 42, mode: 'edit' })
+  try {
+    await flush()
+    assert.ok(component_(f, 'AssuranceContactEditor'))
+    assert.ok(f.requests.some((r) => r.path === 'contacts/42/'))
+    assert.ok(!f.requests.some((r) => r.path.startsWith('contacts/?')))
+    component_(f, 'AssuranceContactEditor').props.onClose()
+    await flush()
+    assert.ok(f.requests.some((r) => r.path.startsWith('contacts/?')))
   } finally {
     f.close()
   }
