@@ -21,6 +21,7 @@ const labels: Record<string, string> = {
   monthly_electricity: 'Électricité mensuelle ($)',
   construction_year: 'Année de construction',
   age: 'Âge du client',
+  advisor_note: 'Note utile au conseiller',
 };
 const emailInput = ref<HTMLInputElement | null>(null);
 function focusEmail() {
@@ -54,6 +55,7 @@ async function load() {
       monthly_electricity: null,
       construction_year: null,
       age: null,
+      advisor_note: '',
       ...row.defaults,
       ...row.c2,
     };
@@ -204,6 +206,18 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
             @change="values.age = values.age === '' ? null : values.age"
         /></label>
       </div>
+      <label class="c2-note"
+        >Note utile au conseiller · facultative<textarea
+          v-model="values.advisor_note"
+          maxlength="3000"
+          rows="4"
+          placeholder="Précisions importantes pour préparer la visite…"
+        ></textarea>
+        <small
+          >Cette note sera transmise au client Isolation avec la qualification du
+          rendez-vous.</small
+        >
+      </label>
       <button
         type="button"
         class="secondary"
@@ -238,6 +252,16 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
 .c2-form p {
   font-size: 12px;
   line-height: 1.6;
+}
+.c2-note {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+.c2-note textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
 }
 .c2-form fieldset {
   border: 0;
