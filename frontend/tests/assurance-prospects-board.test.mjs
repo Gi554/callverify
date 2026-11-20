@@ -92,6 +92,8 @@ function fixture(
   ownLot = false,
   withCallback = false,
   serverState = null,
+  beforeRequest = null,
+  focus = null,
 ) {
   const root = { children: [] },
     requests = [],
@@ -99,6 +101,7 @@ function fixture(
     state = serverState || { active: false, visited_ids: [], current_id: null }
   const request = async (path, body, method) => {
     requests.push({ path, body, method })
+    if (beforeRequest) await beforeRequest(path, body)
     if (path === 'call-session/') {
       if (method !== 'POST') return structuredClone(state)
       if (body.action === 'start')
@@ -140,7 +143,7 @@ function fixture(
       return { id: Number(detail[1]), name: 'Dossier ' + detail[1], phone: '+15145550000' }
     if (
       path.startsWith('contacts/?status=new') ||
-      (ownLot && path.startsWith('contacts/?mine=true'))
+      ((ownLot || role === 'setter') && path.startsWith('contacts/?mine=true'))
     )
       return {
         count: second ? 2 : 1,
@@ -174,6 +177,7 @@ function fixture(
     render: () =>
       h(component, {
         role,
+        focus,
         request,
         portal: async () => ({}),
         onImported: (count) => imported.push(count),
@@ -288,7 +292,7 @@ test('setter runs a call session with a countdown between prospects', async () =
     assert.equal(first.props['auto-call'], true)
     first.props.onClose()
     await flush()
-    assert.match(text(f.root), /Prochain appel dans 10 s/)
+    assert.match(text(f.root), /Prochain appel dans 5 s/)
     button(f, 'Appeler maintenant').props.onClick()
     await flush()
     assert.ok(component_(f, 'AssuranceContactEditor'))
@@ -296,6 +300,57 @@ test('setter runs a call session with a countdown between prospects', async () =
     await flush()
     assert.match(text(f.root), /Session terminée/)
     assert.equal(button(f, 'Appeler maintenant'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('slow next-contact lookup starts the countdown and pause cancels the pending call', async () => {
+  let release
+  let searches = 0
+  const f = fixture('setter', true, false, false, null, (path) => {
+    if (path.startsWith('contacts/?mine=true') && ++searches === 2)
+      return new Promise((resolve) => {
+        release = resolve
+      })
+  })
+  try {
+    await flush()
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    component_(f, 'AssuranceContactEditor').props.onClose()
+    await flush()
+    assert.match(text(f.root), /Prochain appel dans 5 s/)
+    assert.equal(f.requests.filter(({ path }) => path === 'pipeline/').length, 1)
+    button(f, 'Appeler maintenant').props.onClick()
+    button(f, 'Mettre en pause').props.onClick()
+    release()
+    await flush()
+    assert.deepEqual(f.state.visited_ids, [11])
+    assert.equal(f.requests.filter(({ body }) => body?.action === 'begin').length, 1)
+  } finally {
+    f.close()
+  }
+})
+
+test('the automatic transition starts exactly once after five seconds', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] })
+  const f = fixture('setter', true)
+  try {
+    await flush()
+    button(f, 'Lancer une session d’appels').props.onClick()
+    await flush()
+    component_(f, 'AssuranceContactEditor').props.onClose()
+    await flush()
+    const begins = () => f.requests.filter(({ body }) => body?.action === 'begin')
+    t.mock.timers.tick(4000)
+    assert.equal(begins().length, 1)
+    t.mock.timers.tick(1000)
+    await flush()
+    assert.deepEqual(
+      begins().map(({ body }) => body.contact_id),
+      [11, 12],
+    )
   } finally {
     f.close()
   }
@@ -378,7 +433,7 @@ test('administrator calls the prospects of their own lot', async () => {
     assert.equal(first.props.workflow, 'call')
     first.props.onClose()
     await flush()
-    assert.match(text(f.root), /Prochain appel dans 10 s/)
+    assert.match(text(f.root), /Prochain appel dans 5 s/)
   } finally {
     f.close()
   }
@@ -419,6 +474,21 @@ test('dismissing the countdown modal stops the session without opening another p
     assert.match(text(f.root), /Session mise en pause/)
     assert.equal(component_(f, 'CallCountdownModal'), undefined)
     assert.equal(component_(f, 'AssuranceContactEditor'), undefined)
+  } finally {
+    f.close()
+  }
+})
+
+test('Assurance opens a prospect from Calls before loading any board columns', async () => {
+  const f = fixture('setter', false, false, false, null, null, { id: 42, mode: 'edit' })
+  try {
+    await flush()
+    assert.ok(component_(f, 'AssuranceContactEditor'))
+    assert.ok(f.requests.some((r) => r.path === 'contacts/42/'))
+    assert.ok(!f.requests.some((r) => r.path.startsWith('contacts/?')))
+    component_(f, 'AssuranceContactEditor').props.onClose()
+    await flush()
+    assert.ok(f.requests.some((r) => r.path.startsWith('contacts/?')))
   } finally {
     f.close()
   }

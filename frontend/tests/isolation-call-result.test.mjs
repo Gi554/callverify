@@ -183,7 +183,7 @@ test('a failed declared result retains its note and does not acknowledge success
   }
 })
 
-test('seven outcomes are offered and booking opens qualification without inventing an appointment', async () => {
+test('eight outcomes are offered and booking opens qualification without inventing an appointment', async () => {
   const f = fixture()
   try {
     await flush()
@@ -197,6 +197,7 @@ test('seven outcomes are offered and booking opens qualification without inventi
       'invalid_number',
       'disconnected',
       'not_interested',
+      'non_eligible',
       'callback',
       'other',
     ])
@@ -212,7 +213,7 @@ test('seven outcomes are offered and booking opens qualification without inventi
   }
 })
 
-for (const result of ['voicemail', 'invalid_number', 'disconnected', 'other']) {
+for (const result of ['voicemail', 'invalid_number', 'disconnected', 'non_eligible', 'other']) {
   test(`${result} acknowledges its exact result only after successful persistence`, async () => {
     const f = fixture()
     try {

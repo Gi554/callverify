@@ -49,6 +49,7 @@ const statuses: Record<string, string> = {
   callback: 'À rappeler',
   interested: 'Intéressé',
   not_interested: 'Non intéressé',
+  non_eligible: 'Non éligible',
   unreachable: 'Non joint',
 };
 let requestId = crypto.randomUUID();
@@ -86,9 +87,15 @@ async function callSaved(result: string) {
   emit('saved');
   if (
     !error.value &&
-    ['voicemail', 'invalid_number', 'disconnected', 'not_interested', 'callback', 'other'].includes(
-      result,
-    )
+    [
+      'voicemail',
+      'invalid_number',
+      'disconnected',
+      'not_interested',
+      'non_eligible',
+      'callback',
+      'other',
+    ].includes(result)
   ) {
     await nextTick();
     close();
@@ -173,6 +180,7 @@ const resultLabels: Record<string, string> = {
   invalid_number: 'Numéro non attribué',
   disconnected: 'Appel coupé',
   not_interested: 'Pas intéressé',
+  non_eligible: 'Non éligible',
   callback: 'Rappel demandé',
   other: 'Autre résultat',
   unreachable: 'Injoignable',

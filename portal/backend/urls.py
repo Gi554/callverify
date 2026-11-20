@@ -1,6 +1,7 @@
 from django.urls import path
 from .identity.actor_names import names as actor_names
 from .identity import views
+from .identity.performance import collect as collect_performance
 from .identity.platform_overview import overview as platform_overview
 from .identity.platform_overview import platform_accounts, platform_account_action
 from .identity.support_sessions import start_support, stop_support, switch_support
@@ -35,6 +36,7 @@ urlpatterns = [
     path('api/portal/platform-overview/', platform_overview),
     path('api/portal/platform-overview/incidents/', incident_details),
     path('api/portal/platform/incidents/', report_platform_incident),
+    path('api/portal/performance/', collect_performance),
     path('api/portal/platform/accounts/', platform_accounts),
     path('api/portal/platform/accounts/<int:pk>/actions/', platform_account_action),
     path('api/portal/platform/accounts/<int:pk>/support/', start_support),

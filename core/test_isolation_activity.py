@@ -30,6 +30,19 @@ class IsolationActivityTests(TestCase):
     def auth(self, pk, role):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + issue(pk, 'isolation', role))
 
+    def test_non_eligible_status_removes_contact_from_queue_and_resumed_session(self):
+        from .models import CallSessionProgress
+
+        session = CallSessionProgress.objects.create(
+            portal_user_id=21, active=True, current_prospect_id=self.row.pk
+        )
+        self.assertEqual(self.post(kind='qualification', status='non_eligible').status_code, 201)
+        session.refresh_from_db()
+        self.assertIsNone(session.current_prospect_id)
+        self.assertIn(self.row.pk, session.visited_prospect_ids)
+        self.assertEqual(self.client.get('/api/work-queue/?queue=active').data['count'], 0)
+        self.assertEqual(self.client.get(self.base).data['commercial_status'], 'non_eligible')
+
     def payload(self, **changes):
         return {
             'revision': 0,

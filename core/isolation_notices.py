@@ -35,7 +35,7 @@ def result_changed(visit, report, previous, actor):
 
     # Task ownership follows the prospect's current setter, as for existing manual callbacks.
     prospect = visit.prospect
-    owner = prospect.assigned_setter_id
+    owner = visit.setter_id
     from .isolation_client_followups import sync_client_followup
 
     sync_client_followup(visit, report)
@@ -107,13 +107,20 @@ def result_changed(visit, report, previous, actor):
         sync(prospect)
     if report.outcome == 'unqualified':
         if not previous or previous.get('outcome') != 'unqualified':
-            notice(visit, owner, 'setter', 'unqualified', f'result:{visit.pk}:{visit.revision}')
-        return
-    if not report.performed and report.follow_up_owner == 'client':
+            notice(
+                visit,
+                prospect.assigned_setter_id,
+                'setter',
+                'unqualified',
+                f'result:{visit.pk}:{visit.revision}',
+            )
         return
     if (
         previous
         and previous['performed'] == report.performed
+        and previous.get('absence_reason', '') == report.absence_reason
+        and previous.get('follow_up_at')
+        == (report.follow_up_at.isoformat() if report.follow_up_at else None)
         and previous.get('closed') == report.closed
         and previous.get('follow_up_owner', 'setter') == report.follow_up_owner
     ):
@@ -136,34 +143,13 @@ class Notices(viewsets.GenericViewSet):
         )
         rows = rows.filter(
             ~Q(recipient_role='setter')
-            | Q(visit__prospect__assigned_setter_id=self.request.user.pk)
-        )
-        rows = rows.filter(
-            ~Q(kind__in=['booked', 'result_due']) | Q(pk__in=candidates().values('pk'))
+            | Q(kind='unqualified', visit__prospect__assigned_setter_id=self.request.user.pk)
+            | Q(kind__in=['held', 'closed', 'not_held'], visit__setter_id=self.request.user.pk)
         )
         from django.db.models import F
-        from .isolation_reminders import policy
 
-        rows = rows.filter(
-            ~Q(kind='result_ready')
-            | (
-                Q(
-                    visit__client_id=self.request.user.pk,
-                    recipient_role='client',
-                    visit__status='scheduled',
-                    anchor_at=F('visit__starts_at'),
-                    visit__ends_at__lte=timezone.now(),
-                    visit__ends_at__gt=timezone.now() - timedelta(hours=24),
-                    visit__ends_at__gte=policy().active_from,
-                )
-                & (Q(visit__result__isnull=True) | Q(visit__result__closed__isnull=True))
-                & (
-                    Q(visit__publication='internal')
-                    | Q(visit__publication='google', visit__publication_status='confirmed')
-                )
-            )
-        )
-
+        rows = rows.exclude(recipient_role='client', kind__in=['result_ready', 'result_due'])
+        rows = rows.filter(~Q(kind='booked') | Q(pk__in=candidates().values('pk')))
         rows = rows.filter(
             ~Q(kind='personal_followup')
             | Q(
@@ -181,7 +167,7 @@ class Notices(viewsets.GenericViewSet):
         rows = self.paginate_queryset(self.get_queryset())
         labels = {
             'held': 'Présenté — non closé',
-            'not_held': 'Visite non tenue : rappel à effectuer',
+            'not_held': 'Visite non tenue',
             'closed': 'Présenté — closé',
             'booked': 'Nouvelle visite programmée',
             'result_due': 'Rappel : résultat de visite toujours à renseigner',
@@ -203,6 +189,15 @@ class Notices(viewsets.GenericViewSet):
                         and getattr(getattr(r.visit, 'result', None), 'closed', None) is None
                         else labels.get(r.kind, r.kind)
                     ),
+                    'absence_reason': getattr(
+                        getattr(r.visit, 'result', None), 'absence_reason', ''
+                    )
+                    if r.kind in ('not_held', 'unqualified')
+                    else '',
+                    'has_callback': r.kind == 'not_held'
+                    and r.visit.prospect.assigned_setter_id == request.user.pk
+                    and getattr(getattr(r.visit, 'result', None), 'follow_up_owner', '')
+                    == 'setter',
                     'created_at': r.created_at,
                     'read_at': r.read_at,
                     'starts_at': r.visit.starts_at,

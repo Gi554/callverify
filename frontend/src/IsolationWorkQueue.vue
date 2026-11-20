@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { isDialableNumber } from './phone-number';
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { watch, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
   CalendarDays,
   UserRoundCog,
@@ -34,6 +34,7 @@ const statuses = [
   ['in_progress', 'En cours'],
   ['callback', 'À rappeler'],
   ['interested', 'Intéressé'],
+  ['non_eligible', 'Non éligible'],
   ['not_interested', 'Non intéressé'],
   ['unreachable', 'Non joint'],
 ];
@@ -61,6 +62,10 @@ let generation = 0,
 const props = defineProps<{
   role: string;
   sessionOwner?: string;
+  navigationStart?: number;
+  observeNavigation?: (operation: string, started: number) => void;
+  observeBoard?: (started: number, failed: boolean) => void;
+  preview?: { revision: number; read: () => Column[]; store: (columns: Column[]) => void };
   portal: (path: string, body?: any) => Promise<any>;
   request: (path: string, body?: any, method?: string) => Promise<any>;
   // Prospect to open on arrival, e.g. from the calls module.
@@ -124,12 +129,21 @@ async function loadColumn(column: Column, version: number, append = false) {
     column.next = !!data.next;
     column.page = append ? column.page + 1 : 1;
   } catch (e: any) {
-    if (version === generation) column.error = e.message;
+    if (version === generation) {
+      column.rows = [];
+      column.count = 0;
+      column.error = e.message;
+    }
   } finally {
     if (version === generation) column.busy = false;
   }
 }
-async function load() {
+async function load(restorePreview: unknown = false) {
+  const started = performance.now();
+  const revision = props.preview?.revision;
+  const preview = restorePreview === true ? props.preview?.read() || [] : [];
+  if (preview.length)
+    columns.value = preview.map((column) => ({ ...column, rows: [...column.rows] }));
   const version = ++generation;
   busy.value = true;
   error.value = '';
@@ -139,8 +153,8 @@ async function load() {
   columns.value = statuses.map(([key, label]) => ({
     key,
     label,
-    rows: [],
-    count: 0,
+    rows: preview.find((column) => column.key === key)?.rows || [],
+    count: preview.find((column) => column.key === key)?.count || 0,
     page: 0,
     next: false,
     busy: true,
@@ -159,11 +173,31 @@ async function load() {
         await loadColumn(queue.shift()!, version);
     }),
   ]);
-  if (version === generation) busy.value = false;
+  if (
+    props.preview &&
+    props.preview.revision === revision &&
+    !disposed &&
+    version === generation &&
+    !term &&
+    !owner.value &&
+    !dueOnly.value &&
+    !includeProcessed.value &&
+    columns.value.every((column) => !column.error)
+  ) {
+    props.preview.store(columns.value.map((column) => ({ ...column, rows: [...column.rows] })));
+  }
+  if (version === generation) {
+    busy.value = false;
+    if (!disposed)
+      props.observeBoard?.(
+        started,
+        !!error.value || columns.value.some((column) => !!column.error),
+      );
+  }
 }
 // Call session (setters): prospects are called one after the other. Finishing a file starts a
 // countdown that the setter can stop; at zero the next prospect is opened and called.
-const COUNTDOWN = 10;
+const COUNTDOWN = 5;
 const session = ref(false),
   countdown = ref<number | null>(null),
   nextInSession = ref<any>(null),
@@ -409,14 +443,32 @@ async function loadHistory() {
   historyRows.value = data.results;
   historyCount.value = data.count;
 }
+let navigationMeasured = false;
+watch(
+  () => (props.focus ? !!activity.value : visible.value.some((column) => column.rows.length > 0)),
+  (shown) => {
+    if (!shown || navigationMeasured || props.navigationStart === undefined) return;
+    navigationMeasured = true;
+    props.observeNavigation?.(props.focus ? 'open' : 'first', props.navigationStart);
+  },
+  { flush: 'post' },
+);
 onMounted(async () => {
-  await load();
+  if (!props.focus) await load(true);
   try {
     await loadSessionState();
   } catch {
     sessionNote.value = 'La progression de session ne peut pas être chargée pour le moment.';
   }
-  if (props.focus) await openActivity({ id: props.focus.id }, props.focus.mode);
+  if (disposed) return;
+  if (props.focus) {
+    await openActivity({ id: props.focus.id }, props.focus.mode);
+    if (!activity.value && !disposed) {
+      const openingError = error.value;
+      await load();
+      error.value = openingError || error.value;
+    }
+  }
   if (props.role === 'administrator') void run(() => directory());
 });
 onBeforeUnmount(() => {

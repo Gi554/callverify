@@ -33,6 +33,8 @@ class Input(serializers.Serializer):
 
 
 def destination(row):
+    if row.commercial_status == 'non_eligible':
+        raise ValidationError('Ce prospect est non éligible : appel interdit.')
     declined = (
         row.commercial_status == 'not_interested'
         or ProspectActivity.objects.filter(
