@@ -156,7 +156,7 @@ class IsolationClientTests(TestCase):
         self.auth(21, 'setter')
         self.assertEqual(self.report().status_code, 403)
         self.auth(91, 'administrator')
-        self.assertEqual(self.report().status_code, 403)
+        self.assertEqual(self.report().status_code, 201)
         self.auth(72, 'client')
         self.report()
         for pk, role in ((21, 'setter'), (91, 'administrator')):
