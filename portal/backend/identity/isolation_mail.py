@@ -60,8 +60,9 @@ def booking_sections(row, starts, ends):
     if not isinstance(fields, dict):
         raise ValueError('Invalid qualification')
     if any(
-        type(value) not in (str, bool, int, float, type(None)) or len(str(value)) > 1500
-        for value in fields.values()
+        type(value) not in (str, bool, int, float, type(None))
+        or len(str(value)) > (3000 if key == 'advisor_note' else 1500)
+        for key, value in fields.items()
     ):
         raise ValueError('Invalid qualification value')
     for key in ('setter_name', 'reference', 'campaign_name'):
@@ -109,6 +110,7 @@ def booking_sections(row, starts, ends):
             ('monthly_electricity', 'Coût mensuel d’électricité (CAD)'),
             ('construction_year', 'Année de construction'),
             ('age', 'Âge du client'),
+            ('advisor_note', 'Note du setter'),
         )
     )
     qualification = qualification or (('Qualification', 'Aucune information renseignée'),)
