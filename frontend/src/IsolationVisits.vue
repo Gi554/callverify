@@ -722,7 +722,7 @@ onMounted(() => run(load));
           </button>
           <p v-else-if="row.result_due">Résultat en attente</p>
           <button
-            v-if="role === 'client' && row.result_due"
+            v-if="['administrator', 'client'].includes(role) && (row.result_due || row.result)"
             class="primary"
             :disabled="busy"
             @click="reporting = row"
@@ -844,7 +844,7 @@ onMounted(() => run(load));
       @request-close="cancelReport"
     >
       <IsolationVisitResult
-        v-if="reporting && role === 'client'"
+        v-if="reporting && ['administrator', 'client'].includes(role)"
         :key="reporting.id"
         :visit="reporting"
         :request="request"

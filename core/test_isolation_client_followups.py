@@ -40,7 +40,7 @@ class ClientFollowUpTests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(self.absent(follow_up_at=due.isoformat()).status_code, 200)
         self.assertFalse(IsolationFollowUp.objects.exists())
-        self.assertFalse(IsolationNotice.objects.filter(recipient_role='setter').exists())
+        self.assertEqual(IsolationNotice.objects.get(recipient_role='setter').kind, 'not_held')
         row = IsolationClientFollowUp.objects.get()
         self.assertEqual(row.due_at, due)
         base = f'/api/client-follow-ups/{row.pk}/'

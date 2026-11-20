@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Suivi des visites du client Isolation (staging)
+
+La réservation conserve son courriel détaillé et son intégration agenda. Les SMS de réservation et de relance ainsi que les courriels et alertes de résultat manquant sont désactivés pour le client Isolation. L’administrateur peut saisir et corriger le compte rendu depuis la visite terminée. Le setter de la réservation reçoit le résultat dans Orvia, avec le motif en cas d’absence. Le suivi opérationnel reste rattaché au setter actuellement responsable du prospect. La saisie depuis le tableau partagé reste manuelle.
+
 ## Navigation du superadmin (staging)
 
 L’accueil donne accès à la recherche d’un utilisateur et aux incidents. « Comptes et accès » regroupe l’annuaire et la gestion des espaces. « Performances » présente les mesures du CRM. « Journal d’assistance » regroupe les sessions d’assistance et les dernières actions du superadmin. Chaque rubrique possède une adresse directe et prend en charge le retour du navigateur. La recherche depuis l’accueil charge les comptes à la demande.

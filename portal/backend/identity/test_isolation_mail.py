@@ -59,7 +59,7 @@ class IsolationMailTests(TestCase):
         self.data['events'][0]['kind'] = 'result_due'
         self.sync()
         with patch('portal.backend.identity.isolation_mail.eligible', return_value=False):
-            self.assertEqual(dispatch()['expired'], 1)
+            self.assertEqual(dispatch()['sent'], 0)
         self.assertEqual(mail.outbox, [])
 
     @override_settings(
@@ -72,28 +72,22 @@ class IsolationMailTests(TestCase):
     )
     @patch('portal.backend.identity.isolation_sms.sms.send', return_value='accepted')
     @patch('portal.backend.identity.isolation_sms.eligible', return_value=True)
-    def test_new_booking_sends_one_sms_to_the_client_mobile(self, eligible, send):
+    def test_new_booking_emails_client_without_sms(self, eligible, send):
         ReminderPhone.objects.create(user=self.user, mobile='4387388944')
         self.prospect_event()
         self.assertEqual(self.sync()['queued'], 1)
         self.assertEqual(self.sync()['existing'], 1)
-        eligible.assert_called_once_with(1, self.user.pk)
-        send.assert_called_once()
-        self.assertEqual(send.call_args.args[2], '4387388944')
-        message = send.call_args.args[4]
-        self.assertIn('01/11/2026 à 10:30', message)
-        self.assertIn('workspace=isolation&visit=42', message)
-        self.assertNotIn('Léa', message)
-        self.assertEqual(SmsAttempt.objects.get().kind, 'client_booking')
+        eligible.assert_not_called()
+        send.assert_not_called()
+        self.assertFalse(SmsAttempt.objects.exists())
         self.assertEqual(PortalMail.objects.count(), 1)
 
     def test_missing_result_triggers_the_client_sms_and_a_failure_never_blocks_the_queue(self):
         target = 'portal.backend.identity.isolation_sms.remind_client'
         with patch(target, side_effect=RuntimeError('network')) as remind:
             self.data['events'][0]['kind'] = 'result_due'
-            self.assertEqual(self.sync()['queued'], 1)
-        remind.assert_called_once()
-        self.assertEqual(remind.call_args.args[:2], (self.user, 1))
+            self.assertEqual(self.sync()['queued'], 0)
+        remind.assert_not_called()
         self.data['events'][0].update(id=2, kind='booked', visit_id=43)
         with patch(target) as remind:
             self.assertEqual(self.sync()['queued'], 1)

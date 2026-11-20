@@ -19,7 +19,7 @@ async function load() {
   }
 }
 async function open(row: any) {
-  if (row.kind === 'not_held') emit('tasks');
+  if (row.has_callback) emit('tasks');
   else if (row.kind === 'personal_followup') emit('personal');
   else if (
     ['booked', 'result_due', 'result_ready', 'held', 'closed', 'unqualified'].includes(row.kind)
@@ -56,10 +56,11 @@ onBeforeUnmount(() => {
       class="secondary"
       @click="open(row)"
     >
-      {{ row.label }} · {{ row.prospect_name }} ·
+      {{ row.label }}{{ row.absence_reason ? ' — ' + row.absence_reason : '' }} ·
+      {{ row.prospect_name }} ·
       {{ new Date(row.starts_at).toLocaleString('fr-CA', { timeZone: 'America/Toronto' }) }} —
       {{
-        row.kind === 'not_held'
+        row.has_callback
           ? 'Consulter mes rappels'
           : row.kind === 'personal_followup'
             ? 'Ouvrir mes relances'

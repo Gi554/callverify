@@ -13,6 +13,24 @@ class ResultV2Tests(TestCase):
     report = fixtures.IsolationClientTests.report
     payload = fixtures.IsolationClientTests.payload
 
+    def test_admin_reports_absence_and_original_setter_receives_reason_after_reassignment(self):
+        self.prospect.assigned_setter_id = 22
+        self.prospect.save(update_fields=['assigned_setter_id'])
+        self.auth(91, 'administrator')
+        response = self.report(
+            performed=False,
+            closed=False,
+            outcome='not_performed',
+            follow_up_owner='setter',
+            absence_reason='Absent du domicile',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.auth(21, 'setter')
+        notice = self.client.get('/api/isolation-notices/').data['results'][0]
+        self.assertEqual(notice['absence_reason'], 'Absent du domicile')
+        self.assertFalse(notice['has_callback'])
+        self.assertEqual(IsolationFollowUp.objects.get().absence_visit_id, self.visit.pk)
+
     def test_client_records_sale_independently_and_false_presence_refuses_sale(self):
         self.assertEqual(
             self.report(performed=False, closed=True, outcome='not_performed', note='').status_code,

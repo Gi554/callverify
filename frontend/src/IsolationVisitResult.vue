@@ -150,14 +150,15 @@ async function save() {
           >Qui effectue le suivi ?<select v-model="followUpOwner" required>
             <option value="">Choisir</option>
             <option value="setter">Demander au setter de rappeler</option>
-            <option value="client">À recontacter par moi-même</option>
+            <option value="client">Suivi par le client Isolation</option>
           </select></label
         >
         <label
           >Date de rappel · Québec · facultative<input v-model="followUpAt" type="datetime-local"
         /></label>
         <p v-if="followUpOwner === 'client'">
-          Cette relance sera conservée dans votre espace. Aucune tâche ne sera créée chez le setter.
+          Cette relance sera conservée dans l’espace du client Isolation. Aucune tâche ne sera créée
+          chez le setter.
         </p>
       </template>
       <label>Notes · facultatives<textarea v-model="note" maxlength="3000"></textarea></label>
