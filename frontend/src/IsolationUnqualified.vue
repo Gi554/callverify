@@ -62,6 +62,7 @@ const results: Record<string, string> = {
   invalid_number: 'Numéro non attribué',
   disconnected: 'Appel coupé',
   not_interested: 'Pas intéressé',
+  non_eligible: 'Non éligible',
   callback: 'Rappel demandé',
   other: 'Autre résultat',
   unreachable: 'Injoignable',

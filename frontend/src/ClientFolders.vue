@@ -99,6 +99,7 @@ const baseLabels: Record<string, string> = {
   callback: 'À rappeler',
   interested: 'Intéressé',
   not_interested: 'Pas intéressé',
+  non_eligible: 'Non éligible',
   unreachable: 'Injoignable',
   appointment_booked: 'Rendez-vous pris',
   voicemail: 'Répondeur',
