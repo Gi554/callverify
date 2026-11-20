@@ -34,6 +34,29 @@ class IsolationC2Tests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.data['c2_snapshot']['fields']['email'], '')
 
+    def test_ineligible_qualification_keeps_draft_and_removes_from_active_queue(self):
+        response = self.client.post(
+            self.draft_url,
+            {
+                'revision': 0,
+                'c2': {'advisor_note': 'Hors critères'},
+                'non_eligible': True,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.prospect.refresh_from_db()
+        self.assertEqual(self.prospect.c2['advisor_note'], 'Hors critères')
+        for queue in ('active', 'callbacks', 'all'):
+            rows = self.client.get(
+                '/api/work-queue/',
+                {
+                    'commercial_status': 'non_eligible',
+                    'queue': queue,
+                },
+            ).data['results']
+            self.assertEqual(self.prospect.pk in [row['id'] for row in rows], queue == 'all')
+
     def test_internal_booking_does_not_require_a_client_calendar(self):
         response = self.book(publication='internal')
         self.assertEqual(response.status_code, 201, response.data)

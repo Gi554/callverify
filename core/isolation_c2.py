@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from .models import Prospect, AuditEvent, ImportRow
+from .models import Prospect, AuditEvent, ImportRow, CallSessionProgress
 from .import_columns import (
     COORDINATE_COLUMNS,
     FIRST_NAMES,
@@ -144,6 +144,7 @@ def defaults(prospect):
 class DraftInput(serializers.Serializer):
     revision = serializers.IntegerField(min_value=0)
     c2 = C2Input()
+    non_eligible = serializers.BooleanField(default=False)
 
     def validate(self, data):
         if set(self.initial_data) - set(self.fields):
@@ -165,10 +166,28 @@ class C2Mixin:
                 rows = Prospect.objects.filter(pk=row.pk, assignment_revision=data['revision'])
                 if request.user.role == 'setter':
                     rows = rows.filter(assigned_setter_id=request.user.pk)
-                if not rows.update(c2=data['c2'], assignment_revision=F('assignment_revision') + 1):
+                updates = {'c2': data['c2'], 'assignment_revision': F('assignment_revision') + 1}
+                if data['non_eligible']:
+                    updates['commercial_status'] = 'non_eligible'
+                if not rows.update(**updates):
                     raise Conflict(
                         'Fiche modifiée ou réattribuée : rechargez avant d’enregistrer le C2.'
                     )
+                if data['non_eligible']:
+                    for session in CallSessionProgress.objects.select_for_update().filter(
+                        current_prospect_id=row.pk
+                    ):
+                        session.visited_prospect_ids = list(
+                            dict.fromkeys([*session.visited_prospect_ids, row.pk])
+                        )
+                        session.current_prospect_id = None
+                        session.save(
+                            update_fields=[
+                                'visited_prospect_ids',
+                                'current_prospect_id',
+                                'updated_at',
+                            ]
+                        )
                 AuditEvent.objects.create(
                     action='isolation.prospect.c2_saved',
                     object_id=str(row.pk),
@@ -176,6 +195,9 @@ class C2Mixin:
                         'actor_portal_id': request.user.pk,
                         'before': row.c2,
                         'after': data['c2'],
+                        'commercial_status': updates.get(
+                            'commercial_status', row.commercial_status
+                        ),
                         'revision': data['revision'] + 1,
                     },
                 )
@@ -185,6 +207,7 @@ class C2Mixin:
                 'c2': row.c2,
                 'revision': row.assignment_revision,
                 'defaults': defaults(row),
+                'commercial_status': row.commercial_status,
             }
         )
         response['Cache-Control'] = 'no-store'

@@ -259,6 +259,7 @@ class WorkViewSet(
                     When(_queue_declined=True, then=Value('not_interested')),
                     When(_queue_attended=True, then=Value('appointment_attended')),
                     When(_queue_booking=True, then=Value('appointment_booked')),
+                    When(commercial_status='non_eligible', then=Value('non_eligible')),
                     When(commercial_status='not_interested', then=Value('not_interested')),
                     When(
                         _queue_call_result='callback',
@@ -296,7 +297,7 @@ class WorkViewSet(
                 # a setter call-result activity, so filtering on the latest
                 # call result would silently hide it.
                 qs = qs.filter(_queue_setter_followup=True).exclude(
-                    Q(commercial_status='not_interested')
+                    Q(commercial_status__in=('not_interested', 'non_eligible'))
                     | Q(_queue_declined=True)
                     | Q(_queue_attended=True)
                 )
