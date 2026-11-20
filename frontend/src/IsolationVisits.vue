@@ -382,11 +382,6 @@ onMounted(() => run(load));
       :key="prospect.id"
       :prospect-id="prospect.id"
       :request="qualificationRequest"
-      :allow-ineligible="['setter', 'administrator'].includes(role) && !reactivationId && !followUp"
-      @excluded="
-        emit('changed');
-        emit('close');
-      "
       :blocked="busy"
       @saved="(revision) => (prospect.revision = revision)"
       @busy="c2Busy = $event"

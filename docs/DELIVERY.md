@@ -2,7 +2,7 @@
 
 ## Qualification Isolation — Non éligible (staging)
 
-Le classement enregistre la qualification et retire le prospect des listes actives, des lots à attribuer et des appels. La fiche reste consultable parmi les fiches traitées.
+Le setter sélectionne « Non éligible » dans le menu Résultat de « Notes et statut → Renseigner le résultat commercial ». Le classement enregistre la qualification et retire le prospect des listes actives, des lots à attribuer et des appels. La fiche reste consultable parmi les fiches traitées.
 
 ## Suivi des visites du client Isolation (staging)
 
