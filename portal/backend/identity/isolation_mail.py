@@ -60,8 +60,9 @@ def booking_sections(row, starts, ends):
     if not isinstance(fields, dict):
         raise ValueError('Invalid qualification')
     if any(
-        type(value) not in (str, bool, int, float, type(None)) or len(str(value)) > 1500
-        for value in fields.values()
+        type(value) not in (str, bool, int, float, type(None))
+        or len(str(value)) > (3000 if key == 'advisor_note' else 1500)
+        for key, value in fields.items()
     ):
         raise ValueError('Invalid qualification value')
     for key in ('setter_name', 'reference', 'campaign_name'):
@@ -109,6 +110,7 @@ def booking_sections(row, starts, ends):
             ('monthly_electricity', 'Coût mensuel d’électricité (CAD)'),
             ('construction_year', 'Année de construction'),
             ('age', 'Âge du client'),
+            ('advisor_note', 'Note du setter'),
         )
     )
     qualification = qualification or (('Qualification', 'Aucune information renseignée'),)
@@ -177,7 +179,6 @@ def sync():
         prepared.append((pk, user, visit, name, row['kind'], *stamps, sections))
         previous = pk
     counts = {'queued': 0, 'existing': 0, 'skipped': 0}
-    client_texts = []
 
     def valid_address(email):
         try:
@@ -187,6 +188,9 @@ def sync():
             return False
 
     for pk, user_id, visit, name, kind, created, starts, sections in prepared:
+        if kind != 'booked':
+            counts['skipped'] += 1
+            continue
         with transaction.atomic():
             user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
             if (
@@ -222,28 +226,20 @@ def sync():
                 if relay.mail_id:
                     counts['existing'] += 1
                 else:
-                    title = (
-                        'Une nouvelle visite vient d’être programmée'
-                        if kind == 'booked'
-                        else 'Un petit retour sur votre visite ?'
-                    )
-                    intro = (
-                        'Une nouvelle visite vient d’être programmée dans votre espace ORVIA. Voici les informations concernant ce rendez-vous.'
-                        if kind == 'booked'
-                        else f'Le résultat de la visite avec {name}, prévue le {when} (heure du Québec), reste à renseigner. Merci de confirmer si elle a été tenue et si une vente a été conclue.'
-                    )
+                    title = 'Une nouvelle visite vient d’être programmée'
+                    intro = 'Une nouvelle visite vient d’être programmée dans votre espace ORVIA.'
                     url = f'{public_url()}/crm?workspace=isolation&visit={visit}'
-                    notice = 'Ce lien ouvre votre espace sécurisé. La lecture de cet e-mail ne renseigne aucun résultat. Si vous venez de le compléter, vous pouvez ignorer ce rappel.'
-                    greeting = user.first_name.strip() if kind == 'booked' else ''
+                    notice = 'Ce lien ouvre votre espace sécurisé. '
+                    greeting = user.first_name.strip()
                     summary = '\n\n'.join(
                         heading + '\n' + '\n'.join(f'{label} : {value}' for label, value in items)
                         for heading, items in sections
                     )
-                    closing = 'Martinien' if kind == 'booked' else 'Orvia CRM'
+                    closing = 'Martinien'
                     relay.mail = enqueue(
                         user=user,
                         workspace='isolation',
-                        subject=title if kind == 'booked' else 'Orvia CRM · Isolation — ' + title,
+                        subject=title,
                         body=f'Bonjour{(" " + greeting) if greeting else ""},\n\n{intro}\n\n{summary or (name + " · " + when)}\n\nAccéder à mon espace ORVIA : {url}\n\n{notice}\n\nCordialement,\n{closing}',
                         html=layout(
                             title=title,
@@ -256,7 +252,7 @@ def sync():
                             if sections
                             else (('Prospect', name), ('Date de visite', when + ' (Québec)')),
                             sections=sections,
-                            signature=closing if kind == 'booked' else 'l’équipe Orvia CRM',
+                            signature=closing,
                         ),
                         recipient=user.email,
                         guard={'kind': 'isolation_notice', 'event': pk, 'user': user_id},
@@ -264,19 +260,7 @@ def sync():
                     )
                     relay.save(update_fields=['mail'])
                     counts['queued'] += 1
-                    client_texts.append((kind, user, pk, visit, starts))
     IsolationMailCursor.objects.filter(pk=1, after_id=cursor.after_id).update(
         after_id=previous if len(rows) == 100 else 0
     )
-    for kind, user, event, visit, starts in client_texts:
-        try:
-            from .isolation_sms import confirm_client_booking, remind_client
-
-            if kind == 'booked':
-                confirm_client_booking(user, event, visit, starts)
-            else:
-                remind_client(user, event, starts)
-        except Exception:
-            # A failed SMS never blocks the e-mail queue; no exception text is kept.
-            pass
     return counts

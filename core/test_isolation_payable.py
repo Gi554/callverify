@@ -80,16 +80,21 @@ class IsolationPayableTests(TestCase):
         shown = self.get(first=9, last=15).data['changes']
         self.assertEqual(shown[0]['before'], 'Non closé')
         self.assertEqual(shown[0]['after'], 'Closé')
-        alerts = self.client.get('/api/admin-alerts/', {'kind': 'late_closures'}).data
+        with patch(
+            'packages.admin_alerts.timezone.now', return_value=datetime(2026, 11, 12, tzinfo=ZONE)
+        ):
+            alerts = self.client.get('/api/admin-alerts/', {'kind': 'late_closures'}).data
         self.assertEqual(alerts['count'], 1)
         self.assertIn('late_closures', [item['kind'] for item in alerts['kinds']])
 
     def test_closing_within_the_same_week_is_not_a_late_alert(self):
         row = self.confirm(False, day=4)
         self.confirm(True, day=6, row=row)
-        self.assertEqual(
-            self.client.get('/api/admin-alerts/', {'kind': 'late_closures'}).data['count'], 0
-        )
+        with patch(
+            'packages.admin_alerts.timezone.now', return_value=datetime(2026, 11, 8, tzinfo=ZONE)
+        ):
+            alerts = self.client.get('/api/admin-alerts/', {'kind': 'late_closures'}).data
+        self.assertEqual(alerts['count'], 0)
         self.assertFalse(PayableHistory.objects.get(kind='sale_status_changed').late)
 
     def test_administrator_filters_by_setter_and_setter_sees_only_self(self):

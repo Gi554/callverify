@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { inject, ref, computed, onMounted, watch, nextTick } from 'vue';
 import { CalendarDays, Clock3 } from 'lucide-vue-next';
 import IsolationPageHeader from './IsolationPageHeader.vue';
 import IsolationVisitCard from './IsolationVisitCard.vue';
@@ -17,6 +17,10 @@ import SidePanel from './SidePanel.vue';
 const nonqualified = ref(false),
   nonqualifiedReason = ref(''),
   nonqualifiedNote = ref('');
+const observeJourney =
+  inject<(area: string, operation: string, start: number, failed: boolean) => void>(
+    'observeSetterJourney',
+  );
 const props = defineProps<{
   visitId?: number;
   period?: 'upcoming' | 'history' | 'missing_updates';
@@ -211,6 +215,9 @@ function qualificationRequest(path: string, body?: any) {
   );
 }
 async function save() {
+  if (busy.value) return;
+  const started = performance.now();
+  const creating = !editing.value;
   await run(async () => {
     const record = editing.value;
     let bookingEmail = '';
@@ -265,6 +272,7 @@ async function save() {
     if (!props.reactivationId && !props.clientFollowupId) await load();
     emit('changed');
   });
+  if (creating) observeJourney?.('isolation', 'send', started, !!error.value);
 }
 async function saveUnqualified() {
   await run(async () => {
@@ -714,7 +722,7 @@ onMounted(() => run(load));
           </button>
           <p v-else-if="row.result_due">Résultat en attente</p>
           <button
-            v-if="role === 'client' && row.result_due"
+            v-if="['administrator', 'client'].includes(role) && (row.result_due || row.result)"
             class="primary"
             :disabled="busy"
             @click="reporting = row"
@@ -836,7 +844,7 @@ onMounted(() => run(load));
       @request-close="cancelReport"
     >
       <IsolationVisitResult
-        v-if="reporting && role === 'client'"
+        v-if="reporting && ['administrator', 'client'].includes(role)"
         :key="reporting.id"
         :visit="reporting"
         :request="request"

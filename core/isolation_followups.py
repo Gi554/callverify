@@ -20,6 +20,7 @@ RESULTS = {
     'voicemail': 'Répondeur',
     'invalid_number': 'Numéro non attribué',
     'disconnected': 'Appel coupé',
+    'non_eligible': 'Non éligible',
     'not_interested': 'Pas intéressé',
     'callback': 'Rappel demandé',
     'other': 'Autre résultat',
@@ -264,6 +265,12 @@ class FollowUpMixin:
             if reference := data.get('follow_up'):
                 finish_follow_up(current, request.user, reference, RESULTS[data['result']])
                 changes['completed_task_id'] = reference['id']
+            if data['result'] == 'non_eligible':
+                from .isolation_c2 import finish_ineligible_sessions
+
+                current.commercial_status = 'non_eligible'
+                current.save(update_fields=['commercial_status'])
+                finish_ineligible_sessions(current.pk)
             if data['result'] == 'callback':
                 explicit(data['due_at'], request.data['due_at'])
                 task = IsolationFollowUp.objects.create(

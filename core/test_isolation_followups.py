@@ -39,6 +39,14 @@ class FollowUpTests(TestCase):
             self.base + 'call-result/', self.call_payload(**changes), format='json'
         )
 
+    def test_ineligible_call_result_archives_and_keeps_the_note(self):
+        response = self.call(result='non_eligible', note='Hors critères')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.prospect.refresh_from_db()
+        self.assertEqual(self.prospect.commercial_status, 'non_eligible')
+        self.assertEqual(ProspectActivity.objects.get(kind='call_result').body, 'Hors critères')
+        self.assertEqual(self.client.get('/api/work-queue/?queue=active').data['count'], 0)
+
     def task_payload(self, **changes):
         return {
             'request_id': str(uuid4()),

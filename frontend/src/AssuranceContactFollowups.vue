@@ -137,7 +137,7 @@ async function record(appointmentId?: number) {
     message.value = 'Résultat enregistré dans l’historique du contact.';
     emit('saved');
     saved = true;
-    if (!props.followUp) await load();
+    if (!props.followUp && !advance) await load();
   });
   if (saved && advance) {
     await nextTick();

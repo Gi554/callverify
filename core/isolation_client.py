@@ -215,8 +215,8 @@ class ResultMixin:
 
     @action(detail=True, methods=['get', 'post'])
     def result(self, request, pk=None):
-        if request.method == 'POST' and request.user.role != 'client':
-            raise PermissionDenied('Résultat à renseigner par le client de la visite')
+        if request.method == 'POST' and request.user.role not in ('administrator', 'client'):
+            raise PermissionDenied('Accès client ou administrateur Isolation requis')
         original = self.get_object()
         if request.method == 'GET':
             row = IsolationVisitResult.objects.filter(visit=original).first()
@@ -228,11 +228,9 @@ class ResultMixin:
             Prospect.objects.filter(pk=original.prospect_id).update(
                 assignment_revision=F('assignment_revision')
             )
-            IsolationVisit.objects.filter(pk=original.pk, client_id=request.user.pk).update(
-                revision=F('revision')
-            )
+            IsolationVisit.objects.filter(pk=original.pk).update(revision=F('revision'))
             visit = IsolationVisit.objects.get(pk=original.pk)
-            if visit.client_id != request.user.pk:
+            if request.user.role == 'client' and visit.client_id != request.user.pk:
                 raise PermissionDenied('Visite non autorisée')
             existing = IsolationVisitResult.objects.filter(visit=visit).first()
             if (
@@ -275,7 +273,11 @@ class ResultMixin:
                 raise Conflict('Résultat attendu après la fin d’une visite non annulée')
             row, _ = IsolationVisitResult.objects.update_or_create(
                 visit=visit,
-                defaults={'author_client_id': request.user.pk, 'author_closer_id': None, **fields},
+                defaults={
+                    'author_client_id': request.user.pk if request.user.role == 'client' else None,
+                    'author_closer_id': None,
+                    **fields,
+                },
             )
             visit.revision += 1
             visit.save(update_fields=['revision'])

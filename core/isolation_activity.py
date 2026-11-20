@@ -17,6 +17,7 @@ STATUSES = {
     'in_progress': 'En cours',
     'callback': 'À rappeler',
     'interested': 'Intéressé',
+    'non_eligible': 'Non éligible',
     'not_interested': 'Non intéressé',
     'unreachable': 'Non joint',
 }
@@ -123,6 +124,10 @@ class ActivityMixin:
                 row.commercial_status = data['status']
                 row.callback_at = callback
                 row.save(update_fields=['commercial_status', 'callback_at'])
+                if row.commercial_status == 'non_eligible':
+                    from .isolation_c2 import finish_ineligible_sessions
+
+                    finish_ineligible_sessions(row.pk)
                 changes = {
                     'before': before,
                     'after': {

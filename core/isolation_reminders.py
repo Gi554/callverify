@@ -193,7 +193,7 @@ def mail_events(request):
     authorize(request, 'mail_events', {'after': after})
     rows = (
         candidates()
-        .filter(pk__gt=after)
+        .filter(pk__gt=after, kind='booked')
         .select_related('visit__prospect__campaign')
         .order_by('pk')[:100]
     )
@@ -255,7 +255,12 @@ def mail_events(request):
 @permission_classes([AllowAny])
 def mail_eligible(request, pk, user_id):
     authorize(request, 'mail_eligible', {'event': pk, 'user': user_id})
-    row = candidates().filter(pk=pk, recipient_id=user_id).select_related('visit').first()
+    row = (
+        candidates()
+        .filter(pk=pk, recipient_id=user_id, kind='booked')
+        .select_related('visit')
+        .first()
+    )
     response = Response(
         {
             'eligible': bool(row),

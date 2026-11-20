@@ -1,5 +1,17 @@
 # Suivi des livraisons CRM AMX
 
+## Qualification Isolation — Non éligible (staging)
+
+Dans Résultat de l’appel, « Non éligible » enregistre le résultat, la note et passe au suivant. Le setter peut aussi sélectionner « Non éligible » dans le menu Résultat de « Notes et statut → Renseigner le résultat commercial ». Le classement enregistre la qualification et retire le prospect des listes actives, des lots à attribuer et des appels. La fiche reste consultable parmi les fiches traitées.
+
+## Suivi des visites du client Isolation (staging)
+
+La réservation conserve son courriel détaillé et son intégration agenda. Les SMS de réservation et de relance ainsi que les courriels et alertes de résultat manquant sont désactivés pour le client Isolation. L’administrateur peut saisir et corriger le compte rendu depuis la visite terminée. Le setter de la réservation reçoit le résultat dans Orvia, avec le motif en cas d’absence. Le suivi opérationnel reste rattaché au setter actuellement responsable du prospect. La saisie depuis le tableau partagé reste manuelle.
+
+## Navigation du superadmin (staging)
+
+L’accueil donne accès à la recherche d’un utilisateur et aux incidents. « Comptes et accès » regroupe l’annuaire et la gestion des espaces. « Performances » présente les mesures du CRM. « Journal d’assistance » regroupe les sessions d’assistance et les dernières actions du superadmin. Chaque rubrique possède une adresse directe et prend en charge le retour du navigateur. La recherche depuis l’accueil charge les comptes à la demande.
+
 ## Note utile au conseiller dans la qualification Isolation (staging)
 
 La qualification Isolation des setters comprend une note facultative de 3 000 caractères. Elle
@@ -3431,6 +3443,30 @@ Si NEWT répond avec un contenu non audio, le diagnostic indique aussi le type M
 
 La liste de supervision inclut les comptes métier de tous les rôles, pas uniquement les administrateurs. Pendant une session d’assistance, le bandeau permet de chercher et choisir directement un autre compte et un de ses espaces actifs, avec motif obligatoire ; le superadmin n’a pas besoin du mot de passe de l’utilisateur ni de quitter l’assistance pour revenir à la liste. Chaque fin et chaque nouveau démarrage sont journalisés séparément. Les comptes système, suspendus ou sans appartenance active ne peuvent pas être pris en main ; l’assistance reste limitée à un espace à la fois et expire après 15 minutes.
 
+
 ## Diagnostic manuel des ressources VPS
 
 Le workflow « VPS read-only diagnostics » est déclenchable manuellement depuis GitHub Actions et utilise l’environnement de production ainsi que la clé SSH déjà réservée au déploiement. Il affiche l’horodatage, la charge et l’échantillonnage vmstat, la mémoire, l’espace disque, les compteurs Docker, l’état des services Compose et l’occupation Docker. Il n’exécute aucune commande de modification et ne lit ni les variables .env, ni les journaux d’appels, ni les données CRM.
+
+## Assurance — temps de passage entre deux fiches (recette staging)
+
+Après confirmation serveur de la progression, le minuteur de cinq secondes et la lecture du prochain contact du lot démarrent ensemble. La session interroge la file active du setter ou de l’administrateur. Elle recharge le tableau à la pause ou en fin de session. Le résultat enregistré avec passage au suivant évite deux lectures d’historique. À l’ouverture de Prospects, la restauration de session et le chargement des colonnes démarrent en parallèle.
+
+Pour mesurer un envoi de rendez-vous en recette, enregistrer le parcours dans les outils de performance du navigateur. Les mesures « Orvia Assurance » distinguent la préparation de la fiche, la vérification du conseiller, la transmission et le total. Elles restent dans le navigateur. La latence réelle du parcours des agents doit encore être chronométrée en situation.
+
+## Décompte entre deux appels en Isolation
+
+En recette sur staging, le minuteur Isolation passe à cinq secondes, comme en Assurance. Un test avec horloge simulée vérifie que la seconde fiche est ouverte en mode appel automatique à cinq secondes, après quatre secondes sans nouveau départ.
+
+## Assistance superadmin depuis la liste des comptes
+
+Chaque compte métier actif disposant d’un espace actif présente une action directe « Se connecter en tant que ». Le choix de l’espace, le motif et la confirmation s’affichent sous le compte choisi. Le serveur conserve les contrôles d’accès et la journalisation de l’assistance.
+
+## Navigation des setters vers Prospects
+Depuis Appels, la fiche demandée se charge avant le tableau en Assurance et en Isolation. Au retour sur Prospects, le dernier tableau sans filtre du setter peut être réaffiché pendant sa relecture, pendant trente secondes au maximum. Cet aperçu en mémoire est invalidé sur écriture métier et changement de contexte. La composition et les commandes de session continuent de passer par le serveur. Les lectures de colonnes simultanées du même contexte partagent uniquement la demande de droit d’accès en cours.
+
+## Mesures de latence des setters (staging)
+La vue d’ensemble du superadmin présente les volumes reçus, les erreurs, la médiane et le 95e percentile par opération et par campagne. Le navigateur mesure la relecture complète du tableau, les lectures de colonnes et de fiches, les écritures de qualification et la transmission des rendez-vous. Une mesure distincte couvre le parcours complet d’envoi. Les requêtes métier instrumentées renvoient également la durée serveur et la durée cumulée des exécutions SQL. Aucune requête SQL, URL de prospect ou donnée de fiche n’est conservée dans ces mesures.
+
+La collecte authentifiée est limitée aux setters actifs de l’espace, hors assistance. Les mesures sont envoyées en arrière-plan par petits lots. La synthèse porte sur les 5 000 dernières mesures des dernières 24 h. Les onglets fermés avant l’envoi, les lots rejetés et les postes hors ligne peuvent manquer. Il reste à vérifier la distribution réelle des temps avec des utilisateurs en recette.
+

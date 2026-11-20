@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, nextTick } from 'vue';
+import { inject, computed, onMounted, ref, watch, nextTick } from 'vue';
 import { bookingInterval } from './booking-time';
 import AssuranceAppointments from './AssuranceAppointments.vue';
 import type { FollowUpReference } from './follow-up';
+const observeJourney =
+  inject<(area: string, operation: string, start: number, failed: boolean) => void>(
+    'observeSetterJourney',
+  );
 const props = defineProps<{
   contactId: number;
   contactRevision: number;
@@ -70,11 +74,21 @@ async function load() {
     busy.value = false;
   }
 }
+function recordDuration(step: string, start: number) {
+  const name = 'Orvia Assurance · ' + step;
+  try {
+    performance.clearMeasures(name);
+    performance.measure(name, { start });
+  } catch {
+    // A browser without User Timing Level 3 must still complete the booking.
+  }
+}
 async function submit() {
   if (busy.value || props.blocked || !props.leaseToken || message.value) return;
   busy.value = true;
   error.value = '';
   message.value = '';
+  const started = performance.now();
   try {
     const row = advisor.value;
     if (!row || !confirmed.value)
@@ -83,12 +97,16 @@ async function submit() {
       );
     await props.prepare();
     await nextTick();
+    recordDuration('préparation de la fiche', started);
+    const proofStarted = performance.now();
     const proof = (
       await props.portal('assurance/booking-proof/', {
         advisor_id: row.advisor.id,
         ...(props.role === 'administrator' ? { setter_id: row.setter.id } : {}),
       })
     ).proof;
+    recordDuration('vérification du conseiller', proofStarted);
+    const transmitStarted = performance.now();
     const saved = await props.request('appointments/transmit/', {
       contact_id: props.contactId,
       contact_revision: props.contactRevision,
@@ -102,6 +120,7 @@ async function submit() {
       external_confirmed: confirmed.value,
       ...(props.followUp ? { follow_up: props.followUp } : {}),
     });
+    recordDuration('transmission du rendez-vous', transmitStarted);
     base.value = draft.value;
     emit('dirty', false);
     emit('booked', saved);
@@ -111,6 +130,8 @@ async function submit() {
   } catch (e: any) {
     error.value = e.message;
   } finally {
+    observeJourney?.('assurance', 'send', started, !message.value);
+    recordDuration('envoi complet', started);
     busy.value = false;
   }
 }

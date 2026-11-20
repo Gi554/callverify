@@ -14,6 +14,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework.response import Response
 
 from .mfa import mfa_enabled
+from .performance import recent_performance
 from .management_api import AccessPagination
 from .models import (
     AccessAudit,
@@ -67,6 +68,7 @@ def overview(request):
             'memberships': list(
                 memberships.values('workspace', 'role').annotate(count=Count('pk'))
             ),
+            'performance': recent_performance(since),
             'days': [{'day': date, **values} for date, values in days.items()],
             'incidents': {
                 'calls': list(

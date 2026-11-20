@@ -61,6 +61,7 @@ def active(qs):
         .annotate(
             _lot_reason=Case(
                 When(_lot_booked=True, then=Value('appointment_booked')),
+                When(commercial_status='non_eligible', then=Value('non_eligible')),
                 When(commercial_status='not_interested', then=Value('not_interested')),
                 default=Value(''),
                 output_field=CharField(),

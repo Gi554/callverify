@@ -36,7 +36,7 @@ class IsolationReminderTests(TestCase):
             self.assertEqual(generate()['created'], 0)
             self.assertEqual(candidates().count(), 1)
             self.assertEqual(
-                self.client.get('/api/isolation-notices/?unread=true').data['count'], 1
+                self.client.get('/api/isolation-notices/?unread=true').data['count'], 0
             )
         self.assertFalse(IsolationVisitResult.objects.exists())
         self.assertEqual(IsolationNotice.objects.get(kind='result_due').recipient_id, 72)
@@ -51,8 +51,7 @@ class IsolationReminderTests(TestCase):
             generate()
             generate()
             response = self.client.get('/api/isolation-notices/').data
-            self.assertEqual(response['count'], 1)
-            self.assertEqual(response['results'][0]['kind'], 'result_ready')
+            self.assertEqual(response['count'], 0)
             self.assertFalse(IsolationVisitResult.objects.exists())
             self.auth(73, 'client')
             self.assertEqual(self.client.get('/api/isolation-notices/').data['count'], 0)
@@ -69,7 +68,7 @@ class IsolationReminderTests(TestCase):
         ):
             generate()
             feed = self.client.get('/api/isolation-notices/').data['results']
-            self.assertEqual([row['kind'] for row in feed], ['result_due'])
+            self.assertEqual(feed, [])
         self.assertEqual(IsolationNotice.objects.filter(kind='result_ready').count(), 1)
         self.assertEqual(IsolationNotice.objects.filter(kind='result_due').count(), 1)
         IsolationVisit.objects.update(
