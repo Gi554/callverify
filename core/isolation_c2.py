@@ -19,6 +19,23 @@ from .import_columns import (
 )
 
 
+def finish_ineligible_sessions(prospect_id):
+    for session in CallSessionProgress.objects.select_for_update().filter(
+        current_prospect_id=prospect_id
+    ):
+        session.visited_prospect_ids = list(
+            dict.fromkeys([*session.visited_prospect_ids, prospect_id])
+        )
+        session.current_prospect_id = None
+        session.save(
+            update_fields=[
+                'visited_prospect_ids',
+                'current_prospect_id',
+                'updated_at',
+            ]
+        )
+
+
 class C2Input(serializers.Serializer):
     full_name = serializers.CharField(max_length=250, allow_blank=True, default='')
     email = serializers.EmailField(max_length=254, allow_blank=True, default='')
@@ -174,20 +191,7 @@ class C2Mixin:
                         'Fiche modifiée ou réattribuée : rechargez avant d’enregistrer le C2.'
                     )
                 if data['non_eligible']:
-                    for session in CallSessionProgress.objects.select_for_update().filter(
-                        current_prospect_id=row.pk
-                    ):
-                        session.visited_prospect_ids = list(
-                            dict.fromkeys([*session.visited_prospect_ids, row.pk])
-                        )
-                        session.current_prospect_id = None
-                        session.save(
-                            update_fields=[
-                                'visited_prospect_ids',
-                                'current_prospect_id',
-                                'updated_at',
-                            ]
-                        )
+                    finish_ineligible_sessions(row.pk)
                 AuditEvent.objects.create(
                     action='isolation.prospect.c2_saved',
                     object_id=str(row.pk),

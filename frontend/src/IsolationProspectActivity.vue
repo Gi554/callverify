@@ -49,6 +49,7 @@ const statuses: Record<string, string> = {
   callback: 'À rappeler',
   interested: 'Intéressé',
   not_interested: 'Non intéressé',
+  non_eligible: 'Non éligible',
   unreachable: 'Non joint',
 };
 let requestId = crypto.randomUUID();
@@ -253,8 +254,6 @@ const resultLabels: Record<string, string> = {
     </div>
     <div class="sheet-section" v-show="tab === 'qualification'">
       <IsolationC2
-        :allow-ineligible="!taskReadOnly && !followUp"
-        @excluded="emit('close')"
         :prospect-id="prospectId"
         :request="request"
         :blocked="busy || callBusy || taskBusy || commandBusy || taskReadOnly"

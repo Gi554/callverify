@@ -4,12 +4,10 @@ const props = defineProps<{
   prospectId: number;
   request: (path: string, body?: any) => Promise<any>;
   blocked?: boolean;
-  allowIneligible?: boolean;
 }>();
 const emit = defineEmits<{
   saved: [revision: number];
   dirty: [value: boolean];
-  excluded: [];
   busy: [value: boolean];
 }>();
 const labels: Record<string, string> = {
@@ -38,7 +36,6 @@ const values = ref<any>({}),
   message = ref(''),
   baseline = ref(''),
   hasUnsavedDefaults = ref(false);
-const excluded = ref(false);
 const dirty = computed(() => loaded.value && JSON.stringify(values.value) !== baseline.value);
 watch(dirty, (value) => emit('dirty', value), { flush: 'sync' });
 watch(busy, (value) => emit('busy', value), { flush: 'sync' });
@@ -62,7 +59,6 @@ async function load() {
       ...row.defaults,
       ...row.c2,
     };
-    excluded.value = row.commercial_status === 'non_eligible';
     revision.value = row.revision;
     hasUnsavedDefaults.value = Object.keys(row.defaults).some(
       (key) => values.value[key] !== row.c2[key],
@@ -77,10 +73,10 @@ async function load() {
     busy.value = false;
   }
 }
-async function ensureSaved(includeDefaults = false, exclude = false) {
+async function ensureSaved(includeDefaults = false) {
   if (!loaded.value) throw new Error('Chargez la qualification avant de réserver.');
   if (busy.value) throw new Error('Enregistrement de qualification en cours.');
-  if (!exclude && !dirty.value && !(includeDefaults && hasUnsavedDefaults.value)) return;
+  if (!dirty.value && !(includeDefaults && hasUnsavedDefaults.value)) return;
   busy.value = true;
   error.value = '';
   message.value = '';
@@ -88,17 +84,13 @@ async function ensureSaved(includeDefaults = false, exclude = false) {
     const row = await props.request(`work-queue/${props.prospectId}/c2/`, {
       revision: revision.value,
       c2: values.value,
-      ...(exclude ? { non_eligible: true } : {}),
     });
     values.value = row.c2;
     hasUnsavedDefaults.value = false;
     revision.value = row.revision;
     baseline.value = JSON.stringify(values.value);
     emit('saved', row.revision);
-    message.value = exclude
-      ? 'Fiche non éligible, retirée de la prospection.'
-      : 'Brouillon de qualification enregistré.';
-    if (exclude) emit('excluded');
+    message.value = 'Brouillon de qualification enregistré.';
   } catch (e: any) {
     error.value = e.message;
     throw e;
@@ -114,11 +106,6 @@ async function reload() {
     return;
   try {
     await load();
-  } catch {}
-}
-async function markIneligible() {
-  try {
-    await ensureSaved(true, true);
   } catch {}
 }
 async function save() {
@@ -152,10 +139,6 @@ defineExpose({ ensureSaved, dirty, focusEmail, getEmail: () => values.value.emai
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="message" role="status">{{ message }}</p>
     <fieldset v-if="loaded" :disabled="busy || blocked">
-      <p v-if="excluded">Statut : Non éligible</p>
-      <button v-else-if="allowIneligible" type="button" class="secondary" @click="markIneligible">
-        Classer comme non éligible
-      </button>
       <label class="c2-email">
         Courriel du prospect · facultatif
         <input
