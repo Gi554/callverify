@@ -3443,6 +3443,11 @@ Si NEWT répond avec un contenu non audio, le diagnostic indique aussi le type M
 
 La liste de supervision inclut les comptes métier de tous les rôles, pas uniquement les administrateurs. Pendant une session d’assistance, le bandeau permet de chercher et choisir directement un autre compte et un de ses espaces actifs, avec motif obligatoire ; le superadmin n’a pas besoin du mot de passe de l’utilisateur ni de quitter l’assistance pour revenir à la liste. Chaque fin et chaque nouveau démarrage sont journalisés séparément. Les comptes système, suspendus ou sans appartenance active ne peuvent pas être pris en main ; l’assistance reste limitée à un espace à la fois et expire après 15 minutes.
 
+
+## Diagnostic manuel des ressources VPS
+
+Le workflow « VPS read-only diagnostics » est déclenchable manuellement depuis GitHub Actions et utilise l’environnement de production ainsi que la clé SSH déjà réservée au déploiement. Il affiche l’horodatage, la charge et l’échantillonnage vmstat, la mémoire, l’espace disque, les compteurs Docker, l’état des services Compose et l’occupation Docker. Il n’exécute aucune commande de modification et ne lit ni les variables .env, ni les journaux d’appels, ni les données CRM.
+
 ## Assurance — temps de passage entre deux fiches (recette staging)
 
 Après confirmation serveur de la progression, le minuteur de cinq secondes et la lecture du prochain contact du lot démarrent ensemble. La session interroge la file active du setter ou de l’administrateur. Elle recharge le tableau à la pause ou en fin de session. Le résultat enregistré avec passage au suivant évite deux lectures d’historique. À l’ouverture de Prospects, la restauration de session et le chargement des colonnes démarrent en parallèle.
@@ -3464,3 +3469,4 @@ Depuis Appels, la fiche demandée se charge avant le tableau en Assurance et en 
 La vue d’ensemble du superadmin présente les volumes reçus, les erreurs, la médiane et le 95e percentile par opération et par campagne. Le navigateur mesure la relecture complète du tableau, les lectures de colonnes et de fiches, les écritures de qualification et la transmission des rendez-vous. Une mesure distincte couvre le parcours complet d’envoi. Les requêtes métier instrumentées renvoient également la durée serveur et la durée cumulée des exécutions SQL. Aucune requête SQL, URL de prospect ou donnée de fiche n’est conservée dans ces mesures.
 
 La collecte authentifiée est limitée aux setters actifs de l’espace, hors assistance. Les mesures sont envoyées en arrière-plan par petits lots. La synthèse porte sur les 5 000 dernières mesures des dernières 24 h. Les onglets fermés avant l’envoi, les lots rejetés et les postes hors ligne peuvent manquer. Il reste à vérifier la distribution réelle des temps avec des utilisateurs en recette.
+

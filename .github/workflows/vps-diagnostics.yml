@@ -1,0 +1,63 @@
+name: VPS read-only diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vps-read-only-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Read VPS resource status over verified SSH
+        env:
+          SSH_HOST: ${{ vars.CD_HOST }}
+          SSH_PORT: ${{ vars.CD_PORT || '22' }}
+          SSH_USER: ${{ vars.CD_USER }}
+          DEPLOY_PATH: ${{ vars.CD_PATH }}
+          SSH_KEY: ${{ secrets.CD_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.CD_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SSH_HOST" =~ ^[a-zA-Z0-9.-]+$ && "$SSH_HOST" != -* ]]
+          [[ "$SSH_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$SSH_PORT" =~ ^[0-9]{1,5}$ ]] && ((10#$SSH_PORT >= 1 && 10#$SSH_PORT <= 65535))
+          [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9_/-]+$ && "$DEPLOY_PATH" != / && "$DEPLOY_PATH" != *..* ]]
+          [[ -n "$SSH_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
+          umask 077
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh -i "$ssh_dir/key" -p "$SSH_PORT" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$ssh_dir/known_hosts" -o ConnectTimeout=15 \
+            "$SSH_USER@$SSH_HOST" "bash -s -- '$DEPLOY_PATH'" <<'REMOTE'
+          set -euo pipefail
+          deploy_path=$1
+          cd -- "$deploy_path"
+          compose=(docker compose -f compose.yaml -f infra/compose.crm.yaml -f compose.production.yaml)
+          printf '%s\n' '=== Horodatage VPS (UTC) ==='
+          date -u '+%Y-%m-%d %H:%M:%S UTC'
+          printf '%s\n' '=== Charge système ==='
+          uptime
+          if command -v vmstat >/dev/null 2>&1; then vmstat 1 5; fi
+          printf '%s\n' '=== Mémoire ==='
+          free -h
+          printf '%s\n' '=== Espace disque ==='
+          df -hP / /var/lib/docker 2>/dev/null || df -hP /
+          printf '%s\n' '=== Conteneurs : CPU, mémoire, réseau, disque ==='
+          docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}'
+          printf '%s\n' '=== État des services CRM ==='
+          "${compose[@]}" ps --format 'table {{.Name}}\t{{.State}}\t{{.Status}}'
+          printf '%s\n' '=== Occupation Docker ==='
+          docker system df
+          REMOTE
