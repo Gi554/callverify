@@ -107,7 +107,13 @@ def result_changed(visit, report, previous, actor):
         sync(prospect)
     if report.outcome == 'unqualified':
         if not previous or previous.get('outcome') != 'unqualified':
-            notice(visit, owner, 'setter', 'unqualified', f'result:{visit.pk}:{visit.revision}')
+            notice(
+                visit,
+                prospect.assigned_setter_id,
+                'setter',
+                'unqualified',
+                f'result:{visit.pk}:{visit.revision}',
+            )
         return
     if (
         previous
@@ -135,7 +141,11 @@ class Notices(viewsets.GenericViewSet):
         rows = IsolationNotice.objects.filter(
             recipient_id=self.request.user.pk, recipient_role=self.request.user.role
         )
-        rows = rows.filter(~Q(recipient_role='setter') | Q(visit__setter_id=self.request.user.pk))
+        rows = rows.filter(
+            ~Q(recipient_role='setter')
+            | Q(kind='unqualified', visit__prospect__assigned_setter_id=self.request.user.pk)
+            | Q(kind__in=['held', 'closed', 'not_held'], visit__setter_id=self.request.user.pk)
+        )
         from django.db.models import F
 
         rows = rows.exclude(recipient_role='client', kind__in=['result_ready', 'result_due'])
