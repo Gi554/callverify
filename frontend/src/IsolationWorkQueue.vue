@@ -34,6 +34,7 @@ const statuses = [
   ['in_progress', 'En cours'],
   ['callback', 'À rappeler'],
   ['interested', 'Intéressé'],
+  ['non_eligible', 'Non éligible'],
   ['not_interested', 'Non intéressé'],
   ['unreachable', 'Non joint'],
 ];

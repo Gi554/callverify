@@ -253,6 +253,8 @@ const resultLabels: Record<string, string> = {
     </div>
     <div class="sheet-section" v-show="tab === 'qualification'">
       <IsolationC2
+        :allow-ineligible="!taskReadOnly && !followUp"
+        @excluded="emit('close')"
         :prospect-id="prospectId"
         :request="request"
         :blocked="busy || callBusy || taskBusy || commandBusy || taskReadOnly"
