@@ -106,6 +106,8 @@ def output(row):
         'commercial_status': row.commercial_status,
         **({'queue_reason': row._queue_reason} if hasattr(row, '_queue_reason') else {}),
         'commercial_label': STATUSES.get(row.commercial_status, row.commercial_status),
+        'last_call_result': getattr(row, 'last_call_result', None),
+        'last_call_result_label': RESULTS.get(getattr(row, 'last_call_result', None), ''),
         'callback_at': row.callback_at,
         'callback_due': row.callback_at is not None and row.callback_at <= timezone.now(),
     }
@@ -307,7 +309,9 @@ class WorkViewSet(
                     | Q(_queue_declined=True)
                     | Q(_queue_attended=True)
                 )
-        return qs
+        # Cards and the prospect drawer must display the recorded outcome, not just
+        # the legacy commercial status, which may still be "to_contact".
+        return with_latest_call_result(qs) if self.action in ('list', 'retrieve') else qs
 
     def list(self, request):
         return self.get_paginated_response(

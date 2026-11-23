@@ -155,6 +155,20 @@ function fixture(role = 'setter', ownLot = false, serverState = null, focus = nu
             results: role === 'setter' || ownLot ? [row(page, 'to_contact')] : [],
           }
         if (q.get('due') === 'true') return { count: 0, next: null, results: [] }
+        if (q.get('call_result')) {
+          const result = q.get('call_result')
+          const label = result === 'invalid_number' ? 'Numéro non attribué' : 'Appel coupé'
+          return {
+            count: 27,
+            next: page === 1 ? 'next' : null,
+            results: (page === 1 ? [1, 2] : [3]).map((id) => ({
+              ...row(id, 'to_contact'),
+              commercial_label: 'À contacter',
+              last_call_result: result,
+              last_call_result_label: label,
+            })),
+          }
+        }
         return status === 'to_contact'
           ? {
               count: 27,
@@ -198,11 +212,9 @@ test('admin result filter includes processed prospects and follows exports and p
     const queries = f.requests
       .filter((r) => r.path.startsWith('work-queue/?'))
       .map((r) => new URLSearchParams(r.path.split('?')[1]))
-    assert.equal(queries.length, 8)
+    assert.equal(queries.length, 1)
     assert.ok(queries.every((q) => q.get('call_result') === 'invalid_number'))
-    assert.ok(
-      queries.every((q) => q.get('queue') === (q.has('commercial_status') ? 'all' : 'callbacks')),
-    )
+    assert.ok(queries.every((q) => q.get('queue') === 'all' && !q.has('commercial_status')))
     const exporter = () => all(f.root).find((n) => n.props?.['data-component'] === 'ProspectExport')
     assert.equal(exporter().props.filters.call_result, 'invalid_number')
     assert.equal(exporter().props.filters.queue, 'all')
@@ -215,6 +227,16 @@ test('admin result filter includes processed prospects and follows exports and p
     )
     status.props['onUpdate:modelValue']('callback_queue')
     await flush()
+    await status.props.onChange()
+    await flush()
+    const callbackQuery = new URLSearchParams(
+      f.requests
+        .filter((r) => r.path.startsWith('work-queue/?'))
+        .at(-1)
+        .path.split('?')[1],
+    )
+    assert.equal(callbackQuery.get('queue'), 'callbacks')
+    assert.equal(callbackQuery.has('commercial_status'), false)
     assert.equal(exporter().props.filters.queue, 'callbacks')
     assert.equal(exporter().props.filters.commercial_status, '')
     field.props['onUpdate:modelValue']('')
@@ -230,6 +252,36 @@ test('admin result filter includes processed prospects and follows exports and p
     f.app.unmount()
   }
 })
+
+for (const [result, label] of [
+  ['invalid_number', 'Numéro non attribué'],
+  ['disconnected', 'Appel coupé'],
+]) {
+  test(`${result} shows its true title and card labels instead of to contact`, async () => {
+    const f = fixture('administrator')
+    try {
+      await flush()
+      const filter = all(f.root).find(
+        (n) => n.props?.['aria-label'] === 'Filtrer par résultat d’appel',
+      )
+      filter.props['onUpdate:modelValue'](result)
+      await flush()
+      await filter.props.onChange()
+      await flush()
+      const groups = all(f.root).filter((n) => n.props?.class === 'prospect-column')
+      assert.equal(groups.length, 1)
+      assert.equal(text(all(groups[0]).find((n) => n.tag === 'h2')), label)
+      const badges = all(groups[0]).filter((n) => n.props?.class === 'prospect-stage')
+      assert.equal(badges.length, 2)
+      assert.ok(badges.every((n) => text(n) === label))
+      assert.equal(text(groups[0]).includes('À contacter'), false)
+      await click(f, 'Afficher plus · 2 / 27')
+      assert.equal(all(groups[0]).filter((n) => n.props?.class === 'prospect-stage').length, 3)
+    } finally {
+      f.app.unmount()
+    }
+  })
+}
 
 test('setter does not see admin export result selector', async () => {
   const f = fixture()
