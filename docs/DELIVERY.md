@@ -1,5 +1,9 @@
 # Suivi des livraisons CRM AMX
 
+## Libellés des résultats Isolation dans les listes et fiches
+
+Les filtres de résultat d’appel affichent une seule liste portant le nom du résultat choisi, notamment « Numéro non attribué » et « Appel coupé », au lieu de présenter les fiches sous l’ancien statut commercial « À contacter ». Les cartes et l’en-tête de la fiche affichent le dernier résultat enregistré, fourni par l’API de liste et de détail. Sans résultat, le libellé commercial reste affiché. Les filtres de période, de responsable, de recherche et de statut commercial sont conservés, y compris la file Rappels ; la pagination et l’export gardent le même périmètre. Les valeurs métier enregistrées et l’éligibilité aux sessions d’appels ne sont pas modifiées. Tests API et interface pour les deux résultats, les titres, badges, fiches, filtres combinés et la pagination.
+
 ## Export Isolation par résultat d’appel
 
 L’administrateur peut préciser **Du / Au** pour tous les résultats d’appel. Les dates filtrent la date du dernier résultat enregistré sur l’ensemble de l’historique, à l’heure du Québec (jours inclusifs, changements d’heure pris en compte). Si le résultat a changé depuis, la fiche ne figure plus dans l’export de l’ancien résultat, même s’il était présent dans la période. Les bornes sont facultatives ; une période seule permet de sélectionner tous les derniers résultats saisis pendant celle-ci. Les mêmes paramètres sont appliqués à la liste, à sa pagination et à l’export, puis conservés dans l’audit. Tests dédiés : tous les résultats, changements hors période, limites de journée/changement d’heure, CSV/Excel, dates invalides et parcours frontend. Aucun export général de la base n’est ajouté.

@@ -190,7 +190,7 @@ const resultLabels: Record<string, string> = {
   <section class="isolation-prospect-sheet">
     <p v-if="error" role="alert" class="sheet-error">{{ error }}</p>
     <div v-if="prospect" class="sheet-summary">
-      <span>{{ prospect.commercial_label }}</span
+      <span>{{ prospect.last_call_result_label || prospect.commercial_label }}</span
       ><small>{{
         prospect.callback_at
           ? 'Rappel : ' +

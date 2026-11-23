@@ -113,6 +113,27 @@ class IsolationExportTests(TestCase):
                 self.assertEqual(rows[1][0], str(self.row.pk))
                 self.assertEqual(rows[1][-1], label)
 
+    def test_latest_result_labels_match_list_drawer_and_export_without_resetting_status(self):
+        self.auth(91, 'administrator')
+        for result in ('invalid_number', 'disconnected'):
+            with self.subTest(result=result):
+                self.activity(self.row, result)
+                self.activity(self.row, 'unrelated', kind='note')
+                query = {'call_result': result, 'queue': 'all'}
+                listed = self.client.get('/api/work-queue/', query)
+                row = listed.data['results'][0]
+                detail = self.client.get(f'/api/work-queue/{self.row.pk}/').data
+                for value in (row, detail):
+                    self.assertEqual(value['last_call_result'], result)
+                    self.assertEqual(value['last_call_result_label'], RESULTS[result])
+                self.assertEqual(self.csv_rows(query)[1][-1], RESULTS[result])
+                self.row.refresh_from_db()
+                self.assertEqual(self.row.commercial_status, 'to_contact')
+        untouched = self.client.get(f'/api/work-queue/{self.other.pk}/').data
+        self.assertIsNone(untouched['last_call_result'])
+        self.assertEqual(untouched['last_call_result_label'], '')
+        self.assertEqual(untouched['commercial_label'], 'À contacter')
+
     def test_result_filter_preserves_scope_and_rejects_unknown_values(self):
         self.activity(self.other, 'invalid_number')
         self.auth(21, 'setter')

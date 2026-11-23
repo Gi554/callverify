@@ -113,7 +113,7 @@ async function flush() {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
-function fixture({ failReload = false } = {}) {
+function fixture({ failReload = false, resultLabel = '' } = {}) {
   const root = { children: [] },
     closed = [],
     saved = [],
@@ -128,7 +128,12 @@ function fixture({ failReload = false } = {}) {
       if (path === 'work-queue/7/') {
         loads++
         if (failReload && loads > 1) throw new Error('Fiche indisponible')
-        return { id: 7, revision: loads - 1 }
+        return {
+          id: 7,
+          revision: loads - 1,
+          commercial_label: 'À contacter',
+          last_call_result_label: resultLabel,
+        }
       }
       return { results: [], count: 0 }
     },
@@ -139,6 +144,22 @@ function fixture({ failReload = false } = {}) {
   return { root, app, closed, saved, requests }
 }
 const child = (f) => all(f.root).find((n) => n.props?.['data-component'] === 'IsolationCallResult')
+for (const resultLabel of ['Numéro non attribué', 'Appel coupé']) {
+  test(`drawer displays ${resultLabel} instead of the legacy commercial label`, async () => {
+    const f = fixture({ resultLabel })
+    try {
+      await flush()
+      const spans = all(f.root).filter((n) => n.tag === 'span')
+      assert.ok(spans.some((n) => n.text === resultLabel))
+      assert.equal(
+        spans.some((n) => n.text === 'À contacter'),
+        false,
+      )
+    } finally {
+      f.app.unmount()
+    }
+  })
+}
 for (const outcome of [
   'voicemail',
   'invalid_number',

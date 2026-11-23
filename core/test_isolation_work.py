@@ -163,6 +163,8 @@ class IsolationWorkTests(TestCase):
                 'revision',
                 'commercial_status',
                 'commercial_label',
+                'last_call_result',
+                'last_call_result_label',
                 'callback_at',
                 'callback_due',
             },

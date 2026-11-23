@@ -68,13 +68,15 @@ const columns = ref<Column[]>([]),
     owner: '',
     due: false,
     callResult: '',
+    commercialStatus: '',
     resultFrom: '',
     resultTo: '',
   });
 const visible = computed(() =>
   columns.value.filter(
     (c) =>
-      (!commercialStatus.value || c.key === commercialStatus.value) && (c.count > 0 || !!c.error),
+      (c.key === 'call_result' || !commercialStatus.value || c.key === commercialStatus.value) &&
+      (c.count > 0 || !!c.error),
   ),
 );
 const total = computed(() => visible.value.reduce((n, c) => n + c.count, 0));
@@ -134,7 +136,8 @@ async function loadColumn(column: Column, version: number, append = false) {
   column.busy = true;
   column.error = '';
   try {
-    const callbackQueue = column.key === 'callback_queue';
+    const status = column.key === 'call_result' ? applied.value.commercialStatus : column.key;
+    const callbackQueue = status === 'callback_queue';
     const q = new URLSearchParams({
       page: String(append ? column.page + 1 : 1),
       search: applied.value.search,
@@ -142,7 +145,7 @@ async function loadColumn(column: Column, version: number, append = false) {
       call_result: applied.value.callResult,
       call_result_from: applied.value.resultFrom,
       call_result_to: applied.value.resultTo,
-      ...(callbackQueue ? {} : { commercial_status: column.key }),
+      ...(callbackQueue || !status ? {} : { commercial_status: status }),
       due: String(applied.value.due),
       queue: callbackQueue
         ? 'callbacks'
@@ -185,10 +188,14 @@ async function load(restorePreview: unknown = false) {
     owner: owner.value,
     due: dueOnly.value,
     callResult: callResult.value,
+    commercialStatus: commercialStatus.value,
     resultFrom: resultFrom.value,
     resultTo: resultTo.value,
   };
-  columns.value = statuses.map(([key, label]) => ({
+  const groups = callResult.value
+    ? [['call_result', callResults.find(([key]) => key === callResult.value)![1]]]
+    : statuses;
+  columns.value = groups.map(([key, label]) => ({
     key,
     label,
     rows: preview.find((column) => column.key === key)?.rows || [],
@@ -593,7 +600,11 @@ onBeforeUnmount(() => {
           fiches traitées</label
         >
         <label class="stage-filter"
-          ><select v-model="commercialStatus" aria-label="Filtrer les prospects par statut">
+          ><select
+            v-model="commercialStatus"
+            aria-label="Filtrer les prospects par statut"
+            @change="callResult && load()"
+          >
             <option value="">Tous les statuts</option>
             <option v-for="[key, label] in statuses" :key="key" :value="key">{{ label }}</option>
           </select></label
@@ -779,13 +790,14 @@ onBeforeUnmount(() => {
               </p>
               <footer class="isolation-card-footer">
                 <span class="prospect-stage">{{
-                  row.queue_reason === 'appointment_booked'
+                  row.last_call_result_label ||
+                  (row.queue_reason === 'appointment_booked'
                     ? 'RDV pris'
                     : row.queue_reason === 'client_followup'
                       ? 'Relance personnelle du client'
                       : row.queue_reason === 'unqualified'
                         ? 'Rendez-vous non qualifié'
-                        : row.commercial_label || column.label
+                        : row.commercial_label || column.label)
                 }}</span>
                 <div>
                   <button
