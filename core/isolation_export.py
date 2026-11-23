@@ -1,7 +1,9 @@
 """Isolation prospect export (CSV or Excel) over exactly the work queue's scope and filters."""
 
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.db.models import OuterRef, Subquery
 from django.db.models.fields.json import KeyTextTransform
 from packages.exports import kind, bounded, response
@@ -16,7 +18,36 @@ def with_latest_call_result(queryset):
         .order_by('-created_at', '-pk')
         .annotate(result=KeyTextTransform('result', 'changes'))
     )
-    return queryset.annotate(last_call_result=Subquery(latest.values('result')[:1]))
+    return queryset.annotate(
+        last_call_result=Subquery(latest.values('result')[:1]),
+        last_call_result_at=Subquery(latest.values('created_at')[:1]),
+    )
+
+
+def filter_call_result_period(queryset, params):
+    raw_start = params.get('call_result_from', '')
+    raw_end = params.get('call_result_to', '')
+    if not raw_start and not raw_end:
+        return queryset
+    try:
+        start = date.fromisoformat(raw_start) if raw_start else None
+        end = date.fromisoformat(raw_end) if raw_end else None
+        if (start and start.isoformat() != raw_start) or (end and end.isoformat() != raw_end):
+            raise ValueError
+        if start and end and start > end:
+            raise ValueError
+        zone = ZoneInfo('America/Toronto')
+        lower = datetime.combine(start, time.min, zone) if start else None
+        upper = datetime.combine(end + timedelta(days=1), time.min, zone) if end else None
+    except (ValueError, OverflowError):
+        raise ValidationError('Période invalide : dates AAAA-MM-JJ, du début à la fin.')
+    # Determine the latest result over the entire history BEFORE applying the dates.
+    queryset = with_latest_call_result(queryset)
+    if lower:
+        queryset = queryset.filter(last_call_result_at__gte=lower)
+    if upper:
+        queryset = queryset.filter(last_call_result_at__lt=upper)
+    return queryset
 
 
 class ExportMixin:
@@ -68,6 +99,8 @@ class ExportMixin:
                         'owner',
                         'commercial_status',
                         'call_result',
+                        'call_result_from',
+                        'call_result_to',
                         'due',
                         'queue',
                     )

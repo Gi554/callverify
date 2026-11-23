@@ -112,7 +112,7 @@ def output(row):
 
 
 from .isolation_followups import FollowUpMixin, RESULTS
-from .isolation_export import ExportMixin, with_latest_call_result
+from .isolation_export import ExportMixin, with_latest_call_result, filter_call_result_period
 
 
 class WorkViewSet(
@@ -164,6 +164,7 @@ class WorkViewSet(
             if call_result not in RESULTS:
                 raise ValidationError('Résultat d’appel invalide')
             qs = with_latest_call_result(qs).filter(last_call_result=call_result)
+        qs = filter_call_result_period(qs, self.request.query_params)
         if self.request.query_params.get('due') == 'true':
             qs = (
                 qs.filter(

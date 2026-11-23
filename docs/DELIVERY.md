@@ -2,6 +2,8 @@
 
 ## Export Isolation par résultat d’appel
 
+L’administrateur peut préciser **Du / Au** pour tous les résultats d’appel. Les dates filtrent la date du dernier résultat enregistré sur l’ensemble de l’historique, à l’heure du Québec (jours inclusifs, changements d’heure pris en compte). Si le résultat a changé depuis, la fiche ne figure plus dans l’export de l’ancien résultat, même s’il était présent dans la période. Les bornes sont facultatives ; une période seule permet de sélectionner tous les derniers résultats saisis pendant celle-ci. Les mêmes paramètres sont appliqués à la liste, à sa pagination et à l’export, puis conservés dans l’audit. Tests dédiés : tous les résultats, changements hors période, limites de journée/changement d’heure, CSV/Excel, dates invalides et parcours frontend. Aucun export général de la base n’est ajouté.
+
 Dans **Isolation → Prospects**, l’administrateur peut filtrer sur le **dernier résultat d’appel** puis exporter en CSV, Excel ou PDF. Les fiches traitées sont incluses dès qu’un résultat est choisi. Le résultat le plus récent est déterminé par la date de saisie, puis l’identifiant d’activité en cas d’égalité ; un commentaire ultérieur ne le remplace pas. Un ancien résultat ne suffit pas à sélectionner la fiche.
 
 L’export conserve les filtres de recherche, responsable, statut et rappels à traiter, couvre toutes les pages et ajoute la colonne « Dernier résultat d’appel ». Le filtre est tracé dans l’audit d’export. Les droits d’accès et les limites existantes des formats restent appliqués ; aucun résultat, commentaire ou critère d’éligibilité aux sessions d’appels n’est modifié.

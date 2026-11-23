@@ -24,6 +24,8 @@ import IsolationLots from './IsolationLots.vue';
 import IsolationQualification from './IsolationQualification.vue';
 const includeProcessed = ref(false);
 const callResult = ref('');
+const resultFrom = ref(''),
+  resultTo = ref('');
 const callResults = [
   ['appointment_booked', 'Rendez-vous pris'],
   ['voicemail', 'Répondeur'],
@@ -61,7 +63,14 @@ type Column = {
   error: string;
 };
 const columns = ref<Column[]>([]),
-  applied = ref({ search: '', owner: '', due: false, callResult: '' });
+  applied = ref({
+    search: '',
+    owner: '',
+    due: false,
+    callResult: '',
+    resultFrom: '',
+    resultTo: '',
+  });
 const visible = computed(() =>
   columns.value.filter(
     (c) =>
@@ -131,11 +140,16 @@ async function loadColumn(column: Column, version: number, append = false) {
       search: applied.value.search,
       owner: applied.value.owner,
       call_result: applied.value.callResult,
+      call_result_from: applied.value.resultFrom,
+      call_result_to: applied.value.resultTo,
       ...(callbackQueue ? {} : { commercial_status: column.key }),
       due: String(applied.value.due),
       queue: callbackQueue
         ? 'callbacks'
-        : includeProcessed.value || applied.value.callResult
+        : includeProcessed.value ||
+            applied.value.callResult ||
+            applied.value.resultFrom ||
+            applied.value.resultTo
           ? 'all'
           : 'active',
     });
@@ -171,6 +185,8 @@ async function load(restorePreview: unknown = false) {
     owner: owner.value,
     due: dueOnly.value,
     callResult: callResult.value,
+    resultFrom: resultFrom.value,
+    resultTo: resultTo.value,
   };
   columns.value = statuses.map(([key, label]) => ({
     key,
@@ -205,6 +221,8 @@ async function load(restorePreview: unknown = false) {
     !dueOnly.value &&
     !includeProcessed.value &&
     !callResult.value &&
+    !resultFrom.value &&
+    !resultTo.value &&
     columns.value.every((column) => !column.error)
   ) {
     props.preview.store(columns.value.map((column) => ({ ...column, rows: [...column.rows] })));
@@ -551,11 +569,13 @@ onBeforeUnmount(() => {
             owner: applied.owner,
             commercial_status: commercialStatus === 'callback_queue' ? '' : commercialStatus,
             call_result: applied.callResult,
+            call_result_from: applied.resultFrom,
+            call_result_to: applied.resultTo,
             due: applied.due ? 'true' : '',
             queue:
               commercialStatus === 'callback_queue'
                 ? 'callbacks'
-                : includeProcessed || applied.callResult
+                : includeProcessed || applied.callResult || applied.resultFrom || applied.resultTo
                   ? 'all'
                   : 'active',
           }"
@@ -597,6 +617,24 @@ onBeforeUnmount(() => {
             <option v-for="[key, label] in callResults" :key="key" :value="key">{{ label }}</option>
           </select>
         </label>
+        <template v-if="role === 'administrator'">
+          <label
+            >Du<input
+              v-model="resultFrom"
+              type="date"
+              aria-label="Date de début du résultat d’appel"
+              :max="resultTo || undefined"
+              @change="load"
+          /></label>
+          <label
+            >Au<input
+              v-model="resultTo"
+              type="date"
+              aria-label="Date de fin du résultat d’appel"
+              :min="resultFrom || undefined"
+              @change="load"
+          /></label>
+        </template>
         <label
           ><input v-model="dueOnly" type="checkbox" @change="load" />Rappels à traiter
           <span v-if="callbacksDue">({{ callbacksDue }})</span></label
@@ -622,8 +660,9 @@ onBeforeUnmount(() => {
           <CalendarDays :size="15" />Consulter les visites
         </button>
       </div>
-      <p v-if="applied.callResult" class="muted">
-        Filtre sur le dernier résultat enregistré pour chaque fiche, fiches traitées incluses.
+      <p v-if="applied.callResult || applied.resultFrom || applied.resultTo" class="muted">
+        Dernier résultat enregistré pour chaque fiche, fiches traitées incluses. La période porte
+        sur la date de ce résultat, à l’heure du Québec, dates de début et de fin incluses.
       </p>
       <p v-if="error" role="alert" class="error">{{ error }}</p>
       <CallCountdownModal
@@ -1407,7 +1446,8 @@ onBeforeUnmount(() => {
 .isolation-filters input[type='checkbox'] {
   width: auto;
 }
-.isolation-filters select {
+.isolation-filters select,
+.isolation-filters input[type='date'] {
   width: auto;
   min-width: 160px;
   background: #fff;

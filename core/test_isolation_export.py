@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime
 from io import BytesIO, StringIO
 from uuid import uuid4
 from openpyxl import load_workbook
@@ -139,3 +140,83 @@ class IsolationExportTests(TestCase):
         exported = self.csv_rows(query)
         self.assertEqual(len(exported), 28)
         self.assertEqual(len({r[0] for r in exported[1:]}), 27)
+
+    def dated_result(self, prospect, result, stamp):
+        activity = self.activity(prospect, result)
+        ProspectActivity.objects.filter(pk=activity.pk).update(
+            created_at=datetime.fromisoformat(stamp)
+        )
+        return activity
+
+    def test_period_applies_to_latest_result_for_every_outcome(self):
+        self.auth(91, 'administrator')
+        period = {'queue': 'all', 'call_result_from': '2026-11-01', 'call_result_to': '2026-11-23'}
+        for result in RESULTS:
+            with self.subTest(result=result):
+                ProspectActivity.objects.all().delete()
+                self.dated_result(self.row, result, '2026-11-12T17:00:00+00:00')
+                query = {**period, 'call_result': result}
+                self.assertEqual(len(self.csv_rows(query)), 2)
+                # A later result outside the requested period invalidates the old match.
+                changed = 'voicemail' if result != 'voicemail' else 'appointment_booked'
+                self.dated_result(self.row, changed, '2026-11-24T17:00:00+00:00')
+                self.assertEqual(len(self.csv_rows(query)), 1)
+                self.assertEqual(self.client.get('/api/work-queue/', query).data['count'], 0)
+                # Even the same result repeated outside the period must not match the old one.
+                self.dated_result(self.row, result, '2026-11-25T17:00:00+00:00')
+                self.assertEqual(len(self.csv_rows(query)), 1)
+
+    def test_quebec_period_includes_full_day_and_dst_transition(self):
+        self.auth(91, 'administrator')
+        # Montreal's 1 November 2026 is 25 hours long (UTC-4 becomes UTC-5).
+        cases = [
+            ('2026-11-01T03:59:59+00:00', False),
+            ('2026-11-01T04:00:00+00:00', True),
+            ('2026-11-02T04:59:59.999999+00:00', True),
+            ('2026-11-02T05:00:00+00:00', False),
+        ]
+        expected = set()
+        for stamp, included in cases:
+            row = Prospect.objects.create(campaign=self.row.campaign, name=stamp)
+            self.dated_result(row, 'voicemail', stamp)
+            if included:
+                expected.add(row.pk)
+        query = {
+            'queue': 'all',
+            'call_result': 'voicemail',
+            'call_result_from': '2026-11-01',
+            'call_result_to': '2026-11-01',
+        }
+        listed = self.client.get('/api/work-queue/', query)
+        self.assertEqual({row['id'] for row in listed.data['results']}, expected)
+        self.assertEqual({int(row[0]) for row in self.csv_rows(query)[1:]}, expected)
+        audit = AuditEvent.objects.filter(action='isolation.prospects.exported').latest('pk')
+        self.assertEqual(audit.metadata['filters']['call_result_from'], '2026-11-01')
+        self.assertEqual(audit.metadata['filters']['call_result_to'], '2026-11-01')
+        excel = self.client.get(self.url, {**query, 'file': 'xlsx'})
+        sheet = load_workbook(BytesIO(excel.content)).worksheets[0]
+        self.assertEqual({row[0].value for row in list(sheet.rows)[1:]}, expected)
+
+    def test_period_can_have_one_bound_and_excludes_files_without_results(self):
+        self.auth(91, 'administrator')
+        self.dated_result(self.row, 'invalid_number', '2026-11-12T17:00:00+00:00')
+        for bounds in (
+            {'call_result_from': '2026-11-12'},
+            {'call_result_to': '2026-11-12'},
+        ):
+            rows = self.csv_rows({'queue': 'all', **bounds})
+            self.assertEqual([row[0] for row in rows[1:]], [str(self.row.pk)])
+
+    def test_invalid_period_is_rejected_in_listing_and_export(self):
+        self.auth(91, 'administrator')
+        for period in (
+            {'call_result_from': 'yesterday'},
+            {'call_result_to': '2026-02-30'},
+            {'call_result_to': '9999-12-31'},
+            {'call_result_from': '20261101'},
+            {'call_result_from': '2026-11-23', 'call_result_to': '2026-11-01'},
+        ):
+            for path in ('/api/work-queue/', self.url):
+                with self.subTest(path=path, period=period):
+                    response = self.client.get(path, {'file': 'csv', **period})
+                    self.assertEqual(response.status_code, 400)

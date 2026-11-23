@@ -239,6 +239,62 @@ test('setter does not see admin export result selector', async () => {
       all(f.root).some((n) => n.props?.['aria-label'] === 'Filtrer par résultat d’appel'),
       false,
     )
+    assert.equal(
+      all(f.root).some((n) => n.props?.type === 'date'),
+      false,
+    )
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('admin result dates follow the list, export and pagination and can be cleared', async () => {
+  const f = fixture('administrator')
+  try {
+    await flush()
+    const start = all(f.root).find(
+      (n) => n.props?.['aria-label'] === 'Date de début du résultat d’appel',
+    )
+    const end = all(f.root).find(
+      (n) => n.props?.['aria-label'] === 'Date de fin du résultat d’appel',
+    )
+    start.props['onUpdate:modelValue']('2026-11-01')
+    end.props['onUpdate:modelValue']('2026-11-23')
+    await flush()
+    f.requests.length = 0
+    await end.props.onChange()
+    await flush()
+    const queries = f.requests
+      .filter((r) => r.path.startsWith('work-queue/?'))
+      .map((r) => new URLSearchParams(r.path.split('?')[1]))
+    assert.equal(queries.length, 8)
+    assert.ok(
+      queries.every(
+        (q) =>
+          q.get('call_result_from') === '2026-11-01' && q.get('call_result_to') === '2026-11-23',
+      ),
+    )
+    const exporter = () => all(f.root).find((n) => n.props?.['data-component'] === 'ProspectExport')
+    assert.equal(exporter().props.filters.call_result_from, '2026-11-01')
+    assert.equal(exporter().props.filters.call_result_to, '2026-11-23')
+    assert.equal(exporter().props.filters.queue, 'all')
+    await click(f, 'Afficher plus · 2 / 27')
+    const more = new URLSearchParams(
+      f.requests
+        .filter((r) => r.path.includes('page=2'))
+        .at(-1)
+        .path.split('?')[1],
+    )
+    assert.equal(more.get('call_result_from'), '2026-11-01')
+    assert.equal(more.get('call_result_to'), '2026-11-23')
+    start.props['onUpdate:modelValue']('')
+    end.props['onUpdate:modelValue']('')
+    await flush()
+    await end.props.onChange()
+    await flush()
+    assert.equal(exporter().props.filters.call_result_from, '')
+    assert.equal(exporter().props.filters.call_result_to, '')
+    assert.equal(exporter().props.filters.queue, 'active')
   } finally {
     f.app.unmount()
   }
