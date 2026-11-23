@@ -1,10 +1,12 @@
 import csv
 from io import BytesIO, StringIO
+from uuid import uuid4
 from openpyxl import load_workbook
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 from packages.access.tickets import issue
-from .models import Prospect
+from .models import Prospect, ProspectActivity, AuditEvent
+from .isolation_followups import RESULTS
 from .test_isolation_work import fixture
 
 
@@ -55,3 +57,85 @@ class IsolationExportTests(TestCase):
         self.assertEqual(self.client.get(self.url, {'file': 'csv', 'owner': 'x'}).status_code, 400)
         self.auth(5, 'client')
         self.assertEqual(self.client.get(self.url, {'file': 'csv'}).status_code, 403)
+
+    def activity(self, prospect, result, kind='call_result'):
+        return ProspectActivity.objects.create(
+            prospect=prospect,
+            request_id=uuid4(),
+            fingerprint='test',
+            author_portal_id=21,
+            author_role='setter',
+            kind=kind,
+            body='Commentaire conservé',
+            changes={'result': result},
+        )
+
+    def test_filter_uses_latest_call_result_not_old_results_or_notes(self):
+        self.auth(91, 'administrator')
+        first = self.activity(self.row, 'invalid_number')
+        last = self.activity(self.row, 'voicemail')
+        # Equal timestamps must be resolved by activity id.
+        ProspectActivity.objects.filter(pk=last.pk).update(created_at=first.created_at)
+        self.activity(self.row, 'invalid_number', kind='note')
+        self.activity(self.other, 'invalid_number')
+        query = {'call_result': 'invalid_number', 'queue': 'all'}
+        listed = self.client.get('/api/work-queue/', query)
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual([r['id'] for r in listed.data['results']], [self.other.pk])
+        rows = self.csv_rows(query)
+        self.assertEqual([r[0] for r in rows[1:]], [str(self.other.pk)])
+        self.assertEqual(rows[0][-1], 'Dernier résultat d’appel')
+        self.assertEqual(rows[1][-1], 'Numéro non attribué')
+        audit = AuditEvent.objects.filter(action='isolation.prospects.exported').latest('pk')
+        self.assertEqual(audit.metadata['filters']['call_result'], 'invalid_number')
+        self.assertEqual(len(self.csv_rows({**query, 'owner': '21'})), 1)
+        excel = self.client.get(self.url, {**query, 'file': 'xlsx'})
+        self.assertEqual(excel.status_code, 200)
+        sheet = load_workbook(BytesIO(excel.content)).worksheets[0]
+        self.assertEqual(sheet.max_row, 2)
+        self.assertEqual(sheet['A2'].value, self.other.pk)
+        self.assertEqual(sheet['J2'].value, 'Numéro non attribué')
+        pdf = self.client.get(self.url, {**query, 'file': 'pdf'})
+        self.assertEqual(pdf.status_code, 200)
+        self.assertTrue(pdf.content.startswith(b'%PDF'))
+        active = self.client.get('/api/work-queue/', {**query, 'queue': 'active'})
+        self.assertEqual(active.data['count'], 0)
+        self.assertEqual(ProspectActivity.objects.count(), 4)
+
+    def test_every_supported_result_and_processed_files_can_be_exported(self):
+        self.auth(91, 'administrator')
+        for result, label in RESULTS.items():
+            with self.subTest(result=result):
+                self.activity(self.row, result)
+                rows = self.csv_rows({'call_result': result, 'queue': 'all'})
+                self.assertEqual(len(rows), 2)
+                self.assertEqual(rows[1][0], str(self.row.pk))
+                self.assertEqual(rows[1][-1], label)
+
+    def test_result_filter_preserves_scope_and_rejects_unknown_values(self):
+        self.activity(self.other, 'invalid_number')
+        self.auth(21, 'setter')
+        response = self.client.get('/api/work-queue/', {'call_result': 'invalid_number'})
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(
+            self.client.get(self.url, {'file': 'csv', 'call_result': 'invalid_number'}).status_code,
+            403,
+        )
+        self.auth(91, 'administrator')
+        for url in ('/api/work-queue/', self.url):
+            self.assertEqual(
+                self.client.get(url, {'file': 'csv', 'call_result': 'unknown'}).status_code, 400
+            )
+
+    def test_export_contains_all_pages_once(self):
+        self.auth(91, 'administrator')
+        for i in range(27):
+            prospect = Prospect.objects.create(campaign=self.row.campaign, name=f'Export {i}')
+            self.activity(prospect, 'invalid_number')
+        query = {'call_result': 'invalid_number', 'queue': 'all'}
+        listed = self.client.get('/api/work-queue/', query)
+        self.assertEqual(listed.data['count'], 27)
+        self.assertEqual(len(listed.data['results']), 25)
+        exported = self.csv_rows(query)
+        self.assertEqual(len(exported), 28)
+        self.assertEqual(len({r[0] for r in exported[1:]}), 27)

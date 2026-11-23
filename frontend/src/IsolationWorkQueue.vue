@@ -23,6 +23,18 @@ import IsolationDistribution from './IsolationDistribution.vue';
 import IsolationLots from './IsolationLots.vue';
 import IsolationQualification from './IsolationQualification.vue';
 const includeProcessed = ref(false);
+const callResult = ref('');
+const callResults = [
+  ['appointment_booked', 'Rendez-vous pris'],
+  ['voicemail', 'Répondeur'],
+  ['invalid_number', 'Numéro non attribué'],
+  ['disconnected', 'Appel coupé'],
+  ['non_eligible', 'Non éligible'],
+  ['not_interested', 'Pas intéressé'],
+  ['callback', 'Rappel demandé'],
+  ['unreachable', 'Injoignable'],
+  ['other', 'Autre résultat'],
+];
 const lotsOpen = ref(false),
   adminTools = ref(false),
   callPending = ref(false),
@@ -49,7 +61,7 @@ type Column = {
   error: string;
 };
 const columns = ref<Column[]>([]),
-  applied = ref({ search: '', owner: '', due: false });
+  applied = ref({ search: '', owner: '', due: false, callResult: '' });
 const visible = computed(() =>
   columns.value.filter(
     (c) =>
@@ -118,9 +130,14 @@ async function loadColumn(column: Column, version: number, append = false) {
       page: String(append ? column.page + 1 : 1),
       search: applied.value.search,
       owner: applied.value.owner,
+      call_result: applied.value.callResult,
       ...(callbackQueue ? {} : { commercial_status: column.key }),
       due: String(applied.value.due),
-      queue: callbackQueue ? 'callbacks' : includeProcessed.value ? 'all' : 'active',
+      queue: callbackQueue
+        ? 'callbacks'
+        : includeProcessed.value || applied.value.callResult
+          ? 'all'
+          : 'active',
     });
     const data = await props.request(`work-queue/?${q}`);
     if (version !== generation || disposed) return;
@@ -149,7 +166,12 @@ async function load(restorePreview: unknown = false) {
   error.value = '';
   const term = search.value.trim();
   if (term !== applied.value.search && isDialableNumber(term)) includeProcessed.value = true;
-  applied.value = { search: term, owner: owner.value, due: dueOnly.value };
+  applied.value = {
+    search: term,
+    owner: owner.value,
+    due: dueOnly.value,
+    callResult: callResult.value,
+  };
   columns.value = statuses.map(([key, label]) => ({
     key,
     label,
@@ -182,6 +204,7 @@ async function load(restorePreview: unknown = false) {
     !owner.value &&
     !dueOnly.value &&
     !includeProcessed.value &&
+    !callResult.value &&
     columns.value.every((column) => !column.error)
   ) {
     props.preview.store(columns.value.map((column) => ({ ...column, rows: [...column.rows] })));
@@ -526,10 +549,17 @@ onBeforeUnmount(() => {
           :filters="{
             search: applied.search,
             owner: applied.owner,
-            commercial_status: commercialStatus,
+            commercial_status: commercialStatus === 'callback_queue' ? '' : commercialStatus,
+            call_result: applied.callResult,
             due: applied.due ? 'true' : '',
-            queue: includeProcessed ? 'all' : 'active',
+            queue:
+              commercialStatus === 'callback_queue'
+                ? 'callbacks'
+                : includeProcessed || applied.callResult
+                  ? 'all'
+                  : 'active',
           }"
+          :blocked="busy || columns.some((c) => !!c.error)"
         /><button class="secondary" :disabled="busy" @click="load">
           <RefreshCw :size="16" />Actualiser
         </button>
@@ -560,6 +590,13 @@ onBeforeUnmount(() => {
         </form>
       </div>
       <div class="isolation-filters">
+        <label v-if="role === 'administrator'">
+          Dernier résultat d’appel
+          <select v-model="callResult" aria-label="Filtrer par résultat d’appel" @change="load">
+            <option value="">Tous les résultats</option>
+            <option v-for="[key, label] in callResults" :key="key" :value="key">{{ label }}</option>
+          </select>
+        </label>
         <label
           ><input v-model="dueOnly" type="checkbox" @change="load" />Rappels à traiter
           <span v-if="callbacksDue">({{ callbacksDue }})</span></label
@@ -585,6 +622,9 @@ onBeforeUnmount(() => {
           <CalendarDays :size="15" />Consulter les visites
         </button>
       </div>
+      <p v-if="applied.callResult" class="muted">
+        Filtre sur le dernier résultat enregistré pour chaque fiche, fiches traitées incluses.
+      </p>
       <p v-if="error" role="alert" class="error">{{ error }}</p>
       <CallCountdownModal
         v-if="session && countdown !== null"

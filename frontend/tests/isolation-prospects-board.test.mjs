@@ -181,6 +181,68 @@ async function click(f, label) {
   await button.props.onClick()
   await flush()
 }
+
+test('admin result filter includes processed prospects and follows exports and pagination', async () => {
+  const f = fixture('administrator')
+  try {
+    await flush()
+    const field = all(f.root).find(
+      (n) => n.props?.['aria-label'] === 'Filtrer par résultat d’appel',
+    )
+    assert.ok(field)
+    field.props['onUpdate:modelValue']('invalid_number')
+    await flush()
+    f.requests.length = 0
+    await field.props.onChange()
+    await flush()
+    const queries = f.requests
+      .filter((r) => r.path.startsWith('work-queue/?'))
+      .map((r) => new URLSearchParams(r.path.split('?')[1]))
+    assert.equal(queries.length, 8)
+    assert.ok(queries.every((q) => q.get('call_result') === 'invalid_number'))
+    assert.ok(
+      queries.every((q) => q.get('queue') === (q.has('commercial_status') ? 'all' : 'callbacks')),
+    )
+    const exporter = () => all(f.root).find((n) => n.props?.['data-component'] === 'ProspectExport')
+    assert.equal(exporter().props.filters.call_result, 'invalid_number')
+    assert.equal(exporter().props.filters.queue, 'all')
+    assert.equal(exporter().props.blocked, false)
+    await click(f, 'Afficher plus · 2 / 27')
+    const more = f.requests.filter((r) => r.path.includes('page=2')).at(-1)
+    assert.equal(new URLSearchParams(more.path.split('?')[1]).get('call_result'), 'invalid_number')
+    const status = all(f.root).find(
+      (n) => n.props?.['aria-label'] === 'Filtrer les prospects par statut',
+    )
+    status.props['onUpdate:modelValue']('callback_queue')
+    await flush()
+    assert.equal(exporter().props.filters.queue, 'callbacks')
+    assert.equal(exporter().props.filters.commercial_status, '')
+    field.props['onUpdate:modelValue']('')
+    await flush()
+    await field.props.onChange()
+    await flush()
+    assert.equal(exporter().props.filters.call_result, '')
+    assert.equal(
+      f.requests.some((r) => r.body !== undefined),
+      false,
+    )
+  } finally {
+    f.app.unmount()
+  }
+})
+
+test('setter does not see admin export result selector', async () => {
+  const f = fixture()
+  try {
+    await flush()
+    assert.equal(
+      all(f.root).some((n) => n.props?.['aria-label'] === 'Filtrer par résultat d’appel'),
+      false,
+    )
+  } finally {
+    f.app.unmount()
+  }
+})
 test('Isolation cards hide empty stages, paginate per stage and keep applied search', async () => {
   const f = fixture()
   try {
