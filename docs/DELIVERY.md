@@ -1,5 +1,13 @@
 # Suivi des livraisons CRM AMX
 
+## Export Isolation par résultat d’appel
+
+Dans **Isolation → Prospects**, l’administrateur peut filtrer sur le **dernier résultat d’appel** puis exporter en CSV, Excel ou PDF. Les fiches traitées sont incluses dès qu’un résultat est choisi. Le résultat le plus récent est déterminé par la date de saisie, puis l’identifiant d’activité en cas d’égalité ; un commentaire ultérieur ne le remplace pas. Un ancien résultat ne suffit pas à sélectionner la fiche.
+
+L’export conserve les filtres de recherche, responsable, statut et rappels à traiter, couvre toutes les pages et ajoute la colonne « Dernier résultat d’appel ». Le filtre est tracé dans l’audit d’export. Les droits d’accès et les limites existantes des formats restent appliqués ; aucun résultat, commentaire ou critère d’éligibilité aux sessions d’appels n’est modifié.
+
+Contrôles : tests API de sélection du dernier résultat, égalité de dates, commentaires, filtres combinés, droits, CSV/Excel et pagination ; tests du sélecteur admin, de la pagination et des paramètres d’export côté interface. Cette livraison concerne Isolation ; aucun nouveau filtre Assurance n’est ajouté.
+
 ## Qualification Isolation — Non éligible (staging)
 
 Dans Résultat de l’appel, « Non éligible » enregistre le résultat, la note et passe au suivant. Le setter peut aussi sélectionner « Non éligible » dans le menu Résultat de « Notes et statut → Renseigner le résultat commercial ». Le classement enregistre la qualification et retire le prospect des listes actives, des lots à attribuer et des appels. La fiche reste consultable parmi les fiches traitées.

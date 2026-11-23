@@ -111,8 +111,8 @@ def output(row):
     }
 
 
-from .isolation_followups import FollowUpMixin
-from .isolation_export import ExportMixin
+from .isolation_followups import FollowUpMixin, RESULTS
+from .isolation_export import ExportMixin, with_latest_call_result
 
 
 class WorkViewSet(
@@ -159,6 +159,11 @@ class WorkViewSet(
             if status not in STATUSES:
                 raise ValidationError('Statut commercial invalide')
             qs = qs.filter(commercial_status=status)
+        call_result = self.request.query_params.get('call_result', '')
+        if call_result:
+            if call_result not in RESULTS:
+                raise ValidationError('Résultat d’appel invalide')
+            qs = with_latest_call_result(qs).filter(last_call_result=call_result)
         if self.request.query_params.get('due') == 'true':
             qs = (
                 qs.filter(
