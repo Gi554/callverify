@@ -11,12 +11,23 @@ class Roster:
 
     @staticmethod
     def roster():
-        names = dict(models.IsolationSetterRate.objects.values_list('setter_id', 'setter_name'))
-        names.update(
-            dict(
-                models.IsolationVisit.objects.order_by('pk').values_list('setter_id', 'setter_name')
-            )
-        )
+        # Names are snapshots on rates/visits.  Never let an empty or whitespace
+        # snapshot overwrite a real name from another record: doing so made the
+        # admin performance selector fall back to technical labels such as
+        # ``Setter #18`` and ``Setter #25``.
+        names = {}
+        for setter_id, setter_name in models.IsolationSetterRate.objects.order_by('pk').values_list(
+            'setter_id', 'setter_name'
+        ):
+            clean = (setter_name or '').strip()
+            if clean:
+                names[setter_id] = clean
+        for setter_id, setter_name in models.IsolationVisit.objects.order_by('pk').values_list(
+            'setter_id', 'setter_name'
+        ):
+            clean = (setter_name or '').strip()
+            if clean:
+                names[setter_id] = clean
         return names
 
     @staticmethod

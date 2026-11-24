@@ -3476,6 +3476,12 @@ En recette sur staging, le minuteur Isolation passe à cinq secondes, comme en A
 
 Chaque compte métier actif disposant d’un espace actif présente une action directe « Se connecter en tant que ». Le choix de l’espace, le motif et la confirmation s’affichent sous le compte choisi. Le serveur conserve les contrôles d’accès et la journalisation de l’assistance.
 
+## Noms réels dans la performance Isolation
+
+Le roster de performance ignore désormais les instantanés de nom vides ou composés uniquement d’espaces. Un ancien enregistrement incomplet ne peut plus écraser le dernier nom connu et l’interface ne fabrique plus de libellés techniques du type « Setter #18 » ou « Setter #25 ». Les identifiants sans aucun nom exploitable ne sont pas proposés dans le sélecteur administrateur ; les données historiques restent inchangées.
+
+Vérification : test API couvrant un nom réel suivi d’une visite sans nom.
+
 ## Navigation des setters vers Prospects
 Depuis Appels, la fiche demandée se charge avant le tableau en Assurance et en Isolation. Au retour sur Prospects, le dernier tableau sans filtre du setter peut être réaffiché pendant sa relecture, pendant trente secondes au maximum. Cet aperçu en mémoire est invalidé sur écriture métier et changement de contexte. La composition et les commandes de session continuent de passer par le serveur. Les lectures de colonnes simultanées du même contexte partagent uniquement la demande de droit d’accès en cours.
 

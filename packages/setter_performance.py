@@ -44,8 +44,9 @@ def performance(store, request, agent=None):
         result = Response(
             {
                 'agents': [
-                    {'id': pk, 'name': name or f'Setter #{pk}'}
+                    {'id': pk, 'name': name}
                     for pk, name in sorted(names.items())
+                    if isinstance(name, str) and name.strip()
                 ]
             }
         )
@@ -105,7 +106,7 @@ def performance(store, request, agent=None):
     result = Response(
         {
             'agent_id': agent,
-            'agent_name': names.get(agent) or f'Setter #{agent}',
+            'agent_name': names.get(agent) or '',
             'from': start,
             'to': end,
             'timezone': 'America/Toronto',
