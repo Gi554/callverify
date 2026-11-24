@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from uuid import uuid4
 from packages.quebec_period import ZONE
-from .models import Prospect, ProspectActivity, IsolationVisit
+from .models import Prospect, ProspectActivity, IsolationSetterRate, IsolationVisit
 from .visit_fixtures import VisitFixture
 
 
@@ -66,3 +66,29 @@ class PerformanceTests(TestCase):
             21, [r['id'] for r in self.client.get('/api/setter-performance/').data['agents']]
         )
         self.assertEqual(self.client.get('/api/setter-performance/21/?from=bad').status_code, 400)
+
+    def test_blank_latest_visit_name_does_not_replace_real_setter_name(self):
+        IsolationSetterRate.objects.create(
+            setter_id=21,
+            setter_name='Kamal',
+            client_id=72,
+            client_name='Client',
+        )
+        IsolationVisit.objects.create(
+            prospect=self.visit.prospect,
+            request_id=uuid4(),
+            fingerprint='blank-setter-name',
+            client_id=72,
+            client_name='Client',
+            setter_id=21,
+            setter_name='   ',
+            booked_by_id=91,
+            starts_at=self.visit.starts_at,
+            ends_at=self.visit.ends_at,
+            timezone='UTC',
+        )
+        self.auth(90, 'administrator')
+        agents = self.client.get('/api/setter-performance/').data['agents']
+        row = next(item for item in agents if item['id'] == 21)
+        self.assertTrue(row['name'].strip())
+        self.assertNotIn('Setter #', row['name'])
