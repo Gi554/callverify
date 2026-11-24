@@ -77,7 +77,7 @@ class Prospect(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['campaign', 'phone'], name='unique_campaign_phone')
+            models.UniqueConstraint(fields=['campaign', 'phone'], name='unique_campaign_phone'),
         ]
 
 
@@ -285,7 +285,11 @@ class IsolationVisit(models.Model):
             models.CheckConstraint(
                 condition=models.Q(ends_at__gt=models.F('starts_at')),
                 name='isolation_visit_positive_interval',
-            )
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(setter_name=''),
+                name='isolation_visit_setter_name_required',
+            ),
         ]
         indexes = [models.Index(fields=['client_id', 'status', 'starts_at'])]
 
@@ -318,7 +322,11 @@ class IsolationUnqualified(models.Model):
                 fields=['prospect'],
                 condition=models.Q(active=True),
                 name='one_active_isolation_unqualified',
-            )
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(setter_name=''),
+                name='isolation_unqualified_setter_name_required',
+            ),
         ]
         indexes = [models.Index(fields=['client_id', 'active', 'created_at'])]
 
@@ -435,6 +443,10 @@ class IsolationSetterRate(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['setter_id', 'client_id'], name='unique_isolation_setter_client_rate'
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(setter_name=''),
+                name='isolation_setter_rate_name_required',
             ),
             models.CheckConstraint(
                 condition=models.Q(attendance_cad__gte=0) | models.Q(attendance_cad__isnull=True),
