@@ -3482,6 +3482,8 @@ Le roster de performance ignore désormais les instantanés de nom vides ou comp
 
 Vérification : test API couvrant un nom réel suivi d’une visite sans nom.
 
+Les modèles Isolation appliquent aussi un garde-fou en base sur les noms obligatoires des visites, qualifications non abouties et tarifs setter. Les prospects restent compatibles avec l’affectation en deux étapes (ID puis nom) utilisée par le flux transactionnel. La purge Isolation du 24 novembre 2026 a conservé les comptes et accès, supprimé les données métier et rétabli les noms `kamal` (18) et `marc` (25).
+
 ## Navigation des setters vers Prospects
 Depuis Appels, la fiche demandée se charge avant le tableau en Assurance et en Isolation. Au retour sur Prospects, le dernier tableau sans filtre du setter peut être réaffiché pendant sa relecture, pendant trente secondes au maximum. Cet aperçu en mémoire est invalidé sur écriture métier et changement de contexte. La composition et les commandes de session continuent de passer par le serveur. Les lectures de colonnes simultanées du même contexte partagent uniquement la demande de droit d’accès en cours.
 
