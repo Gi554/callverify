@@ -22,6 +22,7 @@ const props = defineProps<{
   // Call session: closing the file moves on to the next prospect.
   session?: boolean;
   autoCall?: boolean;
+  externalCallControl?: boolean;
   followUp?: FollowUpReference;
   taskReadOnly?: boolean;
 }>();
@@ -198,7 +199,7 @@ const resultLabels: Record<string, string> = {
           : 'Aucun rappel programmé'
       }}</small>
     </div>
-    <div v-if="!followUp && prospect" class="sheet-section">
+    <div v-if="!externalCallControl && !followUp && prospect" class="sheet-section">
       <CallAction
         workspace="isolation"
         :resource-id="prospectId"
