@@ -858,7 +858,6 @@ onBeforeUnmount(() => {
           :phone="activity.phone || activity.raw_phone"
           :auto-open="workflow === 'call'"
           :auto-send="session && !recovering"
-          @skip="activityPanel?.close()"
           :before-open="
             async () => {
               activity = await request(`work-queue/${activity.id}/`);
@@ -876,7 +875,8 @@ onBeforeUnmount(() => {
           :portal="portal"
           :request="request"
           :session="session"
-          :auto-call="!recovering && (session || workflow === 'call')"
+          :external-call-control="true"
+          :auto-call="false"
           @busy="activityBusy = $event"
           @close="activityClosed"
           @saved="load"
