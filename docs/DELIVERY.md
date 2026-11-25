@@ -3492,3 +3492,8 @@ La vue d’ensemble du superadmin présente les volumes reçus, les erreurs, la 
 
 La collecte authentifiée est limitée aux setters actifs de l’espace, hors assistance. Les mesures sont envoyées en arrière-plan par petits lots. La synthèse porte sur les 5 000 dernières mesures des dernières 24 h. Les onglets fermés avant l’envoi, les lots rejetés et les postes hors ligne peuvent manquer. Il reste à vérifier la distribution réelle des temps avec des utilisateurs en recette.
 
+## Isolation — suppression du double déclenchement d’appel en session
+La fiche ouverte depuis la session d’appels ne monte plus deux composants d’appel pour le même prospect. Le composant de suivi de la fiche reste l’unique responsable de la préparation et de l’envoi automatique. Cela évite qu’une seconde commande distincte arrive dans le délai serveur de cinq secondes, soit refusée en 409 et bloque la progression. Les commandes déjà envoyées conservent leur protection d’idempotence ; aucun résultat d’appel ni historique n’est réécrit.
+
+Vérification locale : `git diff --check`. Tests et déploiement restent à effectuer avant mise en production.
+

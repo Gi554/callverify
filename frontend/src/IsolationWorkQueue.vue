@@ -12,7 +12,6 @@ import {
   Users,
   PhoneForwarded,
 } from 'lucide-vue-next';
-import CallAction from './CallAction.vue';
 import IsolationProspectActivity from './IsolationProspectActivity.vue';
 import IsolationVisits from './IsolationVisits.vue';
 import SidePanel from './SidePanel.vue';
@@ -39,7 +38,6 @@ const callResults = [
 ];
 const lotsOpen = ref(false),
   adminTools = ref(false),
-  callPending = ref(false),
   workflow = ref<'edit' | 'call'>('edit'),
   listManagement = ref(false);
 const statuses = [
@@ -419,7 +417,6 @@ async function openActivity(row: any, mode: 'edit' | 'call' = 'edit', id?: numbe
   });
 }
 async function activityClosed() {
-  if (callPending.value) return;
   const closedId = activity.value?.id;
   if (
     Number.isSafeInteger(Number(closedId)) &&
@@ -440,7 +437,6 @@ async function activityClosed() {
   }
   activity.value = null;
   activityBusy.value = false;
-  callPending.value = false;
   void load();
   if (session.value && !disposed) void prepareNext();
 }
@@ -474,14 +470,6 @@ async function assign(release = false) {
     await props.request(`work-queue/${row.id}/${release ? 'unassign' : 'assign'}/`, body);
     selected.value = null;
     await load();
-  });
-}
-async function callIntent(row: any, id: string) {
-  const current = await props.request(`work-queue/${row.id}/`);
-  if (activity.value?.id === current.id) activity.value = current;
-  return props.request(`work-queue/${row.id}/call-intent/`, {
-    revision: current.revision,
-    request_id: id,
   });
 }
 async function loadHistory() {
@@ -849,25 +837,9 @@ onBeforeUnmount(() => {
         :open="!!activity"
         :title="activity?.name || 'Fiche et suivi'"
         eyebrow="ISOLATION"
-        :close-disabled="activityBusy || callPending"
+        :close-disabled="activityBusy"
         @request-close="activityPanel?.close()"
-        ><CallAction
-          v-if="activity && ['setter', 'administrator'].includes(role)"
-          workspace="isolation"
-          :resource-id="activity.id"
-          :phone="activity.phone || activity.raw_phone"
-          :auto-open="workflow === 'call'"
-          :auto-send="session && !recovering"
-          @skip="activityPanel?.close()"
-          :before-open="
-            async () => {
-              activity = await request(`work-queue/${activity.id}/`);
-            }
-          "
-          :portal="portal"
-          :prepare="(id: string) => callIntent(activity, id)"
-          :disabled="activityBusy"
-          @busy="callPending = $event" /><IsolationProspectActivity
+        ><IsolationProspectActivity
           v-if="activity"
           ref="activityPanel"
           :key="activity.id"
