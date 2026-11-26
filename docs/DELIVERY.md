@@ -3497,3 +3497,6 @@ La fiche ouverte depuis une session Isolation désactive son bouton d’appel in
 
 Vérification locale : `git diff --check`. Tests et déploiement restent à effectuer avant mise en production.
 
+## Diagnostic des commandes NEWT incertaines (à livrer)
+Le connecteur NEWT doit journaliser la catégorie des réponses indéterminées (HTTP non 200, délai réseau, taille ou format CSV inattendu, champs de réponse non concordants) avec le statut HTTP, le type de contenu et la taille reçue. Les numéros composés, identifiants de corrélation, identifiants de commande, identifiants de compte et identifiants NEWT ne sont pas écrits dans ces logs. Ces diagnostics permettront d’identifier la cause d’un `unknown` après déploiement ; ils ne transforment pas une réponse incertaine en succès et ne relancent jamais la commande.
+
