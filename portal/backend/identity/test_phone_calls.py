@@ -342,3 +342,19 @@ class ProviderTests(TestCase):
         ):
             with patch('packages.newt.calls.requests.get', return_value=self.response(body)):
                 self.assertEqual(place('u', 'p', '501', '15145550101'), 'unknown')
+
+    def test_ignores_blank_csv_rows_but_rejects_multiple_provider_records(self):
+        valid = b'Success,501,15145550101,0123456789,,,'
+        for body in (valid + b'\n', valid + b'\r\n\r\n', valid + b'\n  \r\n'):
+            with (
+                patch('packages.newt.calls.secrets.token_hex', return_value='0123456789'),
+                patch('packages.newt.calls.requests.get', return_value=self.response(body)),
+            ):
+                self.assertEqual(place('u', 'p', '501', '15145550101'), 'accepted')
+
+        duplicate = valid + b'\r\nFailure,501,15145550101,,,,,'
+        with (
+            patch('packages.newt.calls.secrets.token_hex', return_value='0123456789'),
+            patch('packages.newt.calls.requests.get', return_value=self.response(duplicate)),
+        ):
+            self.assertEqual(place('u', 'p', '501', '15145550101'), 'unknown')
