@@ -15,7 +15,7 @@ from .directory import URL
 logger = logging.getLogger(__name__)
 
 
-def _unknown(reason, response=None, response_bytes=None):
+def _unknown(reason, response=None, response_bytes=None, csv_rows=None):
     """Log a safe reason for an indeterminate command without logging call data."""
     status = getattr(response, 'status_code', '-') if response is not None else '-'
     content_type = '-'
@@ -27,11 +27,13 @@ def _unknown(reason, response=None, response_bytes=None):
         else:
             content_type = 'other' if raw_type else 'missing'
     logger.warning(
-        'NEWT 245 command indeterminate reason=%s http_status=%s content_type=%s response_bytes=%s',
+        'NEWT 245 command indeterminate reason=%s http_status=%s content_type=%s response_bytes=%s csv_row_count=%s csv_row_widths=%s',
         reason,
         status,
         content_type,
         response_bytes if response_bytes is not None else '-',
+        len(csv_rows) if csv_rows is not None else '-',
+        ','.join(str(len(row)) for row in csv_rows[:5]) if csv_rows is not None else '-',
     )
     return 'unknown'
 
@@ -74,9 +76,15 @@ def place(username, password, extension, destination, auto_answer=False):
                     return _unknown('response_too_large', response, len(body))
                 if monotonic() > deadline:
                     return _unknown('response_read_deadline', response, len(body))
-            rows = list(csv.reader(io.StringIO(body.decode('utf-8-sig')), strict=True))
+            rows = [
+                row
+                for row in csv.reader(
+                    io.StringIO(body.decode('utf-8-sig'), newline=''), strict=True
+                )
+                if row and any(field.strip() for field in row)
+            ]
             if len(rows) != 1:
-                return _unknown('unexpected_row_count', response, len(body))
+                return _unknown('unexpected_row_count', response, len(body), rows)
             row = rows[0]
             # Provider confirmed empty correlation slots in Success,ext,TN,,,,,.
             # Bind to this one HTTPS response's exact post and destination instead.

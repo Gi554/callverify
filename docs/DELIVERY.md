@@ -3502,3 +3502,6 @@ Le connecteur NEWT journalise la catégorie des réponses indéterminées (HTTP 
 
 Vérifications : CI réussie sur les PR #432 et #433 ; déploiement production réussi le 26 novembre 2026. Limite : il faudra examiner le motif expurgé d’une prochaine commande indéterminée pour identifier le correctif NEWT ou de configuration nécessaire.
 
+## Tolérance aux lignes vides dans la réponse NEWT 245 (en cours)
+Le parseur ignore uniquement les lignes CSV entièrement vides ou composées d’espaces avant de valider le résultat unique. Plusieurs enregistrements non vides restent indéterminés. Les logs d’une réponse ambiguë ajoutent le nombre de lignes CSV et la largeur des cinq premières lignes, sans valeur de cellule.
+
